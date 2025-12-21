@@ -1,4 +1,4 @@
-function [incremental,curnumberrow,Value_data]=SA_Value_order(agents, tasks, Value_data, Value_Params,counter)
+function [incremental,curnumberrow,Value_data]=Overlap_Coalition_Formation(agents, tasks, Value_data, Value_Params,counter)
 %用于判断联盟结构是否改变的标志位
 incremental=0;%%用于判断联盟结构是否改变的标志位
 AValue_data.initcoalitionstru= Value_data.coalitionstru;%将联盟结构先存起来，后面涉及联盟结构调整

@@ -102,7 +102,7 @@ for counter=1:50
         
         %所有agents选择自主任务
         for ii=1:Value_Params.N
-            [incremental(ii),curnumberrow(ii),Value_data(ii)]=SA_Value_order(agents, tasks, Value_data(ii), Value_Params,counter);
+            [incremental(ii),curnumberrow(ii),Value_data(ii)]= Overlap_Coalition_Formation(agents, tasks, Value_data(ii), Value_Params,counter);
             incremental(ii);
         end
         
