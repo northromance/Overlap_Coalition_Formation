@@ -8,6 +8,7 @@ tic
 %% 初始化参数
 SEED=24375;
 rand('seed',SEED);
+addpath("SA\")
 
 % 世界空间设置
 WORLD.XMIN=0;
@@ -18,44 +19,52 @@ WORLD.ZMIN=0;
 WORLD.ZMAX=0;
 WORLD.value=[300,500,1000]; % 任务价值集合
 
-% Agent和任务数量
-N=10; % agent数目
-M=6;  % 任务数目
+% 配置参数
+N = 6; % agent数目
+M = 4;  % 任务数目
+K = 6; %总资源类型的数目
 
-% 定义任务类型的资源需求和执行时间
-task_type_demands = [
-    randi([1,5],1,6);  % 类型1的6种资源需求
-    randi([1,5],1,6);  % 类型2的6种资源需求
-    randi([1,5],1,6);  % 类型3的6种资源需求
-    ];
+num_resources = 6; % 总资源类型数
+num_task_types = 3; % 任务的类型数
+
+max_resource_value = 8; % 最大资源值
+min_resource_value = 0; % 最小资源值（允许为0）
+
+task_type_demands_range = [0, 5]; % 任务资源需求的范围 [0,5]
 task_type_duration = [100, 150, 200]; % 各类型任务的执行时间
+
+AddPara.control = 1;
+
+%% 初始化任务类型的资源需求
+% 随机生成任务类型的资源需求
+task_type_demands = randi(task_type_demands_range, num_task_types, num_resources);  % 3种任务类型，每种任务类型有6种资源需求（可以为0）
 
 %% 初始化agents和tasks
 % 初始化任务
-for j=1:M
-    tasks(j).id=j;
-    tasks(j).x=round(rand(1)*(WORLD.XMAX-WORLD.XMIN)+WORLD.XMIN);
-    tasks(j).y=round(rand(1)*(WORLD.YMAX-WORLD.YMIN)+WORLD.YMIN);
-    tasks(j).value=WORLD.value(randi(length(WORLD.value),1,1));
-    tasks(j).type= randi(3,1,1); % 任务类型：1,2,3
-    tasks(j).resource_demand = task_type_demands(tasks(j).type,:); % 根据类型分配资源需求
-    tasks(j).duration = task_type_duration(tasks(j).type); % 根据类型分配执行时间
+for j = 1:M
+    tasks(j).id = j;
+    tasks(j).x = round(rand(1) * (WORLD.XMAX - WORLD.XMIN) + WORLD.XMIN);
+    tasks(j).y = round(rand(1) * (WORLD.YMAX - WORLD.YMIN) + WORLD.YMIN);
+    tasks(j).value = WORLD.value(randi(length(WORLD.value), 1, 1));
+    tasks(j).type = randi(num_task_types, 1, 1);  % 任务类型：1, 2, 3（可以根据任务类型选择对应的资源需求）
+    tasks(j).resource_demand = task_type_demands(tasks(j).type, :);  % 根据任务类型分配资源需求
+    tasks(j).duration = task_type_duration(tasks(j).type);  % 根据任务类型分配执行时间
 end
 
 % 初始化agents
-for i=1:N
-    agents(i).id=i;
-    agents(i).vel=2;   % 巡航速度
-    agents(i).fuel=1;  % 油耗/m
-    agents(i).x=round(rand(1)*(WORLD.XMAX-WORLD.XMIN)+WORLD.XMIN);
-    agents(i).y=round(rand(1)*(WORLD.YMAX-WORLD.YMIN)+WORLD.YMIN);
-    agents(i).detprob=1; % 检测概率
-    agents(i).resources=randi([2,8],1,4); % 携带4种资源的数量
+for i = 1:N
+    agents(i).id = i;
+    agents(i).vel = 2;   % 巡航速度
+    agents(i).fuel = 1;  % 油耗/m
+    agents(i).x = round(rand(1) * (WORLD.XMAX - WORLD.XMIN) + WORLD.XMIN);
+    agents(i).y = round(rand(1) * (WORLD.YMAX - WORLD.YMIN) + WORLD.YMIN);
+    agents(i).detprob = 1; % 检测概率
+    agents(i).resources = randi([min_resource_value, max_resource_value], num_resources, 1);  % 每个agent有6种资源，数量在[min_resource_value, max_resource_value]之间（允许为0）
 end
 
 
 
-Value_Params=Value_init(N,M);
+Value_Params=Value_init(N,M,K);
 
 %% 生成连接图
 [p, result] = Value_graph(agents, Value_Params);
@@ -71,7 +80,7 @@ end
 Graph=G+G'; % 对称化
 
 %% 运行联盟形成算法
-[Value_data,Rcost,cost_sum,net_profit, initial_coalition]= SA_Value_main(agents,tasks,Graph);
+[Value_data,Rcost,cost_sum,net_profit, initial_coalition]= SA_Value_main(agents,tasks,Graph,AddPara,Value_Params);
 
 toc
 

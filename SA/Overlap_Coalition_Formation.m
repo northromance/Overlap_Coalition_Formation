@@ -1,4 +1,4 @@
-function [incremental,curnumberrow,Value_data]=Overlap_Coalition_Formation(agents, tasks, Value_data, Value_Params,counter)
+function [incremental,curnumberrow,Value_data]=Overlap_Coalition_Formation(agents, tasks, Value_data, Value_Params,counter,AddPara)
 
 
 %% 随机选择资源离开联盟（支持重叠联盟：agent 可同时属于多个任务）

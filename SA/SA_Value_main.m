@@ -1,8 +1,8 @@
-function [Value_data,Rcost,cost_sum,net_profit, initial_coalition]= SA_Value_main(agents,tasks,Graph)
+function [Value_data,Rcost,cost_sum,net_profit, initial_coalition]= SA_Value_main(agents,tasks,Graph,AddPara,Value_Params)
 % =========================================================================
 % =========================================================================
 
-Value_Params=Value_init(length(agents),length(tasks));
+
 
 for i=1:Value_Params.N %包括agent标号，索引以及初始联盟结构
     Value_data(i).agentID=agents(i).id;
@@ -42,62 +42,75 @@ end
 
 %此处应该有个for/which循环
 
+
+
 for counter=1:50
     for i=1:Value_Params.N   %一会要改回来
         for j=1:Value_Params.M
             Value_data(i).tasks(j).prob(counter,:)=Value_data(i).initbelief(j,1:end);
         end
     end
-    
+
     T=1;   %迭代次数
     lastTime=T-1;
     previous_coalitionstru = Value_data(1).coalitionstru;
-    
+    doneflag = 0;
+    if counter == 1
+        % 如果是第一次计算 需要根据分配概率形成初始联盟
+        initial_coalition = Initial_coalition_Formation(agents, tasks, Value_data, Value_Params, counter, AddPara);
+
+        % 将初始联盟赋值给每个机器人（agent）在 Value_data 中的联盟结构
+        for agentIdx = 1:length(agents)
+            Value_data(agentIdx).coalitionstru = initial_coalition;
+        end
+    end
+
+
     while(doneflag == 0)
         % 初始化增量数组，用来存储每个机器人的增量
         incremental = zeros(1, Value_Params.N);
-        
-        % 依次进行联盟结构计算
+
+        % 遍历每个机器人依次进行重叠联盟结构计算
         for ii = 1:Value_Params.N
             % 调用SA_Value_order()进行联盟优化
             [incremental(ii), Value_data(ii)] = Overlap_Coalition_Formation(agents, tasks, Value_data(ii), Value_Params,counter,AddPara);
-            
+
             % 传递联盟结构给下一个智能体
-            if ii < Value_Params.N 
+            if ii < Value_Params.N
                 Value_data(ii + 1).coalitionstru = Value_data(ii).coalitionstru;
             end
         end
-        
+
         % SA温度更新
         Value_Params.Temperature = Value_Params.alpha * Value_Params.Temperature;
-        
+
         % 获取最终联盟结构
         final_coalitionstru = Value_data(Value_Params.N).coalitionstru;
         T = T + 1;
-        
+
         % 收敛性检测
         if isequal(previous_coalitionstru, final_coalitionstru)
             k_stable = k_stable + 1;
         else
             k_stable = 0;
         end
-        
+
         % 收敛判断：稳定迭代次数或温度达到阈值
         if k_stable >= Value_Params.max_stable_iterations || Value_Params.Temperature < Value_Params.Tmin
             disp('Convergence detected: Coalition structure has stabilized for multiple iterations.');
             doneflag = 1;
         end
-        
+
         % 更新前次联盟结构
         previous_coalitionstru = final_coalitionstru;
-        
+
         % 传递给其他机器人的联盟结构
         for ii = 1:Value_Params.N
             Value_data(ii).coalitionstru = final_coalitionstru;
         end
     end
-    
-    
+
+
     curnumberrow = zeros(1, Value_Params.N);
     for i = 1:Value_Params.N
         [curRow, ~] = find(final_coalitionstru(:, i) == i);
@@ -107,7 +120,7 @@ for counter=1:50
             curnumberrow(i) = Value_Params.M + 1;  % 未分配任务
         end
     end
-    
+
     %% 记录一次联盟形成后观测次数
     for i=1:Value_Params.N
         if  curnumberrow(i)~=Value_Params.M+1
@@ -127,7 +140,7 @@ for counter=1:50
             end
         end
     end
-    
+
     for j=1:Value_Params.M
         for k=1:3
             for i=1:Value_Params.N
@@ -135,7 +148,7 @@ for counter=1:50
             end
         end
     end
-    
+
     for i=1:Value_Params.N
         for j=1:Value_Params.M
             for k=1:3
@@ -144,7 +157,7 @@ for counter=1:50
             end
         end
     end
-    
+
     %
     %% 联盟形成后根据观测更新belief
     for i=1:Value_Params.N
@@ -153,8 +166,8 @@ for counter=1:50
             %  Value_data(i).initbelief(j,1:end)=[1/3,1/3,1/3];
         end
     end
-    
+
     initial_coalition=final_coalitionstru;
-    
+
 end
 end
