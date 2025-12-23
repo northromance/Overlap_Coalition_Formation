@@ -1,48 +1,5 @@
 function [Value_data,Rcost,cost_sum,net_profit, initial_coalition]= SA_Value_main(agents,tasks,Graph)
 % =========================================================================
-%  函数名称：Value_main
-%
-%  算法主要功能：
-%  ------------------------------------------------------------------------
-%  本算法基于多智能体联盟形成（Coalition Formation）与任务值估计机制，
-%  完成以下核心流程：
-%    1. 初始化 agent 的 belief、联盟结构和观测矩阵。
-%    2. 通过迭代过程：每个 agent 根据 belief 选择任务并形成联盟。
-%    3. 按通信拓扑 Graph 执行邻居信息共享，更新任务估计。
-%    4. 每轮联盟形成后，agent 通过模拟观测更新 Dirichlet belief。
-%    5. 计算每轮联盟结构下的成本、收益与净收益。
-%    6. 重复多次（counter=1:50），用于统计不同联盟的收益表现。
-%
-%  输入参数：
-%  ------------------------------------------------------------------------
-%  agents：结构体数组，包含：
-%       - id：agent ID
-%       - x, y：空间坐标
-%       - fuel：燃料单价（决定行动成本）
-%       - detprob：观测正确概率
-%
-%  tasks：结构体数组，包含：
-%       - x, y：任务位置
-%       - value：任务当前可能值（一个 3 维向量）
-%       - WORLD.value：任务真实值（环境设定）
-%
-%  Graph：通信邻接矩阵（N×N），Graph(i,j)=1 表示 agent i 和 j 可通信
-%
-%
-%  输出参数：
-%  ------------------------------------------------------------------------
-%  Value_data：包含每个 agent 在各轮迭代中的 belief、观测、联盟结构等信息
-%
-%  Rcost：联盟中 agent 的行动成本（距离 × fuel）
-%
-%  cost_sum：50 次联盟形成中，每次的总成本
-%
-%  net_profit：50 次联盟形成中，每次的（收益 - 成本）
-%
-%  initial_coalition：第一次联盟形成的联盟成员结构
-%
-%  注：算法内部会运行多轮 belief 更新、联盟优化和通信，最终输出每轮的成本与收益。
-%
 % =========================================================================
 
 Value_Params=Value_init(length(agents),length(tasks));
@@ -94,43 +51,64 @@ for counter=1:50
     
     T=1;   %迭代次数
     lastTime=T-1;
-    doneflag=0;   %初始标志位0，收敛标志位为1
+    previous_coalitionstru = Value_data(1).coalitionstru;
     
-    while( doneflag==0)
+    while(doneflag == 0)
+        % 初始化增量数组，用来存储每个机器人的增量
+        incremental = zeros(1, Value_Params.N);
         
-        %communication
-        
-        %所有agents选择自主任务
-        for ii=1:Value_Params.N
-            [incremental(ii),curnumberrow(ii),Value_data(ii)]= Overlap_Coalition_Formation(agents, tasks, Value_data(ii), Value_Params,counter);
-            incremental(ii);
+        % 依次进行联盟结构计算
+        for ii = 1:Value_Params.N
+            % 调用SA_Value_order()进行联盟优化
+            [incremental(ii), Value_data(ii)] = Overlap_Coalition_Formation(agents, tasks, Value_data(ii), Value_Params,counter,AddPara);
+            
+            % 传递联盟结构给下一个智能体
+            if ii < Value_Params.N 
+                Value_data(ii + 1).coalitionstru = Value_data(ii).coalitionstru;
+            end
         end
         
-        if (length(find(incremental==0))==Value_Params.N)
-            lastTime= lastTime;
+        % SA温度更新
+        Value_Params.Temperature = Value_Params.alpha * Value_Params.Temperature;
+        
+        % 获取最终联盟结构
+        final_coalitionstru = Value_data(Value_Params.N).coalitionstru;
+        T = T + 1;
+        
+        % 收敛性检测
+        if isequal(previous_coalitionstru, final_coalitionstru)
+            k_stable = k_stable + 1;
         else
-            lastTime=T;
+            k_stable = 0;
         end
-        % length(find(incremental==0))
-        Value_data= Value_communication(agents, tasks, Value_data, Value_Params,Graph); %邻居agent间彼此通信
         
-        %convergence check
+        % 收敛判断：稳定迭代次数或温度达到阈值
+        if k_stable >= Value_Params.max_stable_iterations || Value_Params.Temperature < Value_Params.Tmin
+            disp('Convergence detected: Coalition structure has stabilized for multiple iterations.');
+            doneflag = 1;
+        end
         
-        if (T-lastTime>2)
-            %     if (T==100)
-            doneflag=1;
-        else
-            T=T+1;
+        % 更新前次联盟结构
+        previous_coalitionstru = final_coalitionstru;
+        
+        % 传递给其他机器人的联盟结构
+        for ii = 1:Value_Params.N
+            Value_data(ii).coalitionstru = final_coalitionstru;
         end
     end
     
-    if counter==1
-        for j=1:Value_Params.M
-            initial_coalition(j).member=find(Value_data(1).coalitionstru(j,:)~=0);
+    
+    curnumberrow = zeros(1, Value_Params.N);
+    for i = 1:Value_Params.N
+        [curRow, ~] = find(final_coalitionstru(:, i) == i);
+        if ~isempty(curRow)
+            curnumberrow(i) = curRow;
+        else
+            curnumberrow(i) = Value_Params.M + 1;  % 未分配任务
         end
     end
     
-    %记录一次联盟形成后观测次数
+    %% 记录一次联盟形成后观测次数
     for i=1:Value_Params.N
         if  curnumberrow(i)~=Value_Params.M+1
             for m=1:20
@@ -168,7 +146,7 @@ for counter=1:50
     end
     
     %
-    %一次联盟形成后根据观测更新belief
+    %% 联盟形成后根据观测更新belief
     for i=1:Value_Params.N
         for j=1:Value_Params.M
             Value_data(i).initbelief(j,1:end)=drchrnd([1+Value_data(i).observe(j,1),1+Value_data(i).observe(j,2),1+Value_data(i).observe(j,3)],1)';
@@ -176,30 +154,7 @@ for counter=1:50
         end
     end
     
-    Rcost=zeros(Value_Params.M,Value_Params.N);
-    for j=1:Value_Params.M
-        lianmeng(j).member=find(Value_data(1).coalitionstru(j,:)~=0);
-        for i=1:length(lianmeng(j).member)
-            Rcost(j,i)=sqrt((agents(lianmeng(j).member(i)).x-tasks(j).x)^2 ...
-                +(agents(lianmeng(j).member(i)).y-tasks(j).y)^2)*agents(lianmeng(j).member(i)).fuel;
-        end
-    end
-    
-    cost_sum(counter)=0;
-    for j=1:size(Rcost,1)
-        for i=1:size(Rcost,2)
-            cost_sum(counter)=cost_sum(counter)+Rcost(j,i);
-        end
-    end
-    
-    revenue_sum(counter)=0;
-    for j=1:Value_Params.M
-        revenue_sum(counter)=revenue_sum(counter)+tasks(j).value;
-    end
-    
-    net_profit(counter)= revenue_sum(counter)- cost_sum(counter);
-    
-    counter=counter+1;
+    initial_coalition=final_coalitionstru;
     
 end
 end
