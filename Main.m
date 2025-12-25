@@ -41,8 +41,11 @@ task_type_demands = randi(task_type_demands_range, num_task_types, num_resources
 
 %% 初始化agents和tasks
 % 初始化任务
+% 为 M 个任务生成不重复的优先级（数值越小表示优先级越高）
+task_priorities = randperm(M);
 for j = 1:M
     tasks(j).id = j;
+    tasks(j).priority = task_priorities(j);
     tasks(j).x = round(rand(1) * (WORLD.XMAX - WORLD.XMIN) + WORLD.XMIN);
     tasks(j).y = round(rand(1) * (WORLD.YMAX - WORLD.YMIN) + WORLD.YMIN);
     tasks(j).value = WORLD.value(randi(length(WORLD.value), 1, 1));
