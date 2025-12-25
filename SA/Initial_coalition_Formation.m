@@ -6,7 +6,6 @@ function [coalition] = Initial_coalition_Formation(agents, tasks, Value_data, Va
 % backup.unif = Value_data.unif;
 
 %% 步骤 3: 遍历每个agent，根据每个agent对应的选择概率决定是否加入任务的联盟
-%% 步骤 3: 遍历每个agent，根据每个agent对应的选择概率决定是否加入任务的联盟
 incremental = 0;
 coalition = Value_data(1).coalitionstru;  % 获取当前联盟结构
 
@@ -57,12 +56,43 @@ end
         % Value_data: 包含智能体ID和其他相关数据
         % Value_Params: 包含任务数量（M）和资源类型数量（K）
 
+        % 任务类型的资源需求矩阵（行：任务类型，列：资源类型）
+        % 来自 Main.m 中生成的 task_type_demands
+        if isfield(Value_Params, 'task_type_demands')
+            task_type_demands = Value_Params.task_type_demands;
+        else
+            % 回退：若未提供按类型的需求矩阵，则退回到原始的确定需求
+            task_type_demands = [];
+        end
+
+        % 任务类型数（与 belief 维度一致）
+        if ~isempty(task_type_demands)
+            num_task_types = size(task_type_demands, 1);
+        else
+            num_task_types = 0;
+        end
+
         % 遍历每个资源类型 r
         for r = 1:R
             % 遍历每个任务 j
             for j = 1:Value_Params.M
-                % 获取该任务对资源类型 r 的需求量
-                remaining_resource = tasks(j).resource_demand(r);
+                % 根据不同任务类型和当前智能体对任务类型的 belief，计算资源 r 的期望需求
+                if num_task_types > 0
+                    expected_demand = 0;
+                    for c = 1:num_task_types
+                        % 当前智能体对任务 j 属于类型 c 的信念（probability）
+                        p_c = Value_data.initbelief(j, c);
+
+                        % 类型 c 在资源 r 上的需求
+                        d_c_r = task_type_demands(c, r);
+
+                        expected_demand = expected_demand + p_c * d_c_r;
+                    end
+                    remaining_resource = expected_demand;
+                else
+                    % 若没有类型化需求矩阵，则退回到任务给定的确定资源需求
+                    remaining_resource = tasks(j).resource_demand(r);
+                end
 
                 % 获取智能体对资源类型 r 的能力（通过 Value_data.agentID 获取对应智能体）
                 agent_resource = agents(Value_data.agentID).resources(r);

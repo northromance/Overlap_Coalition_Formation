@@ -51,29 +51,38 @@ for counter=1:50
         end
     end
 
+    for i=1:Value_Params.N   %将智能体上赋予资源数目
+        Value_data(i).resources = agents(i).resources;
+    end
     T=1;   %迭代次数
     lastTime=T-1;
     previous_coalitionstru = Value_data(1).coalitionstru;
     doneflag = 0;
-    if counter == 1
-        % 如果是第一次计算 需要根据分配概率形成初始联盟
-        initial_coalition = Initial_coalition_Formation(agents, tasks, Value_data, Value_Params, counter, AddPara);
 
-        % 将初始联盟赋值给每个机器人（agent）在 Value_data 中的联盟结构
-        for agentIdx = 1:length(agents)
-            Value_data(agentIdx).coalitionstru = initial_coalition;
-        end
-    end
+    %% 分配初始联盟结构
+    % if counter == 1
+    %     % 如果是第一次计算 需要根据分配概率形成初始联盟
+    %     initial_coalition = Initial_coalition_Formation(agents, tasks, Value_data, Value_Params, counter, AddPara);
+    %     % 将初始联盟赋值给每个机器人（agent）在 Value_data 中的联盟结构
+    %     for agentIdx = 1:length(agents)
+    %         Value_data(agentIdx).coalitionstru = initial_coalition;
+    %     end
+    % end
 
 
     while(doneflag == 0)
         % 初始化增量数组，用来存储每个机器人的增量
         incremental = zeros(1, Value_Params.N);
 
+        % 通过已经分配的联盟结构计算已经分配的资源缺口
+
+
+        [allocated_resources, resource_gap] = compute_allocated_and_gap(Value_data, agents, tasks, Value_Params);
+
         % 遍历每个机器人依次进行重叠联盟结构计算
         for ii = 1:Value_Params.N
             % 调用SA_Value_order()进行联盟优化
-            [incremental(ii), Value_data(ii)] = Overlap_Coalition_Formation(agents, tasks, Value_data(ii), Value_Params,counter,AddPara);
+            [incremental(ii), Value_data(ii)] = Overlap_Coalition_Formation(agents, tasks, Value_data(ii), Value_Params,counter,AddPara, allocated_resources, resource_gap);
 
             % 传递联盟结构给下一个智能体
             if ii < Value_Params.N

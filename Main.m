@@ -65,6 +65,8 @@ end
 
 
 Value_Params=Value_init(N,M,K);
+% 将任务类型的资源需求保存到参数结构中，供后续根据 belief 计算期望需求使用
+Value_Params.task_type_demands = task_type_demands;
 
 %% 生成连接图
 [p, result] = Value_graph(agents, Value_Params);

@@ -1,129 +1,87 @@
-function Value_data = join_operation(Value_data, agents, tasks, Value_Params, probs)
-% exchange_operation: 根据已计算的选择概率执行一次离开-加入操作（随机交换）
+function [Value_data, incremental_join] = join_operation(Value_data, agents, tasks, Value_Params, probs)
+% join_operation: 基于选择概率矩阵 probs(KxM) 选择任务并尝试加入联盟（重叠联盟允许同时加入多个任务）
+% 逻辑：对每种资源类型 r，按 probs(r,:) 抽样一个任务 -> 尝试加入；
+%      若加入后的联盟满足偏好关系（delta>0）则加入；否则按模拟退火概率 exp(delta/T) 可能接受差解。
+%
 % 输入:
-%   Value_data - 单个 agent 的数据结构，需包含 .agentID, .agentIndex, .coalitionstru, .selectProb
-%   agents, tasks, Value_Params - 环境和参数（未使用的参数保留兼容性）
+%   Value_data: 单个 agent 的数据结构，需包含 .agentID, .coalitionstru；可选 .selectProb
+%   probs: K x M，每种资源类型下对各任务的选择概率
 % 输出:
-%   Value_data - 更新后的 Value_data，已在 .coalitionstru 中执行离开与加入
+%   Value_data: 更新后的联盟结构
+%   incremental_join: 若本次加入导致结构变化则为 1，否则 0
 
-    agentID = Value_data.agentID;
+incremental_join = 0;
+agentID = Value_data.agentID;
+Value_data.resources_matrix = zeros(Value_Params.M, Value_Params.K); % Assuming 6 resource types and M tasks
 
-    % 检查概率向量（接受外部传入的 probs，若为空则尝试读取 Value_data.selectProb）
-    if nargin < 5 || isempty(probs)
-        if isfield(Value_data,'selectProb') && ~isempty(Value_data.selectProb)
-            probs = Value_data.selectProb(:)';
-        else
-            return;
-        end
+% 逐资源类型抽样候选任务
+for r = 1:Value_Params.K
+
+    % 根据之前的计算每个机器人对于该类型 选择某个任务的概率
+    row = probs(r, :); % prob 6行 4列
+    row_sum = sum(row); % 计算是否有该类型的选择概率
+    if row_sum <= 0
+        continue;
     end
 
-    % 抽样目标任务（包含空任务 M+1）
-    try
-        % 使用 randsample 若存在统计工具箱，否则使用 cumulative sampling
-        if exist('randsample','file') == 2
-            target = randsample(length(probs),1,true,probs);
-        else
-            edges = [0 cumsum(probs)];
-            r = rand()*edges(end);
-            target = find(r>edges,1,'last');
-            if target>length(probs), target=length(probs); end
-        end
-    catch
-        % 回退：均匀随机
-        target = randi(length(probs));
+    % 依照顺序选择一种任务
+    % cumulative sampling（避免依赖 randsample）
+    edges = cumsum(row);
+    x = rand() * edges(end);
+
+    % 选择出了target应该将r类型资源加入到target任务中
+    target = find(edges >= x, 1, 'first');
+    if isempty(target)
+        continue;
     end
 
-    % 当前所属任务集合
-    currentRows = find(Value_data.coalitionstru(:, agentID) == agentID);
+    % 只允许加入真实任务 1..M
+    if target < 1 || target > Value_Params.M
+        error('超出边界');
+    end
 
-    % 温度（用于退火概率），回退到 1
-    if isfield(Value_Params,'Temperature') && ~isempty(Value_Params.Temperature)
-        T = Value_Params.Temperature;
-        if abs(T) < 1e-9, T = 1; end
+
+    % 这块应该加一个资源向量列表 记录 该智能体分配给 该任务哪种类型的资源了
+    % 将资源矩阵中赋值
+
+    % 更新之前的个体资源分配矩阵
+    back_resources_matrix = Value_data.resources_matrix;
+    % 更新之后的个体资源分配矩阵
+    Value_data.resources_matrix(target, r) = Value_data.resources(r,1);
+    after_resources_matrix =  Value_data.resources_matrix;
+
+
+    initial_coal = Value_data.coalitionstru;
+    after_coal = initial_coal;
+    after_coal(target, agentID) = agentID;
+
+
+    % 计算效用（可以用函数名替代这里的值）
+    % 计算执行加入之前的联盟结构的效用
+    utility_before = overlap_coalition_utility(tasks, agents, Intial_coalitionstru, After_coalitionstru, agentID, Value_Params, Value_data);  % 计算加入联盟之前的效用
+
+    utility_after = overlap_coalition_utility(tasks, agents, Intial_coalitionstru, After_coalitionstru, agentID, Value_Params, Value_data); 
+
+    % 计算效用差（ΔU）
+    delta_U = utility_after - utility_before;
+
+    % 决策过程
+    if delta_U > 0
+        % 如果效用差大于0，直接加入联盟
+        disp('加入联盟，效用差大于0。');
+
     else
-        T = 1;
-    end
+        % 如果效用差不大于0，使用模拟退火概率判断是否加入联盟
+        P_join = exp(delta_U / T);  % 计算加入联盟的概率
 
-    %% 1) 根据概率在当前联盟中选择一个要退出的任务（若无则跳过）
-    if ~isempty(currentRows)
-        % 如果 probs 中包含当前任务的概率，则按该权重选择，否则均匀选择
-        cur_probs = probs(currentRows);
-        if sum(cur_probs) > 0
-            % 归一化
-            cur_probs = cur_probs / sum(cur_probs);
-            % 抽样 src
-            if exist('randsample','file') == 2
-                src = currentRows(randsample(length(currentRows),1,true,cur_probs));
-            else
-                edges = [0 cumsum(cur_probs)];
-                r = rand()*edges(end);
-                k = find(r>edges,1,'last'); if isempty(k), k=1; end
-                src = currentRows(k);
-            end
+        % 根据随机数判断是否加入联盟
+        if rand() < P_join
+            disp('加入联盟，基于模拟退火的小概率。');
         else
-            src = currentRows(randi(length(currentRows)));
-        end
-
-        % 评估移除后的效用变化（使用利他效用作为默认评估函数）
-        initial_coal = Value_data.coalitionstru;
-        after_coal = initial_coal;
-        after_coal(src, agentID) = 0;
-        try
-            delta_remove = SA_altruistic_utility(tasks, agents, initial_coal, after_coal, agentID, Value_Params, Value_data);
-        catch
-            delta_remove = -inf;
-        end
-
-        % 接受条件：delta>0 或按退火概率接受
-        if delta_remove > 0
-            % 执行移除
-            Value_data.coalitionstru = after_coal;
-        else
-            acceptProb = exp(delta_remove / T);
-            if rand() < acceptProb
-                Value_data.coalitionstru = after_coal;
-            end
+            disp('不加入联盟，概率太低。');
         end
     end
 
-    %% 2) 根据概率选择加入目标任务并评估
-    % 抽样目标任务 index
-    try
-        if exist('randsample','file') == 2
-            target = randsample(length(probs),1,true,probs);
-        else
-            edges = [0 cumsum(probs)];
-            r = rand()*edges(end);
-            target = find(r>edges,1,'last');
-            if target>length(probs), target=length(probs); end
-        end
-    catch
-        target = randi(length(probs));
-    end
-
-    % 如果已经属于目标任务则不作改变
-    currentRows = find(Value_data.coalitionstru(:, agentID) == agentID);
-    if ismember(target, currentRows)
-        return;
-    end
-
-    % 构造加入后的联盟并评估
-    initial_coal2 = Value_data.coalitionstru;
-    after_coal2 = initial_coal2;
-    after_coal2(target, agentID) = agentID;
-    try
-        delta_add = SA_altruistic_utility(tasks, agents, initial_coal2, after_coal2, agentID, Value_Params, Value_data);
-    catch
-        delta_add = -inf;
-    end
-
-    if delta_add > 0
-        Value_data.coalitionstru = after_coal2;
-    else
-        acceptProb2 = exp(delta_add / T);
-        if rand() < acceptProb2
-            Value_data.coalitionstru = after_coal2;
-        end
-    end
 
 end
+
