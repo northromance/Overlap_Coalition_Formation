@@ -42,8 +42,6 @@ end
 
 %此处应该有个for/which循环
 
-
-
 for counter=1:50
     for i=1:Value_Params.N   %一会要改回来
         for j=1:Value_Params.M
@@ -75,8 +73,6 @@ for counter=1:50
         incremental = zeros(1, Value_Params.N);
 
         % 通过已经分配的联盟结构计算已经分配的资源缺口
-
-
         [allocated_resources, resource_gap] = compute_allocated_and_gap(Value_data, agents, tasks, Value_Params);
 
         % 遍历每个机器人依次进行重叠联盟结构计算

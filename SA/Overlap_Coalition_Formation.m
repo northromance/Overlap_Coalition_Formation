@@ -40,9 +40,6 @@ Value_data_before = Value_data.coalitionstru;
 % 1) 再尝试离开一个任务（若有）
 [Value_data, incremental_leave] = leave_operation(Value_data, agents, tasks, Value_Params, probs);
 
-
-
-
 % 只要有一次操作改变了联盟结构，则认为本轮有增量
 if ~isequal(Value_data_before, Value_data.coalitionstru) || incremental_leave || incremental_join
     incremental = 1;
