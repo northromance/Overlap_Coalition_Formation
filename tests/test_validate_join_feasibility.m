@@ -17,6 +17,8 @@ fprintf('========== 测试 validate_join_feasibility 函数 ==========\n\n');
 Value_Params.M = 3;
 Value_Params.K = 2;
 Value_Params.N = 2;
+% 说明：validate_join_feasibility 当前能量模型使用 agents(i).fuel 与 agents(i).beta
+% Value_Params.alpha/beta 不再参与能量可行性计算（保留字段不影响）。
 Value_Params.alpha = 1.0;
 Value_Params.beta = 1.0;
 
@@ -25,15 +27,18 @@ agents(1).x = 0;
 agents(1).y = 0;
 agents(1).vel = 10;
 agents(1).fuel = 1;
+agents(1).beta = 1;
 agents(1).resources = [5; 5];
-agents(1).energy = 100;
+agents(1).Emax = 100;
 
 agents(2).id = 2;
 agents(2).x = 10;
 agents(2).y = 0;
 agents(2).vel = 10;
+agents(2).fuel = 1;
+agents(2).beta = 1;
 agents(2).resources = [3; 3];
-agents(2).energy = 80;
+agents(2).Emax = 80;
 
 for j = 1:Value_Params.M
     tasks(j).id = j;
@@ -41,7 +46,9 @@ for j = 1:Value_Params.M
     tasks(j).x = 10 * j;
     tasks(j).y = 0;
     tasks(j).resource_demand = [2 2];
-    tasks(j).duration = 5;
+    % 每种资源类型固定执行时间（这里 K=2）
+    tasks(j).duration_by_resource = [2 5];
+    tasks(j).duration = sum(tasks(j).duration_by_resource);
 end
 
 Value_data.agentID = 1;
@@ -75,6 +82,14 @@ if isfield(info1, 'requiredEnergy')
     fprintf('  能量: required=%.2f, capacity=%.2f, model=%s\n', ...
         info1.requiredEnergy, info1.energyCapacity, info1.energyModel);
 end
+
+% 能量计算校验：
+% 路径：起点(0,0)->任务1(10,0)->起点(0,0)，距离=20，vel=10 => t_wait_total=2
+% 资源分配 R_agent_Q(1,:)=[2 2] => 两种资源都执行 => T_exec_total=2+5=7
+% requiredEnergy = t_wait_total*fuel + T_exec_total*beta = 2*1 + 7*1 = 9
+assert(abs(info1.t_wait_total - 2) < 1e-9, 'Case1 failed: t_wait_total mismatch');
+assert(abs(info1.T_exec_total - 7) < 1e-9, 'Case1 failed: T_exec_total mismatch');
+assert(abs(info1.requiredEnergy - 9) < 1e-9, 'Case1 failed: requiredEnergy mismatch');
 fprintf('\n');
 
 %% ==================== Case 2: 负资源分配（违反约束1） ====================
@@ -143,16 +158,17 @@ assert(feasible5 == false, 'Case5 failed: not joined target should be rejected')
 assert(strcmp(info5.reason, 'not_joined_target_row'), 'Case5 failed: wrong reason');
 fprintf('  ? 正确拒绝，原因: %s\n\n', info5.reason);
 
-%% ==================== Case 6: 能量不足（违反约束5 - 时间模型） ====================
-fprintf('Case 6: 能量不足应被拒绝（时间模型 alpha/beta）\n');
+%% ==================== Case 6: 能量不足（违反约束5） ====================
+fprintf('Case 6: 能量不足应被拒绝（距离/vel*fuel + duration*beta）\n');
 
-Value_data_lowEnergy = Value_data;
-Value_data_lowEnergy.energy = 5; % 很低的能量预算
+agents_lowEnergy = agents;
+agents_lowEnergy(1).Emax = 5; % 很低的能量预算
 
 tasks_far = tasks;
 tasks_far(1).x = 1000;
 tasks_far(1).y = 0;
-tasks_far(1).duration = 10;
+tasks_far(1).duration_by_resource = [2 5];
+tasks_far(1).duration = sum(tasks_far(1).duration_by_resource);
 
 SC_Q_energy = zeros(Value_Params.M + 1, Value_Params.N);
 SC_Q_energy(1, 1) = 1;
@@ -160,7 +176,7 @@ SC_Q_energy(1, 1) = 1;
 R_agent_Q_energy = zeros(Value_Params.M, Value_Params.K);
 R_agent_Q_energy(1, :) = [2 2];
 
-[feasible6, info6] = validate_join_feasibility(Value_data_lowEnergy, agents, tasks_far, Value_Params, ...
+[feasible6, info6] = validate_join_feasibility(Value_data, agents_lowEnergy, tasks_far, Value_Params, ...
     agentID, SC_P, SC_Q_energy, R_agent_P, R_agent_Q_energy, target, r);
 
 assert(feasible6 == false, 'Case6 failed: energy insufficient should be rejected');
@@ -175,6 +191,14 @@ if isfield(info6, 't_wait_total')
 end
 fprintf('  routeDistance=%.2f\n', info6.routeDistance);
 fprintf('  taskSequence=%s\n\n', mat2str(info6.taskSequenceByPriority));
+
+% 能量计算至少应满足：
+% task1 距离往返=2000，vel=10 => t_wait_total=200
+% 两种资源都分配 => T_exec_total=7
+% requiredEnergy = 200*1 + 7*1 = 207
+assert(abs(info6.t_wait_total - 200) < 1e-9, 'Case6 failed: t_wait_total mismatch');
+assert(abs(info6.T_exec_total - 7) < 1e-9, 'Case6 failed: T_exec_total mismatch');
+assert(abs(info6.requiredEnergy - 207) < 1e-9, 'Case6 failed: requiredEnergy mismatch');
 
 %% ==================== Case 7: 任务序列优先级排序 ====================
 fprintf('Case 7: 验证任务序列按 priority 排序\n');
@@ -209,56 +233,21 @@ assert(isequal(info7.taskSequenceByPriority, [2 3 1]), ...
     'Case7 failed: task sequence should be sorted by priority');
 fprintf('  ? 任务序列排序正确\n\n');
 
-%% ==================== Case 8: 无能量字段时跳过能量检查 ====================
-fprintf('Case 8: 无能量字段时应跳过能量检查\n');
-
-% 重建智能体结构，不包含 energy 字段
-agents_noEnergy = agents;
-for ii = 1:numel(agents_noEnergy)
-    if isfield(agents_noEnergy, 'energy')
-        agents_noEnergy = rmfield(agents_noEnergy, 'energy');
-    end
-end
-
-Value_data_noEnergy = Value_data;
-if isfield(Value_data_noEnergy, 'energy')
-    Value_data_noEnergy = rmfield(Value_data_noEnergy, 'energy');
-end
-if isfield(Value_data_noEnergy, 'totalEnergy')
-    Value_data_noEnergy = rmfield(Value_data_noEnergy, 'totalEnergy');
-end
-
-[feasible8, info8] = validate_join_feasibility(Value_data_noEnergy, agents_noEnergy, tasks, Value_Params, ...
-    agentID, SC_P, SC_Q, R_agent_P, R_agent_Q, target, r);
-
-assert(feasible8 == true, 'Case8 failed: should be feasible');
-assert(info8.energyFeasibilityEnabled == false, ...
-    'Case8 failed: energy feasibility should be disabled');
-assert(isfield(info8, 'energyFeasibilitySkipped'), ...
-    'Case8 failed: should have energyFeasibilitySkipped flag');
-fprintf('  ? 正确跳过能量检查\n');
-fprintf('  energyFeasibilityEnabled=%d\n\n', info8.energyFeasibilityEnabled);
-
-%% ==================== Case 9: 距离模型回退（无 alpha/beta） ====================
-fprintf('Case 9: 无 alpha/beta 时使用距离模型\n');
+%% ==================== Case 8: 无 alpha/beta 字段也应正常（不影响能量模型） ====================
+fprintf('Case 8: 无 alpha/beta 字段也应正常（能量模型只看 agent.fuel/beta/vel）\n');
 
 Value_Params_noAlphaBeta = Value_Params;
 Value_Params_noAlphaBeta = rmfield(Value_Params_noAlphaBeta, 'alpha');
 Value_Params_noAlphaBeta = rmfield(Value_Params_noAlphaBeta, 'beta');
 
-Value_data_distance = Value_data;
-Value_data_distance.energy = 10; % 较低能量预算
-
-[feasible9, info9] = validate_join_feasibility(Value_data_distance, agents, tasks, Value_Params_noAlphaBeta, ...
+[feasible8, info8] = validate_join_feasibility(Value_data, agents, tasks, Value_Params_noAlphaBeta, ...
     agentID, SC_P, SC_Q, R_agent_P, R_agent_Q, target, r);
 
-fprintf('  energyModel=%s\n', info9.energyModel);
-assert(strcmp(info9.energyModel, 'distance_fuel'), ...
-    'Case9 failed: should use distance_fuel model');
-fprintf('  ? 正确使用距离模型\n');
-fprintf('  requiredEnergy=%.2f, energyCapacity=%.2f\n', ...
-    info9.requiredEnergy, info9.energyCapacity);
-fprintf('  fuelCoef=%.2f\n\n', info9.fuelCoef);
+assert(feasible8 == true, 'Case8 failed: should be feasible');
+fprintf('  energyModel=%s\n', info8.energyModel);
+assert(strcmp(info8.energyModel, 'time_vel_fuel_and_beta'), ...
+    'Case8 failed: should use time_vel_fuel_and_beta model');
+fprintf('  ? 正确使用 agent.fuel/beta 能量模型\n\n');
 
 %% ==================== 测试总结 ====================
 fprintf('========================================\n');

@@ -43,34 +43,15 @@ for r = 1:Value_Params.K
     
     
     %% 1) 生成操作前/后的联盟结构与资源分配
-
+    % 输出：SC_P/SC_Q=操作前/后联盟结构；R_agent_P/R_agent_Q=该智能体操作前/后资源分配(M×K)
     [SC_P, SC_Q, R_agent_P, R_agent_Q, ~, ~] = ...
         compute_coalition_and_resource_changes(Value_data, agents, Value_Params, target, agentID, r);
     
     %% 2) 可行性检测：不可行直接跳过，继续下一种资源类型
-    [feasible, feasInfo] = validate_join_feasibility(Value_data, agents, tasks, Value_Params, agentID, SC_P, SC_Q, R_agent_P, R_agent_Q, target, r);
+    [feasible, ~] = validate_join_feasibility(Value_data, agents, tasks, Value_Params, agentID, SC_P, SC_Q, R_agent_P, R_agent_Q, target, r);
     if ~feasible
         if verbose
-            fprintf('智能体%d: 加入任务%d(资源类型%d)不可行，原因=%s\n', agentID, target, r, feasInfo.reason);
-            if isfield(feasInfo, 'totalAllocatedByType')
-                fprintf('  totalAllocatedByType=%s, capacityByType=%s\n', mat2str(feasInfo.totalAllocatedByType'), mat2str(feasInfo.capacityByType'));
-            end
-            if strcmp(feasInfo.reason, 'energy_insufficient')
-                if isfield(feasInfo, 'requiredEnergy') && isfield(feasInfo, 'energyCapacity')
-                    fprintf('  requiredEnergy=%.4f, energyCapacity=%.4f, model=%s\n', ...
-                        feasInfo.requiredEnergy, feasInfo.energyCapacity, feasInfo.energyModel);
-                end
-                if isfield(feasInfo, 't_wait_total') || isfield(feasInfo, 'T_exec_total')
-                    tWait = NaN;
-                    tExec = NaN;
-                    if isfield(feasInfo, 't_wait_total'), tWait = feasInfo.t_wait_total; end
-                    if isfield(feasInfo, 'T_exec_total'), tExec = feasInfo.T_exec_total; end
-                    fprintf('  t_wait_total=%.4f, T_exec_total=%.4f\n', tWait, tExec);
-                end
-                if isfield(feasInfo, 'routeDistance')
-                    fprintf('  routeDistance=%.4f, taskSequence=%s\n', feasInfo.routeDistance, mat2str(feasInfo.taskSequenceByPriority));
-                end
-            end
+            fprintf('智能体%d: 资源类型%d加入任务%d不可行\n', agentID, r, target);
         end
         continue;
     end
