@@ -1,4 +1,4 @@
-function individual_utility = overlap_coalition_self_utility(n, task_m, SC, agents, tasks, Value_Params, Value_data)
+function individual_utility = overlap_coalition_self_utility(n, task_m, SC, agents, tasks, Value_Params, agent_belief)
 % =========================================================================
 % OVERLAP_COALITION_SELF_UTILITY: 计算智能体在特定任务联盟中的个体效用
 %
@@ -12,7 +12,7 @@ function individual_utility = overlap_coalition_self_utility(n, task_m, SC, agen
 %   agents - 智能体信息数组
 %   tasks - 任务信息数组
 %   Value_Params - 参数结构体 (包含K, M, N, alpha, beta等)
-%   Value_data - 数据结构体 (包含initbelief等)
+%   agent_belief - 该智能体对各任务的信念分布 ((M+1)×T矩阵)
 %
 % 输出参数:
 %   individual_utility - 智能体n在任务task_m中的效用值
@@ -42,7 +42,7 @@ end
 if ~isfield(Value_Params, 'task_type_demands') || isempty(Value_Params.task_type_demands)
     expected_demand = tasks(task_m).resource_demand;
 else
-    b = Value_data.initbelief(task_m, :);
+    b = agent_belief(task_m, :);
     num_types = size(Value_Params.task_type_demands, 1);
     expected_demand = zeros(1, Value_Params.K);
     for t = 1:min(num_types, length(b))
@@ -87,7 +87,7 @@ if total_A_m > 0
 end
 
 %% 5. 计算联盟总价值 V_C (基于信念的期望价值)
-b = Value_data.initbelief(task_m, :);
+b = agent_belief(task_m, :);
 v = tasks(task_m).WORLD.value;
 V_C = v(1) * b(1) + v(2) * b(2) + v(3) * b(3);
 

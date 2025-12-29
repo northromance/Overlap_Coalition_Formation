@@ -18,6 +18,13 @@ for i=1:Value_Params.N %包括agent标号，索引以及初始联盟结构
     for m = 1:Value_Params.M
         Value_data(i).SC{m} = zeros(Value_Params.N, Value_Params.K);  % N个机器人 × K种资源类型
     end
+    
+    % other：存储其他智能体的信念（用于效用计算）
+    % other{j}.initbelief 表示智能体i认为智能体j对各任务的信念分布
+    Value_data(i).other = cell(Value_Params.N, 1);
+    for j = 1:Value_Params.N
+        Value_data(i).other{j}.initbelief = zeros(Value_Params.M+1, 3);
+    end
 end
 
 for k=1: Value_Params.N   %所有agents放在void 任务中

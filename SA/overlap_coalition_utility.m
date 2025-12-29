@@ -58,13 +58,13 @@ function deltaU = overlap_coalition_utility(tasks, agents, SC_P, SC_Q, agentID, 
     u_n_Q = 0;
     for idx = 1:length(rows_n_Q)
         task_row = rows_n_Q(idx);
-        u_n_Q = u_n_Q + overlap_coalition_self_utility(agentID, task_row, SC_Q, agents, tasks, Value_Params, Value_data);
+        u_n_Q = u_n_Q + overlap_coalition_self_utility(agentID, task_row, SC_Q, agents, tasks, Value_Params, Value_data.initbelief);
     end
     
     u_n_P = 0;
     for idx = 1:length(rows_n_P)
         task_row = rows_n_P(idx);
-        u_n_P = u_n_P + overlap_coalition_self_utility(agentID, task_row, SC_P, agents, tasks, Value_Params, Value_data);
+        u_n_P = u_n_P + overlap_coalition_self_utility(agentID, task_row, SC_P, agents, tasks, Value_Params, Value_data.initbelief);
     end
     
     %% ==================== 3) LHS 第二项：新增任务的"其他成员效用差" ====================
@@ -79,8 +79,9 @@ function deltaU = overlap_coalition_utility(tasks, agents, SC_P, SC_Q, agentID, 
         
         for k = 1:length(members_Aj)
             g = members_Aj(k);
-            u_g_Q = overlap_coalition_self_utility(g, A_j, SC_Q, agents, tasks, Value_Params, Value_data);
-            u_g_P = overlap_coalition_self_utility(g, A_j, SC_P, agents, tasks, Value_Params, Value_data);
+            % 使用智能体g的信念
+            u_g_Q = overlap_coalition_self_utility(g, A_j, SC_Q, agents, tasks, Value_Params, Value_data.other{g}.initbelief);
+            u_g_P = overlap_coalition_self_utility(g, A_j, SC_P, agents, tasks, Value_Params, Value_data.other{g}.initbelief);
             sum_new_coalition_delta = sum_new_coalition_delta + (u_g_Q - u_g_P);
         end
     end
@@ -97,8 +98,9 @@ function deltaU = overlap_coalition_utility(tasks, agents, SC_P, SC_Q, agentID, 
         
         for k = 1:length(members_Ai)
             h = members_Ai(k);
-            u_h_P = overlap_coalition_self_utility(h, A_i, SC_P, agents, tasks, Value_Params, Value_data);
-            u_h_Q = overlap_coalition_self_utility(h, A_i, SC_Q, agents, tasks, Value_Params, Value_data);
+            % 使用智能体h的信念
+            u_h_P = overlap_coalition_self_utility(h, A_i, SC_P, agents, tasks, Value_Params, Value_data.other{h}.initbelief);
+            u_h_Q = overlap_coalition_self_utility(h, A_i, SC_Q, agents, tasks, Value_Params, Value_data.other{h}.initbelief);
             sum_source_coalition_delta = sum_source_coalition_delta + (u_h_P - u_h_Q);
         end
     end
@@ -119,7 +121,8 @@ function deltaU = overlap_coalition_utility(tasks, agents, SC_P, SC_Q, agentID, 
         % 找出成员o在SC_Q中参与的所有任务
         for m = 1:M
             if is_participating(SC_Q, m, o)
-                sum_An_members_Q = sum_An_members_Q + overlap_coalition_self_utility(o, m, SC_Q, agents, tasks, Value_Params, Value_data);
+                % 使用智能体o的信念
+                sum_An_members_Q = sum_An_members_Q + overlap_coalition_self_utility(o, m, SC_Q, agents, tasks, Value_Params, Value_data.other{o}.initbelief);
             end
         end
     end
@@ -131,7 +134,8 @@ function deltaU = overlap_coalition_utility(tasks, agents, SC_P, SC_Q, agentID, 
         % 找出成员o在SC_P中参与的所有任务
         for m = 1:M
             if is_participating(SC_P, m, o)
-                sum_An_members_P = sum_An_members_P + overlap_coalition_self_utility(o, m, SC_P, agents, tasks, Value_Params, Value_data);
+                % 使用智能体o的信念
+                sum_An_members_P = sum_An_members_P + overlap_coalition_self_utility(o, m, SC_P, agents, tasks, Value_Params, Value_data.other{o}.initbelief);
             end
         end
     end
