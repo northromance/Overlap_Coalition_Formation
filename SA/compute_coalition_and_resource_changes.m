@@ -18,6 +18,13 @@ function [SC_P, SC_Q, R_agent_P, R_agent_Q, R_total_P, R_total_Q] = ...
 
     M = Value_Params.M;
     K = Value_Params.K;
+    if isfield(Value_Params, 'N') && ~isempty(Value_Params.N)
+        N = Value_Params.N;
+    elseif isfield(Value_data, 'coalitionstru') && ~isempty(Value_data.coalitionstru)
+        N = size(Value_data.coalitionstru, 2);
+    else
+        N = numel(agents);
+    end
 
     % agentID 转换为数组索引
     agentIdx = agentID;
@@ -29,13 +36,45 @@ function [SC_P, SC_Q, R_agent_P, R_agent_Q, R_total_P, R_total_Q] = ...
     end
 
     %% 1) 操作前资源联盟结构 SC_P（深拷贝cell数组）
-    if ~isfield(Value_data, 'SC') || isempty(Value_data.SC)
-        error('compute_coalition_and_resource_changes:MissingSC', 'Value_data.SC is missing or empty.');
+    % 兼容：旧测试/旧调用可能未初始化 Value_data.SC，此时默认从“全零结构”开始
+    baseSC = [];
+    if isfield(Value_data, 'SC') && ~isempty(Value_data.SC)
+        baseSC = Value_data.SC;
     end
-    
+
+    % 仅当 baseSC 合法（cell 且长度满足 M）才使用，否则重建
+    if ~(iscell(baseSC) && numel(baseSC) >= M)
+        baseSC = cell(M, 1);
+        for m = 1:M
+            baseSC{m} = zeros(N, K);
+        end
+    else
+        % 修补每个 cell 的维度，避免后续索引越界
+        for m = 1:M
+            if isempty(baseSC{m}) || ~ismatrix(baseSC{m})
+                baseSC{m} = zeros(N, K);
+            else
+                [nRows, nCols] = size(baseSC{m});
+                if nRows < N || nCols < K
+                    tmp = zeros(N, K);
+                    tmp(1:min(nRows, N), 1:min(nCols, K)) = baseSC{m}(1:min(nRows, N), 1:min(nCols, K));
+                    baseSC{m} = tmp;
+                end
+            end
+        end
+    end
+
+    % 若传入了 resources_matrix，则用它把当前智能体行填进 baseSC（更贴近旧调用习惯）
+    if isfield(Value_data, 'resources_matrix') && ~isempty(Value_data.resources_matrix) && ...
+            all(size(Value_data.resources_matrix) == [M, K])
+        for m = 1:M
+            baseSC{m}(agentIdx, :) = Value_data.resources_matrix(m, :);
+        end
+    end
+
     SC_P = cell(M, 1);
     for m = 1:M
-        SC_P{m} = Value_data.SC{m};  % 复制每个任务的资源分配矩阵
+        SC_P{m} = baseSC{m};
     end
 
     %% 2) 操作后资源联盟结构 SC_Q（智能体agentID对任务target分配资源类型r）

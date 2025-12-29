@@ -90,33 +90,44 @@ function [isFeasible, info] = validate_join_feasibility(Value_data, agents, task
         return;
     end
 
-    %% 4) void 行一致性：加入真实任务后不能仍在 M+1 行
-    if size(SC_Q, 1) >= Value_Params.M + 1
-        inVoid = (SC_Q(Value_Params.M + 1, agentIdx) ~= 0);
-        info.inVoidRowAfter = inVoid;
-        if target >= 1 && target <= Value_Params.M && inVoid
-            isFeasible = false;
-            info.reason = 'still_in_void_row';
-            return;
-        end
-    end
-
-    %% 5) 加入目标行：SC_Q(target,agentIdx) ~= 0
+    %% 4) 目标任务参与性检查（基于资源联盟结构 SC_Q 为 cell 数组）
+    % 在当前实现中，SC_Q/SC_P 是资源联盟结构（cell数组，长度M），
+    % 因此不再检查 coalitionstru 的 void 行；改为检查目标任务上是否有资源分配。
     if target >= 1 && target <= Value_Params.M
-        if SC_Q(target, agentIdx) == 0
+        joinedTarget = false;
+        if iscell(SC_Q) && numel(SC_Q) >= target
+            joinedTarget = any(SC_Q{target}(agentIdx, :) > tol);
+        else
+            % 兜底：如果未传入 cell，则用 R_agent_Q 判断
+            joinedTarget = (R_agent_Q(target, r) > tol);
+        end
+        info.joinedTargetAfter = joinedTarget;
+        if ~joinedTarget
             isFeasible = false;
-            info.reason = 'not_joined_target_row';
+            info.reason = 'not_joined_target';
             return;
         end
     end
 
     %% 6) 能量可达性：起点->任务序列->起点
-    % 约定：agents(i).Emax 已在初始化阶段赋值。
-    energyCap = agents(agentIdx).Emax; %智能体最大能力
+    % 能量上限：优先使用 agents(i).Emax；若缺失则视为不限制（Inf）。
+    energyCap = inf;
+    if isfield(agents(agentIdx), 'Emax') && ~isempty(agents(agentIdx).Emax)
+        energyCap = agents(agentIdx).Emax; % 智能体最大能量/能力
+    end
     info.energyFeasibilityEnabled = true;
 
     % 6.1 取该智能体分配到的任务（真实任务 1..M）
-    assignedTasks = find(SC_Q(1:Value_Params.M, agentIdx) ~= 0);
+    % SC_Q 是 cell(M,1)，SC_Q{m} 是 N×K 矩阵
+    % 需要遍历每个任务m，检查该智能体在该任务上是否有资源分配
+    assignedTasks = [];
+    tol = 1e-9;
+    for m = 1:Value_Params.M
+        % 检查该智能体在任务m上是否分配了任何资源
+        if any(SC_Q{m}(agentIdx, :) > tol)
+            assignedTasks = [assignedTasks, m]; %#ok<AGROW>
+        end
+    end
     info.assignedTasks = assignedTasks(:)';
 
     % 6.2 调用统一的能量成本计算函数

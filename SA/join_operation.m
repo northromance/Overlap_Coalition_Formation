@@ -3,11 +3,30 @@ function [Value_data, incremental_join] = join_operation(Value_data, agents, tas
 
 incremental_join = 0;
 agentID = Value_data.agentID;
+tol = 1e-9;
+
+% agentID -> agents 索引
+agentIdx = agentID;
+if agentIdx < 1 || agentIdx > numel(agents) || ~isstruct(agents(agentIdx))
+    agentIdx = find([agents.id] == agentID, 1, 'first');
+    if isempty(agentIdx)
+        error('join_operation:AgentNotFound', 'agentID=%d not found in agents.', agentID);
+    end
+end
 
 % resources_matrix：若不存在/维度不对则初始化（不要每次都清零）
 if ~isfield(Value_data, 'resources_matrix') || isempty(Value_data.resources_matrix) || ...
         any(size(Value_data.resources_matrix) ~= [Value_Params.M, Value_Params.K])
     Value_data.resources_matrix = zeros(Value_Params.M, Value_Params.K);
+end
+
+% SC：若不存在则初始化（用于 compute_coalition_and_resource_changes）
+if ~isfield(Value_data, 'SC') || isempty(Value_data.SC)
+    Value_data.SC = cell(Value_Params.M, 1);
+    for m = 1:Value_Params.M
+        Value_data.SC{m} = zeros(Value_Params.N, Value_Params.K);
+        Value_data.SC{m}(agentIdx, :) = Value_data.resources_matrix(m, :);
+    end
 end
 
 % verbose：打印调试信息（默认开，可在 Value_Params.verbose 关闭）
@@ -92,8 +111,28 @@ for r = 1:Value_Params.K
     
     %% ========== 执行决策 ==========
     if accept_join
-        % 接受：更新联盟结构并结束本次 join_operation
-        Value_data.coalitionstru = SC_Q;
+        % 接受：更新资源联盟结构 SC，并同步更新 coalitionstru（矩阵）
+        Value_data.SC = SC_Q;
+
+        % coalitionstru: (M+1)×N，1..M 表示真实任务，M+1 表示 void 任务
+        if ~isfield(Value_data, 'coalitionstru') || isempty(Value_data.coalitionstru) || ...
+                size(Value_data.coalitionstru, 1) ~= Value_Params.M + 1 || size(Value_data.coalitionstru, 2) < agentIdx
+            Value_data.coalitionstru = zeros(Value_Params.M + 1, Value_Params.N);
+        end
+
+        assignedTasksPost = find(any(Value_data.resources_matrix > tol, 2));
+        coalition_after = Value_data.coalitionstru;
+        coalition_after(1:Value_Params.M, agentIdx) = 0;
+        for mIdx = assignedTasksPost'
+            coalition_after(mIdx, agentIdx) = agents(agentIdx).id;
+        end
+        if isempty(assignedTasksPost)
+            coalition_after(Value_Params.M + 1, agentIdx) = agents(agentIdx).id;
+        else
+            coalition_after(Value_Params.M + 1, agentIdx) = 0;
+        end
+        Value_data.coalitionstru = coalition_after;
+
         incremental_join = 1;
         
         % 打印关键变化
