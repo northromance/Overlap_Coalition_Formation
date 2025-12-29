@@ -1,15 +1,25 @@
 function [SC_P, SC_Q, R_agent_P, R_agent_Q, R_total_P, R_total_Q] = ...
     compute_coalition_and_resource_changes(Value_data, agents, Value_Params, target, agentID, r)
-% 计算 join 前/后的联盟结构与资源分配变化。
+% 计算 join 前/后的资源联盟结构与资源分配变化。
+% 
+% 输入：
+%   Value_data   - 包含SC（cell数组）、coalitionstru等字段
+%   agents       - 智能体结构体数组
+%   Value_Params - 参数结构（M, N, K等）
+%   target       - 目标任务索引（要加入的任务）
+%   agentID      - 当前智能体ID
+%   r            - 资源类型索引（该次加入操作使用的资源类型）
+%
 % 输出：
-%   SC_P/SC_Q    : 操作前/后联盟结构 (M×N)
-%   R_agent_P/Q  : 该智能体操作前/后资源分配矩阵 (M×K)
-%   R_total_P/Q  : 本函数可汇总到的“该智能体对各任务的贡献”(M×K)
+%   SC_P/SC_Q    - 操作前/后资源联盟结构（cell数组，长度M）
+%                  SC{m}是N×K矩阵，表示任务m上各智能体的资源分配
+%   R_agent_P/Q  - 该智能体操作前/后对各任务的资源分配矩阵 (M×K)
+%   R_total_P/Q  - （保留用于兼容）与R_agent_P/Q相同
 
-    %% 1) 操作前联盟结构
-    SC_P = Value_data.coalitionstru;
+    M = Value_Params.M;
+    K = Value_Params.K;
 
-    % agentID 兼容：优先按数组下标，否则按 agents(:).id 映射
+    % agentID 转换为数组索引
     agentIdx = agentID;
     if agentIdx < 1 || agentIdx > numel(agents) || ~isstruct(agents(agentIdx))
         agentIdx = find([agents.id] == agentID, 1, 'first');
@@ -18,46 +28,49 @@ function [SC_P, SC_Q, R_agent_P, R_agent_Q, R_total_P, R_total_Q] = ...
         end
     end
 
-    %% 2) 操作后联盟结构（加入 target）
-    SC_Q = SC_P;
-    SC_Q(target, agentIdx) = agentID;
-
-    % 若存在 void 行 (M+1)，加入真实任务后清零
-    if size(SC_Q, 1) >= Value_Params.M + 1
-        SC_Q(Value_Params.M + 1, agentIdx) = 0;
+    %% 1) 操作前资源联盟结构 SC_P（深拷贝cell数组）
+    if ~isfield(Value_data, 'SC') || isempty(Value_data.SC)
+        error('compute_coalition_and_resource_changes:MissingSC', 'Value_data.SC is missing or empty.');
+    end
+    
+    SC_P = cell(M, 1);
+    for m = 1:M
+        SC_P{m} = Value_data.SC{m};  % 复制每个任务的资源分配矩阵
     end
 
-    %% 3) 操作前该智能体资源分配 (M×K)
-    if ~isfield(Value_data, 'resources_matrix') || isempty(Value_data.resources_matrix)
-        error('compute_coalition_and_resource_changes:MissingResourcesMatrix', ...
-            'Value_data.resources_matrix is missing/empty. Please initialize it as a %dx%d matrix before calling.', ...
-            Value_Params.M, Value_Params.K);
+    %% 2) 操作后资源联盟结构 SC_Q（智能体agentID对任务target分配资源类型r）
+    SC_Q = cell(M, 1);
+    for m = 1:M
+        SC_Q{m} = SC_P{m};  % 先复制
     end
-    R_agent_P = Value_data.resources_matrix;
-
-    %% 4) 操作后该智能体资源分配：r 类资源全给 target
-    R_agent_Q = R_agent_P;
-    % 约定：Value_data.resources 为 K×1 或 1×K 向量
+    
+    % 获取该智能体资源类型r的可用量
     if isfield(Value_data, 'resources') && ~isempty(Value_data.resources)
         cap_r = Value_data.resources(r);
     else
         cap_r = agents(agentIdx).resources(r);
     end
-
-    R_agent_Q(:, r) = 0;
-    R_agent_Q(target, r) = cap_r;
     
-    %% 5) 汇总：仅计算该智能体对各任务的贡献
-    R_total_P = zeros(Value_Params.M, Value_Params.K);
-    R_total_Q = zeros(Value_Params.M, Value_Params.K);
-
-    for task_idx = 1:Value_Params.M
-        if SC_P(task_idx, agentIdx) ~= 0
-            R_total_P(task_idx, :) = R_total_P(task_idx, :) + R_agent_P(task_idx, :);
-        end
-        if SC_Q(task_idx, agentIdx) ~= 0
-            R_total_Q(task_idx, :) = R_total_Q(task_idx, :) + R_agent_Q(task_idx, :);
-        end
+    % join操作：智能体agentIdx把资源类型r的全部容量分配给target任务
+    % 首先清空该智能体在所有任务上的资源类型r分配
+    for m = 1:M
+        SC_Q{m}(agentIdx, r) = 0;
     end
+    % 然后把所有资源类型r分配给target任务
+    SC_Q{target}(agentIdx, r) = cap_r;
+
+    %% 3) 提取该智能体操作前/后对各任务的资源分配 (M×K矩阵)
+    % R_agent_P(m, k) = 智能体agentIdx在操作前对任务m分配的资源类型k的数量
+    R_agent_P = zeros(M, K);
+    R_agent_Q = zeros(M, K);
+    
+    for m = 1:M
+        R_agent_P(m, :) = SC_P{m}(agentIdx, :);  % 从SC_P中提取该智能体的分配
+        R_agent_Q(m, :) = SC_Q{m}(agentIdx, :);  % 从SC_Q中提取该智能体的分配
+    end
+    
+    %% 4) R_total_P/Q 保持与 R_agent_P/Q 相同（用于兼容旧接口）
+    R_total_P = R_agent_P;
+    R_total_Q = R_agent_Q;
 
 end

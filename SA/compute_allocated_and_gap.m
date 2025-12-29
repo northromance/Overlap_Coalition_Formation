@@ -10,33 +10,56 @@ function [allocated_resources, resource_gap] = compute_allocated_and_gap(Value_d
     % 初始化资源缺口矩阵
     resource_gap = zeros(M, K); % 每个任务每种资源类型的缺口
 
-    % 遍历每个智能体
+    % 从SC中读取资源分配情况 (SC是cell数组格式)
+    % SC{m} 是一个 N×K 矩阵，表示任务m上N个机器人分配的K种资源类型的数量
+    SC = Value_data(1).SC;  % 所有智能体共享同一个SC
+    
+    % 计算每个智能体已分配的资源总量
+    % allocated_resources(i, r) = 智能体i对所有任务分配的资源类型r的总和
     for i = 1:N
-        % 获取当前智能体的联盟任务分配结构
-        coalition_tasks = Value_data(i).coalitionstru; % 当前智能体的联盟分配结构
-        
-        % 遍历每个任务 j，检查智能体是否参与了该任务
-        for j = 1:M
-            if coalition_tasks(j, i) > 0  % 如果智能体 i 被分配了任务 j（即该位置不为0）
-                % 遍历资源类型 r，计算智能体 i 对每种资源类型的已分配资源量
-                for r = 1:K
-                    % 根据智能体的资源能力添加到已分配资源矩阵
-                    allocated_resources(i, r) = allocated_resources(i, r) + agents(i).resources(r);
-                end
+        for r = 1:K
+            % 遍历所有任务m，累加智能体i在每个任务上分配的资源类型r
+            for m = 1:M
+                allocated_resources(i, r) = allocated_resources(i, r) + SC{m}(i, r);
             end
         end
     end
 
-    % 计算资源缺口
+    % 计算每个任务的资源缺口
+    % resource_gap(j, r) = 任务j的资源类型r期望需求 - 所有智能体对任务j分配的资源类型r总和
+    % 期望需求向量(1×K) = belief(1×T) * task_type_demands(T×K)
+    
+    % ========== 输入验证（只做一次，避免在循环内重复检查） ==========
+    % 检查1：确保 task_type_demands 存在（T×K矩阵，T=任务类型数）
+    if ~isfield(Value_Params, 'task_type_demands') || isempty(Value_Params.task_type_demands)
+        error('compute_allocated_and_gap:MissingTaskTypeDemands', 'Value_Params.task_type_demands is required to compute expected demands.');
+    end
+    task_type_demands = Value_Params.task_type_demands; % T×K
+    num_types = size(task_type_demands, 1);
+    
+    % 检查2：确保 task_type_demands 的列数匹配资源类型数K
+    if size(task_type_demands, 2) ~= K
+        error('compute_allocated_and_gap:DemandKMismatch', 'task_type_demands must be T×K with K=Value_Params.K (%d).', K);
+    end
+    
+    % 检查3：确保 initbelief 存在且行数足够
+    if ~isfield(Value_data(1), 'initbelief') || size(Value_data(1).initbelief, 1) < M
+        error('compute_allocated_and_gap:MissingInitBelief', 'Value_data(1).initbelief must exist and contain beliefs for M tasks.');
+    end
+    
+    % ========== 主循环：计算每个任务的资源缺口 ==========
     for j = 1:M
-        % 遍历每个任务 j
-        for r = 1:K
-            % 任务资源需求：根据任务的需求量
-            task_resource_demand = tasks(j).resource_demand(r);
+        % 获取任务j的类型信念分布（1×T行向量）
+        belief_j = Value_data(1).initbelief(j, :);
+        belief_j = belief_j(:).'; % 强制转为行向量
+        
+        % 计算期望需求：belief(1×T) * task_type_demands(T×K) = (1×K)
+        expected_demand_vec = belief_j(1:num_types) * task_type_demands;
 
-            % 计算当前任务资源缺口：任务的资源需求减去已分配的资源
-            total_allocated = sum(allocated_resources(:, r));  % 当前资源类型的已分配资源总量
-            resource_gap(j, r) = task_resource_demand - total_allocated;  % 计算缺口
+        % 计算每种资源类型的缺口
+        for r = 1:K
+            task_allocated = sum(SC{j}(:, r));  % 任务j已获得的资源r总量
+            resource_gap(j, r) = expected_demand_vec(r) - task_allocated;
         end
     end
 end

@@ -31,8 +31,8 @@ probs = compute_select_probabilities(Value_data, agents, tasks, Value_Params, al
 Value_data.selectProb = probs; % 可选存储
 
 
-% 计算更新之前的联盟
-Value_data_before = Value_data.coalitionstru;
+% 备份更新之前的资源联盟结构SC
+Value_data_before_SC = Value_data.SC;
 
 % 1) 基于每种资源类型的选择概率尝试加入任务
 [Value_data, incremental_join] = join_operation(Value_data, agents, tasks, Value_Params, probs);
@@ -40,8 +40,17 @@ Value_data_before = Value_data.coalitionstru;
 % 1) 再尝试离开一个任务（若有）
 [Value_data, incremental_leave] = leave_operation(Value_data, agents, tasks, Value_Params, probs);
 
-% 只要有一次操作改变了联盟结构，则认为本轮有增量
-if ~isequal(Value_data_before, Value_data.coalitionstru) || incremental_leave || incremental_join
+% 检查SC是否发生改变：比较操作前后的资源分配矩阵
+SC_changed = false;
+for m = 1:Value_Params.M
+    if ~isequal(Value_data_before_SC{m}, Value_data.SC{m})
+        SC_changed = true;
+        break;
+    end
+end
+
+% 只要SC改变了或者有增量标志，则认为本轮有增量
+if SC_changed || incremental_leave || incremental_join
     incremental = 1;
 else
     incremental = 0;

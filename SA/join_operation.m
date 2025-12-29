@@ -44,6 +44,9 @@ for r = 1:Value_Params.K
     
     %% 1) 生成操作前/后的联盟结构与资源分配
     % 输出：SC_P/SC_Q=操作前/后联盟结构；R_agent_P/R_agent_Q=该智能体操作前/后资源分配(M×K)
+    % 计算的是加入操作之后整体联盟结构变化和智能体资源分配变化
+    % R_agent_P 为操作前个体资源分配矩阵，R_agent_Q 为操作后个体资源分配矩阵
+    
     [SC_P, SC_Q, R_agent_P, R_agent_Q, ~, ~] = ...
         compute_coalition_and_resource_changes(Value_data, agents, Value_Params, target, agentID, r);
     

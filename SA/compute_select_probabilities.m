@@ -13,13 +13,15 @@ function probs = compute_select_probabilities(Value_data, agents, tasks, Value_P
 agentID = Value_data.agentID;  % 获取当前agent的ID
 
 
-% 初始化选择概率矩阵 (R x M)，每行对应一个资源类型下对所有任务的选择概率
+% 初始化选择概率矩阵 (K x M)，每行对应一个资源类型下对所有任务的选择概率
 probs = zeros(Value_Params.K, Value_Params.M);
 
 % ------------------------------
-% 输入矩阵维度约定：
-% allocated_resources: N x K，每个智能体每种资源已分配/已占用量
-% resource_gap:        M x K，每个任务每种资源的剩余需求（缺口）
+% 输入矩阵定义：
+% allocated_resources: N x K，每个智能体每种资源类型已经分配出去的资源量
+%                      例如：allocated_resources(i, r) = 智能体i的资源类型r已分配总量
+% resource_gap:        M x K，每个任务每种资源类型还差多少（缺口 = 需求 - 已获得）
+%                      例如：resource_gap(j, r) = 任务j的资源类型r还需要多少
 % ------------------------------
 if nargin < 6
     error('compute_select_probabilities:NotEnoughInputs', 'Need allocated_resources and resource_gap.');
@@ -64,16 +66,19 @@ end
 for r = 1:Value_Params.K
     % 遍历每个任务 j
     for j = 1:Value_Params.M
-        % 1) 任务侧：剩余需求（缺口）优先使用 resource_gap
+        % 1) 任务侧：任务j的资源类型r还差多少（缺口）
+        %    resource_gap(j, r) = 任务需求 - 已获得的资源
         if ~isempty(resource_gap)
-            remaining_demand = max(resource_gap(j, r), 0); % j任务的 r需求
+            remaining_demand = max(resource_gap(j, r), 0);
         else
              error('需求计算错误');
         end
         
         
-        % 2) 智能体侧：可用于该资源类型的“剩余能力”= 总能力 - 已分配/已占用
-        agent_resource_available = Value_data.resources(r);
+        % 2) 智能体侧：该智能体在资源类型r上还能贡献多少
+        %    可用资源 = 智能体总资源 - 已分配给所有任务的资源
+        %    allocated_resources(agentID, r) 是该智能体在所有任务上分配的资源类型r的总和
+        agent_resource_available = Value_data.resources(r) - allocated_resources(agentID, r);
 
 
         % 获取任务与智能体之间的欧几里得距离

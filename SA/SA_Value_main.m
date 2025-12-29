@@ -11,6 +11,13 @@ for i=1:Value_Params.N %包括agent标号，索引以及初始联盟结构
     Value_data(i).unif=0;%均匀随机变量
     Value_data(i).coalitionstru=zeros(Value_Params.M+1,Value_Params.N);
     Value_data(i).initbelief=zeros(Value_Params.M+1,3);
+    
+    % SC：资源联盟结构，记录每个任务m上每个机器人分配的各类资源数量
+    % SC{m} 是一个 N×K 矩阵，表示任务m上N个机器人分配的K种资源类型的数量
+    Value_data(i).SC = cell(Value_Params.M, 1);
+    for m = 1:Value_Params.M
+        Value_data(i).SC{m} = zeros(Value_Params.N, Value_Params.K);  % N个机器人 × K种资源类型
+    end
 end
 
 for k=1: Value_Params.N   %所有agents放在void 任务中
