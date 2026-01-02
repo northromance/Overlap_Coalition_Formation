@@ -1,10 +1,9 @@
-function plot_main_results(agents, tasks, lianmengchengyuan, G, Value_data, N, M)
+function plot_main_results(agents, tasks, lianmengchengyuan, Value_data, N, M)
 %PLOT_MAIN_RESULTS Draw coalition structure and expected revenue curves.
 %
 % Inputs:
 %   agents, tasks              : arrays from Main
 %   lianmengchengyuan          : struct array with field .member
-%   G                          : adjacency matrix (N×N)
 %   Value_data                 : output from SA_Value_main
 %   N, M                       : number of agents/tasks
 
@@ -12,7 +11,7 @@ chFont = local_pick_chinese_font();
 
 %% 绘制联盟结构图
 figure('Name', 'Coalition Structure', 'NumberTitle', 'off');
-PlotValue(agents, tasks, lianmengchengyuan, G);
+PlotValue(agents, tasks, lianmengchengyuan);
 axis([0, 100, 0, 100]);
 xlabel('x-axis (m)', 'FontName', 'Times New Roman', 'FontSize', 14);
 ylabel('y-axis (m)', 'FontName', 'Times New Roman', 'FontSize', 14);

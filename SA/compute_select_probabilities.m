@@ -76,10 +76,8 @@ for r = 1:Value_Params.K
         
         
         % 2) 智能体侧：该智能体在资源类型r上还能贡献多少
-        %    可用资源 = 智能体总资源 - 已分配给所有任务的资源
-        %    allocated_resources(agentID, r) 是该智能体在所有任务上分配的资源类型r的总和
-        agent_resource_available = Value_data.resources(r) - allocated_resources(agentID, r);
-
+        % 智能体可用资源是指可以复用
+        agent_resource_available = Value_data.resources(r) ;
 
         % 获取任务与智能体之间的欧几里得距离
         task_distance = sqrt((tasks(j).x - agents(agentID).x)^2 + ...
@@ -88,8 +86,8 @@ for r = 1:Value_Params.K
             task_distance = eps;
         end
 
-        % 3) 概率权重：剩余需求 * 可用资源 / 距离
-        task_probability = remaining_demand * agent_resource_available / task_distance;
+        % 3) 概率权重：任务优先级 * 剩余需求 * 可用资源 / 距离
+        task_probability = (tasks(j).priority)^2 * remaining_demand * agent_resource_available / task_distance;
 
         % 将计算得到的选择概率存储到 probs 矩阵的相应位置
         probs(r, j) = task_probability;

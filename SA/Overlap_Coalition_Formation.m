@@ -45,7 +45,7 @@ end
 %% 随机选择资源离开联盟
 
 %% 离开操作与加入操作
-% 首先计算智能体在每种资源任务下选择任务的概率
+% 首先计算智能体在每种资源任务下选择各种任务的概率
 
 probs = compute_select_probabilities(Value_data, agents, tasks, Value_Params, allocated_resources, resource_gap);
 
@@ -58,10 +58,22 @@ Value_data_before_SC = Value_data.SC;
 % 1) 基于每种资源类型的选择概率尝试加入任务
 [Value_data, incremental_join] = join_operation(Value_data, agents, tasks, Value_Params, probs);
 
-% 2) 执行 leave：在 join 之后继续尝试离开一个任务（若可行且被接受）
-[Value_data, incremental_leave] = leave_operation(Value_data, agents, tasks, Value_Params, probs);
+% 2) 检查加入操作是否成功：比较SC是否发生改变
+join_success = false;
+for m = 1:Value_Params.M
+    if ~isequal(Value_data_before_SC{m}, Value_data.SC{m})
+        join_success = true;
+        break;
+    end
+end
 
-% 检查SC是否发生改变：比较操作前后的资源分配矩阵
+% 3) 只有当加入操作未成功时，才执行离开操作
+incremental_leave = 0;
+if ~join_success
+    [Value_data, incremental_leave] = leave_operation(Value_data, agents, tasks, Value_Params, probs);
+end
+
+% 4) 检查最终SC是否发生改变：比较操作前后的资源分配矩阵
 SC_changed = false;
 for m = 1:Value_Params.M
     if ~isequal(Value_data_before_SC{m}, Value_data.SC{m})

@@ -18,7 +18,7 @@ function [t_wait_total, T_exec_total, totalDistance, requiredEnergy, orderedTask
 %   orderedTasks   - 按priority排序后的任务列表
 
     tol = 1e-9;
-    
+    % 首先将已分配的任务 按照优先级进行排序
     %% 1. 按priority排序任务
     if ~isempty(assignedTasks) && isfield(tasks, 'priority')
         pr = zeros(size(assignedTasks));

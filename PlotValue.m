@@ -1,26 +1,19 @@
-function fig=PlotValue(agents,tasks,C,G)
+function fig=PlotValue(agents,tasks,C)
 
 % 动态颜色数组
 colors = {'k', 'r', 'm', 'y', 'c', 'g', 'b', [0.5 0.5 0.5], [0.8 0.4 0], [0.6 0.2 0.8]};
 
-% 绘制任务和对应的联盟成员
+% 1. 先绘制任务（彩色五角星）
 for i = 1:length(tasks)
     color_idx = mod(i-1, length(colors)) + 1;
-    if isnumeric(colors{color_idx})
-        plot([tasks(i).x],[tasks(i).y],'p','MarkerSize',10,'MarkerFaceColor',colors{color_idx},'Color',colors{color_idx})
-    else
-        plot([tasks(i).x],[tasks(i).y],'p','MarkerSize',10,'MarkerFaceColor',colors{color_idx},'Color',colors{color_idx})
-    end
+    task_color = colors{color_idx};
+    plot([tasks(i).x],[tasks(i).y],'p','MarkerSize',14,'MarkerFaceColor',task_color,'Color',task_color,'LineWidth',1.5)
     hold on
-    if ~isempty(C(i).member)
-        if isnumeric(colors{color_idx})
-            plot([agents(C(i).member).x],[agents(C(i).member).y],'o','MarkerSize',8,'MarkerFaceColor',colors{color_idx})
-        else
-            plot([agents(C(i).member).x],[agents(C(i).member).y],'o','MarkerSize',8,'MarkerFaceColor',colors{color_idx})
-        end
-        hold on
-    end
 end
+
+% 2. 绘制智能体（灰色圆圈）
+plot([agents.x],[agents.y],'o','MarkerSize',10,'MarkerFaceColor',[0.9 0.9 0.9],'MarkerEdgeColor','k','LineWidth',1.5);
+hold on
 
 % 动态生成任务标签
 max_text1 = cell(1, length(tasks));
@@ -38,12 +31,6 @@ for i = 1:length(agents)
 end
 h2=text([agents.x]+1.50,[agents.y]+2.5,max_text);
 set(h2,'Interpreter','latex','FontName','Times New Roman','FontSize',12,'FontWeight','normal');
-% hold on
-% for i=1:length(G)
-%     for j=1:length(G)
-%         if G(i,j)~=0
-%             line([agents(i).x,agents(j).x],[agents(i).y,agents(j).y],'color','b','LineWidth',1.2);
-%         end
-%     end
-% end
-return
+
+fig = gcf;  % 返回当前图形句柄
+end
