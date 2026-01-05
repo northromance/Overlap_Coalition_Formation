@@ -1,104 +1,57 @@
-function [incremental,curnumberrow,Value_data]=Overlap_Coalition_Formation(agents, tasks, Value_data, Value_Params,counter,AddPara, allocated_resources, resource_gap)
-
-% 兼容输出：默认认为当前在空任务(M+1)
-curnumberrow = Value_Params.M + 1;
-incremental = 0;
-
-% 消除未使用输入参数的静态检查告警（不影响逻辑）
-unusedCounter = counter; %#ok<NASGU>
-if isstruct(AddPara)
-    unusedCounter = unusedCounter + 0; %#ok<NASGU>
-end
+function [incremental, Value_data] = Overlap_Coalition_Formation(agents, tasks, Value_data, Value_Params, counter, AddPara, allocated_resources, resource_gap)
+% Overlap_Coalition_Formation - 重叠联盟形成函数（单智能体）
+%
+% 输入:
+%   agents              - 所有智能体结构数组
+%   tasks               - 所有任务结构数组
+%   Value_data          - 当前智能体的数据结构（包含联盟信息、资源分配等）
+%   Value_Params        - 全局参数（N, M, K等）
+%   counter             - 当前轮次计数器
+%   AddPara             - 附加参数
+%   allocated_resources - N×K矩阵，各智能体已分配资源量
+%   resource_gap        - M×K矩阵，各任务资源缺口
+%
+% 输出:
+%   incremental         - 联盟是否发生改变（0=未改变, 1=已改变）
+%   Value_data          - 更新后的智能体数据
 
 %% 备份当前状态
 backup.coalition = Value_data.coalitionstru;
 backup.iteration = Value_data.iteration;
 backup.unif = Value_data.unif;
-% 同步备份资源联盟结构，保证“无增量时”可回滚到一致状态
-if isfield(Value_data, 'SC')
-    backup.SC = Value_data.SC;
-end
-if isfield(Value_data, 'resources_matrix')
-    backup.resources_matrix = Value_data.resources_matrix;
-end
+backup.SC = Value_data.SC;
+backup.resources_matrix = Value_data.resources_matrix;
 
-%% 确保资源联盟结构 SC / resources_matrix 存在（部分测试用例可能未初始化）
-if ~isfield(Value_data, 'resources_matrix') || isempty(Value_data.resources_matrix) || ...
-        any(size(Value_data.resources_matrix) ~= [Value_Params.M, Value_Params.K])
-    Value_data.resources_matrix = zeros(Value_Params.M, Value_Params.K);
-end
-
-if ~isfield(Value_data, 'SC') || isempty(Value_data.SC)
-    Value_data.SC = cell(Value_Params.M, 1);
-    for m = 1:Value_Params.M
-        Value_data.SC{m} = zeros(Value_Params.N, Value_Params.K);
-        Value_data.SC{m}(Value_data.agentID, :) = Value_data.resources_matrix(m, :);
-    end
-end
-
-%% 获取当前智能体位置（仅用于给 curnumberrow 赋值）
-currentRows = find(Value_data.coalitionstru(:, Value_data.agentID) == Value_data.agentID);
-if ~isempty(currentRows)
-    curnumberrow = currentRows(1);
-end
-
-%% 随机选择资源离开联盟
-
-%% 离开操作与加入操作
-% 首先计算智能体在每种资源任务下选择各种任务的概率
-
+%% 计算任务选择概率
+% probs: K×M矩阵，probs(r,j) = 用资源类型r选择任务j的概率
 probs = compute_select_probabilities(Value_data, agents, tasks, Value_Params, allocated_resources, resource_gap);
+Value_data.selectProb = probs;
 
-Value_data.selectProb = probs; % 可选存储
-
-
-% 备份更新之前的资源联盟结构SC
-Value_data_before_SC = Value_data.SC;
-
-% 1) 基于每种资源类型的选择概率尝试加入任务
+%% 执行联盟操作（加入 或 离开）
+% 先尝试加入任务，若未成功则尝试离开任务
 [Value_data, incremental_join] = join_operation(Value_data, agents, tasks, Value_Params, probs);
 
-% 2) 检查加入操作是否成功：比较SC是否发生改变
-join_success = false;
-for m = 1:Value_Params.M
-    if ~isequal(Value_data_before_SC{m}, Value_data.SC{m})
-        join_success = true;
-        break;
-    end
+if ~incremental_join
+    [Value_data, ~] = leave_operation(Value_data, agents, tasks, Value_Params, probs);
 end
 
-% 3) 只有当加入操作未成功时，才执行离开操作
-incremental_leave = 0;
-if ~join_success
-    [Value_data, incremental_leave] = leave_operation(Value_data, agents, tasks, Value_Params, probs);
-end
-
-% 4) 检查最终SC是否发生改变：比较操作前后的资源分配矩阵
+%% 检测联盟结构变化
 SC_changed = false;
 for m = 1:Value_Params.M
-    if ~isequal(Value_data_before_SC{m}, Value_data.SC{m})
+    if ~isequal(backup.SC{m}, Value_data.SC{m})
         SC_changed = true;
         break;
     end
 end
 
-% 只要SC改变了或者有增量标志，则认为本轮有增量
-if SC_changed || incremental_leave || incremental_join
-    incremental = 1;
+%% 决定是否保留变化
+if SC_changed
+    incremental = 1;  % 联盟结构已改变
 else
-    incremental = 0;
-end
-
-
-% 若本轮没有产生增量，则回退到备份联盟结构
-if incremental == 0
+    incremental = 0;  % 无变化，回退到备份状态
     Value_data.coalitionstru = backup.coalition;
-    if isfield(backup, 'SC')
-        Value_data.SC = backup.SC;
-    end
-    if isfield(backup, 'resources_matrix')
-        Value_data.resources_matrix = backup.resources_matrix;
-    end
+    Value_data.SC = backup.SC;
+    Value_data.resources_matrix = backup.resources_matrix;
 end
 
 end

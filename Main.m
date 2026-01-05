@@ -20,8 +20,8 @@ WORLD.ZMAX=0;                  % Z轴最大值（2D环境中未使用）
 WORLD.value=[300,500,1000];    % 任务价值候选集
 
 % 基本参数
-N = 6;                          % 智能体数量
-M = 10;                          % 任务数量
+N = 8;                          % 智能体数量
+M = 5;                          % 任务数量
 K = 6;                          % 资源类型数量
 num_resources = K;              % 资源种类数量（与K保持一致）
 num_task_types = 3;             % 任务类型数量
@@ -31,6 +31,23 @@ Emax_init = 1000;               % 智能体最大能量的初始化基准值
 task_type_demands_range = [6, 8];  % 任务类型对每种资源需求量的随机范围0
 AddPara.control = 1;            % 控制参数（用于算法流程控制）
 
+% 资源执行时间参数
+resource_exec_time = [30 40 50 60 35 45];  % 每种资源类型所需的执行时间
+
+% 智能体属性参数
+agent_velocity = 2;             % 智能体移动速度
+agent_detprob = 0.9;            % 智能体检测概率（任务成功率）
+agent_Emax_min = 1000;           % 智能体最大能量最小值
+agent_Emax_range = 50;          % 智能体最大能量随机范围
+agent_fuel = 1;                 % 智能体燃料消耗率
+agent_beta = 1;                 % 智能体执行能耗系数
+
+% 模拟退火算法参数
+SA_Temperature = 100.0;         % 初始温度
+SA_alpha = 0.95;                % 温度衰减率
+SA_Tmin = 0.01;                 % 最小温度
+SA_max_stable_iterations = 5;   % 最大稳定迭代次数
+
 %% 初始化任务类型的资源需求
 % task_type_demands: 任务类型资源需求矩阵 (T×K)
 %   - 行：任务类型 (1~num_task_types)
@@ -39,9 +56,6 @@ AddPara.control = 1;            % 控制参数（用于算法流程控制）
 task_type_demands = randi(task_type_demands_range, num_task_types, num_resources);
 
 %% 初始化资源执行时间
-% 每种任务资源所需的执行时间
-resource_exec_time = [30 40 50 60 35 45];
-
 % 计算各任务类型的资源执行完所需的全部时间
 task_type_duration_by_resource = zeros(num_task_types, num_resources);
 for t = 1:num_task_types
@@ -72,22 +86,19 @@ end
 % 智能体结构体数组初始化
 for i = 1:N
     agents(i).id = i;                       % 智能体ID
-    agents(i).vel = 2;                      % 智能体移动速度
+    agents(i).vel = agent_velocity;         % 智能体移动速度
     agents(i).x = round(rand(1) * (WORLD.XMAX - WORLD.XMIN) + WORLD.XMIN);  % 智能体X坐标
     agents(i).y = round(rand(1) * (WORLD.YMAX - WORLD.YMIN) + WORLD.YMIN);  % 智能体Y坐标
-    agents(i).detprob = 0.9;                  % 检测概率（任务成功率）
+    agents(i).detprob = agent_detprob;      % 检测概率（任务成功率）
     agents(i).resources = randi([min_resource_value, max_resource_value], num_resources, 1);  % 智能体拥有的各类资源量（K×1向量）
-    agents(i).Emax = 300 + 50*rand(); % 智能体最大能量值（2000~3000随机）
-    agents(i).fuel = 1;                     % 智能体燃料消耗率
-    agents(i).beta = 1;                     % 执行能耗系数
+    agents(i).Emax = agent_Emax_min + agent_Emax_range*rand(); % 智能体最大能量值
+    agents(i).fuel = agent_fuel;            % 智能体燃料消耗率
+    agents(i).beta = agent_beta;            % 执行能耗系数
 end
 
-
-
-% 初始化算法参数结构
-Value_Params=Value_init(N,M,K);                        % 创建算法参数结构体
-Value_Params.task_type_demands = task_type_demands;    % 将任务类型需求矩阵加入参数结构
-
+%% 初始化算法参数结构
+Value_Params = init_value_params(N, M, K, task_type_demands, ...
+                                  SA_Temperature, SA_alpha, SA_Tmin, SA_max_stable_iterations);
 
 %% 运行联盟形成算法
 [Value_data,Rcost,cost_sum,net_profit]= SA_Value_main(agents,tasks,AddPara,Value_Params);

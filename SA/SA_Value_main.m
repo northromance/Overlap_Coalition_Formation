@@ -10,11 +10,15 @@ for i=1:Value_Params.N
     Value_data(i).coalitionstru=zeros(Value_Params.M+1,Value_Params.N);
     Value_data(i).initbelief=zeros(Value_Params.M+1,3);
 
+    % 初始化资源分配矩阵 (M×K)
+    Value_data(i).resources_matrix = zeros(Value_Params.M, Value_Params.K);
+    
     % 新联盟结构矩阵
     Value_data(i).SC = cell(Value_Params.M, 1);      % 资源联盟结构cell
     for m = 1:Value_Params.M
         Value_data(i).SC{m} = zeros(Value_Params.N, Value_Params.K);  % 任务m的N×K资源分配矩阵
-        % 记录了i一共N个智能体 每个智能体存储M个任务的 资源分配矩阵 记录着N个智能体 分别给每个任务分配了多少资源
+        % 将当前智能体的资源分配到SC对应行
+        Value_data(i).SC{m}(i, :) = Value_data(i).resources_matrix(m, :);
     end
     Value_data(i).other = cell(Value_Params.N, 1);   % 存储其他智能体信念
 end
@@ -84,34 +88,19 @@ for counter=1:50
         % 顺序遍历各智能体进行联盟优化
         for ii = 1:Value_Params.N
             % 计算已分配资源和缺口
-            % resource_gap 为智能体根据信念计算的缺口
-
+           
+            % 计算已经分配的资源和剩余资源的缺口
             [allocated_resources, resource_gap] = compute_allocated_and_gap(Value_data(ii), agents, tasks, Value_Params);
 
-
-            [inc_ii, ~, Value_data_ii] = Overlap_Coalition_Formation(agents, tasks, Value_data(ii), Value_Params,counter,AddPara, allocated_resources, resource_gap);  % 联盟形成
+            % 重叠联盟形成
+            [inc_ii, Value_data_ii] = Overlap_Coalition_Formation(agents, tasks, Value_data(ii), Value_Params,counter,AddPara, allocated_resources, resource_gap);  % 联盟形成
             incremental(ii) = inc_ii;  % 记录效用增量
 
-            % 更新关键字段
-            Value_data(ii).coalitionstru = Value_data_ii.coalitionstru;  % 联盟结构
-            Value_data(ii).SC = Value_data_ii.SC;                        % 资源分配
-            if isfield(Value_data_ii, 'resources_matrix')
-                Value_data(ii).resources_matrix = Value_data_ii.resources_matrix;  % 资源矩阵
-            end
-            if isfield(Value_data_ii, 'selectProb')
-                Value_data(ii).selectProb = Value_data_ii.selectProb;    % 选择概率
-            end
-            if isfield(Value_data_ii, 'iteration')
-                Value_data(ii).iteration = Value_data_ii.iteration;      % 迭代次数
-            end
-            if isfield(Value_data_ii, 'unif')
-                Value_data(ii).unif = Value_data_ii.unif;                % 随机数
-            end
 
             % 传递联盟结构给下一智能体
             if ii < Value_Params.N
-                Value_data(ii + 1).coalitionstru = Value_data(ii).coalitionstru;  % 传递成员结构
-                Value_data(ii + 1).SC = Value_data(ii).SC;                        % 传递资源分配
+                Value_data(ii + 1).coalitionstru = Value_data_ii.coalitionstru;  % 传递成员结构
+                Value_data(ii + 1).SC = Value_data_ii.SC;                        % 传递资源分配
             end
         end
 
@@ -146,38 +135,56 @@ for counter=1:50
     end
 
 
-    %% 提取各智能体当前任务
-    curnumberrow = zeros(1, Value_Params.N);  % 各智能体当前任务编号
+    %% 提取各智能体参与的任务集合（重叠联盟）
+    % 说明：在“重叠联盟”下，一个智能体可以同时参与多个任务。
+    % - final_coalitionstru 的每一列对应一个智能体
+    % - 第 j 行(1..M)表示任务 Tj 的成员关系；第 M+1 行是 void(未分配)占位
+    % - 任务成员通常用非零表示(常见为写入 agentID)，所以这里用 ~=0 判断参与
+    % 输出：curTaskList{i} 是智能体 i 参与的任务ID向量（范围 1..M）
+    curTaskList = cell(1, Value_Params.N);
     for i = 1:Value_Params.N
-        [curRow, ~] = find(final_coalitionstru(:, i) == i);
-        if ~isempty(curRow)
-            curnumberrow(i) = curRow(1);           % 取第一个任务
-        else
-            curnumberrow(i) = Value_Params.M + 1;  % void任务
-        end
+        curTaskList{i} = find(final_coalitionstru(1:Value_Params.M, i) ~= 0);
     end
 
-    %% 记录观测（20次采样）
-    for i=1:Value_Params.N
-        if  curnumberrow(i)~=Value_Params.M+1            % 非void任务
-            for m=1:20
-                taskindex=find(tasks(curnumberrow(i)).value== tasks(curnumberrow(i)).WORLD.value);      % 真实价值索引
-                nontaskindex=find(tasks(curnumberrow(i)).value~= tasks(curnumberrow(i)).WORLD.value);  % 非真实价值索引
-                if rand<=agents(i).detprob                                      % 正确检测
-                    Value_data(i).observe(curnumberrow(i),  taskindex)= Value_data(i).observe(curnumberrow(i),taskindex)+1;
-                    m=m+1;
-                elseif (agents(i).detprob<rand)&&(rand<=(1-1/2*agents(i).detprob))  % 误检1
-                    Value_data(i).observe(curnumberrow(i),  nontaskindex(1))= Value_data(i).observe(curnumberrow(i),nontaskindex(1))+1;
-                    m=m+1;
-                else                                                            % 误检2
-                    Value_data(i).observe(curnumberrow(i),  nontaskindex(2))= Value_data(i).observe(curnumberrow(i),nontaskindex(2))+1;
-                    m=m+1;
+    %% 记录观测（每个参与任务各采样20次）
+    % 观测建模：每个智能体对“自己参与的每个任务”的真实价值进行多次观测采样。
+    % - tasks(j).WORLD.value 是所有候选价值集合(长度=3)，例如 [300,500,1000]
+    % - tasks(j).value 是该任务的真实价值(必然属于候选集)
+    % - Value_data(i).observe(j,k) 统计智能体 i 对任务 j 观测为第 k 个价值的次数
+    % - detprob 为正确检测概率；否则发生误检，将观测计入非真实价值的某个类别
+    for i = 1:Value_Params.N
+        taskIds = curTaskList{i};
+        if isempty(taskIds)
+            continue; % 该智能体本轮未参与任何真实任务(只在void)，不产生观测
+        end
+
+        for tIdx = 1:numel(taskIds)
+            taskId = taskIds(tIdx);
+
+            % 真实价值在候选集中的索引(1..3)
+            taskindex = find(tasks(taskId).value == tasks(taskId).WORLD.value);
+            % 非真实价值的索引(长度=2)
+            nontaskindex = find(tasks(taskId).value ~= tasks(taskId).WORLD.value);
+
+            for m = 1:20
+                % 采样一次随机数，决定本次观测结果落在哪个类别
+                % - 概率 detprob：观测为真实价值
+                % - 剩余概率：误检到两个非真实价值类别(按原代码阈值划分)
+                r = rand;
+                if r <= agents(i).detprob                                       % 正确检测
+                    Value_data(i).observe(taskId, taskindex) = Value_data(i).observe(taskId, taskindex) + 1;
+                elseif (agents(i).detprob < r) && (r <= (1 - 1/2*agents(i).detprob))  % 误检1
+                    Value_data(i).observe(taskId, nontaskindex(1)) = Value_data(i).observe(taskId, nontaskindex(1)) + 1;
+                else                                                             % 误检2
+                    Value_data(i).observe(taskId, nontaskindex(2)) = Value_data(i).observe(taskId, nontaskindex(2)) + 1;
                 end
             end
         end
     end
 
     % 聚合所有智能体观测
+    % summatrix(j,k) 维护“全体智能体对任务 j 的新观测增量”的累计结果。
+    % 这里用 observe - preobserve 来提取“本轮新增观测”，避免重复累计。
     for j=1:Value_Params.M
         for k=1:3
             for i=1:Value_Params.N
@@ -187,6 +194,9 @@ for counter=1:50
     end
 
     % 同步观测给所有智能体
+    % 将全局聚合后的观测结果广播给每个智能体，使所有智能体拥有一致的观测统计。
+    % - preobserve：记录“上一次同步后的观测”(用于下轮求增量)
+    % - observe：记录“当前同步后的观测”(后续用于更新 Dirichlet 后验)
     for i=1:Value_Params.N
         for j=1:Value_Params.M
             for k=1:3

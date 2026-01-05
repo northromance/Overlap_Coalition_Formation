@@ -1,5 +1,16 @@
 function [Value_data, incremental_join] = join_operation(Value_data, agents, tasks, Value_Params, probs)
-
+% join_operation - 智能体尝试加入任务（资源分配）
+%
+% 输入:
+%   Value_data   - 当前智能体数据结构
+%   agents       - 所有智能体结构数组
+%   tasks        - 所有任务结构数组
+%   Value_Params - 全局参数（N, M, K, Temperature等）
+%   probs        - K×M矩阵，probs(r,j)=资源类型r选择任务j的概率
+%
+% 输出:
+%   Value_data        - 更新后的智能体数据
+%   incremental_join  - 是否成功加入（1=成功, 0=失败）
 
 incremental_join = 0;
 agentID = Value_data.agentID;
@@ -7,27 +18,6 @@ tol = 1e-9;
 
 % agentID -> agents 索引
 agentIdx = agentID;
-if agentIdx < 1 || agentIdx > numel(agents) || ~isstruct(agents(agentIdx))
-    agentIdx = find([agents.id] == agentID, 1, 'first');
-    if isempty(agentIdx)
-        error('join_operation:AgentNotFound', 'agentID=%d not found in agents.', agentID);
-    end
-end
-
-% resources_matrix：若不存在/维度不对则初始化（不要每次都清零）
-if ~isfield(Value_data, 'resources_matrix') || isempty(Value_data.resources_matrix) || ...
-        any(size(Value_data.resources_matrix) ~= [Value_Params.M, Value_Params.K])
-    Value_data.resources_matrix = zeros(Value_Params.M, Value_Params.K);
-end
-
-% SC：若不存在则初始化（用于 compute_coalition_and_resource_changes）
-if ~isfield(Value_data, 'SC') || isempty(Value_data.SC)
-    Value_data.SC = cell(Value_Params.M, 1);
-    for m = 1:Value_Params.M
-        Value_data.SC{m} = zeros(Value_Params.N, Value_Params.K);
-        Value_data.SC{m}(agentIdx, :) = Value_data.resources_matrix(m, :);
-    end
-end
 
 % verbose：打印调试信息（默认开，可在 Value_Params.verbose 关闭）
 verbose = true;
@@ -66,20 +56,17 @@ for r = 1:Value_Params.K
     % 计算的是加入操作之后整体联盟结构变化和智能体资源分配变化
     % R_agent_P 为操作前个体资源分配矩阵，R_agent_Q 为操作后个体资源分配矩阵
     
-    [SC_P, SC_Q, R_agent_P, R_agent_Q, ~, ~] = ...
-        compute_coalition_and_resource_changes(Value_data, agents, Value_Params, target, agentID, r);
+    [SC_P, SC_Q, R_agent_P, R_agent_Q] = compute_join_coalition_and_resource_changes(Value_data, agents, Value_Params, target, agentID, r);
     
     %% 2) 可行性检测：不可行直接跳过，继续下一种资源类型
-    [feasible, ~] = validate_join_feasibility(Value_data, agents, tasks, Value_Params, agentID, SC_P, SC_Q, R_agent_P, R_agent_Q, target, r);
+    [feasible, ~] = validate_feasibility(Value_data, agents, tasks, Value_Params, agentID, SC_P, SC_Q, R_agent_P, R_agent_Q, target, r);
     if ~feasible
         if verbose
             fprintf('智能体%d: 资源类型%d加入任务%d不可行\n', agentID, r, target);
         end
         continue;
     end
-
-    % 3) 写入“操作后资源矩阵”，用于效用计算
-    Value_data.resources_matrix = R_agent_Q;
+    
     
     %% 4) 计算ΔU：overlap_coalition_utility 返回 LHS(SC_Q,SC_P)-RHS(SC_Q,SC_P)
     delta_U = overlap_coalition_utility(tasks, agents, SC_P, SC_Q, agentID, Value_Params, Value_data);
@@ -95,7 +82,7 @@ for r = 1:Value_Params.K
     else
         % 如果效用差 <= 0，使用模拟退火概率判断是否加入联盟（可能接受差解）
         T = Value_Params.Temperature;  % 从参数中获取温度
-
+        
         P_join = exp(delta_U / T);  % 接受概率
         
         % 根据随机数判断是否加入联盟
@@ -113,32 +100,46 @@ for r = 1:Value_Params.K
     if accept_join
         % 接受：更新资源联盟结构 SC，并同步更新 coalitionstru（矩阵）
         Value_data.SC = SC_Q;
-
-        % coalitionstru: (M+1)×N，1..M 表示真实任务，M+1 表示 void 任务
-        if ~isfield(Value_data, 'coalitionstru') || isempty(Value_data.coalitionstru) || ...
-                size(Value_data.coalitionstru, 1) ~= Value_Params.M + 1 || size(Value_data.coalitionstru, 2) < agentIdx
-            Value_data.coalitionstru = zeros(Value_Params.M + 1, Value_Params.N);
-        end
-
+        Value_data.resources_matrix = R_agent_Q;
+        
+        % 更新 coalitionstru: (M+1)×N 联盟成员矩阵
+        % 作用：记录每个智能体参与了哪些任务
+        % 结构：第1-M行对应真实任务，第M+1行对应void任务（未分配任何任务）
+        %       coalitionstru(m, i) = agentID 表示智能体i参与任务m
+        
+        % 1) 找出该智能体有资源分配的所有任务
+        %    any(..., 2) 按行检查：只要该任务有任何资源类型分配量>0，就算参与
         assignedTasksPost = find(any(Value_data.resources_matrix > tol, 2));
+        
+        % 2) 复制当前联盟结构，准备更新
         coalition_after = Value_data.coalitionstru;
+        
+        % 3) 清空该智能体在所有真实任务上的旧标记
         coalition_after(1:Value_Params.M, agentIdx) = 0;
+        
+        % 4) 在参与的任务行标记智能体ID
         for mIdx = assignedTasksPost'
             coalition_after(mIdx, agentIdx) = agents(agentIdx).id;
         end
+        
+        % 5) 处理void任务行（第M+1行）
         if isempty(assignedTasksPost)
+            % 如果该智能体未参与任何任务，标记到void行
             coalition_after(Value_Params.M + 1, agentIdx) = agents(agentIdx).id;
         else
+            % 如果参与了至少1个任务，清除void标记
             coalition_after(Value_Params.M + 1, agentIdx) = 0;
         end
+        
+        % 6) 写回更新后的联盟结构
         Value_data.coalitionstru = coalition_after;
-
+        
         incremental_join = 1;
         
         % 打印关键变化
         fprintf('  资源分配变化: 任务%d获得资源类型%d的数量%.2f\n', ...
             target, r, R_agent_Q(target, r));
-
+        
         % 一旦找到可接受的加入操作就跳出
         break;
     else
