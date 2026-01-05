@@ -109,7 +109,7 @@ end
 % 调用统一的能量成本计算函数
 if ismember(task_m, agent_tasks)
     [t_wait_total, T_exec_total_all, ~, ~, orderedTasks] = ...
-        compute_agent_energy_cost(n, agent_tasks, agents, tasks, Value_Params, R_agent);
+        energy_cost(n, agent_tasks, agents, tasks, Value_Params, R_agent);
     
     % 找到task_m在排序后的位置
     task_m_pos = find(orderedTasks == task_m, 1);

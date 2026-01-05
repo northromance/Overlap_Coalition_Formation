@@ -1,4 +1,4 @@
-function probs = compute_select_probabilities(Value_data, agents, tasks, Value_Params, allocated_resources, resource_gap)
+function probs = select_probs(Value_data, agents, tasks, Value_Params, allocated_resources, resource_gap)
 
 % 计算该智能体对于每种类型任务下的 每种任务的选择概率
 %% 步骤 2: 备份当前状态

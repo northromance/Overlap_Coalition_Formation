@@ -90,7 +90,7 @@ for counter=1:50
             % 计算已分配资源和缺口
            
             % 计算已经分配的资源和剩余资源的缺口
-            [allocated_resources, resource_gap] = compute_allocated_and_gap(Value_data(ii), agents, tasks, Value_Params);
+            [allocated_resources, resource_gap] = calc_gaps(Value_data(ii), agents, tasks, Value_Params);
 
             % 重叠联盟形成
             [inc_ii, Value_data_ii] = Overlap_Coalition_Formation(agents, tasks, Value_data(ii), Value_Params,counter,AddPara, allocated_resources, resource_gap);  % 联盟形成

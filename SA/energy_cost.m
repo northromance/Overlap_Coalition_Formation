@@ -1,6 +1,6 @@
 function [t_wait_total, T_exec_total, totalDistance, requiredEnergy, orderedTasks] = ...
-    compute_agent_energy_cost(agentIdx, assignedTasks, agents, tasks, Value_Params, R_agent)
-% compute_agent_energy_cost: 计算智能体执行任务序列的时间和能量消耗
+    energy_cost(agentIdx, assignedTasks, agents, tasks, Value_Params, R_agent)
+% energy_cost: 计算智能体执行任务序列的时间和能量消耗
 %
 % 输入参数:
 %   agentIdx       - 智能体索引

@@ -72,7 +72,7 @@ function [isFeasible, info] = validate_feasibility(Value_data, agents, tasks, Va
 
     % 计算能量需求
     [~, ~, ~, requiredEnergy, ~] = ...
-        compute_agent_energy_cost(agentIdx, assignedTasks, agents, tasks, Value_Params, R_agent_Q);
+        energy_cost(agentIdx, assignedTasks, agents, tasks, Value_Params, R_agent_Q);
 
     if requiredEnergy > energyCap + tol
         isFeasible = false;

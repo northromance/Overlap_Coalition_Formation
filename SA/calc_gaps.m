@@ -1,4 +1,4 @@
-function [allocated_resources, resource_gap] = compute_allocated_and_gap(Value_data, agents, tasks, Value_Params)
+function [allocated_resources, resource_gap] = calc_gaps(Value_data, agents, tasks, Value_Params)
     % 初始化变量
     N = Value_Params.N; % 智能体数量
     M = Value_Params.M; % 任务数量

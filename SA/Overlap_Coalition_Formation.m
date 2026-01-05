@@ -24,7 +24,7 @@ backup.resources_matrix = Value_data.resources_matrix;
 
 %% 计算任务选择概率
 % probs: K×M矩阵，probs(r,j) = 用资源类型r选择任务j的概率
-probs = compute_select_probabilities(Value_data, agents, tasks, Value_Params, allocated_resources, resource_gap);
+probs = select_probs(Value_data, agents, tasks, Value_Params, allocated_resources, resource_gap);
 Value_data.selectProb = probs;
 
 %% 执行联盟操作（加入 或 离开）

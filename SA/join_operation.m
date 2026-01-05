@@ -56,7 +56,7 @@ for r = 1:Value_Params.K
     % 计算的是加入操作之后整体联盟结构变化和智能体资源分配变化
     % R_agent_P 为操作前个体资源分配矩阵，R_agent_Q 为操作后个体资源分配矩阵
     
-    [SC_P, SC_Q, R_agent_P, R_agent_Q] = compute_join_coalition_and_resource_changes(Value_data, agents, Value_Params, target, agentID, r);
+    [SC_P, SC_Q, R_agent_P, R_agent_Q] = join_changes(Value_data, agents, Value_Params, target, agentID, r);
     
     %% 2) 可行性检测：不可行直接跳过，继续下一种资源类型
     [feasible, ~] = validate_feasibility(Value_data, agents, tasks, Value_Params, agentID, SC_P, SC_Q, R_agent_P, R_agent_Q, target, r);

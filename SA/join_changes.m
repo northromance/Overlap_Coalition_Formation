@@ -1,5 +1,5 @@
 function [SC_P, SC_Q, R_agent_P, R_agent_Q] = ...
-    compute_join_coalition_and_resource_changes(Value_data, agents, Value_Params, target, agentID, r)
+    join_changes(Value_data, agents, Value_Params, target, agentID, r)
 % 计算 join 前/后的资源联盟结构与资源分配变化。
 % 
 % 输入：
