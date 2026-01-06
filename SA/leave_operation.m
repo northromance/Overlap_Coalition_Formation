@@ -99,11 +99,26 @@ for r = 1:K
         if ~feasible
             % 不可行，跳过此次撤出尝试
             if verbose
-                reason = 'unknown';
+                reason_str = 'unknown';
                 if isfield(info, 'reason')
-                    reason = info.reason;  % 获取不可行的具体原因
+                    reason_str = info.reason;  % 获取不可行的具体原因
                 end
-                fprintf('智能体%d: 资源类型%d退出任务%d不可行（原因：%s）\n', agentID, r, sourceTask, reason);
+                % 解释不可行原因
+                switch reason_str
+                    case 'agent_not_found'
+                        reason_detail = '智能体不存在';
+                    case 'bad_R_agent_Q_size'
+                        reason_detail = '资源矩阵维度错误';
+                    case 'negative_allocation'
+                        reason_detail = '资源分配为负';
+                    case 'capacity_exceeded'
+                        reason_detail = '超出资源容量';
+                    case 'energy_insufficient'
+                        reason_detail = '能量不足';
+                    otherwise
+                        reason_detail = reason_str;
+                end
+                fprintf('智能体%d: 资源类型%d退出任务%d不可行（原因：%s）\n', agentID, r, sourceTask, reason_detail);
             end
             continue;  % 继续尝试下一种资源类型
         end

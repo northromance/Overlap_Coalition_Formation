@@ -1,4 +1,4 @@
-function Value_Params = init_value_params(N, M, K, num_task_types, task_type_demands, SA_Temperature, SA_alpha, SA_Tmin, SA_max_stable_iterations, obs_times, num_rounds)
+function Value_Params = init_value_params(N, M, K, num_task_types, task_type_demands, SA_Temperature, SA_alpha, SA_Tmin, SA_max_stable_iterations, obs_times, num_rounds, resource_confidence)
 % INIT_VALUE_PARAMS 初始化算法参数结构
 %
 % 输入参数:
@@ -13,12 +13,13 @@ function Value_Params = init_value_params(N, M, K, num_task_types, task_type_dem
 %   SA_max_stable_iterations   - 模拟退火最大稳定迭代次数
 %   obs_times                  - 每个任务的观测次数
 %   num_rounds                 - 游戏总轮数
+%   resource_confidence        - 资源需求计算的置信水平 (0~1)
 %
 % 输出参数:
 %   Value_Params               - 算法参数结构体
 %
 % 示例:
-%   Value_Params = init_value_params(8, 5, 6, 3, task_type_demands, 100.0, 0.95, 0.01, 5, 20, 100);
+%   Value_Params = init_value_params(8, 5, 6, 3, task_type_demands, 100.0, 0.95, 0.01, 5, 20, 100, 0.85);
 
     % 基本参数
     Value_Params.N = N;
@@ -38,5 +39,8 @@ function Value_Params = init_value_params(N, M, K, num_task_types, task_type_dem
     
     % 游戏参数
     Value_Params.num_rounds = num_rounds;
+    
+    % 资源需求计算参数
+    Value_Params.resource_confidence = resource_confidence;
     
 end

@@ -17,7 +17,7 @@ WORLD.YMIN=0;                  % Y轴最小值
 WORLD.YMAX=100;                % Y轴最大值
 WORLD.ZMIN=0;                  % Z轴最小值（2D环境中未使用）
 WORLD.ZMAX=0;                  % Z轴最大值（2D环境中未使用）
-WORLD.value=[300,500,1000];    % 任务价值候选集
+WORLD.value=[300,1000,1500];    % 任务价值候选集
 
 % 基本参数
 N = 8;                          % 智能体数量
@@ -36,7 +36,8 @@ resource_exec_time = [30 40 50 60 35 45];  % 每种资源类型所需的执行时间
 
 % 智能体属性参数
 agent_velocity = 2;             % 智能体移动速度
-agent_detprob = 0.9;            % 智能体检测概率（任务成功率）
+agent_detprob_min = 0.9;       % 智能体检测概率最小值
+agent_detprob_max = 1.0;        % 智能体检测概率最大值
 agent_Emax_min = 1000;           % 智能体最大能量最小值
 agent_Emax_range = 50;          % 智能体最大能量随机范围
 agent_fuel = 1;                 % 智能体燃料消耗率
@@ -51,6 +52,9 @@ SA_max_stable_iterations = 5;   % 最大稳定迭代次数
 % 观测参数
 obs_times = 20;  % 每个任务的观测次数
 num_rounds = 20;  % 游戏总轮数
+
+% ========================================
+resource_confidence = 0.7;     % 资源需求计算的置信水平
 
 %% 初始化任务类型的资源需求
 % task_type_demands: 任务类型资源需求矩阵 (T×K)
@@ -75,13 +79,23 @@ task_type_duration = sum(task_type_duration_by_resource, 2)';
 % 任务结构体数组初始化
 task_priorities = randperm(M);  % 生成任务优先级的随机排列
 for j = 1:M
+    % ========== 任务类型、价值、需求的一致性 ==========
+    % 设计原则：类型决定价值和需求
+    %   类型1 → 价值300 + 对应需求
+    %   类型2 → 价值500 + 对应需求
+    %   类型3 → 价值1000 + 对应需求
+    % 这样智能体观测到的价值类型和资源需求类型是一致的
+    % ================================================
+    
     tasks(j).id = j;                        % 任务ID
     tasks(j).priority = task_priorities(j); % 任务优先级（1~M的排列）
     tasks(j).x = round(rand(1) * (WORLD.XMAX - WORLD.XMIN) + WORLD.XMIN);  % 任务X坐标
     tasks(j).y = round(rand(1) * (WORLD.YMAX - WORLD.YMIN) + WORLD.YMIN);  % 任务Y坐标
-    tasks(j).value = WORLD.value(randi(length(WORLD.value), 1, 1));        % 任务价值（从候选集随机选择）
+    
+    % 先随机确定类型，然后类型决定价值和需求
     tasks(j).type = randi(num_task_types, 1, 1);                           % 任务类型（1~num_task_types）
-    tasks(j).resource_demand = task_type_demands(tasks(j).type, :);        % 任务的资源需求（1×K向量）
+    tasks(j).value = WORLD.value(tasks(j).type);                           % 类型决定价值：类型1→300, 类型2→500, 类型3→1000
+    tasks(j).resource_demand = task_type_demands(tasks(j).type, :);        % 类型决定资源需求（1×K向量）
     tasks(j).duration_by_resource = task_type_duration_by_resource(tasks(j).type, :);  % 按资源分解的执行时间
     tasks(j).duration = sum(tasks(j).duration_by_resource);                % 任务总执行时间
     tasks(j).WORLD = WORLD;                                                % 任务所在世界空间参数
@@ -93,7 +107,7 @@ for i = 1:N
     agents(i).vel = agent_velocity;         % 智能体移动速度
     agents(i).x = round(rand(1) * (WORLD.XMAX - WORLD.XMIN) + WORLD.XMIN);  % 智能体X坐标
     agents(i).y = round(rand(1) * (WORLD.YMAX - WORLD.YMIN) + WORLD.YMIN);  % 智能体Y坐标
-    agents(i).detprob = agent_detprob;      % 检测概率（任务成功率）
+    agents(i).detprob = agent_detprob_min + (agent_detprob_max - agent_detprob_min) * rand();  % 检测概率在[min, max]范围内随机取值
     agents(i).resources = randi([min_resource_value, max_resource_value], num_resources, 1);  % 智能体拥有的各类资源量（K×1向量）
     agents(i).Emax = agent_Emax_min + agent_Emax_range*rand(); % 智能体最大能量值
     agents(i).fuel = agent_fuel;            % 智能体燃料消耗率
@@ -103,7 +117,7 @@ end
 %% 初始化算法参数结构
 Value_Params = init_value_params(N, M, K, num_task_types, task_type_demands, ...
                                   SA_Temperature, SA_alpha, SA_Tmin, SA_max_stable_iterations, ...
-                                  obs_times, num_rounds);
+                                  obs_times, num_rounds, resource_confidence);
 
 %% 运行联盟形成算法
 [Value_data, history_data] = SA_Value_main(agents,tasks,AddPara,Value_Params);
@@ -316,4 +330,117 @@ fprintf('========================================\n\n');
 
 %% 绘图
 % 可视化联盟形成结果、智能体-任务分配等
-plot_main_results(agents, tasks, lianmengchengyuan, history_data, N, M, num_rounds, WORLD.value);
+% plot_main_results(agents, tasks, lianmengchengyuan, history_data, N, M, num_rounds, WORLD.value);
+%% 分析分位数需求演化
+fprintf('\n========================================\n');
+fprintf('  分位数需求演化分析（按智能体-任务）\n');
+fprintf('========================================\n\n');
+
+% 选择要分析的智能体和任务
+agent_id = 1;
+task_id = 3;
+
+% 提取该任务的真实需求
+actual_demand = tasks(task_id).resource_demand;
+
+% 打印基本信息
+fprintf('【任务 T%d 信息】\n', task_id);
+fprintf('  真实类型: %d\n', tasks(task_id).type);
+fprintf('  真实价值: %d\n', tasks(task_id).value);
+fprintf('  真实需求: ');
+fprintf('[%d, %d, %d, %d, %d, %d]\n\n', actual_demand);
+
+fprintf('【智能体 A%d 对任务 T%d 的需求演化】\n', agent_id, task_id);
+fprintf('置信水平: %.2f\n\n', Value_Params.resource_confidence);
+
+% 提取所有轮次的数据
+quantile_demand_evolution = zeros(num_rounds, K);
+expected_demand_evolution = zeros(num_rounds, K);
+belief_evolution = zeros(num_rounds, num_task_types);
+
+for r = 1:num_rounds
+    quantile_demand_evolution(r, :) = history_data.rounds(r).agents(agent_id).quantile_demand(task_id, :);
+    belief_evolution(r, :) = history_data.rounds(r).agents(agent_id).belief(task_id, :);
+    expected_demand_evolution(r, :) = belief_evolution(r, :) * Value_Params.task_type_demands;
+end
+
+% 添加信念显示列
+fprintf('轮次 | 信念[类型1] | 信念[类型2] | 信念[类型3] | 最大信念 | ');
+for k = 1:K
+    fprintf('Res%d-期望 | Res%d-分位 | ', k, k);
+end
+fprintf('\n');
+fprintf('-----|-----------|-----------|-----------|---------|');
+for k = 1:K
+    fprintf('---------|---------|');
+end
+fprintf('\n');
+
+% 打印数据（每5轮打印一次，节省空间）
+for r = 1:1:num_rounds
+    fprintf('%4d | ', r);
+    % 打印信念
+    fprintf('   %7.4f | ', belief_evolution(r, 1));
+    fprintf('   %7.4f | ', belief_evolution(r, 2));
+    fprintf('   %7.4f | ', belief_evolution(r, 3));
+    fprintf(' %7.4f | ', max(belief_evolution(r, :)));
+    % 打印需求
+    for k = 1:K
+        fprintf('  %6.2f | ', expected_demand_evolution(r, k));
+        fprintf('   %4d | ', quantile_demand_evolution(r, k));
+    end
+    fprintf('\n');
+end
+
+% 打印最后一轮
+if mod(num_rounds, 5) ~= 0
+    r = num_rounds;
+    fprintf('%4d | ', r);
+    % 打印信念
+    fprintf('   %7.4f | ', belief_evolution(r, 1));
+    fprintf('   %7.4f | ', belief_evolution(r, 2));
+    fprintf('   %7.4f | ', belief_evolution(r, 3));
+    fprintf(' %7.4f | ', max(belief_evolution(r, :)));
+    % 打印需求
+    for k = 1:K
+        fprintf('  %6.2f | ', expected_demand_evolution(r, k));
+        fprintf('   %4d | ', quantile_demand_evolution(r, k));
+    end
+    fprintf('\n');
+end
+
+% 打印对比摘要
+fprintf('\n【最终需求对比摘要】\n');
+fprintf('资源类型 | 真实需求 | 期望值法 | 分位数法 | 期望偏差 | 分位偏差\n');
+fprintf('---------|---------|---------|---------|---------|--------\n');
+for k = 1:K
+    true_val = actual_demand(k);
+    exp_val = expected_demand_evolution(end, k);
+    quant_val = quantile_demand_evolution(end, k);
+    exp_diff = exp_val - true_val;
+    quant_diff = quant_val - true_val;
+    fprintf('  Res%d   |    %2d   |  %6.2f |    %2d   |  %+6.2f |   %+3d\n', ...
+            k, true_val, exp_val, quant_val, exp_diff, quant_diff);
+end
+
+fprintf('\n========================================\n\n');
+
+%% 绘制联盟演化和任务完成度图表
+fprintf('绘制联盟演化和任务完成度图表...\n');
+plot_coalition_evolution(history_data, tasks, Value_Params);
+
+%% 绘制任务期望收益演化图
+fprintf('绘制任务期望收益演化图...\n');
+plot_expected_value_evolution(history_data, tasks, Value_Params);
+
+%% 绘制联盟效用演化图（基于实际需求）
+fprintf('绘制联盟效用演化图（基于实际需求）...\n');
+plot_coalition_utility_evolution(history_data, tasks, Value_Params);
+
+%% 绘制效用对比图（实际需求 vs 期望需求）
+fprintf('绘制效用对比图（实际需求 vs 期望需求）...\n');
+plot_utility_comparison(history_data, tasks, Value_Params, agents, Value_data);
+
+%% 绘制智能体任务分配图
+fprintf('绘制智能体任务分配与资源使用图...\n');
+plot_agent_task_assignment(Value_data, agents, tasks, Value_Params);

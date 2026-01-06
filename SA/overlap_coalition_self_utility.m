@@ -40,13 +40,27 @@ end
 
 %% 2. 计算基于信念的期望资源需求
 if ~isfield(Value_Params, 'task_type_demands') || isempty(Value_Params.task_type_demands)
+    % 回退：使用任务的确定需求
     expected_demand = tasks(task_m).resource_demand;
 else
     b = agent_belief(task_m, :);
     num_types = size(Value_Params.task_type_demands, 1);
-    expected_demand = zeros(1, Value_Params.K);
-    for t = 1:min(num_types, length(b))
-        expected_demand = expected_demand + b(t) * Value_Params.task_type_demands(t, :);
+    
+    % ========== 使用分位数法计算期望需求 ==========
+    % 相比期望值法，分位数法能更好地处理不确定性
+    % 特别是在需求差异大、偏差高的场景下
+    % =============================================
+    if isfield(Value_Params, 'resource_confidence') && Value_Params.resource_confidence > 0
+        % 使用分位数法
+        expected_demand = calculate_demand_quantile(b(1:num_types), ...
+                                                     Value_Params.task_type_demands, ...
+                                                     Value_Params.resource_confidence);
+    else
+        % 回退到期望值法（向后兼容）
+        expected_demand = zeros(1, Value_Params.K);
+        for t = 1:min(num_types, length(b))
+            expected_demand = expected_demand + b(t) * Value_Params.task_type_demands(t, :);
+        end
     end
 end
 
@@ -63,11 +77,12 @@ for j = 1:Value_Params.K
     if expected_R_j_m > 1e-9
         % 计算联盟中所有成员对资源类型j的分配总量（从SC中读取）
         total_allocated_j = sum(SC{task_m}(:, j));
-        D_C = D_C + (total_allocated_j / expected_R_j_m);
+        % 单个资源类型的完成度，超过需求则截断到1.0
+        resource_ratio = min(total_allocated_j / expected_R_j_m, 1.0);
+        D_C = D_C + resource_ratio;
     end
 end
 D_C = D_C / Z_c;
-D_C = min(D_C, 1.0);
 
 %% 4. 计算资源贡献比例 r_n(C) = |A_m^(n)| / Σ|A_m^(i)|
 % |A_m^(n)|: 智能体n对任务m的资源分配量（向量的模）

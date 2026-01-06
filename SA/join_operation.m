@@ -59,10 +59,26 @@ for r = 1:Value_Params.K
     [SC_P, SC_Q, R_agent_P, R_agent_Q] = join_changes(Value_data, agents, Value_Params, target, agentID, r);
     
     %% 2) 可行性检测：不可行直接跳过，继续下一种资源类型
-    [feasible, ~] = validate_feasibility(Value_data, agents, tasks, Value_Params, agentID, SC_P, SC_Q, R_agent_P, R_agent_Q, target, r);
+    [feasible, info] = validate_feasibility(Value_data, agents, tasks, Value_Params, agentID, SC_P, SC_Q, R_agent_P, R_agent_Q, target, r);
     if ~feasible
         if verbose
-            fprintf('智能体%d: 资源类型%d加入任务%d不可行\n', agentID, r, target);
+            % 解释不可行原因
+            reason_str = info.reason;
+            switch reason_str
+                case 'agent_not_found'
+                    reason_detail = '智能体不存在';
+                case 'bad_R_agent_Q_size'
+                    reason_detail = '资源矩阵维度错误';
+                case 'negative_allocation'
+                    reason_detail = '资源分配为负';
+                case 'capacity_exceeded'
+                    reason_detail = '超出资源容量';
+                case 'energy_insufficient'
+                    reason_detail = '能量不足';
+                otherwise
+                    reason_detail = reason_str;
+            end
+            fprintf('智能体%d: 资源类型%d加入任务%d不可行（原因：%s）\n', agentID, r, target, reason_detail);
         end
         continue;
     end
