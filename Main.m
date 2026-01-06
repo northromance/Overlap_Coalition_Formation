@@ -21,13 +21,13 @@ WORLD.value=[300,500,1000];    % 任务价值候选集
 
 % 基本参数
 N = 8;                          % 智能体数量
-M = 5;                          % 任务数量
+M = 6;                          % 任务数量
 K = 6;                          % 资源类型数量
 num_resources = K;              % 资源种类数量（与K保持一致）
 num_task_types = 3;             % 任务类型数量
 max_resource_value = 8;         % 智能体资源的最大随机值
 min_resource_value = 4;         % 智能体资源的最小随机值
-Emax_init = 1000;               % 智能体最大能量的初始化基准值
+Emax_init = 500;               % 智能体最大能量的初始化基准值
 task_type_demands_range = [6, 8];  % 任务类型对每种资源需求量的随机范围0
 AddPara.control = 1;            % 控制参数（用于算法流程控制）
 
@@ -47,6 +47,10 @@ SA_Temperature = 100.0;         % 初始温度
 SA_alpha = 0.95;                % 温度衰减率
 SA_Tmin = 0.01;                 % 最小温度
 SA_max_stable_iterations = 5;   % 最大稳定迭代次数
+
+% 观测参数
+obs_times = 20;  % 每个任务的观测次数
+num_rounds = 20;  % 游戏总轮数
 
 %% 初始化任务类型的资源需求
 % task_type_demands: 任务类型资源需求矩阵 (T×K)
@@ -97,11 +101,12 @@ for i = 1:N
 end
 
 %% 初始化算法参数结构
-Value_Params = init_value_params(N, M, K, task_type_demands, ...
-                                  SA_Temperature, SA_alpha, SA_Tmin, SA_max_stable_iterations);
+Value_Params = init_value_params(N, M, K, num_task_types, task_type_demands, ...
+                                  SA_Temperature, SA_alpha, SA_Tmin, SA_max_stable_iterations, ...
+                                  obs_times, num_rounds);
 
 %% 运行联盟形成算法
-[Value_data,Rcost,cost_sum,net_profit]= SA_Value_main(agents,tasks,AddPara,Value_Params);
+[Value_data, history_data] = SA_Value_main(agents,tasks,AddPara,Value_Params);
 
 toc
 
@@ -242,6 +247,73 @@ for j=1:Value_Params.M
     lianmengchengyuan(j).member=find(Value_data(1).coalitionstru(j,:)~=0);  % 找到任务j的联盟成员（智能体ID列表）
 end
 
+
+%% 打印信念演化和观测统计
+fprintf('\n========================================\n');
+fprintf('     智能体信念演化和观测统计\n');
+fprintf('========================================\n\n');
+
+% 为每个智能体显示信念演化
+for i = 1:N
+    fprintf('\n【智能体 A%d 的信念演化】\n', i);
+    fprintf('----------------------------------------\n');
+    
+    % 为每个任务显示信念和观测的演化
+    for j = 1:M
+        fprintf('\n任务 T%d (真实价值=%d):\n', j, tasks(j).value);
+        
+        % 打印表头
+        fprintf('  轮次 | ');
+        for v_idx = 1:num_task_types
+            fprintf('信念[%d] | ', WORLD.value(v_idx));
+        end
+        fprintf('期望价值 | ');
+        for v_idx = 1:num_task_types
+            fprintf('观测[%d] | ', WORLD.value(v_idx));
+        end
+        fprintf('总观测\n');
+        
+        fprintf('  -----|');
+        for v_idx = 1:num_task_types
+            fprintf('--------|');
+        end
+        fprintf('---------|');
+        for v_idx = 1:num_task_types
+            fprintf('--------|');
+        end
+        fprintf('------\n');
+        
+        % 打印每轮的数据
+        for round = 1:num_rounds
+            belief = history_data.rounds(round).agents(i).belief(j, :);
+            obs = history_data.rounds(round).agents(i).observations(j, :);
+            
+            % 计算期望价值
+            expected_value = sum(belief .* WORLD.value);
+            
+            fprintf('  %4d | ', round);
+            for v_idx = 1:num_task_types
+                fprintf(' %6.3f | ', belief(v_idx));
+            end
+            fprintf(' %7.1f | ', expected_value);
+            for v_idx = 1:num_task_types
+                fprintf('  %5d | ', obs(v_idx));
+            end
+            fprintf('%5d\n', sum(obs));
+        end
+        
+        % 显示最终信念统计
+        final_belief = history_data.rounds(num_rounds).agents(i).belief(j, :);
+        final_expected = sum(final_belief .* WORLD.value);
+        fprintf('  ----\n');
+        fprintf('  最终期望价值: %.1f (真实值: %d, 偏差: %.1f)\n', ...
+                final_expected, tasks(j).value, final_expected - tasks(j).value);
+    end
+    fprintf('\n');
+end
+
+fprintf('========================================\n\n');
+
 %% 绘图
 % 可视化联盟形成结果、智能体-任务分配等
-plot_main_results(agents, tasks, lianmengchengyuan, Value_data, N, M);
+plot_main_results(agents, tasks, lianmengchengyuan, history_data, N, M, num_rounds, WORLD.value);

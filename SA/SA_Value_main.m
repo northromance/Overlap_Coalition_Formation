@@ -1,5 +1,14 @@
-function [Value_data,Rcost,cost_sum,net_profit, initial_coalition]= SA_Value_main(agents,tasks,AddPara,Value_Params)
+function [Value_data, history_data]= SA_Value_main(agents,tasks,AddPara,Value_Params)
 % SA_Value_main - 基于模拟退火的重叠联盟形成主函数
+%
+% 输出参数：
+%   Value_data    - 最终智能体状态（联盟结构、信念等）
+%   history_data  - 历史记录结构体，包含：
+%                   .belief(round, agent, task, :) - 每轮每个智能体对每个任务的信念分布
+%                   .coalition_structure(round)     - 每轮的联盟结构
+%                   .Rcost(round)                   - 每轮的路径成本
+%                   .cost_sum(round)                - 每轮的总成本
+%                   .net_profit(round)              - 每轮的净收益
 
 %% 初始化智能体数据结构
 for i=1:Value_Params.N
@@ -8,7 +17,7 @@ for i=1:Value_Params.N
     Value_data(i).iteration=0;%联盟改变次数
     Value_data(i).unif=0;%均匀随机变量
     Value_data(i).coalitionstru=zeros(Value_Params.M+1,Value_Params.N);
-    Value_data(i).initbelief=zeros(Value_Params.M+1,3);
+    Value_data(i).initbelief=zeros(Value_Params.M+1,Value_Params.task_type);
 
     % 初始化资源分配矩阵 (M×K)
     Value_data(i).resources_matrix = zeros(Value_Params.M, Value_Params.K);
@@ -37,7 +46,7 @@ end
 %% 初始化信念分布（均匀分布）
 for i=1:Value_Params.N
     for j=1:Value_Params.M
-        Value_data(i).initbelief(j,1:end)=[1/3,1/3,1/3]';  % 均匀先验信念
+        Value_data(i).initbelief(j,1:end)=ones(Value_Params.task_type,1)/Value_Params.task_type;  % 均匀先验信念
     end
 end
 % 初始化认为其他机器人的信念值
@@ -50,7 +59,7 @@ end
 %% 初始化观测矩阵
 for i=1:Value_Params.N
     for j=1:Value_Params.M
-        for k=1:3
+        for k=1:Value_Params.task_type
             Value_data(i).observe(j,k)=0;        % 当前观测计数
             Value_data(i).preobserve(j,k)=0;     % 前次观测计数
             summatrix(j,k)=0;                    % 全局观测累计
@@ -63,12 +72,32 @@ for i=1:Value_Params.N
     Value_data(i).resources = agents(i).resources;  % 赋予智能体资源
 end
 
-%% 主循环：50轮游戏迭代
-for counter=1:50
+%% 初始化历史记录结构体
+% 结构说明：按轮次组织数据
+%   - history_data.rounds(counter).agents(i).belief(j,:) - 第counter轮，智能体i对任务j的信念
+%   - history_data.rounds(counter).coalition_structure    - 第counter轮的联盟结构
+%   - history_data.rounds(counter).Rcost                  - 第counter轮的路径成本
+%   - history_data.rounds(counter).cost_sum               - 第counter轮的总成本
+%   - history_data.rounds(counter).net_profit             - 第counter轮的净收益
+
+% 预分配结构体数组
+for round = 1:Value_Params.num_rounds
+    for i = 1:Value_Params.N
+        history_data.rounds(round).agents(i).belief = zeros(Value_Params.M, Value_Params.task_type);
+        history_data.rounds(round).agents(i).observations = zeros(Value_Params.M, Value_Params.task_type);
+    end
+    history_data.rounds(round).coalition_structure = [];
+    history_data.rounds(round).Rcost = 0;
+    history_data.rounds(round).cost_sum = 0;
+    history_data.rounds(round).net_profit = 0;
+end
+
+%% 主循环：游戏迭代
+for counter=1:Value_Params.num_rounds
+    %% 记录当前轮次的信念和观测次数到历史记录
     for i=1:Value_Params.N
-        for j=1:Value_Params.M
-            Value_data(i).tasks(j).prob(counter,:)=Value_data(i).initbelief(j,1:end);  % 记录信念概率
-        end
+        history_data.rounds(counter).agents(i).belief = Value_data(i).initbelief(1:Value_Params.M, :);
+        history_data.rounds(counter).agents(i).observations = Value_data(i).observe(1:Value_Params.M, :);
     end
 
     % SA迭代初始化
@@ -134,6 +163,14 @@ for counter=1:50
         end
     end
 
+    %% 记录本轮联盟结构
+    history_data.rounds(counter).coalition_structure = final_coalitionstru;
+    
+    % TODO: 成本和收益计算（暂时不实现）
+    % history_data.rounds(counter).Rcost - 路径成本
+    % history_data.rounds(counter).cost_sum - 总成本
+    % history_data.rounds(counter).net_profit - 净收益
+    
 
     %% 提取各智能体参与的任务集合（重叠联盟）
     % 说明：在“重叠联盟”下，一个智能体可以同时参与多个任务。
@@ -166,17 +203,50 @@ for counter=1:50
             % 非真实价值的索引(长度=2)
             nontaskindex = find(tasks(taskId).value ~= tasks(taskId).WORLD.value);
 
-            for m = 1:20
-                % 采样一次随机数，决定本次观测结果落在哪个类别
-                % - 概率 detprob：观测为真实价值
-                % - 剩余概率：误检到两个非真实价值类别(按原代码阈值划分)
+            for m = 1:Value_Params.obs_times
+                % ========== 基于价值接近度的观测模型 ==========
+                % 更符合现实：误检更倾向于接近真实值的类别
+                %
+                % 模型设计：
+                %   1. 正确检测概率 = detprob
+                %   2. 误检概率 = 1 - detprob，按价值接近度分配
+                %      误检概率 ∝ 1/|价值差异|
+                %
+                % 例：detprob=0.9, 真值=300, 候选=[300,500,1000]
+                %   误检总概率 = 0.1
+                %   距离：d1=|500-300|=200, d2=|1000-300|=700
+                %   权重：w1=1/200=0.005, w2=1/700≈0.00143
+                %   归一化：w1'=0.778, w2'=0.222
+                %   最终：P(300)=0.9, P(500)≈0.078, P(1000)≈0.022
+                %   期望 = 0.9*300 + 0.078*500 + 0.022*1000 ≈ 331 ✓
+                % ==============================================
+                
                 r = rand;
-                if r <= agents(i).detprob                                       % 正确检测
+                if r <= agents(i).detprob
+                    % 正确检测
                     Value_data(i).observe(taskId, taskindex) = Value_data(i).observe(taskId, taskindex) + 1;
-                elseif (agents(i).detprob < r) && (r <= (1 - 1/2*agents(i).detprob))  % 误检1
-                    Value_data(i).observe(taskId, nontaskindex(1)) = Value_data(i).observe(taskId, nontaskindex(1)) + 1;
-                else                                                             % 误检2
-                    Value_data(i).observe(taskId, nontaskindex(2)) = Value_data(i).observe(taskId, nontaskindex(2)) + 1;
+                else
+                    % 误检：根据价值接近度分配概率
+                    true_value = tasks(taskId).value;
+                    
+                    % 计算两个误检值与真值的距离
+                    dist1 = abs(tasks(taskId).WORLD.value(nontaskindex(1)) - true_value);
+                    dist2 = abs(tasks(taskId).WORLD.value(nontaskindex(2)) - true_value);
+                    
+                    % 权重与距离成反比（加小量避免除零）
+                    weight1 = 1 / (dist1 + 1);
+                    weight2 = 1 / (dist2 + 1);
+                    
+                    % 归一化为概率
+                    total_weight = weight1 + weight2;
+                    prob_misdetect1 = weight1 / total_weight;
+                    
+                    % 根据概率分配误检类别
+                    if rand <= prob_misdetect1
+                        Value_data(i).observe(taskId, nontaskindex(1)) = Value_data(i).observe(taskId, nontaskindex(1)) + 1;
+                    else
+                        Value_data(i).observe(taskId, nontaskindex(2)) = Value_data(i).observe(taskId, nontaskindex(2)) + 1;
+                    end
                 end
             end
         end
@@ -186,7 +256,7 @@ for counter=1:50
     % summatrix(j,k) 维护“全体智能体对任务 j 的新观测增量”的累计结果。
     % 这里用 observe - preobserve 来提取“本轮新增观测”，避免重复累计。
     for j=1:Value_Params.M
-        for k=1:3
+        for k=1:Value_Params.task_type
             for i=1:Value_Params.N
                 summatrix(j,k)=summatrix(j,k)+ Value_data(i).observe(j,  k)-Value_data(i).preobserve(j,  k);  % 累计新观测
             end
@@ -199,7 +269,7 @@ for counter=1:50
     % - observe：记录“当前同步后的观测”(后续用于更新 Dirichlet 后验)
     for i=1:Value_Params.N
         for j=1:Value_Params.M
-            for k=1:3
+            for k=1:Value_Params.task_type
                 Value_data(i).preobserve(j,k)= summatrix(j,k);  % 更新前次观测
                 Value_data(i).observe(j,  k)= summatrix(j,k);   % 更新当前观测
             end
@@ -209,7 +279,11 @@ for counter=1:50
     %% 根据观测更新信念（Dirichlet后验）
     for i=1:Value_Params.N
         for j=1:Value_Params.M
-            Value_data(i).initbelief(j,1:end)=drchrnd([1+Value_data(i).observe(j,1),1+Value_data(i).observe(j,2),1+Value_data(i).observe(j,3)],1)';  % Dirichlet采样
+            alpha_params = ones(1, Value_Params.task_type);
+            for k=1:Value_Params.task_type
+                alpha_params(k) = 1 + Value_data(i).observe(j,k);
+            end
+            Value_data(i).initbelief(j,1:end)=drchrnd(alpha_params,1)';  % Dirichlet采样
         end
     end
 
@@ -219,12 +293,6 @@ for counter=1:50
             Value_data(i).other{j}.initbelief = Value_data(j).initbelief;  % 智能体i更新其对智能体j信念的认知
         end
     end
-
-
-    % 设置未使用输出参数
-    Rcost = [];       % 路径成本（保留接口）
-    cost_sum = [];    % 总成本（保留接口）
-    net_profit = [];  % 净收益（保留接口）
 
 end
 end

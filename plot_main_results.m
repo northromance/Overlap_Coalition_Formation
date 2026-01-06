@@ -1,11 +1,13 @@
-function plot_main_results(agents, tasks, lianmengchengyuan, Value_data, N, M)
+function plot_main_results(agents, tasks, lianmengchengyuan, history_data, N, M, num_rounds, task_values)
 %PLOT_MAIN_RESULTS Draw coalition structure and expected revenue curves.
 %
 % Inputs:
 %   agents, tasks              : arrays from Main
 %   lianmengchengyuan          : struct array with field .member
-%   Value_data                 : output from SA_Value_main
+%   history_data               : history data from SA_Value_main
 %   N, M                       : number of agents/tasks
+%   num_rounds                 : total game rounds
+%   task_values                : vector of task values [low, medium, high]
 
 chFont = local_pick_chinese_font();
 
@@ -22,23 +24,26 @@ title('联盟结构图 (Coalition Structure)', 'FontName', chFont, 'FontSize', 14);
 sumprob = struct();
 for i = 1:N
     for j = 1:M
-        for k = 1:50
-            sumprob(i, j).value(k) = Value_data(i).tasks(j).prob(k, 1) * 300 + ...
-                                  Value_data(i).tasks(j).prob(k, 2) * 500 + ...
-                                  Value_data(i).tasks(j).prob(k, 3) * 1000;
+        for k = 1:num_rounds
+            % 从history_data.rounds按轮读取信念概率
+            belief_probs = history_data.rounds(k).agents(i).belief(j, :);
+            sumprob(i, j).value(k) = belief_probs(1) * task_values(1) + ...
+                                     belief_probs(2) * task_values(2) + ...
+                                     belief_probs(3) * task_values(3);
         end
     end
 end
 
 %% 绘制期望收益演化曲线
-time = 1:4:50;
+plot_interval = max(1, floor(num_rounds / 12));  % 自动确定绘图间隔，保持图表清晰
+time = 1:plot_interval:num_rounds;
 markers = {'-+', '-o', '-x', '-*', '-v', '-^', '-s', '-d', '-p', '-h'};
 for j = 1:M
     figure('Name', sprintf('Task %d: Expected Revenue', j), 'NumberTitle', 'off');
     hold on;
     legendLabels = cell(1, N);
     for i = 1:N
-        plot(time, sumprob(i, j).value(1:4:50), markers{mod(i - 1, length(markers)) + 1});
+        plot(time, sumprob(i, j).value(1:plot_interval:num_rounds), markers{mod(i - 1, length(markers)) + 1});
         legendLabels{i} = sprintf('$r_{%d}$', i);
     end
     hold off;
