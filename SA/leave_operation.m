@@ -41,7 +41,7 @@ original_resources_matrix = Value_data.resources_matrix;
 if all(Value_data.resources_matrix(:) <= tol)
     % 该智能体未参与任何任务，无需撤出
     if verbose
-        fprintf('智能体%d: 未分配任何资源，无需退出操作\n', agentID);
+        % fprintf('智能体%d: 未分配任何资源，无需退出操作\n', agentID);
     end
     return;
 end
@@ -136,7 +136,7 @@ for r = 1:K
             % 情况1：ΔU > 0，撤出后效用提升，直接接受
             accept_leave = true;
             if verbose
-                fprintf('智能体%d: 退出任务%d(资源类型%d), ΔU=%.4f > 0\n', agentID, sourceTask, r, delta_U);
+                % fprintf('智能体%d: 退出任务%d(资源类型%d), ΔU=%.4f > 0\n', agentID, sourceTask, r, delta_U);
             end
         else
             % 情况2：ΔU <= 0，撤出后效用下降，使用模拟退火概率接受差解
@@ -154,14 +154,14 @@ for r = 1:K
                 % 以概率 acceptProb 接受差解
                 accept_leave = true;
                 if verbose
-                    fprintf('智能体%d: 退出任务%d(资源类型%d), ΔU=%.4f, SA接受概率=%.4f\n', ...
-                        agentID, sourceTask, r, delta_U, acceptProb);
+                    % fprintf('智能体%d: 退出任务%d(资源类型%d), ΔU=%.4f, SA接受概率=%.4f\n', ...
+                    %     agentID, sourceTask, r, delta_U, acceptProb);
                 end
             else
                 % 拒绝差解
                 if verbose
-                    fprintf('智能体%d: 拒绝退出任务%d(资源类型%d), ΔU=%.4f, SA拒绝\n', ...
-                        agentID, sourceTask, r, delta_U);
+                    % fprintf('智能体%d: 拒绝退出任务%d(资源类型%d), ΔU=%.4f, SA拒绝\n', ...
+                    %     agentID, sourceTask, r, delta_U);
                 end
             end
         end
@@ -193,7 +193,7 @@ for r = 1:K
             % 12.3) 设置撤出成功标志，打印日志，并跳出所有循环
             incremental_leave = 1;  % 标记本轮成功执行了撤出
             if verbose
-                fprintf('  资源分配变化: 任务%d释放资源类型%d数量%.2f\n', sourceTask, r, releasedAmount);
+                % fprintf('  资源分配变化: 任务%d释放资源类型%d数量%.2f\n', sourceTask, r, releasedAmount);
             end
             break;  % 跳出候选任务循环
         else

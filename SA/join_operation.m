@@ -94,7 +94,7 @@ for r = 1:Value_Params.K
     if delta_U > 0
         % 如果效用差大于0，直接加入联盟
         accept_join = true;
-        fprintf('智能体%d: 加入任务%d(资源类型%d), ΔU=%.4f > 0\n', agentID, target, r, delta_U);
+        % fprintf('智能体%d: 加入任务%d(资源类型%d), ΔU=%.4f > 0\n', agentID, target, r, delta_U);
     else
         % 如果效用差 <= 0，使用模拟退火概率判断是否加入联盟（可能接受差解）
         T = Value_Params.Temperature;  % 从参数中获取温度
@@ -104,11 +104,11 @@ for r = 1:Value_Params.K
         % 根据随机数判断是否加入联盟
         if rand() < P_join
             accept_join = true;
-            fprintf('智能体%d: 加入任务%d(资源类型%d), ΔU=%.4f, SA接受概率=%.4f\n', ...
-                agentID, target, r, delta_U, P_join);
+            % fprintf('智能体%d: 加入任务%d(资源类型%d), ΔU=%.4f, SA接受概率=%.4f\n', ...
+            %     agentID, target, r, delta_U, P_join);
         else
-            fprintf('智能体%d: 拒绝加入任务%d(资源类型%d), ΔU=%.4f, SA拒绝\n', ...
-                agentID, target, r, delta_U);
+            % fprintf('智能体%d: 拒绝加入任务%d(资源类型%d), ΔU=%.4f, SA拒绝\n', ...
+            %     agentID, target, r, delta_U);
         end
     end
     
@@ -151,11 +151,11 @@ for r = 1:Value_Params.K
         Value_data.coalitionstru = coalition_after;
         
         incremental_join = 1;
-        
-        % 打印关键变化
-        fprintf('  资源分配变化: 任务%d获得资源类型%d的数量%.2f\n', ...
-            target, r, R_agent_Q(target, r));
-        
+        % 
+        % % 打印关键变化
+        % fprintf('  资源分配变化: 任务%d获得资源类型%d的数量%.2f\n', ...
+        %     target, r, R_agent_Q(target, r));
+        % 
         % 一旦找到可接受的加入操作就跳出
         break;
     else
