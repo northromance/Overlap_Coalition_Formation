@@ -147,7 +147,7 @@ for counter=1:Value_Params.num_rounds
         for ii = 1:Value_Params.N
             % 计算已分配资源和缺口
             
-            % 计算已经分配的资源和剩余资源的缺口
+            % 计算智能体已经分配出去的资源和剩余资源的缺口
             [allocated_resources, resource_gap] = calc_gaps(Value_data(ii), agents, tasks, Value_Params);
             
             % 重叠联盟形成

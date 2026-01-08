@@ -1,16 +1,5 @@
 function [Value_data, incremental_join] = join_operation(Value_data, agents, tasks, Value_Params, probs)
-% join_operation - 智能体尝试加入任务（资源分配）
-%
-% 输入:
-%   Value_data   - 当前智能体数据结构
-%   agents       - 所有智能体结构数组
-%   tasks        - 所有任务结构数组
-%   Value_Params - 全局参数（N, M, K, Temperature等）
-%   probs        - K×M矩阵，probs(r,j)=资源类型r选择任务j的概率
-%
-% 输出:
-%   Value_data        - 更新后的智能体数据
-%   incremental_join  - 是否成功加入（1=成功, 0=失败）
+
 
 incremental_join = 0;
 agentID = Value_data.agentID;

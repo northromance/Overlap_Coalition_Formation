@@ -32,13 +32,13 @@ Emax_init = 1000;               % 智能体最大能量的初始化基准值
 AddPara.control = 1;            % 控制参数（用于算法流程控制）
 
 % 资源执行时间参数
-resource_exec_time = [30 40 50 60 35 45];  % 每种资源类型所需的执行时间
+resource_exec_time = [50 65 50 60 35 45];  % 每种资源类型所需的执行时间
 
 % 智能体属性参数
 agent_velocity = 2;             % 智能体移动速度
 agent_detprob_min = 0.9;       % 智能体检测概率最小值
 agent_detprob_max = 1.0;        % 智能体检测概率最大值
-agent_Emax_min = 1000;           % 智能体最大能量最小值
+agent_Emax_min = 300;           % 智能体最大能量最小值
 agent_Emax_range = 50;          % 智能体最大能量随机范围
 agent_fuel = 1;                 % 智能体燃料消耗率
 agent_beta = 1;                 % 智能体执行能耗系数
@@ -50,8 +50,8 @@ SA_Tmin = 0.01;                 % 最小温度
 SA_max_stable_iterations = 5;   % 最大稳定迭代次数
 
 % 观测参数
-obs_times = 20;  % 每个任务的观测次数
-num_rounds = 20;  % 游戏总轮数
+obs_times = 50;  % 每个任务的观测次数
+num_rounds = 50;  % 游戏总轮数
 
 % ========================================
 resource_confidence = 0.7;     % 资源需求计算的置信水平
@@ -69,13 +69,13 @@ resource_confidence = 0.7;     % 资源需求计算的置信水平
 task_type_demands = zeros(num_task_types, num_resources);
 
 % 类型1：低需求 (1-2单位)
-task_type_demands(1, :) = randi([3, 4], 1, num_resources);
+task_type_demands(1, :) = randi([0, 4], 1, num_resources);
 
 % 类型2：中等需求 (2-3单位)
-task_type_demands(2, :) = randi([5, 6], 1, num_resources);
+task_type_demands(2, :) = randi([0, 6], 1, num_resources);
 
 % 类型3：高需求 (3-5单位)
-task_type_demands(3, :) = randi([7, 8], 1, num_resources);
+task_type_demands(3, :) = randi([0, 8], 1, num_resources);
 
 %% 初始化资源执行时间
 % 计算各任务类型的资源执行完所需的全部时间
@@ -92,15 +92,7 @@ task_type_duration = sum(task_type_duration_by_resource, 2)';
 %% 初始化任务和智能体
 % 任务结构体数组初始化
 task_priorities = randperm(M);  % 生成任务优先级的随机排列
-for j = 1:M
-    % ========== 任务类型、价值、需求的一致性 ==========
-    % 设计原则：类型决定价值和需求
-    %   类型1 → 价值300 + 对应需求
-    %   类型2 → 价值500 + 对应需求
-    %   类型3 → 价值1000 + 对应需求
-    % 这样智能体观测到的价值类型和资源需求类型是一致的
-    % ================================================
-    
+for j = 1:M    
     tasks(j).id = j;                        % 任务ID
     tasks(j).priority = task_priorities(j); % 任务优先级（1~M的排列）
     tasks(j).x = round(rand(1) * (WORLD.XMAX - WORLD.XMIN) + WORLD.XMIN);  % 任务X坐标
@@ -111,7 +103,8 @@ for j = 1:M
     tasks(j).value = WORLD.value(tasks(j).type);                           % 类型决定价值：类型1→300, 类型2→500, 类型3→1000
     tasks(j).resource_demand = task_type_demands(tasks(j).type, :);        % 类型决定资源需求（1×K向量）
     tasks(j).duration_by_resource = task_type_duration_by_resource(tasks(j).type, :);  % 按资源分解的执行时间
-    tasks(j).duration = sum(tasks(j).duration_by_resource);                % 任务总执行时间
+    % 修改：并行执行模型下，任务总时长由最耗时资源的执行时间决定（max）而非求和（sum）
+    tasks(j).duration = max(tasks(j).duration_by_resource);                % 任务总执行时间 (标称值，实际执行时间取决于分配资源的使用情况)
     tasks(j).WORLD = WORLD;                                                % 任务所在世界空间参数
 end
 
@@ -200,3 +193,14 @@ plot_utility_comparison(history_data, tasks, Value_Params, agents, Value_data);
 %% 绘制智能体任务分配图
 fprintf('绘制智能体任务分配与资源使用图...\n');
 plot_agent_task_assignment(Value_data, agents, tasks, Value_Params);
+
+%% 显示和绘制任务执行调度信息
+fprintf('\n========================================\n');
+fprintf('显示任务执行调度信息...\n');
+display_task_schedule(Value_data, agents, tasks, Value_Params);
+
+fprintf('绘制任务调度甘特图...\n');
+plot_task_schedule_gantt(Value_data, agents, tasks, Value_Params);
+
+fprintf('绘制各智能体详细时间线...\n');
+plot_agent_timelines(Value_data, agents, tasks, Value_Params);
