@@ -32,8 +32,8 @@ function display_task_schedule(Value_data, agents, tasks, Value_Params)
         fprintf('  任务序列: %s\n', strjoin(task_names, ' -> '));
         
         % 打印详细时间表
-        fprintf('  %-8s %-10s %-10s %-10s %-10s\n', '任务', '到达时间', '开始时间', '执行时间', '完成时间');
-        fprintf('  %s\n', repmat('-', 1, 50));
+        fprintf('  %-8s %-10s %-10s %-10s %-10s %-10s\n', '任务', '到达时间', '等待时间', '开始时间', '执行时间', '完成时间');
+        fprintf('  %s\n', repmat('-', 1, 62));
         
         for ii = 1:numel(schedule.task_sequence)
             task_id = schedule.task_sequence(ii);
@@ -41,14 +41,21 @@ function display_task_schedule(Value_data, agents, tasks, Value_Params)
             start_time = schedule.start_times(ii);
             exec_time = schedule.execution_times(ii);
             comp_time = schedule.completion_times(ii);
+            wait_time = max(0, start_time - arr_time);
             
-            fprintf('  T%-7d %-10.2f %-10.2f %-10.2f %-10.2f\n', ...
-                task_id, arr_time, start_time, exec_time, comp_time);
+            fprintf('  T%-7d %-10.2f %-10.2f %-10.2f %-10.2f %-10.2f\n', ...
+                task_id, arr_time, wait_time, start_time, exec_time, comp_time);
         end
         
         % 打印汇总信息
-        fprintf('  %s\n', repmat('-', 1, 50));
+        fprintf('  %s\n', repmat('-', 1, 62));
         fprintf('  总飞行时间: %.2f\n', schedule.total_flight_time);
+        
+        % 检查是否有total_wait_time字段
+        if isfield(schedule, 'total_wait_time')
+            fprintf('  总等待时间: %.2f\n', schedule.total_wait_time);
+        end
+        
         fprintf('  总执行时间: %.2f\n', schedule.total_execution_time);
         fprintf('  总能量消耗: %.2f\n', schedule.total_energy);
         fprintf('\n');

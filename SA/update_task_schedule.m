@@ -79,7 +79,6 @@ end
 
 function t_exec = calc_task_exec_time(SC, task_idx, task, R_agent, Value_Params, tol)
     SC_m = SC{task_idx};
-    participants = find(any(SC_m > tol, 2));
     
     if isfield(task, 'duration_by_resource') && ~isempty(task.duration_by_resource)
         dur = task.duration_by_resource(:)';
@@ -87,11 +86,9 @@ function t_exec = calc_task_exec_time(SC, task_idx, task, R_agent, Value_Params,
         dur = ones(1, Value_Params.K) * 10;
     end
     
-    if numel(participants) > 1
-        usedTypes = sum(SC_m, 1) > tol;
-    else
-        usedTypes = R_agent(task_idx, :) > tol;
-    end
+    % Always calculate usedTypes based on the Coalition Structure (SC) for this task
+    % SC_m is N x K matrix of resources allocated to task_idx
+    usedTypes = sum(SC_m, 1) > tol;
     
     dur = dur(1:min(numel(dur), Value_Params.K));
     usedTypes = usedTypes(1:numel(dur));

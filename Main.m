@@ -50,8 +50,8 @@ SA_Tmin = 0.01;                 % 最小温度
 SA_max_stable_iterations = 5;   % 最大稳定迭代次数
 
 % 观测参数
-obs_times = 20;  % 每个任务的观测次数
-num_rounds = 20;  % 游戏总轮数
+obs_times = 50;  % 每个任务的观测次数
+num_rounds = 50;  % 游戏总轮数
 
 % ========================================
 resource_confidence = 0.7;     % 资源需求计算的置信水平
@@ -103,7 +103,8 @@ for j = 1:M
     tasks(j).value = WORLD.value(tasks(j).type);                           % 类型决定价值：类型1→300, 类型2→500, 类型3→1000
     tasks(j).resource_demand = task_type_demands(tasks(j).type, :);        % 类型决定资源需求（1×K向量）
     tasks(j).duration_by_resource = task_type_duration_by_resource(tasks(j).type, :);  % 按资源分解的执行时间
-    tasks(j).duration = sum(tasks(j).duration_by_resource);                % 任务总执行时间
+    % 修改：并行执行模型下，任务总时长由最耗时资源的执行时间决定（max）而非求和（sum）
+    tasks(j).duration = max(tasks(j).duration_by_resource);                % 任务总执行时间 (标称值，实际执行时间取决于分配资源的使用情况)
     tasks(j).WORLD = WORLD;                                                % 任务所在世界空间参数
 end
 
@@ -200,3 +201,6 @@ display_task_schedule(Value_data, agents, tasks, Value_Params);
 
 fprintf('绘制任务调度甘特图...\n');
 plot_task_schedule_gantt(Value_data, agents, tasks, Value_Params);
+
+fprintf('绘制各智能体详细时间线...\n');
+plot_agent_timelines(Value_data, agents, tasks, Value_Params);

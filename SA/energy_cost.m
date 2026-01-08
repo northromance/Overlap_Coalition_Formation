@@ -177,7 +177,12 @@ function [t_fly_total, t_wait_total, t_exec_total, arrivals] = calc_with_global_
         t_wait_total = t_wait_total + wait_time;
         
         % --- 该智能体在该任务上的执行时间 ---
-        R_row = R_agent(task_id, :);
+        if ~isempty(SC) && task_id <= numel(SC) && ~isempty(SC{task_id})
+            SC_m = SC{task_id};
+            R_row = SC_m(agentIdx, :);
+        else
+            R_row = R_agent(task_id, :);
+        end
         my_exec_time = calc_exec_time(tasks(task_id), R_row, Value_Params, tol);
         t_exec_total = t_exec_total + my_exec_time;
         

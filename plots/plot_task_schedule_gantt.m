@@ -44,33 +44,64 @@ function plot_task_schedule_gantt(Value_data, agents, tasks, Value_Params)
             % 更新最大时间
             max_time = max(max_time, comp_time);
             
-            % 绘制飞行阶段（虚线）
+            % 绘制飞行阶段（飞行：浅灰色框）
             if ii == 1
-                % 第一个任务从时间0开始飞行
                 fly_start = 0;
             else
                 fly_start = schedule.completion_times(ii-1);
             end
             
-            % 飞行+等待阶段（浅色）
-            if start_time > fly_start
-                rectangle('Position', [fly_start, y_base - bar_height/4, start_time - fly_start, bar_height/2], ...
-                    'FaceColor', [colors(task_id, :), 0.3], ...
-                    'EdgeColor', 'none');
+            % 获取到达时间 (等待开始时间)
+            if isfield(schedule, 'arrival_times')
+                arr_time = schedule.arrival_times(ii);
+            else
+                % 兼容旧数据: 如果没有arrival_times，假设没有等待，到达=开始
+                arr_time = start_time;
             end
             
-            % 执行阶段（深色实心）
-            rectangle('Position', [start_time, y_base - bar_height/2, exec_time, bar_height], ...
+            % 绘制纯飞行阶段 (灰色虚线，非常细)
+            if arr_time > fly_start + 1e-4
+                % 使用细线连接
+                plot([fly_start, arr_time], [y_base, y_base], ...
+                    'Color', [0.6, 0.6, 0.6], 'LineStyle', '--', 'LineWidth', 1.5);
+            end
+            
+            % 绘制等待阶段 (统一使用浅红色)
+            % 只有当等待时间显著(>0.1s)时才绘制，避免视觉干扰
+            if start_time > arr_time + 0.1
+                rectangle('Position', [arr_time, y_base - bar_height/3, start_time - arr_time, bar_height*2/3], ...
+                    'FaceColor', [1.0, 0.6, 0.6], ... % 浅红色
+                    'EdgeColor', 'none');
+                
+                % 如果等待时间较长，标注 "Wait"
+                if start_time - arr_time > max_time * 0.05
+                    text((arr_time + start_time)/2, y_base, 'Wait', ...
+                        'HorizontalAlignment', 'center', ...
+                        'VerticalAlignment', 'middle', ...
+                        'FontSize', 8, 'Color', 'k');
+                end
+            end
+            
+            % 执行阶段（任务色实心，高度略大）
+            % 为防止执行时间极短导致显示为细线，设置一个可视化的最小宽度
+            % 仅用于绘图显示，不改变逻辑数据
+            min_width = max(max_time * 0.015, 0.5); 
+            draw_width = max(exec_time, min_width);
+            
+            rectangle('Position', [start_time, y_base - bar_height/2, draw_width, bar_height], ...
                 'FaceColor', colors(task_id, :), ...
                 'EdgeColor', 'k', ...
                 'LineWidth', 1);
             
             % 在条形中显示任务ID
-            text(start_time + exec_time/2, y_base, sprintf('T%d', task_id), ...
-                'HorizontalAlignment', 'center', ...
-                'VerticalAlignment', 'middle', ...
-                'FontWeight', 'bold', ...
-                'Color', 'w');
+            % 只有当宽度足够时才显示文字
+            if draw_width > max_time * 0.03 || draw_width > 2.0
+                text(start_time + draw_width/2, y_base, sprintf('T%d', task_id), ...
+                    'HorizontalAlignment', 'center', ...
+                    'VerticalAlignment', 'middle', ...
+                    'FontWeight', 'bold', ...
+                    'Color', 'w');
+            end
         end
     end
     
