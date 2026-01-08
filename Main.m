@@ -5,6 +5,8 @@ clc;
 close all;
 tic
 
+
+% test 123
 %% 初始化参数
 SEED=2437;                    % 随机数种子，用于结果可复现
 rand('seed',SEED);
