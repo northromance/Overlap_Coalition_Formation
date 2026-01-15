@@ -1,5 +1,5 @@
-function [Value_data, history_data] = Qin2025_main(agents, tasks, AddPara, Value_Params)
-% QIN2025_MAIN - PSO-based scaffold (placeholder for future Qin2025 logic).
+function [Value_data, history_data] = PSO_main(agents, tasks, AddPara, Value_Params)
+% PSO_MAIN - PSO-based scaffold (placeholder for future Qin2025 logic).
 %   Optimizes total utility via particle swarm on membership + resource
 %   allocation encoding. Unknown/advanced parts are left as TODO for later.
 %
@@ -175,6 +175,7 @@ function [fitness, sol] = evaluate_particle(position, agents, tasks, Value_Param
     sol.total_utility = total_utility;
     sol.total_penalty = total_penalty;
 end
+
 
 % -------------------------------------------------------------------------
 function [Value_data, history_data] = build_outputs(sol, best_fitness, agents, tasks, Value_Params)
