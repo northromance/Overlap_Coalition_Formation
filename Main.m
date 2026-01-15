@@ -23,7 +23,7 @@ WORLD.ZMAX=0;                  % Z轴最大值（2D环境中未使用）
 WORLD.value=[800,1000,1500];    % 任务价值候选集
 
 % 基本参数
-N = 8;                          % 智能体数量
+N = 6;                          % 智能体数量
 M = 6;                          % 任务数量
 K = 6;                          % 资源类型数量
 num_resources = K;              % 资源种类数量（与K保持一致）
@@ -131,6 +131,8 @@ Value_Params = init_value_params(N, M, K, num_task_types, task_type_demands, ...
 %% 运行联盟形成算法
 [Value_data, history_data] = SA_Value_main(agents,tasks,AddPara,Value_Params);
 
+
+
 toc
 
 %% 打印联盟结构和资源分配
@@ -164,11 +166,18 @@ for j=1:Value_Params.M
 end
 
 %% 打印信念演化和观测统计
-display_belief_evolution(history_data, tasks, WORLD, N, M, num_task_types, num_rounds);
+% display_belief_evolution(history_data, tasks, WORLD, N, M, num_task_types, num_rounds);
 
 % %% 绘图
 % % 可视化联盟形成结果、智能体-任务分配等
-% plot_main_results(agents, tasks, lianmengchengyuan, history_data, N, M, num_rounds, WORLD.value);
+plot_main_results(agents, tasks, lianmengchengyuan, history_data, N, M, num_rounds, WORLD.value, Value_data);
+
+%% 动态显示机器人执行任务过程
+fprintf('播放机器人任务执行动画...\n');
+anim_options.speed_factor = 2.0;      % 动画速度（越大越快）
+anim_options.show_time = true;        % 显示时间
+anim_options.save_video = false;      % 是否保存为视频
+animate_agent_execution(agents, tasks, Value_data, anim_options);
 
 %% 分析分位数需求演化
 % 选择要分析的智能体和任务
@@ -181,28 +190,28 @@ fprintf('绘制联盟演化和任务完成度图表...\n');
 plot_coalition_evolution(history_data, tasks, Value_Params);
 
 %% 绘制任务期望收益演化图
-fprintf('绘制任务期望收益演化图...\n');
-plot_expected_value_evolution(history_data, tasks, Value_Params);
+% fprintf('绘制任务期望收益演化图...\n');
+% plot_expected_value_evolution(history_data, tasks, Value_Params);
 
-%% 绘制联盟效用演化图（基于实际需求）
-fprintf('绘制联盟效用演化图（基于实际需求）...\n');
-plot_coalition_utility_evolution(history_data, tasks, Value_Params);
+% %% 绘制联盟效用演化图（基于实际需求）
+% fprintf('绘制联盟效用演化图（基于实际需求）...\n');
+% plot_coalition_utility_evolution(history_data, tasks, Value_Params);
 
-%% 绘制效用对比图（实际需求 vs 期望需求）
-fprintf('绘制效用对比图（实际需求 vs 期望需求）...\n');
-plot_utility_comparison(history_data, tasks, Value_Params, agents, Value_data);
+% %% 绘制效用对比图（实际需求 vs 期望需求）
+% fprintf('绘制效用对比图（实际需求 vs 期望需求）...\n');
+% plot_utility_comparison(history_data, tasks, Value_Params, agents, Value_data);
 
-%% 绘制智能体任务分配图
-fprintf('绘制智能体任务分配与资源使用图...\n');
-plot_agent_task_assignment(Value_data, agents, tasks, Value_Params);
+% %% 绘制智能体任务分配图
+% fprintf('绘制智能体任务分配与资源使用图...\n');
+% plot_agent_task_assignment(Value_data, agents, tasks, Value_Params);
 
-%% 显示和绘制任务执行调度信息
-fprintf('\n========================================\n');
-fprintf('显示任务执行调度信息...\n');
-display_task_schedule(Value_data, agents, tasks, Value_Params);
+% %% 显示和绘制任务执行调度信息
+% fprintf('\n========================================\n');
+% fprintf('显示任务执行调度信息...\n');
+% display_task_schedule(Value_data, agents, tasks, Value_Params);
 
-fprintf('绘制任务调度甘特图...\n');
-plot_task_schedule_gantt(Value_data, agents, tasks, Value_Params);
+% fprintf('绘制任务调度甘特图...\n');
+% plot_task_schedule_gantt(Value_data, agents, tasks, Value_Params);
 
-fprintf('绘制各智能体详细时间线...\n');
-plot_agent_timelines(Value_data, agents, tasks, Value_Params);
+% fprintf('绘制各智能体详细时间线...\n');
+% plot_agent_timelines(Value_data, agents, tasks, Value_Params);

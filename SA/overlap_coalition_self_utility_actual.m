@@ -18,14 +18,14 @@ function individual_utility = overlap_coalition_self_utility_actual(n, task_m, S
     actual_demand = tasks(task_m).resource_demand;
 
     % 计算完成度 D_C
-    D_C = calc_completion_degree(SC{task_m}, actual_demand, Value_Params.K);
+    D_C = calc_task_completion_degree(SC{task_m}, actual_demand, Value_Params.K);
     if D_C == 0
         individual_utility = 0;
         return;
     end
 
     % 计算资源贡献比例 r_n(C)
-    r_n_C = calc_contribution_ratio(SC{task_m}, n, member_idx);
+    r_n_C = calc_resource_contribution_ratio(SC{task_m}, n, member_idx);
 
     % 使用实际价值
     V_C = tasks(task_m).value;
@@ -41,45 +41,28 @@ end
 
 %% ========== 辅助函数 ==========
 
-function D_C = calc_completion_degree(SC_m, demand, K)
-    Z_c = nnz(demand > 1e-9);
-    if Z_c == 0
-        D_C = 0;
-        return;
-    end
-    
-    D_C = 0;
-    for j = 1:K
-        if demand(j) > 1e-9
-            ratio = min(sum(SC_m(:, j)) / demand(j), 1.0);
-            D_C = D_C + ratio;
-        end
-    end
-    D_C = D_C / Z_c;
-end
-
-function r_n = calc_contribution_ratio(SC_m, n, members)
-    A_n = norm(SC_m(n, :));
-    total = sum(arrayfun(@(i) norm(SC_m(i, :)), members));
-    r_n = A_n / max(total, 1e-9);
-end
-
-function [t_wait, T_exec] = calc_energy_cost(n, task_m, SC, agents, tasks, Value_Params)
+function [t_fly, t_wait, T_exec] = calc_energy_cost(n, task_m, SC, agents, tasks, Value_Params)
+% 计算智能体的飞行时间、等待时间和执行时间
+    % 获取智能体参与的所有任务
     agent_tasks = find(cellfun(@(x) any(x(n, :) > 0), SC))';
     
     if isempty(agent_tasks) || ~ismember(task_m, agent_tasks)
+        t_fly = 0;
         t_wait = 0;
         T_exec = 0;
         return;
     end
     
+    % 构建资源分配矩阵
     R_agent = zeros(Value_Params.M, Value_Params.K);
     for m = 1:Value_Params.M
         R_agent(m, :) = SC{m}(n, :);
     end
     
-    [t_wait, ~, ~, ~, orderedTasks] = energy_cost(n, agent_tasks, agents, tasks, Value_Params, R_agent, SC);
+    % 调用能量计算（新接口：t_fly, T_exec, dist, energy, ordered, arrivals, t_wait）
+    [t_fly, ~, ~, ~, orderedTasks, ~, t_wait] = energy_cost(n, agent_tasks, agents, tasks, Value_Params, R_agent, SC);
     
+    % 计算到task_m为止的执行时间
     task_pos = find(orderedTasks == task_m, 1);
     T_exec = calc_exec_time_to_task(orderedTasks(1:task_pos), R_agent, tasks, Value_Params);
 end

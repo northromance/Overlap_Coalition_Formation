@@ -18,14 +18,14 @@ function individual_utility = overlap_coalition_self_utility(n, task_m, SC, agen
     expected_demand = get_expected_demand(task_m, tasks, Value_Params, agent_belief);
 
     % 计算完成度 D_C
-    D_C = calc_completion_degree(SC{task_m}, expected_demand, Value_Params.K);
+    D_C = calc_task_completion_degree(SC{task_m}, expected_demand, Value_Params.K);
     if D_C == 0
         individual_utility = 0;
         return;
     end
 
     % 计算资源贡献比例 r_n(C)
-    r_n_C = calc_contribution_ratio(SC{task_m}, n, member_idx);
+    r_n_C = calc_resource_contribution_ratio(SC{task_m}, n, member_idx);
 
     % 计算期望价值 V_C
     b = agent_belief(task_m, :);
@@ -61,29 +61,6 @@ function demand = get_expected_demand(task_m, tasks, Value_Params, belief)
     else
         demand = b(1:num_types) * Value_Params.task_type_demands;
     end
-end
-
-function D_C = calc_completion_degree(SC_m, demand, K)
-    Z_c = nnz(demand > 1e-9);
-    if Z_c == 0
-        D_C = 0;
-        return;
-    end
-    
-    D_C = 0;
-    for j = 1:K
-        if demand(j) > 1e-9
-            ratio = min(sum(SC_m(:, j)) / demand(j), 1.0);
-            D_C = D_C + ratio;
-        end
-    end
-    D_C = D_C / Z_c;
-end
-
-function r_n = calc_contribution_ratio(SC_m, n, members)
-    A_n = norm(SC_m(n, :));
-    total = sum(arrayfun(@(i) norm(SC_m(i, :)), members));
-    r_n = A_n / max(total, 1e-9);
 end
 
 function [t_fly, t_wait, T_exec] = calc_energy_cost(n, task_m, SC, agents, tasks, Value_Params)

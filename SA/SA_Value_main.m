@@ -222,18 +222,8 @@ for counter=1:Value_Params.num_rounds
             % 计算D_C
             Z_c = nnz(actual_demand > 1e-9);
             if Z_c > 0
-                D_C = 0;
-                for j = 1:Value_Params.K
-                    actual_R_j_m = actual_demand(j);
-                    if actual_R_j_m > 1e-9
-                        % 从SC中获取分配的资源总量
-                        total_allocated_j = sum(final_SC{m}(:, j));
-                        % 单个资源类型的完成度，超过需求则截断到1.0
-                        resource_ratio = min(total_allocated_j / actual_R_j_m, 1.0);
-                        D_C = D_C + resource_ratio;
-                    end
-                end
-                D_C = D_C / Z_c;
+                % 使用通用函数计算任务完成度
+                D_C = calc_task_completion_degree(final_SC{m}, actual_demand, Value_Params.K);
                 history_data.rounds(counter).task_completion(m) = D_C;
             end
         end
