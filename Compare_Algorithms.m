@@ -1,64 +1,64 @@
 clear; clc; close all;
 
 %% ========================================================================
-%  ¶àËã·¨¶Ô±È¿ò¼Ü - ÁªÃËÐÎ³ÉËã·¨ÐÔÄÜÆÀ¹À
+%  å¤šç®—æ³•å¯¹æ¯”æ¡†æž? - è”ç›Ÿå½¢æˆç®—æ³•æ€§èƒ½è¯„ä¼°
 %  
-%  ¹¦ÄÜËµÃ÷£º
-%  1. Ê¹ÓÃÍ³Ò»µÄ³¡¾°£¨ÏàÍ¬µÄSEED£©³õÊ¼»¯ÖÇÄÜÌå¡¢ÈÎÎñ¡¢×ÊÔ´
-%  2. ÔÚÍ¬Ò»³¡¾°ÏÂÔËÐÐ¶à¸ö²»Í¬µÄÁªÃËÐÎ³ÉËã·¨
-%  3. ¶Ô±È¸÷Ëã·¨µÄÐÔÄÜÖ¸±ê£¨×ÜÐ§ÓÃ¡¢¼ÆËãÊ±¼ä¡¢ÁªÃËÊýÁ¿µÈ£©
-%  4. Éú³É¶Ô±ÈÍ¼±íºÍÍ³¼Æ±¨¸æ
-%  5. ±£´æËùÓÐ½á¹ûÓÃÓÚºóÐø·ÖÎö
+%  åŠŸèƒ½è¯´æ˜Žï¼?
+%  1. ä½¿ç”¨ç»Ÿä¸€çš„åœºæ™¯ï¼ˆç›¸åŒçš„SEEDï¼‰åˆå§‹åŒ–æ™ºèƒ½ä½“ã€ä»»åŠ¡ã€èµ„æº?
+%  2. åœ¨åŒä¸€åœºæ™¯ä¸‹è¿è¡Œå¤šä¸ªä¸åŒçš„è”ç›Ÿå½¢æˆç®—æ³•
+%  3. å¯¹æ¯”å„ç®—æ³•çš„æ€§èƒ½æŒ‡æ ‡ï¼ˆæ€»æ•ˆç”¨ã€è®¡ç®—æ—¶é—´ã€è”ç›Ÿæ•°é‡ç­‰ï¼?
+%  4. ç”Ÿæˆå¯¹æ¯”å›¾è¡¨å’Œç»Ÿè®¡æŠ¥å‘?
+%  5. ä¿å­˜æ‰€æœ‰ç»“æžœç”¨äºŽåŽç»­åˆ†æž?
 %
-%  Ê¹ÓÃËµÃ÷£º
-%  - ÔÚ algorithms_to_run ÖÐÌí¼Ó»ò×¢ÊÍÒª¶Ô±ÈµÄËã·¨
-%  - Ëã·¨Ö÷º¯ÊýÓ¦·ÅÔÚ¶ÔÓ¦µÄ Com_XXX ÎÄ¼þ¼ÐÖÐ
-%  - Ã¿¸öËã·¨Ó¦·µ»ØÍ³Ò»¸ñÊ½µÄ Value_data ºÍ history_data
+%  ä½¿ç”¨è¯´æ˜Žï¼?
+%  - åœ? algorithms_to_run ä¸­æ·»åŠ æˆ–æ³¨é‡Šè¦å¯¹æ¯”çš„ç®—æ³•
+%  - ç®—æ³•ä¸»å‡½æ•°åº”æ”¾åœ¨å¯¹åº”çš? Com_XXX æ–‡ä»¶å¤¹ä¸­
+%  - æ¯ä¸ªç®—æ³•åº”è¿”å›žç»Ÿä¸€æ ¼å¼çš? Value_data å’? history_data
 % ========================================================================
 
 fprintf('\n');
 fprintf('========================================================================\n');
-fprintf('                    ¶àËã·¨¶Ô±È¿ò¼ÜÆô¶¯\n');
+fprintf('                    å¤šç®—æ³•å¯¹æ¯”æ¡†æž¶å¯åŠ¨\n');
 fprintf('========================================================================\n\n');
 
-%% Ìí¼ÓÂ·¾¶
-% ºËÐÄº¯ÊýÂ·¾¶
-addpath("Main_fun\")              % ³¡¾°³õÊ¼»¯¡¢½á¹û¶Ô±ÈµÈºËÐÄº¯Êý
-addpath("SA\")                    % SAËã·¨
-addpath("plots\")                 % ¿ÉÊÓ»¯º¯Êý
-% Ìí¼Ó¶Ô±ÈËã·¨Â·¾¶
-addpath("Com_Baseline\")          % Ì°ÐÄ»ùÏßËã·¨
-addpath("Com_Huo2025\")           % Huo2025Ëã·¨
-addpath("Com_Qi2023\")            % Qi2023Ëã·¨
-addpath("Com_Qin2025\")           % Qin2025Ëã·¨
+%% æ·»åŠ è·¯å¾„
+% æ ¸å¿ƒå‡½æ•°è·¯å¾„
+addpath("Main_fun\")              % åœºæ™¯åˆå§‹åŒ–ã€ç»“æžœå¯¹æ¯”ç­‰æ ¸å¿ƒå‡½æ•°
+addpath("SA\")                    % SAç®—æ³•
+addpath("plots\")                 % å¯è§†åŒ–å‡½æ•?
+% æ·»åŠ å¯¹æ¯”ç®—æ³•è·¯å¾„
+addpath("Com_Baseline\")          % è´ªå¿ƒåŸºçº¿ç®—æ³•
+addpath("Com_Huo2025\")           % Huo2025ç®—æ³•
+addpath("Com_Qi2023\")            % Qi2023ç®—æ³•
+addpath("Com_Qin2025\")           % Qin2025ç®—æ³•
 
 %% ========================================================================
-%  ³¡¾°ÅäÖÃ²ÎÊý£¨¿ÉÖ±½ÓÐÞ¸ÄÓÃÓÚµ÷ÊÔ£©
+%  åœºæ™¯é…ç½®å‚æ•°ï¼ˆå¯ç›´æŽ¥ä¿®æ”¹ç”¨äºŽè°ƒè¯•ï¼?
 %% ========================================================================
-% »ù±¾²ÎÊý
-SEED = 2437;                    % Ëæ»úÊýÖÖ×Ó£¨±£Ö¤ËùÓÐËã·¨Ê¹ÓÃÏàÍ¬³¡¾°£©
-N = 6;                          % ÖÇÄÜÌåÊýÁ¿
-M = 10;                         % ÈÎÎñÊýÁ¿
-K = 6;                          % ×ÊÔ´ÀàÐÍÊýÁ¿
+% åŸºæœ¬å‚æ•°
+SEED = 2437;                    % éšæœºæ•°ç§å­ï¼ˆä¿è¯æ‰€æœ‰ç®—æ³•ä½¿ç”¨ç›¸åŒåœºæ™¯ï¼‰
+N = 6;                          % æ™ºèƒ½ä½“æ•°é‡?
+M = 10;                         % ä»»åŠ¡æ•°é‡
+K = 6;                          % èµ„æºç±»åž‹æ•°é‡
 
-% Ëã·¨Ñ¡Ôñ
-algorithms_to_run_ids = [1,4];  % 1=SA_Value, 2=Ì°ÐÄ, 3=Huo2025, 4=Qi2023, 5=Qin2025
+% ç®—æ³•é€‰æ‹©
+algorithms_to_run_ids = [1,2,3,4,5];  % 1=SA_Value, 2=è´ªå¿ƒ, 3=Huo2025, 4=Qi2023, 5=PSO(Qin2025)
 
-% ÏÔÊ¾ºÍ±£´æÉèÖÃ
-save_results = true;            % ÊÇ·ñ±£´æ½á¹û
-show_plots = true;              % ÊÇ·ñÏÔÊ¾Í¼±í
-verbose = true;                 % ÊÇ·ñÏêÏ¸Êä³ö
+% æ˜¾ç¤ºå’Œä¿å­˜è®¾ç½?
+save_results = true;            % æ˜¯å¦ä¿å­˜ç»“æžœ
+show_plots = true;              % æ˜¯å¦æ˜¾ç¤ºå›¾è¡¨
+verbose = true;                 % æ˜¯å¦è¯¦ç»†è¾“å‡º
 
-% ÊÀ½ç¿Õ¼ä²ÎÊý
+% ä¸–ç•Œç©ºé—´å‚æ•°
 WORLD_XMIN = 0;
 WORLD_XMAX = 100;
 WORLD_YMIN = 0;
 WORLD_YMAX = 100;
 WORLD_ZMIN = 0;
 WORLD_ZMAX = 0;
-task_values = [800, 1000, 1500];  % ÈÎÎñ¼ÛÖµºòÑ¡¼¯£¨¶ÔÓ¦3ÖÖÈÎÎñÀàÐÍ£©
+task_values = [800, 1000, 1500];  % ä»»åŠ¡ä»·å€¼å€™é€‰é›†ï¼ˆå¯¹åº?3ç§ä»»åŠ¡ç±»åž‹ï¼‰
 
-% ÖÇÄÜÌå²ÎÊý
+% æ™ºèƒ½ä½“å‚æ•?
 agent_velocity = 2;
 agent_detprob_min = 0.9;
 agent_detprob_max = 1.0;
@@ -66,51 +66,51 @@ agent_Emax_min = 300;
 agent_Emax_range = 50;
 agent_fuel = 1;
 agent_beta = 1;
-min_resource_value = 2;         % ÖÇÄÜÌå×ÊÔ´×îÐ¡Öµ
-max_resource_value = 4;         % ÖÇÄÜÌå×ÊÔ´×î´óÖµ
+min_resource_value = 2;         % æ™ºèƒ½ä½“èµ„æºæœ€å°å€?
+max_resource_value = 4;         % æ™ºèƒ½ä½“èµ„æºæœ€å¤§å€?
 
-% ÈÎÎñ×ÊÔ´ÐèÇó²ÎÊý£¨Ã¿ÖÖÈÎÎñÀàÐÍµÄ×ÊÔ´ÐèÇó·¶Î§£©
-task_type1_demand_max = 4;      % ÀàÐÍ1ÈÎÎñ£ºµÍÐèÇó
-task_type2_demand_max = 6;      % ÀàÐÍ2ÈÎÎñ£ºÖÐµÈÐèÇó
-task_type3_demand_max = 8;      % ÀàÐÍ3ÈÎÎñ£º¸ßÐèÇó
+% ä»»åŠ¡èµ„æºéœ€æ±‚å‚æ•°ï¼ˆæ¯ç§ä»»åŠ¡ç±»åž‹çš„èµ„æºéœ€æ±‚èŒƒå›´ï¼‰
+task_type1_demand_max = 4;      % ç±»åž‹1ä»»åŠ¡ï¼šä½Žéœ€æ±?
+task_type2_demand_max = 6;      % ç±»åž‹2ä»»åŠ¡ï¼šä¸­ç­‰éœ€æ±?
+task_type3_demand_max = 8;      % ç±»åž‹3ä»»åŠ¡ï¼šé«˜éœ€æ±?
 
-% ×ÊÔ´Ö´ÐÐÊ±¼ä
+% èµ„æºæ‰§è¡Œæ—¶é—´
 resource_exec_time = [50 65 50 60 35 45];
 
-% Ä£ÄâÍË»ð²ÎÊý
+% æ¨¡æ‹Ÿé€€ç«å‚æ•?
 SA_Temperature = 100.0;
 SA_alpha = 0.95;
 SA_Tmin = 0.01;
 SA_max_stable_iterations = 5;
 
-% ¹Û²âºÍ²©ÞÄ²ÎÊý£¨Ö÷ÒªÓÃÓÚSA_ValueËã·¨£©
-obs_times = 50;                 % Ã¿ÂÖÃ¿¸öÈÎÎñµÄ¹Û²â´ÎÊý£¨SAËã·¨×¨ÓÃ£©
-num_rounds = 50;                % ²©ÞÄÂÖÊý£¨SAËã·¨×¨ÓÃ£»HuoËã·¨»áÊ¹ÓÃ´Ë²ÎÊý£¬Ä¬ÈÏ50£©
-resource_confidence = 0.7;      % ×ÊÔ´ÐèÇó·ÖÎ»ÊýÖÃÐÅ¶È£¨SAËã·¨×¨ÓÃ£©
+% è§‚æµ‹å’Œåšå¼ˆå‚æ•°ï¼ˆä¸»è¦ç”¨äºŽSA_Valueç®—æ³•ï¼?
+obs_times = 50;                 % æ¯è½®æ¯ä¸ªä»»åŠ¡çš„è§‚æµ‹æ¬¡æ•°ï¼ˆSAç®—æ³•ä¸“ç”¨ï¼?
+num_rounds = 50;                % åšå¼ˆè½®æ•°ï¼ˆSAç®—æ³•ä¸“ç”¨ï¼›Huoç®—æ³•ä¼šä½¿ç”¨æ­¤å‚æ•°ï¼Œé»˜è®?50ï¼?
+resource_confidence = 0.7;      % èµ„æºéœ€æ±‚åˆ†ä½æ•°ç½®ä¿¡åº¦ï¼ˆSAç®—æ³•ä¸“ç”¨ï¼?
 
 
-% Qi2023Ëã·¨Ð§ÓÃº¯Êý²ÎÊý
-Qi_beta_m = 1.0;                % Sigmoidº¯Êý¶¸ÇÍ¶È²ÎÊý
-Qi_C_req = 0.5;                 % ÐèÇóãÐÖµ
-Qi_omega = 0.1;                 % Sigmoidº¯ÊýÆ«ÒÆ²ÎÊý
-Qi_omega_1 = 1.0;               % ×ÊÔ´Íê³É¶ÈÈ¨ÖØ
-Qi_omega_2 = 0.01;              % ¾àÀë³É±¾È¨ÖØ
-Qi_omega_3 = 0.001;             % ÄÜÁ¿ËðºÄÈ¨ÖØ
+% Qi2023ç®—æ³•æ•ˆç”¨å‡½æ•°å‚æ•°
+Qi_beta_m = 1.0;                % Sigmoidå‡½æ•°é™¡å³­åº¦å‚æ•?
+Qi_C_req = 0.5;                 % éœ€æ±‚é˜ˆå€?
+Qi_omega = 0.1;                 % Sigmoidå‡½æ•°åç§»å‚æ•°
+Qi_omega_1 = 1.0;               % èµ„æºå®Œæˆåº¦æƒé‡?
+Qi_omega_2 = 0.01;              % è·ç¦»æˆæœ¬æƒé‡
+Qi_omega_3 = 0.001;             % èƒ½é‡æŸè€—æƒé‡?
 
 %% ========================================================================
-%  ³¡¾°³õÊ¼»¯£¨Ê¹ÓÃÉÏÊö²ÎÊý£©
+%  åœºæ™¯åˆå§‹åŒ–ï¼ˆä½¿ç”¨ä¸Šè¿°å‚æ•°ï¼?
 %% ========================================================================
-fprintf('ÕýÔÚ³õÊ¼»¯²âÊÔ³¡¾°...\n');
-fprintf('  - Ëæ»úÖÖ×Ó: %d\n', SEED);
-fprintf('  - ÖÇÄÜÌåÊýÁ¿: %d\n', N);
-fprintf('  - ÈÎÎñÊýÁ¿: %d\n', M);
-fprintf('  - ×ÊÔ´ÀàÐÍÊýÁ¿: %d\n', K);
-fprintf('  - ²©ÞÄÂÖÊý: %d\n\n', num_rounds);
+fprintf('æ­£åœ¨åˆå§‹åŒ–æµ‹è¯•åœºæ™?...\n');
+fprintf('  - éšæœºç§å­: %d\n', SEED);
+fprintf('  - æ™ºèƒ½ä½“æ•°é‡?: %d\n', N);
+fprintf('  - ä»»åŠ¡æ•°é‡: %d\n', M);
+fprintf('  - èµ„æºç±»åž‹æ•°é‡: %d\n', K);
+fprintf('  - åšå¼ˆè½®æ•°: %d\n\n', num_rounds);
 
 tic;
 rand('seed', SEED);
 
-% ³õÊ¼»¯WORLD½á¹¹
+% åˆå§‹åŒ–WORLDç»“æž„
 WORLD.XMIN = WORLD_XMIN;
 WORLD.XMAX = WORLD_XMAX;
 WORLD.YMIN = WORLD_YMIN;
@@ -119,21 +119,21 @@ WORLD.ZMIN = WORLD_ZMIN;
 WORLD.ZMAX = WORLD_ZMAX;
 WORLD.value = task_values;
 
-% ³õÊ¼»¯ÈÎÎñÀàÐÍ×ÊÔ´ÐèÇó
+% åˆå§‹åŒ–ä»»åŠ¡ç±»åž‹èµ„æºéœ€æ±?
 num_task_types = length(task_values);
 task_type_demands = zeros(num_task_types, K);
 task_type_demands(1, :) = randi([0, task_type1_demand_max], 1, K);
 task_type_demands(2, :) = randi([0, task_type2_demand_max], 1, K);
 task_type_demands(3, :) = randi([0, task_type3_demand_max], 1, K);
 
-% ³õÊ¼»¯ÈÎÎñÖ´ÐÐÊ±¼ä
+% åˆå§‹åŒ–ä»»åŠ¡æ‰§è¡Œæ—¶é—?
 task_type_duration_by_resource = zeros(num_task_types, K);
 for t = 1:num_task_types
     needed = task_type_demands(t, :) > 0;
     task_type_duration_by_resource(t, needed) = resource_exec_time(needed);
 end
 
-% ³õÊ¼»¯ÈÎÎñ
+% åˆå§‹åŒ–ä»»åŠ?
 task_priorities = randperm(M);
 for j = 1:M
     tasks(j).id = j;
@@ -148,7 +148,7 @@ for j = 1:M
     tasks(j).WORLD = WORLD;
 end
 
-% ³õÊ¼»¯ÖÇÄÜÌå
+% åˆå§‹åŒ–æ™ºèƒ½ä½“
 for i = 1:N
     agents(i).id = i;
     agents(i).vel = agent_velocity;
@@ -161,12 +161,12 @@ for i = 1:N
     agents(i).beta = agent_beta;
 end
 
-% ³õÊ¼»¯Ëã·¨²ÎÊý
+% åˆå§‹åŒ–ç®—æ³•å‚æ•?
 Value_Params = init_value_params(N, M, K, num_task_types, task_type_demands, ...
                                   SA_Temperature, SA_alpha, SA_Tmin, SA_max_stable_iterations, ...
                                   obs_times, num_rounds, resource_confidence);
 
-% Ìí¼ÓQi2023Ëã·¨²ÎÊý
+% æ·»åŠ Qi2023ç®—æ³•å‚æ•°
 Value_Params.Qi_beta_m = Qi_beta_m;
 Value_Params.Qi_C_req = Qi_C_req;
 Value_Params.Qi_omega = Qi_omega;
@@ -174,7 +174,7 @@ Value_Params.Qi_omega_1 = Qi_omega_1;
 Value_Params.Qi_omega_2 = Qi_omega_2;
 Value_Params.Qi_omega_3 = Qi_omega_3;
 
-% ³¡¾°ÐÅÏ¢
+% åœºæ™¯ä¿¡æ¯
 scenario_info.SEED = SEED;
 scenario_info.N = N;
 scenario_info.M = M;
@@ -185,69 +185,69 @@ scenario_info.resource_exec_time = resource_exec_time;
 scenario_info.timestamp = datetime('now');
 
 init_time = toc;
-fprintf('³¡¾°³õÊ¼»¯Íê³É (ºÄÊ±: %.2fÃë)\n\n', init_time);
+fprintf('åœºæ™¯åˆå§‹åŒ–å®Œæˆ? (è€—æ—¶: %.2fç§?)\n\n', init_time);
 
-%% ¶¨ÒåËùÓÐ¿ÉÓÃµÄËã·¨
-% Ã¿¸öËã·¨ÐèÒªÖ¸¶¨£º
-%   - name: Ëã·¨Ãû³Æ£¨ÓÃÓÚÏÔÊ¾£©
-%   - func: Ëã·¨Ö÷º¯Êý¾ä±ú
-%   - folder: Ëã·¨ÎÄ¼þËùÔÚÎÄ¼þ¼Ð
-%   - color: Í¼±íÑÕÉ«
+%% å®šä¹‰æ‰€æœ‰å¯ç”¨çš„ç®—æ³•
+% æ¯ä¸ªç®—æ³•éœ€è¦æŒ‡å®šï¼š
+%   - name: ç®—æ³•åç§°ï¼ˆç”¨äºŽæ˜¾ç¤ºï¼‰
+%   - func: ç®—æ³•ä¸»å‡½æ•°å¥æŸ?
+%   - folder: ç®—æ³•æ–‡ä»¶æ‰€åœ¨æ–‡ä»¶å¤¹
+%   - color: å›¾è¡¨é¢œè‰²
 all_algorithms = {
-    % Ëã·¨1: SA_Value (±¾ÎÄ)
+    % ç®—æ³•1: SA_Value (æœ¬æ–‡)
     struct('id', 1, ...
-           'name', 'SA_Value (±¾ÎÄ)', ...
+           'name', 'SA_Value (æœ¬æ–‡)', ...
            'func', @SA_Value_main, ...
            'folder', 'SA', ...
            'color', [0.2, 0.6, 0.8]);
     
-    % Ëã·¨2: Ì°ÐÄ»ùÏßËã·¨
+    % ç®—æ³•2: è´ªå¿ƒåŸºçº¿ç®—æ³•
     struct('id', 2, ...
-           'name', 'Ì°ÐÄ»ùÏß', ...
+           'name', 'è´ªå¿ƒåŸºçº¿', ...
            'func', @Greedy_Baseline_main, ...
            'folder', 'Com_Baseline', ...
            'color', [0.5, 0.5, 0.5]);
     
-    % Ëã·¨3: Huo2025 Ëã·¨
+    % ç®—æ³•3: Huo2025 ç®—æ³•
     struct('id', 3, ...
-           'name', 'Huo2025Ëã·¨', ...
+           'name', 'Huo2025ç®—æ³•', ...
            'func', @Huo2025_main, ...
            'folder', 'Com_Huo2025', ...
            'color', [0.8, 0.2, 0.2]);
     
-    % Ëã·¨4: Qi2023 Ëã·¨
+    % ç®—æ³•4: Qi2023 ç®—æ³•
     struct('id', 4, ...
-           'name', 'Qi2023Ëã·¨', ...
+           'name', 'Qi2023ç®—æ³•', ...
            'func', @Qi2023_main, ...
            'folder', 'Com_Qi2023', ...
            'color', [0.2, 0.8, 0.2]);
     
-    % Ëã·¨5: Qin2025 Ëã·¨
+    % ç®—æ³•5: Qin2025 PSO ç®—æ³•
     struct('id', 5, ...
-           'name', 'Qin2025Ëã·¨', ...
+           'name', 'Qin2025 PSOç®—æ³•', ...
            'func', @Qin2025_main, ...
            'folder', 'Com_Qin2025', ...
            'color', [0.8, 0.8, 0.2]);
 };
 
-% ÏÔÊ¾¿ÉÓÃËã·¨ÁÐ±í
-fprintf('¿ÉÓÃËã·¨ÁÐ±í:\n');
+% æ˜¾ç¤ºå¯ç”¨ç®—æ³•åˆ—è¡¨
+fprintf('å¯ç”¨ç®—æ³•åˆ—è¡¨:\n');
 for i = 1:length(all_algorithms)
     alg = all_algorithms{i};
     if ismember(alg.id, algorithms_to_run_ids)
-        fprintf('  [%d] %s ? (ÒÑÑ¡Ôñ)\n', alg.id, alg.name);
+        fprintf('  [%d] %s ? (å·²é€‰æ‹©)\n', alg.id, alg.name);
     else
         fprintf('  [%d] %s\n', alg.id, alg.name);
     end
 end
-fprintf('\nµ±Ç°Ñ¡ÔñÔËÐÐ: [%s]\n\n', num2str(algorithms_to_run_ids));
+fprintf('\nå½“å‰é€‰æ‹©è¿è¡Œ: [%s]\n\n', num2str(algorithms_to_run_ids));
 
-%% ×¼±¸AddPara²ÎÊý£¨¸ù¾ÝÔ­Main.m£©
+%% å‡†å¤‡AddParaå‚æ•°ï¼ˆæ ¹æ®åŽŸMain.mï¼?
 AddPara.control = 1;
 
-%% ÔËÐÐËùÓÐÑ¡ÖÐµÄËã·¨
+%% è¿è¡Œæ‰€æœ‰é€‰ä¸­çš„ç®—æ³?
 fprintf('========================================================================\n');
-fprintf('                    ¿ªÊ¼ÔËÐÐËã·¨¶Ô±È\n');
+fprintf('                    å¼€å§‹è¿è¡Œç®—æ³•å¯¹æ¯”\n');
 fprintf('========================================================================\n\n');
 
 results = struct();
@@ -257,42 +257,42 @@ enabled_count = 0;
 for i = 1:length(all_algorithms)
     alg = all_algorithms{i};
     
-    % ¼ì²éËã·¨ÊÇ·ñÔÚÑ¡ÔñÁÐ±íÖÐ
+    % æ£€æŸ¥ç®—æ³•æ˜¯å¦åœ¨é€‰æ‹©åˆ—è¡¨ä¸?
     if ~ismember(alg.id, algorithms_to_run_ids)
-        continue;  % Ìø¹ýÎ´Ñ¡ÔñµÄËã·¨
+        continue;  % è·³è¿‡æœªé€‰æ‹©çš„ç®—æ³?
     end
     
     enabled_count = enabled_count + 1;
     enabled_algorithms{enabled_count} = alg;
     
     fprintf('----------------------------------------\n');
-    fprintf('ÕýÔÚÔËÐÐ: [%d] %s\n', alg.id, alg.name);
+    fprintf('æ­£åœ¨è¿è¡Œ: [%d] %s\n', alg.id, alg.name);
     fprintf('----------------------------------------\n');
     
     try
-        % ÖØÖÃËæ»úÊýÖÖ×Ó£¨È·±£Ã¿¸öËã·¨¿´µ½ÏàÍ¬µÄËæ»úÐòÁÐ£©
+        % é‡ç½®éšæœºæ•°ç§å­ï¼ˆç¡®ä¿æ¯ä¸ªç®—æ³•çœ‹åˆ°ç›¸åŒçš„éšæœºåºåˆ—ï¼‰
         rand('seed', SEED);
         
-        % ÔËÐÐËã·¨
+        % è¿è¡Œç®—æ³•
         tic;
         [Value_data, history_data] = alg.func(agents, tasks, AddPara, Value_Params);
         comp_time = toc;
         
-        % ±£´æ½á¹û
+        % ä¿å­˜ç»“æžœ
         results.(sprintf('alg%d', enabled_count)).name = alg.name;
         results.(sprintf('alg%d', enabled_count)).Value_data = Value_data;
         results.(sprintf('alg%d', enabled_count)).history_data = history_data;
         results.(sprintf('alg%d', enabled_count)).computation_time = comp_time;
         results.(sprintf('alg%d', enabled_count)).color = alg.color;
         
-        fprintf('? %s Íê³É (ºÄÊ±: %.2fÃë)\n\n', alg.name, comp_time);
+        fprintf('? %s å®Œæˆ (è€—æ—¶: %.2fç§?)\n\n', alg.name, comp_time);
         
     catch ME
-        fprintf('? %s ÔËÐÐÊ§°Ü:\n', alg.name);
-        fprintf('  ´íÎó: %s\n', ME.message);
-        fprintf('  Î»ÖÃ: %s (µÚ%dÐÐ)\n\n', ME.stack(1).name, ME.stack(1).line);
+        fprintf('? %s è¿è¡Œå¤±è´¥:\n', alg.name);
+        fprintf('  é”™è¯¯: %s\n', ME.message);
+        fprintf('  ä½ç½®: %s (ç¬?%dè¡?)\n\n', ME.stack(1).name, ME.stack(1).line);
         
-        % ±£´æ´íÎóÐÅÏ¢
+        % ä¿å­˜é”™è¯¯ä¿¡æ¯
         results.(sprintf('alg%d', enabled_count)).name = alg.name;
         results.(sprintf('alg%d', enabled_count)).error = ME;
         results.(sprintf('alg%d', enabled_count)).computation_time = NaN;
@@ -300,22 +300,22 @@ for i = 1:length(all_algorithms)
 end
 
 fprintf('========================================================================\n');
-fprintf('                    ËùÓÐËã·¨ÔËÐÐÍê³É\n');
+fprintf('                    æ‰€æœ‰ç®—æ³•è¿è¡Œå®Œæˆ\n');
 fprintf('========================================================================\n\n');
 
-%% ¶Ô±È·ÖÎö½á¹û
+%% å¯¹æ¯”åˆ†æžç»“æžœ
 if enabled_count > 0
-    fprintf('ÕýÔÚ½øÐÐ½á¹û¶Ô±È·ÖÎö...\n');
+    fprintf('æ­£åœ¨è¿›è¡Œç»“æžœå¯¹æ¯”åˆ†æž...\n');
     comparison_stats = compare_results(results, agents, tasks, Value_Params);
     
-    %% ÏÔÊ¾¶Ô±ÈÍ³¼Æ±í
+    %% æ˜¾ç¤ºå¯¹æ¯”ç»Ÿè®¡è¡?
     fprintf('\n========================================================================\n');
-    fprintf('                    Ëã·¨ÐÔÄÜ¶Ô±ÈÍ³¼Æ\n');
+    fprintf('                    ç®—æ³•æ€§èƒ½å¯¹æ¯”ç»Ÿè®¡\n');
     fprintf('========================================================================\n\n');
     
-    % ´´½¨¶Ô±È±í¸ñ - »ù´¡Ö¸±ê
+    % åˆ›å»ºå¯¹æ¯”è¡¨æ ¼ - åŸºç¡€æŒ‡æ ‡
     fprintf('%-20s | %10s | %10s | %10s | %10s\n', ...
-            'Ëã·¨Ãû³Æ', '×ÜÐ§ÓÃ', 'ÁªÃËÊýÁ¿', '¹éÒ»»¯Íê³ÉÂÊ', '¼ÆËãÊ±¼ä(Ãë)');
+            'ç®—æ³•åç§°', 'æ€»æ•ˆç”?', 'è”ç›Ÿæ•°é‡', 'å½’ä¸€åŒ–å®ŒæˆçŽ‡', 'è®¡ç®—æ—¶é—´(ç§?)');
     fprintf('%s\n', repmat('-', 1, 80));
     
     for i = 1:enabled_count
@@ -326,15 +326,15 @@ if enabled_count > 0
                     stats.normalized_completion_rate, stats.computation_time);
         else
             fprintf('%-20s | %10s | %10s | %10s | %10.2f\n', ...
-                    stats.name, '´íÎó', '´íÎó', '´íÎó', stats.computation_time);
+                    stats.name, 'é”™è¯¯', 'é”™è¯¯', 'é”™è¯¯', stats.computation_time);
         end
     end
     fprintf('%s\n\n', repmat('-', 1, 80));
     
-    % ´´½¨ÏêÏ¸ÈÎÎñÍê³É¶È±í¸ñ
-    fprintf('\nÈÎÎñÍê³É¶ÈÏêÏ¸Í³¼Æ:\n');
+    % åˆ›å»ºè¯¦ç»†ä»»åŠ¡å®Œæˆåº¦è¡¨æ ?
+    fprintf('\nä»»åŠ¡å®Œæˆåº¦è¯¦ç»†ç»Ÿè®?:\n');
     fprintf('%-20s | %10s | %10s | %10s | %10s\n', ...
-            'Ëã·¨Ãû³Æ', 'µÈÐ§Íê³ÉÊý', 'ÍêÈ«Íê³É', '²¿·ÖÍê³É', 'Æ½¾ùÍê³É¶È');
+            'ç®—æ³•åç§°', 'ç­‰æ•ˆå®Œæˆæ•?', 'å®Œå…¨å®Œæˆ', 'éƒ¨åˆ†å®Œæˆ', 'å¹³å‡å®Œæˆåº?');
     fprintf('%s\n', repmat('-', 1, 80));
     
     for i = 1:enabled_count
@@ -351,15 +351,15 @@ if enabled_count > 0
     end
     fprintf('%s\n\n', repmat('-', 1, 80));
     
-    %% »æÖÆ¶Ô±ÈÍ¼±í
+    %% ç»˜åˆ¶å¯¹æ¯”å›¾è¡¨
     if show_plots && enabled_count > 1
-        fprintf('ÕýÔÚ»æÖÆ¶Ô±ÈÍ¼±í...\n');
+        fprintf('æ­£åœ¨ç»˜åˆ¶å¯¹æ¯”å›¾è¡¨...\n');
         plot_algorithm_comparison(results, comparison_stats, enabled_count);
     end
     
-    %% ±£´æ½á¹û
+    %% ä¿å­˜ç»“æžœ
     if save_results
-        % È·±£resultsÎÄ¼þ¼Ð´æÔÚ
+        % ç¡®ä¿resultsæ–‡ä»¶å¤¹å­˜åœ?
         if ~exist('results', 'dir')
             mkdir('results');
         end
@@ -367,15 +367,16 @@ if enabled_count > 0
         timestamp = datestr(now, 'yyyymmdd_HHMMSS');
         filename = sprintf('results/comparison_results_seed%d_%s.mat', SEED, timestamp);
         
-        fprintf('ÕýÔÚ±£´æ¶Ô±È½á¹ûµ½: %s\n', filename);
+        fprintf('æ­£åœ¨ä¿å­˜å¯¹æ¯”ç»“æžœåˆ?: %s\n', filename);
         save(filename, 'results', 'comparison_stats', 'agents', 'tasks', ...
              'Value_Params', 'WORLD', 'scenario_info', 'enabled_algorithms');
-        fprintf('? ½á¹ûÒÑ±£´æ\n\n');
+        fprintf('? ç»“æžœå·²ä¿å­˜\n\n');
     end
 else
-    fprintf('¾¯¸æ: Ã»ÓÐÆôÓÃÈÎºÎËã·¨½øÐÐ¶Ô±È\n\n');
+    fprintf('è­¦å‘Š: æ²¡æœ‰å¯ç”¨ä»»ä½•ç®—æ³•è¿›è¡Œå¯¹æ¯”\n\n');
 end
 
 fprintf('========================================================================\n');
-fprintf('                    ¶Ô±È¿ò¼ÜÔËÐÐÍê³É\n');
+fprintf('                    å¯¹æ¯”æ¡†æž¶è¿è¡Œå®Œæˆ\n');
 fprintf('========================================================================\n\n');
+
