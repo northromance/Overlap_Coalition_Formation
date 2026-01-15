@@ -1,69 +1,69 @@
-function [Value_data, history_data] = Greedy_Baseline_main(agents, tasks, AddPara, Value_Params)
-% GREEDY_BASELINE_MAIN Ì°ĞÄ»ùÏßËã·¨£¨Ê¾Àı¶Ô±ÈËã·¨£©
+ï»¿function [Value_data, history_data] = Greedy_Baseline_main(agents, tasks, AddPara, Value_Params)
+% GREEDY_BASELINE_MAIN è´ªå¿ƒåŸºçº¿ç®—æ³•ï¼ˆç¤ºä¾‹å¯¹æ¯”ç®—æ³•ï¼‰
 %
-% Ëã·¨ÃèÊö£º
-%   ¼òµ¥µÄÌ°ĞÄ²ßÂÔ£¬°´ÈÎÎñÓÅÏÈ¼¶Ë³Ğò´¦Àí£º
-%   1. ¶ÔÃ¿¸öÈÎÎñ£¬Ñ¡Ôñ¾àÀë×î½üÇÒ×ÊÔ´³ä×ãµÄÖÇÄÜÌå
-%   2. Èç¹ûµ¥¸öÖÇÄÜÌå×ÊÔ´²»×ã£¬Ìí¼Ó¸ü¶àÖÇÄÜÌåĞÎ³ÉÁªÃË
-%   3. ·ÖÅä×ÊÔ´Ö±µ½Âú×ãÈÎÎñĞèÇó»ò×ÊÔ´ºÄ¾¡
+% ç®—æ³•æè¿°ï¼š
+%   ç®€å•çš„è´ªå¿ƒç­–ç•¥ï¼ŒæŒ‰ä»»åŠ¡ä¼˜å…ˆçº§é¡ºåºå¤„ç†ï¼š
+%   1. å¯¹æ¯ä¸ªä»»åŠ¡ï¼Œé€‰æ‹©è·ç¦»æœ€è¿‘ä¸”èµ„æºå……è¶³çš„æ™ºèƒ½ä½“
+%   2. å¦‚æœå•ä¸ªæ™ºèƒ½ä½“èµ„æºä¸è¶³ï¼Œæ·»åŠ æ›´å¤šæ™ºèƒ½ä½“å½¢æˆè”ç›Ÿ
+%   3. åˆ†é…èµ„æºç›´åˆ°æ»¡è¶³ä»»åŠ¡éœ€æ±‚æˆ–èµ„æºè€—å°½
 %
-% ÊäÈë£º
-%   agents - ÖÇÄÜÌå½á¹¹ÌåÊı×é
-%   tasks - ÈÎÎñ½á¹¹ÌåÊı×é
-%   AddPara - ¸½¼Ó²ÎÊı
-%   Value_Params - Ëã·¨²ÎÊı
+% è¾“å…¥ï¼š
+%   agents - æ™ºèƒ½ä½“ç»“æ„ä½“æ•°ç»„
+%   tasks - ä»»åŠ¡ç»“æ„ä½“æ•°ç»„
+%   AddPara - é™„åŠ å‚æ•°
+%   Value_Params - ç®—æ³•å‚æ•°
 %
-% Êä³ö£º
-%   Value_data - °üº¬ÁªÃË½á¹¹ºÍĞ§ÓÃµÄ½á¹û
-%   history_data - Ëã·¨ÔËĞĞÀúÊ·Êı¾İ£¨¿ÉÑ¡£©
+% è¾“å‡ºï¼š
+%   Value_data - åŒ…å«è”ç›Ÿç»“æ„å’Œæ•ˆç”¨çš„ç»“æœ
+%   history_data - ç®—æ³•è¿è¡Œå†å²æ•°æ®ï¼ˆå¯é€‰ï¼‰
 
-    %% ÌáÈ¡²ÎÊı
-    N = Value_Params.N;  % ÖÇÄÜÌåÊıÁ¿
-    M = Value_Params.M;  % ÈÎÎñÊıÁ¿
-    K = Value_Params.K;  % ×ÊÔ´ÀàĞÍÊıÁ¿
+    %% æå–å‚æ•°
+    N = Value_Params.N;  % æ™ºèƒ½ä½“æ•°é‡
+    M = Value_Params.M;  % ä»»åŠ¡æ•°é‡
+    K = Value_Params.K;  % èµ„æºç±»å‹æ•°é‡
     
-    %% ³õÊ¼»¯Êä³ö½á¹¹
-    coalitionstru = zeros(M, N);         % ÁªÃË½á¹¹¾ØÕó (M¡ÁN)
-    agentresources = zeros(N, M, K);     % ×ÊÔ´·ÖÅä¾ØÕó (N¡ÁM¡ÁK)
+    %% åˆå§‹åŒ–è¾“å‡ºç»“æ„
+    coalitionstru = zeros(M, N);         % è”ç›Ÿç»“æ„çŸ©é˜µ (MÃ—N)
+    agentresources = zeros(N, M, K);     % èµ„æºåˆ†é…çŸ©é˜µ (NÃ—MÃ—K)
     
-    % ¸ú×ÙÖÇÄÜÌåÊ£Óà×ÊÔ´
+    % è·Ÿè¸ªæ™ºèƒ½ä½“å‰©ä½™èµ„æº
     remaining_resources = zeros(N, K);
     for i = 1:N
         remaining_resources(i, :) = agents(i).resources';
     end
     
-    %% °´ÓÅÏÈ¼¶ÅÅĞòÈÎÎñ
+    %% æŒ‰ä¼˜å…ˆçº§æ’åºä»»åŠ¡
     [~, task_order] = sort([tasks.priority]);
     
-    %% Ì°ĞÄ·ÖÅä
+    %% è´ªå¿ƒåˆ†é…
     for idx = 1:M
-        j = task_order(idx);  % µ±Ç°´¦ÀíµÄÈÎÎñID
+        j = task_order(idx);  % å½“å‰å¤„ç†çš„ä»»åŠ¡ID
         
-        % »ñÈ¡ÈÎÎñĞèÇó
-        task_demand = tasks(j).resource_demand;  % 1¡ÁK
-        allocated_resources = zeros(1, K);       % ÒÑ·ÖÅäµÄ×ÊÔ´
+        % è·å–ä»»åŠ¡éœ€æ±‚
+        task_demand = tasks(j).resource_demand;  % 1Ã—K
+        allocated_resources = zeros(1, K);       % å·²åˆ†é…çš„èµ„æº
         
-        % ¼ÆËãËùÓĞÖÇÄÜÌåµ½ÈÎÎñµÄ¾àÀë
+        % è®¡ç®—æ‰€æœ‰æ™ºèƒ½ä½“åˆ°ä»»åŠ¡çš„è·ç¦»
         distances = zeros(1, N);
         for i = 1:N
             distances(i) = sqrt((agents(i).x - tasks(j).x)^2 + ...
                                (agents(i).y - tasks(j).y)^2);
         end
         
-        % °´¾àÀë´Ó½üµ½Ô¶ÅÅĞòÖÇÄÜÌå
+        % æŒ‰è·ç¦»ä»è¿‘åˆ°è¿œæ’åºæ™ºèƒ½ä½“
         [~, agent_order] = sort(distances);
         
-        % Öğ¸öÌí¼ÓÖÇÄÜÌå£¬Ö±µ½Âú×ãÈÎÎñĞèÇó
+        % é€ä¸ªæ·»åŠ æ™ºèƒ½ä½“ï¼Œç›´åˆ°æ»¡è¶³ä»»åŠ¡éœ€æ±‚
         for agent_idx = 1:N
             i = agent_order(agent_idx);
             
-            % ¼ì²éÊÇ·ñ»¹ĞèÒª¸ü¶à×ÊÔ´
+            % æ£€æŸ¥æ˜¯å¦è¿˜éœ€è¦æ›´å¤šèµ„æº
             still_needed = task_demand - allocated_resources;
             if all(still_needed <= 0)
-                break;  % ÈÎÎñĞèÇóÒÑÂú×ã
+                break;  % ä»»åŠ¡éœ€æ±‚å·²æ»¡è¶³
             end
             
-            % ¼ì²é¸ÃÖÇÄÜÌåÊÇ·ñÓĞ¿É¹±Ï×µÄ×ÊÔ´
+            % æ£€æŸ¥è¯¥æ™ºèƒ½ä½“æ˜¯å¦æœ‰å¯è´¡çŒ®çš„èµ„æº
             can_contribute = false;
             for k = 1:K
                 if still_needed(k) > 0 && remaining_resources(i, k) > 0
@@ -73,10 +73,10 @@ function [Value_data, history_data] = Greedy_Baseline_main(agents, tasks, AddPar
             end
             
             if can_contribute
-                % ½«¸ÃÖÇÄÜÌå¼ÓÈëÁªÃË
+                % å°†è¯¥æ™ºèƒ½ä½“åŠ å…¥è”ç›Ÿ
                 coalitionstru(j, i) = 1;
                 
-                % ·ÖÅä×ÊÔ´
+                % åˆ†é…èµ„æº
                 for k = 1:K
                     needed = still_needed(k);
                     available = remaining_resources(i, k);
@@ -92,19 +92,19 @@ function [Value_data, history_data] = Greedy_Baseline_main(agents, tasks, AddPar
         end
     end
     
-    %% ¼ÆËã×ÜĞ§ÓÃ
+    %% è®¡ç®—æ€»æ•ˆç”¨
     totalvalue = 0;
     for j = 1:M
         members = find(coalitionstru(j, :) ~= 0);
         if ~isempty(members)
-            % »ñÈ¡ÈÎÎñĞèÇóºÍÒÑ·ÖÅä×ÊÔ´
-            allocated = squeeze(sum(agentresources(:, j, :), 1))';  % 1¡ÁK
-            demand = tasks(j).resource_demand;  % 1¡ÁK
+            % è·å–ä»»åŠ¡éœ€æ±‚å’Œå·²åˆ†é…èµ„æº
+            allocated = squeeze(sum(agentresources(:, j, :), 1))';  % 1Ã—K
+            demand = tasks(j).resource_demand;  % 1Ã—K
             
-            % ¼ÆËãÈÎÎñÍê³É¶È D_C£¨Ê¹ÓÃÍ³Ò»º¯Êı£©
+            % è®¡ç®—ä»»åŠ¡å®Œæˆåº¦ D_Cï¼ˆä½¿ç”¨ç»Ÿä¸€å‡½æ•°ï¼‰
             D_C = calc_task_completion_degree(allocated, demand, K);
             
-            % ¼ÆËã¾àÀë³É±¾
+            % è®¡ç®—è·ç¦»æˆæœ¬
             total_distance = 0;
             for i = members
                 dist = sqrt((agents(i).x - tasks(j).x)^2 + ...
@@ -112,27 +112,69 @@ function [Value_data, history_data] = Greedy_Baseline_main(agents, tasks, AddPar
                 total_distance = total_distance + dist;
             end
             
-            % Í³Ò»Ğ§ÓÃ¹«Ê½£ºĞ§ÓÃ = ÈÎÎñ¼ÛÖµ ¡Á Íê³É¶È - ¾àÀë³É±¾
-            % ¾àÀë³É±¾ÏµÊıÉèÎª0.1£¨ÓëÆäËûËã·¨Ò»ÖÂ£©
+            % ç»Ÿä¸€æ•ˆç”¨å…¬å¼ï¼šæ•ˆç”¨ = ä»»åŠ¡ä»·å€¼ Ã— å®Œæˆåº¦ - è·ç¦»æˆæœ¬
+            % è·ç¦»æˆæœ¬ç³»æ•°è®¾ä¸º0.1ï¼ˆä¸å…¶ä»–ç®—æ³•ä¸€è‡´ï¼‰
             distance_cost = total_distance * 0.1;
             utility = tasks(j).value * D_C - distance_cost;
             totalvalue = totalvalue + utility;
         end
     end
     
-    %% ¹¹ÔìÊä³ö
+    %% åå¤„ç†ï¼šæŒ‰ä¼˜å…ˆçº§æ„å»ºé—­ç¯è·¯å¾„å¹¶æ‰£é™¤èƒ½è€—
+    agent_paths = cell(1, N);
+    total_energy_cost = 0;
+    for n = 1:N
+        % å‚ä¸ä»»åŠ¡é›†åˆ
+        task_ids = find(coalitionstru(:, n) ~= 0);
+        if isempty(task_ids)
+            agent_paths{n} = [];
+            continue;
+        end
+        
+        % æŒ‰ä»»åŠ¡ä¼˜å…ˆçº§é™åºæ’åºï¼ˆæ•°å€¼è¶Šå¤§ä¼˜å…ˆçº§è¶Šé«˜ï¼‰
+        priorities = [tasks(task_ids).priority];
+        [~, idx_sort] = sort(priorities, 'descend');
+        sorted_tasks = task_ids(idx_sort);
+        agent_paths{n} = sorted_tasks;
+        
+        % é—­ç¯è·¯å¾„ï¼šDepot -> tasks -> Depot
+        curr_pos = [agents(n).x, agents(n).y];
+        dist_n = 0;
+        for t_idx = 1:length(sorted_tasks)
+            tid = sorted_tasks(t_idx);
+            tgt = [tasks(tid).x, tasks(tid).y];
+            dist_n = dist_n + norm(curr_pos - tgt);
+            curr_pos = tgt;
+        end
+        dist_n = dist_n + norm(curr_pos - [agents(n).x, agents(n).y]);
+        
+        % èƒ½è€—æˆæœ¬
+        fuel_cost = 1;
+        if isfield(agents, 'fuel')
+            fuel_cost = agents(n).fuel;
+        end
+        total_energy_cost = total_energy_cost + dist_n * fuel_cost;
+    end
+    
+    % æ‰£é™¤èƒ½è€—
+    totalvalue = totalvalue - total_energy_cost;
+    
+    %% æ„é€ è¾“å‡º
     Value_data(1).totalvalue = totalvalue;
     Value_data(1).coalitionstru = coalitionstru;
     Value_data(1).agentresources = agentresources;
+    Value_data(1).energy_cost = total_energy_cost;
+    Value_data(1).agent_paths = agent_paths;
     
-    % ¿ÉÑ¡£ºÌí¼Ó¸ü¶àÍ³¼ÆĞÅÏ¢
+    % å¯é€‰ï¼šæ·»åŠ æ›´å¤šç»Ÿè®¡ä¿¡æ¯
     Value_data(1).num_coalitions = sum(sum(coalitionstru, 2) > 0);
     Value_data(1).avg_coalition_size = mean(sum(coalitionstru, 2));
     
-    %% ÀúÊ·Êı¾İ£¨¼ò»¯°æ±¾£©
+    %% å†å²æ•°æ®ï¼ˆç®€åŒ–ç‰ˆæœ¬ï¼‰
     history_data = struct();
     history_data.algorithm = 'Greedy_Baseline';
     history_data.final_utility = totalvalue;
     history_data.task_assignment_order = task_order;
     
 end
+
