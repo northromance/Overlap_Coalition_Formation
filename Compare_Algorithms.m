@@ -1,4 +1,4 @@
-﻿clear; clc; close all;
+clear; clc; close all;
 
 %% ========================================================================
 %  Multi-algorithm comparison framework for coalition formation
@@ -32,7 +32,7 @@ M = 10;                         % number of tasks
 K = 6;                          % number of resource types
 
 % Algorithm selection
-algorithms_to_run_ids = [1,2,3,4,5];  % 1=SA_Value, 2=Greedy, 3=Huo2025, 4=Qi2023, 5=PSO
+algorithms_to_run_ids = [3];  % 1=SA_Value, 2=Greedy, 3=Huo2025, 4=Qi2023, 5=PSO
 
 % Display/save options
 save_results = true;

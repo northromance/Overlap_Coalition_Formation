@@ -45,27 +45,6 @@ function [Value_data, history_data] = Huo2025_main(agents, tasks, AddPara, Value
 %
 % =========================================================================
 
-% 使用传入的Value_Params，如果没有则初始化
-if nargin < 4 || isempty(Value_Params)
-    Value_Params = Value_init(length(agents), length(tasks));
-else
-    % 确保Value_Params包含必需字段
-    if ~isfield(Value_Params, 'N')
-        Value_Params.N = length(agents);
-    end
-    if ~isfield(Value_Params, 'M')
-        Value_Params.M = length(tasks);
-    end
-    % 获取迭代轮数，如果没有则默认50
-    if ~isfield(Value_Params, 'num_rounds')
-        Value_Params.num_rounds = 50;
-    end
-    % 获取观测次数，如果没有则默认50
-    if ~isfield(Value_Params, 'obs_times')
-        Value_Params.obs_times = 50;
-    end
-end
-
 % 生成全连通的通信图（所有智能体可以相互通信）
 Graph = ones(Value_Params.N, Value_Params.N);
 
