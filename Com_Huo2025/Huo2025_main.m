@@ -76,7 +76,7 @@ end
 
 for i=1:Value_Params.N %每一个agent对所有任务的任务值持有一个初始belief
     for j=1:Value_Params.M
-        %Value_data(i).initbelief(j,1:end)=drchrnd(ones(1, task_types),1)';
+        %Value_data(i).initbelief(j,1:end)=OCFUtils.drchrnd(ones(1, task_types),1)';
         Value_data(i).initbelief(j,1:end)=ones(1, task_types)/task_types;
     end
 end
@@ -166,7 +166,7 @@ for counter=1:Value_Params.num_rounds
     for i=1:Value_Params.N
         for j=1:Value_Params.M
             alpha_params = 1 + Value_data(i).observe(j, 1:task_types);
-            Value_data(i).initbelief(j,1:end)=drchrnd(alpha_params,1)';
+            Value_data(i).initbelief(j,1:end)=OCFUtils.drchrnd(alpha_params,1)';
         end
     end
     

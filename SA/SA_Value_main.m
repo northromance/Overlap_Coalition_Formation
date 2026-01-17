@@ -292,7 +292,7 @@ for counter=1:Value_Params.num_rounds
             for k=1:Value_Params.task_type
                 alpha_params(k) = 1 + Value_data(i).observe(j,k);
             end
-            Value_data(i).initbelief(j,1:end)=drchrnd(alpha_params,1)';  % Dirichlet采样
+            Value_data(i).initbelief(j,1:end)=OCFUtils.drchrnd(alpha_params,1)';  % Dirichlet采样
         end
     end
     

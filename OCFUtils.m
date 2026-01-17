@@ -108,6 +108,22 @@
             dist = sum(sqrt(sum(diffs.^2, 2)));
         end
 
+        function r = drchrnd(a, n)
+            % drchrnd 从 Dirichlet 分布采样
+            % 输入：
+            %   a : 1×p 或 p×1 的浓度参数向量
+            %   n : 样本数量（可选，默认 1）
+            % 输出：
+            %   r : n×p 的样本矩阵，每行元素和为 1
+            if nargin < 2 || isempty(n)
+                n = 1;
+            end
+            a = a(:).';
+            p = numel(a);
+            r = gamrnd(repmat(a, n, 1), 1, n, p);
+            r = r ./ sum(r, 2);
+        end
+
         function seed = set_seed(seed)
             % set_seed 设置随机种子，兼容 rand/randn/rng。
             % 输入：
