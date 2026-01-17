@@ -15,13 +15,21 @@ rand('seed', SEED);
 N = 4;                     % agents
 M = 5;                     % tasks
 K = 3;                     % resource types
-num_task_types = 3;
 
-% Resource demand ranges for three task types
+% Resource demand ranges for task types
+% WORLD.value 长度决定 num_task_types，可通过修改 WORLD.value 统一调整类型数
+WORLD.XMIN = 0; WORLD.XMAX = 50;
+WORLD.YMIN = 0; WORLD.YMAX = 50;
+WORLD.ZMIN = 0; WORLD.ZMAX = 0;
+WORLD.value = [800, 1000, 1500];
+num_task_types = numel(WORLD.value);
+
 task_type_demands = zeros(num_task_types, K);
-task_type_demands(1, :) = randi([0, 2], 1, K);
-task_type_demands(2, :) = randi([1, 3], 1, K);
-task_type_demands(3, :) = randi([2, 3], 1, K);
+range_specs = [0 2; 1 3; 2 3];  % 每行给出[min max]，不足类型时复用最后一行
+for t = 1:num_task_types
+    bounds = range_specs(min(t, size(range_specs, 1)), :);
+    task_type_demands(t, :) = randi(bounds, 1, K);
+end
 
 % Resource execution times
 resource_exec_time = [30, 40, 50];
@@ -35,10 +43,6 @@ end
 
 % Initialize tasks
 task_priorities = randperm(M);
-WORLD.XMIN = 0; WORLD.XMAX = 50;
-WORLD.YMIN = 0; WORLD.YMAX = 50;
-WORLD.ZMIN = 0; WORLD.ZMAX = 0;
-WORLD.value = [800, 1000, 1500];
 for j = 1:M
     tasks(j).id = j;
     tasks(j).priority = task_priorities(j);

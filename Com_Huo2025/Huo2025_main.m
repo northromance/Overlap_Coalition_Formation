@@ -1,63 +1,70 @@
-function [Value_data, history_data] = Huo2025_main(agents, tasks, AddPara, Value_Params)
+ï»¿function [Value_data, history_data] = Huo2025_main(agents, tasks, AddPara, Value_Params)
 % =========================================================================
-%  º¯ÊıÃû³Æ£ºValue_main
+%  å‡½æ•°åç§°ï¼šValue_main
 %
-%  Ëã·¨Ö÷Òª¹¦ÄÜ£º
+%  ç®—æ³•ä¸»è¦åŠŸèƒ½ï¼š
 %  ------------------------------------------------------------------------
-%  ±¾Ëã·¨»ùÓÚ¶àÖÇÄÜÌåÁªÃËĞÎ³É£¨Coalition Formation£©ÓëÈÎÎñÖµ¹À¼Æ»úÖÆ£¬
-%  Íê³ÉÒÔÏÂºËĞÄÁ÷³Ì£º
-%    1. ³õÊ¼»¯ agent µÄ belief¡¢ÁªÃË½á¹¹ºÍ¹Û²â¾ØÕó¡£
-%    2. Í¨¹ıµü´ú¹ı³Ì£ºÃ¿¸ö agent ¸ù¾İ belief Ñ¡ÔñÈÎÎñ²¢ĞÎ³ÉÁªÃË¡£
-%    3. °´Í¨ĞÅÍØÆË Graph Ö´ĞĞÁÚ¾ÓĞÅÏ¢¹²Ïí£¬¸üĞÂÈÎÎñ¹À¼Æ¡£
-%    4. Ã¿ÂÖÁªÃËĞÎ³Éºó£¬agent Í¨¹ıÄ£Äâ¹Û²â¸üĞÂ Dirichlet belief¡£
-%    5. ¼ÆËãÃ¿ÂÖÁªÃË½á¹¹ÏÂµÄ³É±¾¡¢ÊÕÒæÓë¾»ÊÕÒæ¡£
-%    6. ÖØ¸´¶à´Î£¨counter=1:num_rounds£¬Ä¬ÈÏ50£©£¬ÓÃÓÚÍ³¼Æ²»Í¬ÁªÃËµÄÊÕÒæ±íÏÖ¡£
+%  æœ¬ç®—æ³•åŸºäºå¤šæ™ºèƒ½ä½“è”ç›Ÿå½¢æˆï¼ˆCoalition Formationï¼‰ä¸ä»»åŠ¡å€¼ä¼°è®¡æœºåˆ¶ï¼Œ
+%  å®Œæˆä»¥ä¸‹æ ¸å¿ƒæµç¨‹ï¼š
+%    1. åˆå§‹åŒ– agent çš„ beliefã€è”ç›Ÿç»“æ„å’Œè§‚æµ‹çŸ©é˜µã€‚
+%    2. é€šè¿‡è¿­ä»£è¿‡ç¨‹ï¼šæ¯ä¸ª agent æ ¹æ® belief é€‰æ‹©ä»»åŠ¡å¹¶å½¢æˆè”ç›Ÿã€‚
+%    3. æŒ‰é€šä¿¡æ‹“æ‰‘ Graph æ‰§è¡Œé‚»å±…ä¿¡æ¯å…±äº«ï¼Œæ›´æ–°ä»»åŠ¡ä¼°è®¡ã€‚
+%    4. æ¯è½®è”ç›Ÿå½¢æˆåï¼Œagent é€šè¿‡æ¨¡æ‹Ÿè§‚æµ‹æ›´æ–° Dirichlet beliefã€‚
+%    5. è®¡ç®—æ¯è½®è”ç›Ÿç»“æ„ä¸‹çš„æˆæœ¬ã€æ”¶ç›Šä¸å‡€æ”¶ç›Šã€‚
+%    6. é‡å¤å¤šæ¬¡ï¼ˆcounter=1:num_roundsï¼Œé»˜è®¤50ï¼‰ï¼Œç”¨äºç»Ÿè®¡ä¸åŒè”ç›Ÿçš„æ”¶ç›Šè¡¨ç°ã€‚
 %
-%  ÊäÈë²ÎÊı£º
+%  è¾“å…¥å‚æ•°ï¼š
 %  ------------------------------------------------------------------------
-%  agents£º½á¹¹ÌåÊı×é£¬°üº¬£º
-%       - id£ºagent ID
-%       - x, y£º¿Õ¼ä×ø±ê
-%       - fuel£ºÈ¼ÁÏµ¥¼Û£¨¾ö¶¨ĞĞ¶¯³É±¾£©
-%       - detprob£º¹Û²âÕıÈ·¸ÅÂÊ
+%  agentsï¼šç»“æ„ä½“æ•°ç»„ï¼ŒåŒ…å«ï¼š
+%       - idï¼šagent ID
+%       - x, yï¼šç©ºé—´åæ ‡
+%       - fuelï¼šç‡ƒæ–™å•ä»·ï¼ˆå†³å®šè¡ŒåŠ¨æˆæœ¬ï¼‰
+%       - detprobï¼šè§‚æµ‹æ­£ç¡®æ¦‚ç‡
 %
-%  tasks£º½á¹¹ÌåÊı×é£¬°üº¬£º
-%       - x, y£ºÈÎÎñÎ»ÖÃ
-%       - value£ºÈÎÎñµ±Ç°¿ÉÄÜÖµ£¨Ò»¸ö 3 Î¬ÏòÁ¿£©
-%       - WORLD.value£ºÈÎÎñÕæÊµÖµ£¨»·¾³Éè¶¨£©
+%  tasksï¼šç»“æ„ä½“æ•°ç»„ï¼ŒåŒ…å«ï¼š
+%       - x, yï¼šä»»åŠ¡ä½ç½®
+%       - valueï¼šä»»åŠ¡å½“å‰å¯èƒ½å€¼ï¼ˆé•¿åº¦ä¸ºä»»åŠ¡ç±»å‹æ•°çš„å‘é‡ï¼‰
+%       - WORLD.valueï¼šä»»åŠ¡çœŸå®å€¼ï¼ˆç¯å¢ƒè®¾å®šï¼‰
 %
-%  Graph£ºÍ¨ĞÅÁÚ½Ó¾ØÕó£¨N¡ÁN£©£¬Graph(i,j)=1 ±íÊ¾ agent i ºÍ j ¿ÉÍ¨ĞÅ
+%  Graphï¼šé€šä¿¡é‚»æ¥çŸ©é˜µï¼ˆNÃ—Nï¼‰ï¼ŒGraph(i,j)=1 è¡¨ç¤º agent i å’Œ j å¯é€šä¿¡
 %
 %
-%  Êä³ö²ÎÊı£º
+%  è¾“å‡ºå‚æ•°ï¼š
 %  ------------------------------------------------------------------------
-%  Value_data£º°üº¬Ã¿¸ö agent ÔÚ¸÷ÂÖµü´úÖĞµÄ belief¡¢¹Û²â¡¢ÁªÃË½á¹¹µÈĞÅÏ¢
+%  Value_dataï¼šåŒ…å«æ¯ä¸ª agent åœ¨å„è½®è¿­ä»£ä¸­çš„ beliefã€è§‚æµ‹ã€è”ç›Ÿç»“æ„ç­‰ä¿¡æ¯
 %
-%  Rcost£ºÁªÃËÖĞ agent µÄĞĞ¶¯³É±¾£¨¾àÀë ¡Á fuel£©
+%  Rcostï¼šè”ç›Ÿä¸­ agent çš„è¡ŒåŠ¨æˆæœ¬ï¼ˆè·ç¦» Ã— fuelï¼‰
 %
-%  cost_sum£º50 ´ÎÁªÃËĞÎ³ÉÖĞ£¬Ã¿´ÎµÄ×Ü³É±¾
+%  cost_sumï¼š50 æ¬¡è”ç›Ÿå½¢æˆä¸­ï¼Œæ¯æ¬¡çš„æ€»æˆæœ¬
 %
-%  net_profit£º50 ´ÎÁªÃËĞÎ³ÉÖĞ£¬Ã¿´ÎµÄ£¨ÊÕÒæ - ³É±¾£©
+%  net_profitï¼š50 æ¬¡è”ç›Ÿå½¢æˆä¸­ï¼Œæ¯æ¬¡çš„ï¼ˆæ”¶ç›Š - æˆæœ¬ï¼‰
 %
-%  initial_coalition£ºµÚÒ»´ÎÁªÃËĞÎ³ÉµÄÁªÃË³ÉÔ±½á¹¹
+%  initial_coalitionï¼šç¬¬ä¸€æ¬¡è”ç›Ÿå½¢æˆçš„è”ç›Ÿæˆå‘˜ç»“æ„
 %
-%  ×¢£ºËã·¨ÄÚ²¿»áÔËĞĞ¶àÂÖ belief ¸üĞÂ¡¢ÁªÃËÓÅ»¯ºÍÍ¨ĞÅ£¬×îÖÕÊä³öÃ¿ÂÖµÄ³É±¾ÓëÊÕÒæ¡£
+%  æ³¨ï¼šç®—æ³•å†…éƒ¨ä¼šè¿è¡Œå¤šè½® belief æ›´æ–°ã€è”ç›Ÿä¼˜åŒ–å’Œé€šä¿¡ï¼Œæœ€ç»ˆè¾“å‡ºæ¯è½®çš„æˆæœ¬ä¸æ”¶ç›Šã€‚
 %
 % =========================================================================
 
-% Éú³ÉÈ«Á¬Í¨µÄÍ¨ĞÅÍ¼£¨ËùÓĞÖÇÄÜÌå¿ÉÒÔÏà»¥Í¨ĞÅ£©
+% ç”Ÿæˆå…¨è¿é€šçš„é€šä¿¡å›¾ï¼ˆæ‰€æœ‰æ™ºèƒ½ä½“å¯ä»¥ç›¸äº’é€šä¿¡ï¼‰
 Graph = ones(Value_Params.N, Value_Params.N);
-
-for i=1:Value_Params.N %°üÀ¨agent±êºÅ£¬Ë÷ÒıÒÔ¼°³õÊ¼ÁªÃË½á¹¹
-    Value_data(i).agentID=agents(i).id;
-    Value_data(i).agentIndex=i;
-    Value_data(i).iteration=0;%ÁªÃË¸Ä±ä´ÎÊı
-    Value_data(i).unif=0;%¾ùÔÈËæ»ú±äÁ¿
-    Value_data(i).coalitionstru=zeros(Value_Params.M+1,Value_Params.N);
-    Value_data(i).initbelief=zeros(Value_Params.M+1,3);
+task_types = Value_Params.task_type;  % ä»»åŠ¡ç±»å‹æ•°é‡ï¼ˆç»Ÿä¸€ç”±å‚æ•°æ§åˆ¶ï¼‰
+if isempty(task_types)
+    task_types = numel(tasks(1).WORLD.value);
 end
 
-for k=1: Value_Params.N   %ËùÓĞagents·ÅÔÚvoid ÈÎÎñÖĞ
+for i=1:Value_Params.N %åŒ…æ‹¬agentæ ‡å·ï¼Œç´¢å¼•ä»¥åŠåˆå§‹è”ç›Ÿç»“æ„
+    Value_data(i).agentID=agents(i).id;
+    Value_data(i).agentIndex=i;
+    Value_data(i).iteration=0;%è”ç›Ÿæ”¹å˜æ¬¡æ•°
+    Value_data(i).unif=0;%å‡åŒ€éšæœºå˜é‡
+    Value_data(i).coalitionstru=zeros(Value_Params.M+1,Value_Params.N);
+    Value_data(i).initbelief=zeros(Value_Params.M+1,task_types);
+    Value_data(i).observe = zeros(Value_Params.M, task_types);
+    Value_data(i).preobserve = zeros(Value_Params.M, task_types);
+end
+summatrix = zeros(Value_Params.M, task_types);  % æ±‡æ€»è§‚æµ‹çŸ©é˜µ
+
+for k=1: Value_Params.N   %æ‰€æœ‰agentsæ”¾åœ¨void ä»»åŠ¡ä¸­
     for j=1:Value_Params.M+1
         if j==Value_Params.M+1
             for i=1:Value_Params.N
@@ -67,41 +74,31 @@ for k=1: Value_Params.N   %ËùÓĞagents·ÅÔÚvoid ÈÎÎñÖĞ
     end
 end
 
-for i=1:Value_Params.N %Ã¿Ò»¸öagent¶ÔËùÓĞÈÎÎñµÄÈÎÎñÖµ³ÖÓĞÒ»¸ö³õÊ¼belief
+for i=1:Value_Params.N %æ¯ä¸€ä¸ªagentå¯¹æ‰€æœ‰ä»»åŠ¡çš„ä»»åŠ¡å€¼æŒæœ‰ä¸€ä¸ªåˆå§‹belief
     for j=1:Value_Params.M
-        %Value_data(i).initbelief(j,1:end)=drchrnd([1,1,1],1)';
-        Value_data(i).initbelief(j,1:end)=[1/3,1/3,1/3]';
+        %Value_data(i).initbelief(j,1:end)=drchrnd(ones(1, task_types),1)';
+        Value_data(i).initbelief(j,1:end)=ones(1, task_types)/task_types;
     end
 end
 
-for i=1:Value_Params.N
-    for j=1:Value_Params.M
-        for k=1:3
-            Value_data(i).observe(j,k)=0;%´´½¨Ã¿¸öagent¶Ôµ±Ç°ËùÔÚÈÎÎñÁªÃËµÄ¹Û²â¾ØÕó
-            Value_data(i).preobserve(j,k)=0;
-            summatrix(j,k)=0;
-        end
-    end
-end
-
-%´Ë´¦Ó¦¸ÃÓĞ¸öfor/whichÑ­»·
+%æ­¤å¤„åº”è¯¥æœ‰ä¸ªfor/whichå¾ªç¯
 
 for counter=1:Value_Params.num_rounds
-    for i=1:Value_Params.N   %Ò»»áÒª¸Ä»ØÀ´
+    for i=1:Value_Params.N   %ä¸€ä¼šè¦æ”¹å›æ¥
         for j=1:Value_Params.M
             Value_data(i).tasks(j).prob(counter,:)=Value_data(i).initbelief(j,1:end);
         end
     end
     
-    T=1;   %µü´ú´ÎÊı
+    T=1;   %è¿­ä»£æ¬¡æ•°
     lastTime=T-1;
-    doneflag=0;   %³õÊ¼±êÖ¾Î»0£¬ÊÕÁ²±êÖ¾Î»Îª1
+    doneflag=0;   %åˆå§‹æ ‡å¿—ä½0ï¼Œæ”¶æ•›æ ‡å¿—ä½ä¸º1
     
     while( doneflag==0)
         
         %communication
         
-        %ËùÓĞagentsÑ¡Ôñ×ÔÖ÷ÈÎÎñ
+        %æ‰€æœ‰agentsé€‰æ‹©è‡ªä¸»ä»»åŠ¡
         for ii=1:Value_Params.N
             [incremental(ii),curnumberrow(ii),Value_data(ii)]=Value_order(agents, tasks, Value_data(ii), Value_Params);
             incremental(ii);
@@ -113,7 +110,7 @@ for counter=1:Value_Params.num_rounds
             lastTime=T;
         end
         % length(find(incremental==0))
-        Value_data=Value_communication(agents, tasks, Value_data, Value_Params,Graph);%ÁÚ¾Óagent¼ä±Ë´ËÍ¨ĞÅ
+        Value_data=Value_communication(agents, tasks, Value_data, Value_Params,Graph);%é‚»å±…agenté—´å½¼æ­¤é€šä¿¡
         
         %convergence check
         
@@ -131,28 +128,24 @@ for counter=1:Value_Params.num_rounds
         end
     end
     
-    %¼ÇÂ¼Ò»´ÎÁªÃËĞÎ³Éºó¹Û²â´ÎÊı
+    %è®°å½•ä¸€æ¬¡è”ç›Ÿå½¢æˆåè§‚æµ‹æ¬¡æ•°
     for i=1:Value_Params.N
         if  curnumberrow(i)~=Value_Params.M+1
             for m=1:Value_Params.obs_times 
                 taskindex=find(tasks(curnumberrow(i)).value== tasks(curnumberrow(i)).WORLD.value);
                 nontaskindex=find(tasks(curnumberrow(i)).value~= tasks(curnumberrow(i)).WORLD.value);
                 if rand<=agents(i).detprob
-                    Value_data(i).observe(curnumberrow(i),  taskindex)= Value_data(i).observe(curnumberrow(i),taskindex)+1;%¸üĞÂ¹Û²â¾ØÕó
-                    m=m+1;
-                elseif (agents(i).detprob<rand)&&(rand<=(1-1/2*agents(i).detprob))
-                    Value_data(i).observe(curnumberrow(i),  nontaskindex(1))= Value_data(i).observe(curnumberrow(i),nontaskindex(1))+1;%¸üĞÂ¹Û²â¾ØÕó
-                    m=m+1;
-                else
-                    Value_data(i).observe(curnumberrow(i),  nontaskindex(2))= Value_data(i).observe(curnumberrow(i),nontaskindex(2))+1;%¸üĞÂ¹Û²â¾ØÕó
-                    m=m+1;
+                    Value_data(i).observe(curnumberrow(i),  taskindex)= Value_data(i).observe(curnumberrow(i),taskindex)+1;%æ›´æ–°è§‚æµ‹çŸ©é˜µ
+                elseif ~isempty(nontaskindex)
+                    wrong_idx = nontaskindex(randi(numel(nontaskindex)));
+                    Value_data(i).observe(curnumberrow(i),  wrong_idx)= Value_data(i).observe(curnumberrow(i),wrong_idx)+1;%æ›´æ–°è§‚æµ‹çŸ©é˜µ
                 end
             end
         end
     end
     
     for j=1:Value_Params.M
-        for k=1:3
+        for k=1:task_types
             for i=1:Value_Params.N
                 summatrix(j,k)=summatrix(j,k)+ Value_data(i).observe(j,  k)-Value_data(i).preobserve(j,  k);
             end
@@ -161,7 +154,7 @@ for counter=1:Value_Params.num_rounds
     
     for i=1:Value_Params.N
         for j=1:Value_Params.M
-            for k=1:3
+            for k=1:task_types
                 Value_data(i).preobserve(j,k)= summatrix(j,k);
                 Value_data(i).observe(j,  k)= summatrix(j,k);
             end
@@ -169,25 +162,25 @@ for counter=1:Value_Params.num_rounds
     end
     
     %
-    %Ò»´ÎÁªÃËĞÎ³Éºó¸ù¾İ¹Û²â¸üĞÂbelief
+    %ä¸€æ¬¡è”ç›Ÿå½¢æˆåæ ¹æ®è§‚æµ‹æ›´æ–°belief
     for i=1:Value_Params.N
         for j=1:Value_Params.M
-            Value_data(i).initbelief(j,1:end)=drchrnd([1+Value_data(i).observe(j,1),1+Value_data(i).observe(j,2),1+Value_data(i).observe(j,3)],1)';
-            %  Value_data(i).initbelief(j,1:end)=[1/3,1/3,1/3];
+            alpha_params = 1 + Value_data(i).observe(j, 1:task_types);
+            Value_data(i).initbelief(j,1:end)=drchrnd(alpha_params,1)';
         end
     end
     
-    % ¼ÆËã»ùÓÚ×ÊÔ´·ÖÅäµÄÁªÃËĞ§ÓÃ
+    % è®¡ç®—åŸºäºèµ„æºåˆ†é…çš„è”ç›Ÿæ•ˆç”¨
     Rcost = zeros(Value_Params.M, Value_Params.N);
-    coalition_utility = zeros(1, Value_Params.M);  % Ã¿¸öÁªÃËµÄĞ§ÓÃ
+    coalition_utility = zeros(1, Value_Params.M);  % æ¯ä¸ªè”ç›Ÿçš„æ•ˆç”¨
     
-    % »ñÈ¡×ÊÔ´ÀàĞÍÊıÁ¿K
+    % è·å–èµ„æºç±»å‹æ•°é‡K
     if isfield(Value_Params, 'K')
         K = Value_Params.K;
     elseif isfield(agents(1), 'resources')
         K = length(agents(1).resources);
     else
-        K = 6;  % Ä¬ÈÏÖµ
+        K = 6;  % é»˜è®¤å€¼
     end
     
     for j = 1:Value_Params.M
@@ -198,7 +191,7 @@ for counter=1:Value_Params.num_rounds
             continue;
         end
         
-        % »ñÈ¡ÁªÃË³ÉÔ±µÄÕæÊµagent ID
+        % è·å–è”ç›Ÿæˆå‘˜çš„çœŸå®agent ID
         member_ids = [];
         for idx = 1:length(lianmeng(j).member)
             col_idx = lianmeng(j).member(idx);
@@ -213,17 +206,17 @@ for counter=1:Value_Params.num_rounds
             continue;
         end
         
-        % »ñÈ¡ÈÎÎñµÄ×ÊÔ´ĞèÇó
+        % è·å–ä»»åŠ¡çš„èµ„æºéœ€æ±‚
         if isfield(tasks(j), 'resource_demand')
             demand = tasks(j).resource_demand(:)';
             if length(demand) < K
                 demand = [demand, zeros(1, K - length(demand))];
             end
         else
-            demand = ones(1, K) * 2;  % Ä¬ÈÏĞèÇó
+            demand = ones(1, K) * 2;  % é»˜è®¤éœ€æ±‚
         end
         
-        % ¼ÆËãÁªÃË×Ü×ÊÔ´¹±Ï×
+        % è®¡ç®—è”ç›Ÿæ€»èµ„æºè´¡çŒ®
         total_resources = zeros(1, K);
         for i = 1:length(member_ids)
             member_id = member_ids(i);
@@ -237,19 +230,19 @@ for counter=1:Value_Params.num_rounds
             end
         end
         
-        % ¼ÆËã×ÊÔ´Íê³É¶È D_C
-        % Ê¹ÓÃÍ¨ÓÃº¯Êı¼ÆËãÈÎÎñÍê³É¶È
+        % è®¡ç®—èµ„æºå®Œæˆåº¦ D_C
+        % ä½¿ç”¨é€šç”¨å‡½æ•°è®¡ç®—ä»»åŠ¡å®Œæˆåº¦
         D_C = calc_task_completion_degree(total_resources, demand, K);
         
-        % ¼ÆËãÆÚÍû¼ÛÖµ V_C
-        V_C = tasks(j).WORLD.value(1)*Value_data(1).initbelief(j,1)...
-            + tasks(j).WORLD.value(2)*Value_data(1).initbelief(j,2)...
-            + tasks(j).WORLD.value(3)*Value_data(1).initbelief(j,3);
+        % è®¡ç®—æœŸæœ›ä»·å€¼ V_C
+        values = tasks(j).WORLD.value;
+        tlen = min(task_types, numel(values));
+        V_C = sum(values(1:tlen) .* Value_data(1).initbelief(j,1:tlen));
         
-        % ¼ÆËãÁªÃËÊÕÒæ = V_C ¡Á D_C
+        % è®¡ç®—è”ç›Ÿæ”¶ç›Š = V_C Ã— D_C
         coalition_revenue = V_C * D_C;
         
-        % ¼ÆËãÃ¿¸ö³ÉÔ±µÄÒÆ¶¯´ú¼Û
+        % è®¡ç®—æ¯ä¸ªæˆå‘˜çš„ç§»åŠ¨ä»£ä»·
         coalition_cost = 0;
         for i = 1:length(member_ids)
             member_id = member_ids(i);
@@ -259,33 +252,33 @@ for counter=1:Value_Params.num_rounds
             coalition_cost = coalition_cost + Rcost(j, i);
         end
         
-        % ÁªÃËĞ§ÓÃ = ÊÕÒæ - ´ú¼Û
+        % è”ç›Ÿæ•ˆç”¨ = æ”¶ç›Š - ä»£ä»·
         coalition_utility(j) = max(coalition_revenue - coalition_cost, 0);
     end
     
-    % ¼ÆËã×Ü´ú¼Û
+    % è®¡ç®—æ€»ä»£ä»·
     cost_sum(counter) = sum(Rcost(:));
     
-    % ¼ÆËã×ÜĞ§ÓÃ£¨ËùÓĞÁªÃËĞ§ÓÃÖ®ºÍ£©
+    % è®¡ç®—æ€»æ•ˆç”¨ï¼ˆæ‰€æœ‰è”ç›Ÿæ•ˆç”¨ä¹‹å’Œï¼‰
     net_profit(counter) = sum(coalition_utility);
     
     counter=counter+1;
     
 end
 
-%% ÊÊÅä¶Ô±È¿ò¼ÜµÄÊä³ö¸ñÊ½
-% ½«HuoËã·¨µÄÊä³ö×ª»»Îª¿ò¼ÜÆÚÍûµÄ¸ñÊ½
+%% é€‚é…å¯¹æ¯”æ¡†æ¶çš„è¾“å‡ºæ ¼å¼
+% å°†Huoç®—æ³•çš„è¾“å‡ºè½¬æ¢ä¸ºæ¡†æ¶æœŸæœ›çš„æ ¼å¼
 
-% 1. ÖØ×éValue_dataÎªÍ³Ò»¸ñÊ½
-% HuoËã·¨µÄValue_dataÊÇÃ¿¸öagentÒ»¸ö½á¹¹£¬ÏÖÔÚĞèÒªºÏ²¢ÎªÒ»¸ö
+% 1. é‡ç»„Value_dataä¸ºç»Ÿä¸€æ ¼å¼
+% Huoç®—æ³•çš„Value_dataæ˜¯æ¯ä¸ªagentä¸€ä¸ªç»“æ„ï¼Œç°åœ¨éœ€è¦åˆå¹¶ä¸ºä¸€ä¸ª
 final_Value_data = struct();
-final_Value_data.coalitionstru = Value_data(1).coalitionstru;  % M¡ÁN ÁªÃË½á¹¹¾ØÕó
+final_Value_data.coalitionstru = Value_data(1).coalitionstru;  % MÃ—N è”ç›Ÿç»“æ„çŸ©é˜µ
 
-% 2. ¼ÆËã×ÜĞ§ÓÃ£¨Ê¹ÓÃ×îºóÒ»´ÎµÄ¾»ÊÕÒæ£©
+% 2. è®¡ç®—æ€»æ•ˆç”¨ï¼ˆä½¿ç”¨æœ€åä¸€æ¬¡çš„å‡€æ”¶ç›Šï¼‰
 final_Value_data.totalvalue = net_profit(end);
 
-% 3. ¹¹½¨×ÊÔ´·ÖÅä¾ØÕó£¨ÓÃÓÚ¼ÆËã×ÊÔ´ÀûÓÃÂÊ£©
-% HuoËã·¨ÖĞ£¬Ã¿¸öÖÇÄÜÌå½«ÆäÈ«²¿×ÊÔ´¹±Ï×¸ø²ÎÓëµÄÈÎÎñ
+% 3. æ„å»ºèµ„æºåˆ†é…çŸ©é˜µï¼ˆç”¨äºè®¡ç®—èµ„æºåˆ©ç”¨ç‡ï¼‰
+% Huoç®—æ³•ä¸­ï¼Œæ¯ä¸ªæ™ºèƒ½ä½“å°†å…¶å…¨éƒ¨èµ„æºè´¡çŒ®ç»™å‚ä¸çš„ä»»åŠ¡
 final_Value_data.agentresources = zeros(Value_Params.N, Value_Params.M, Value_Params.K);
 for j = 1:Value_Params.M
     member_ids = find(Value_data(1).coalitionstru(j, :) ~= 0);
@@ -302,25 +295,25 @@ for j = 1:Value_Params.M
     end
 end
 
-% 4. Ìí¼Ó¶îÍâĞÅÏ¢
+% 4. æ·»åŠ é¢å¤–ä¿¡æ¯
 final_Value_data.cost_sum = cost_sum(end);
 final_Value_data.net_profit_history = net_profit;
 final_Value_data.cost_history = cost_sum;
 final_Value_data.Rcost = Rcost;
 
-% 5. ¹¹½¨history_data
+% 5. æ„å»ºhistory_data
 history_data = struct();
 history_data.algorithm = 'Huo2025';
 history_data.final_utility = net_profit(end);
 history_data.net_profit_evolution = net_profit;
 history_data.cost_evolution = cost_sum;
-history_data.num_rounds = Value_Params.num_rounds;  % Ê¹ÓÃ´«ÈëµÄÂÖÊı²ÎÊı
+history_data.num_rounds = Value_Params.num_rounds;  % ä½¿ç”¨ä¼ å…¥çš„è½®æ•°å‚æ•°
 history_data.initial_coalition = initial_coalition;
 
-% 6. ½«final_Value_data×÷ÎªµÚÒ»¸öÊä³ö
+% 6. å°†final_Value_dataä½œä¸ºç¬¬ä¸€ä¸ªè¾“å‡º
 Value_data_out = final_Value_data;
 
-% ·µ»ØÊÊÅäºóµÄÊä³ö
+% è¿”å›é€‚é…åçš„è¾“å‡º
 Value_data = Value_data_out;
 
 end

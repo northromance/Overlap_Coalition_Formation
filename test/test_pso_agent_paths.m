@@ -16,12 +16,16 @@ addpath(fullfile(repo_root, 'Main_fun'));
 % Small reproducible scenario
 SEED = 123;
 rand('seed', SEED);
-N = 4; M = 5; K = 3; num_task_types = 3;
-
-WORLD.value = [800, 1000, 1500];
+N = 4; M = 5; K = 3;
+WORLD.value = [800, 1000, 1500];   % 任务价值集合（长度决定任务类型数）
+num_task_types = numel(WORLD.value);
 
 % Task demands and execution time
-task_type_demands = [1 2 0; 2 1 1; 1 1 2];
+base_demands = [1 2 0; 2 1 1; 1 1 2];
+task_type_demands = zeros(num_task_types, K);
+for t = 1:num_task_types
+    task_type_demands(t, :) = base_demands(min(t, size(base_demands, 1)), :);
+end
 resource_exec_time = [30 40 50];
 
 task_type_duration_by_resource = zeros(num_task_types, K);

@@ -1,26 +1,26 @@
-function agentutility=Value_utility(agents, tasks, numberrow, numbercolumn, numberofcoworker,Value_data,Value_Params)
-% »ùÓÚ×ÊÔ´·ÖÅä±ÈÀıµÄĞ§ÓÃ¼ÆËã
-% utility = r_n(C) ¡Á V_C ¡Á D_C - cost
-% r_n(C): ×ÊÔ´¹±Ï×±ÈÀı
-% V_C: ÆÚÍû¼ÛÖµ
-% D_C: ×ÊÔ´Íê³É¶È
+ï»¿function agentutility=Value_utility(agents, tasks, numberrow, numbercolumn, numberofcoworker,Value_data,Value_Params)
+% åŸºäºèµ„æºåˆ†é…æ¯”ä¾‹çš„æ•ˆç”¨è®¡ç®—
+% utility = r_n(C) Ã— V_C Ã— D_C - cost
+% r_n(C): èµ„æºè´¡çŒ®æ¯”ä¾‹
+% V_C: æœŸæœ›ä»·å€¼
+% D_C: èµ„æºå®Œæˆåº¦
 
-% Èç¹ûÔÚ¿ÕÈÎÎñ¼¯ÖĞ£¬Ğ§ÓÃÎª0
+% å¦‚æœåœ¨ç©ºä»»åŠ¡é›†ä¸­ï¼Œæ•ˆç”¨ä¸º0
 if (numberrow == Value_Params.M+1)
     agentutility = 0;
     return;
 end
 
-% »ñÈ¡×ÊÔ´ÀàĞÍÊıÁ¿K
+% è·å–èµ„æºç±»å‹æ•°é‡K
 
 K = Value_Params.K;
 
 
-% »ñÈ¡ÈÎÎñµÄ×ÊÔ´ĞèÇó
+% è·å–ä»»åŠ¡çš„èµ„æºéœ€æ±‚
 demand = tasks(numberrow).resource_demand(:)';
 
-% ´ÓÁªÃË¾ØÕóÖĞ»ñÈ¡ÕæÕıµÄ³ÉÔ±agent IDÁĞ±í
-% numberofcoworkerÊÇÁĞË÷Òı£¬ĞèÒª´ÓcoalitionstruÖĞ»ñÈ¡Êµ¼ÊµÄagent ID
+% ä»è”ç›ŸçŸ©é˜µä¸­è·å–çœŸæ­£çš„æˆå‘˜agent IDåˆ—è¡¨
+% numberofcoworkeræ˜¯åˆ—ç´¢å¼•ï¼Œéœ€è¦ä»coalitionstruä¸­è·å–å®é™…çš„agent ID
 member_ids = [];
 for i = 1:length(numberofcoworker)
     col_idx = numberofcoworker(i);
@@ -32,13 +32,13 @@ for i = 1:length(numberofcoworker)
     end
 end
 
-% Èç¹ûÃ»ÓĞÓĞĞ§³ÉÔ±£¬Ğ§ÓÃÎª0
+% å¦‚æœæ²¡æœ‰æœ‰æ•ˆæˆå‘˜ï¼Œæ•ˆç”¨ä¸º0
 if isempty(member_ids)
     agentutility = 0;
     return;
 end
 
-% ¹¹½¨×ÊÔ´·ÖÅä¾ØÕó£¨ÓÃÓÚ¼ÆËã¹±Ï×±ÈÀıºÍÍê³É¶È£©
+% æ„å»ºèµ„æºåˆ†é…çŸ©é˜µï¼ˆç”¨äºè®¡ç®—è´¡çŒ®æ¯”ä¾‹å’Œå®Œæˆåº¦ï¼‰
 SC_m = zeros(length(agents), K);
 for i = 1:length(member_ids)
     member_id = member_ids(i);
@@ -52,33 +52,37 @@ for i = 1:length(member_ids)
     end
 end
 
-% ¼ÆËãÁªÃË×Ü×ÊÔ´£¨SC_m °´ÁĞÇóºÍ£©
+% è®¡ç®—è”ç›Ÿæ€»èµ„æºï¼ˆSC_m æŒ‰åˆ—æ±‚å’Œï¼‰
 total_resources = sum(SC_m, 1);
 
-% ¼ÆËã×ÊÔ´Íê³É¶È D_C
+% è®¡ç®—èµ„æºå®Œæˆåº¦ D_C
 D_C = calc_task_completion_degree(total_resources, demand, K);
 if D_C == 0
     agentutility = 0;
     return;
 end
 
-% ¼ÆËã×ÊÔ´¹±Ï×±ÈÀı r_n(C)
+% è®¡ç®—èµ„æºè´¡çŒ®æ¯”ä¾‹ r_n(C)
 r_n_C = calc_resource_contribution_ratio(SC_m, numbercolumn, member_ids);
 
-% ¼ÆËãÆÚÍû¼ÛÖµ V_C£¨»ùÓÚbelief£©
-V_C = tasks(numberrow).WORLD.value(1)*Value_data.initbelief(numberrow,1)...
-    + tasks(numberrow).WORLD.value(2)*Value_data.initbelief(numberrow,2)...
-    + tasks(numberrow).WORLD.value(3)*Value_data.initbelief(numberrow,3);
+% è®¡ç®—æœŸæœ›ä»·å€¼ V_Cï¼ˆåŸºäºbeliefï¼Œæ”¯æŒå¯å˜ä»»åŠ¡ç±»å‹ï¼‰
+task_types = Value_Params.task_type;
+if isempty(task_types)
+    task_types = numel(tasks(numberrow).WORLD.value);
+end
+values = tasks(numberrow).WORLD.value;
+tlen = min(task_types, numel(values));
+V_C = sum(values(1:tlen) .* Value_data.initbelief(numberrow,1:tlen));
 
-% ¼ÆËãÊÕÒæ = r_n(C) ¡Á V_C ¡Á D_C
+% è®¡ç®—æ”¶ç›Š = r_n(C) Ã— V_C Ã— D_C
 revenue = r_n_C * V_C * D_C;
 
-% ¼ÆËãÒÆ¶¯´ú¼Û£¨·ÉĞĞ¾àÀë ¡Á È¼ÁÏÏûºÄÂÊ£©
+% è®¡ç®—ç§»åŠ¨ä»£ä»·ï¼ˆé£è¡Œè·ç¦» Ã— ç‡ƒæ–™æ¶ˆè€—ç‡ï¼‰
 distance = sqrt((agents(numbercolumn).x-tasks(numberrow).x)^2 ...
               + (agents(numbercolumn).y-tasks(numberrow).y)^2);
 cost = distance * agents(numbercolumn).fuel;
 
-% ×îÖÕĞ§ÓÃ
+% æœ€ç»ˆæ•ˆç”¨
 if (revenue - cost) > 0
     agentutility = revenue - cost;
 else
@@ -86,3 +90,4 @@ else
 end
 
 end
+

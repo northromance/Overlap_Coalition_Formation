@@ -1,4 +1,4 @@
-
+ï»¿
 
 clear;
 clc;
@@ -7,149 +7,149 @@ tic
 
 
 % test 123
-%% ³õÊ¼»¯²ÎÊı
-SEED=2437;                    % Ëæ»úÊıÖÖ×Ó£¬ÓÃÓÚ½á¹û¿É¸´ÏÖ
+%% åˆå§‹åŒ–å‚æ•°
+SEED=2437;                    % éšæœºæ•°ç§å­ï¼Œç”¨äºç»“æœå¯å¤ç°
 rand('seed',SEED);
-addpath("SA\")                % Ìí¼ÓSAÎÄ¼ş¼Ğµ½ËÑË÷Â·¾¶
-addpath("plots\")             % Ìí¼Ó»æÍ¼/±í¸ñº¯ÊıÎÄ¼ş¼Ğµ½ËÑË÷Â·¾¶
+addpath("SA\")                % æ·»åŠ SAæ–‡ä»¶å¤¹åˆ°æœç´¢è·¯å¾„
+addpath("plots\")             % æ·»åŠ ç»˜å›¾/è¡¨æ ¼å‡½æ•°æ–‡ä»¶å¤¹åˆ°æœç´¢è·¯å¾„
 
-% ÊÀ½ç¿Õ¼ä²ÎÊı
-WORLD.XMIN=0;                  % XÖá×îĞ¡Öµ
-WORLD.XMAX=100;                % XÖá×î´óÖµ
-WORLD.YMIN=0;                  % YÖá×îĞ¡Öµ
-WORLD.YMAX=100;                % YÖá×î´óÖµ
-WORLD.ZMIN=0;                  % ZÖá×îĞ¡Öµ£¨2D»·¾³ÖĞÎ´Ê¹ÓÃ£©
-WORLD.ZMAX=0;                  % ZÖá×î´óÖµ£¨2D»·¾³ÖĞÎ´Ê¹ÓÃ£©
-WORLD.value=[800,1000,1500];    % ÈÎÎñ¼ÛÖµºòÑ¡¼¯
+% ä¸–ç•Œç©ºé—´å‚æ•°
+WORLD.XMIN=0;                  % Xè½´æœ€å°å€¼
+WORLD.XMAX=100;                % Xè½´æœ€å¤§å€¼
+WORLD.YMIN=0;                  % Yè½´æœ€å°å€¼
+WORLD.YMAX=100;                % Yè½´æœ€å¤§å€¼
+WORLD.ZMIN=0;                  % Zè½´æœ€å°å€¼ï¼ˆ2Dç¯å¢ƒä¸­æœªä½¿ç”¨ï¼‰
+WORLD.ZMAX=0;                  % Zè½´æœ€å¤§å€¼ï¼ˆ2Dç¯å¢ƒä¸­æœªä½¿ç”¨ï¼‰
+WORLD.value=[800,1000,1500];    % ä»»åŠ¡ä»·å€¼å€™é€‰é›†ï¼ˆè°ƒæ•´é•¿åº¦å³å¯æ”¹å˜ä»»åŠ¡ç±»å‹æ•°é‡ï¼‰
 
-% »ù±¾²ÎÊı
-N = 6;                          % ÖÇÄÜÌåÊıÁ¿
-M = 6;                          % ÈÎÎñÊıÁ¿
-K = 6;                          % ×ÊÔ´ÀàĞÍÊıÁ¿
-num_resources = K;              % ×ÊÔ´ÖÖÀàÊıÁ¿£¨ÓëK±£³ÖÒ»ÖÂ£©
-num_task_types = 3;             % ÈÎÎñÀàĞÍÊıÁ¿
-max_resource_value = 4;         % ÖÇÄÜÌå×ÊÔ´µÄ×î´óËæ»úÖµ
-min_resource_value = 2;         % ÖÇÄÜÌå×ÊÔ´µÄ×îĞ¡Ëæ»úÖµ
-Emax_init = 1000;               % ÖÇÄÜÌå×î´óÄÜÁ¿µÄ³õÊ¼»¯»ù×¼Öµ
-AddPara.control = 1;            % ¿ØÖÆ²ÎÊı£¨ÓÃÓÚËã·¨Á÷³Ì¿ØÖÆ£©
+% åŸºæœ¬å‚æ•°
+N = 6;                          % æ™ºèƒ½ä½“æ•°é‡
+M = 6;                          % ä»»åŠ¡æ•°é‡
+K = 6;                          % èµ„æºç±»å‹æ•°é‡
+num_resources = K;              % èµ„æºç§ç±»æ•°é‡ï¼ˆä¸Kä¿æŒä¸€è‡´ï¼‰
+num_task_types = numel(WORLD.value); % ä»»åŠ¡ç±»å‹æ•°é‡ï¼ˆä¸ä»·å€¼é›†åˆé•¿åº¦ä¸€è‡´ï¼‰
+max_resource_value = 4;         % æ™ºèƒ½ä½“èµ„æºçš„æœ€å¤§éšæœºå€¼
+min_resource_value = 2;         % æ™ºèƒ½ä½“èµ„æºçš„æœ€å°éšæœºå€¼
+Emax_init = 1000;               % æ™ºèƒ½ä½“æœ€å¤§èƒ½é‡çš„åˆå§‹åŒ–åŸºå‡†å€¼
+AddPara.control = 1;            % æ§åˆ¶å‚æ•°ï¼ˆç”¨äºç®—æ³•æµç¨‹æ§åˆ¶ï¼‰
 
-% ×ÊÔ´Ö´ĞĞÊ±¼ä²ÎÊı
-resource_exec_time = [50 65 50 60 35 45];  % Ã¿ÖÖ×ÊÔ´ÀàĞÍËùĞèµÄÖ´ĞĞÊ±¼ä
+% èµ„æºæ‰§è¡Œæ—¶é—´å‚æ•°
+resource_exec_time = [50 65 50 60 35 45];  % æ¯ç§èµ„æºç±»å‹æ‰€éœ€çš„æ‰§è¡Œæ—¶é—´
 
-% ÖÇÄÜÌåÊôĞÔ²ÎÊı
-agent_velocity = 2;             % ÖÇÄÜÌåÒÆ¶¯ËÙ¶È
-agent_detprob_min = 0.9;       % ÖÇÄÜÌå¼ì²â¸ÅÂÊ×îĞ¡Öµ
-agent_detprob_max = 1.0;        % ÖÇÄÜÌå¼ì²â¸ÅÂÊ×î´óÖµ
-agent_Emax_min = 300;           % ÖÇÄÜÌå×î´óÄÜÁ¿×îĞ¡Öµ
-agent_Emax_range = 50;          % ÖÇÄÜÌå×î´óÄÜÁ¿Ëæ»ú·¶Î§
-agent_fuel = 1;                 % ÖÇÄÜÌåÈ¼ÁÏÏûºÄÂÊ
-agent_beta = 1;                 % ÖÇÄÜÌåÖ´ĞĞÄÜºÄÏµÊı
+% æ™ºèƒ½ä½“å±æ€§å‚æ•°
+agent_velocity = 2;             % æ™ºèƒ½ä½“ç§»åŠ¨é€Ÿåº¦
+agent_detprob_min = 0.9;       % æ™ºèƒ½ä½“æ£€æµ‹æ¦‚ç‡æœ€å°å€¼
+agent_detprob_max = 1.0;        % æ™ºèƒ½ä½“æ£€æµ‹æ¦‚ç‡æœ€å¤§å€¼
+agent_Emax_min = 300;           % æ™ºèƒ½ä½“æœ€å¤§èƒ½é‡æœ€å°å€¼
+agent_Emax_range = 50;          % æ™ºèƒ½ä½“æœ€å¤§èƒ½é‡éšæœºèŒƒå›´
+agent_fuel = 1;                 % æ™ºèƒ½ä½“ç‡ƒæ–™æ¶ˆè€—ç‡
+agent_beta = 1;                 % æ™ºèƒ½ä½“æ‰§è¡Œèƒ½è€—ç³»æ•°
 
-% Ä£ÄâÍË»ğËã·¨²ÎÊı
-SA_Temperature = 100.0;         % ³õÊ¼ÎÂ¶È
-SA_alpha = 0.95;                % ÎÂ¶ÈË¥¼õÂÊ
-SA_Tmin = 0.01;                 % ×îĞ¡ÎÂ¶È
-SA_max_stable_iterations = 5;   % ×î´óÎÈ¶¨µü´ú´ÎÊı
+% æ¨¡æ‹Ÿé€€ç«ç®—æ³•å‚æ•°
+SA_Temperature = 100.0;         % åˆå§‹æ¸©åº¦
+SA_alpha = 0.95;                % æ¸©åº¦è¡°å‡ç‡
+SA_Tmin = 0.01;                 % æœ€å°æ¸©åº¦
+SA_max_stable_iterations = 5;   % æœ€å¤§ç¨³å®šè¿­ä»£æ¬¡æ•°
 
-% ¹Û²â²ÎÊı
-obs_times = 50;  % Ã¿¸öÈÎÎñµÄ¹Û²â´ÎÊı
-num_rounds = 50;  % ÓÎÏ·×ÜÂÖÊı
+% è§‚æµ‹å‚æ•°
+obs_times = 50;  % æ¯ä¸ªä»»åŠ¡çš„è§‚æµ‹æ¬¡æ•°
+num_rounds = 50;  % æ¸¸æˆæ€»è½®æ•°
 
 % ========================================
-resource_confidence = 0.7;     % ×ÊÔ´ĞèÇó¼ÆËãµÄÖÃĞÅË®Æ½
+resource_confidence = 0.7;     % èµ„æºéœ€æ±‚è®¡ç®—çš„ç½®ä¿¡æ°´å¹³
 
-%% ³õÊ¼»¯ÈÎÎñÀàĞÍµÄ×ÊÔ´ĞèÇó£¨ÎªÃ¿ÖÖÀàĞÍ¶¨Òå²»Í¬µÄËæ»ú·¶Î§£©
-% task_type_demands: ÈÎÎñÀàĞÍ×ÊÔ´ĞèÇó¾ØÕó (T¡ÁK)
-%   - ĞĞ£ºÈÎÎñÀàĞÍ (1~num_task_types)
-%   - ÁĞ£º×ÊÔ´ÀàĞÍ (1~K)
-%   - Öµ£º¸ÃÈÎÎñÀàĞÍ¶Ô¸Ã×ÊÔ´ÀàĞÍµÄĞèÇóÁ¿
+%% åˆå§‹åŒ–ä»»åŠ¡ç±»å‹çš„èµ„æºéœ€æ±‚ï¼ˆä¸ºæ¯ç§ç±»å‹å®šä¹‰ä¸åŒçš„éšæœºèŒƒå›´ï¼‰
+% task_type_demands: ä»»åŠ¡ç±»å‹èµ„æºéœ€æ±‚çŸ©é˜µ (TÃ—K)
+%   - è¡Œï¼šä»»åŠ¡ç±»å‹ (1~num_task_types)
+%   - åˆ—ï¼šèµ„æºç±»å‹ (1~K)
+%   - å€¼ï¼šè¯¥ä»»åŠ¡ç±»å‹å¯¹è¯¥èµ„æºç±»å‹çš„éœ€æ±‚é‡
 %
-% ÀàĞÍ1£¨¼ÛÖµ800£©£ºµÍĞèÇóÈÎÎñ£¬Ã¿ÖÖ×ÊÔ´ĞèÇó 1-2 µ¥Î»
-% ÀàĞÍ2£¨¼ÛÖµ1000£©£ºÖĞµÈĞèÇóÈÎÎñ£¬Ã¿ÖÖ×ÊÔ´ĞèÇó 2-3 µ¥Î»
-% ÀàĞÍ3£¨¼ÛÖµ1500£©£º¸ßĞèÇóÈÎÎñ£¬Ã¿ÖÖ×ÊÔ´ĞèÇó 3-5 µ¥Î»
+% ç±»å‹1ï¼ˆä»·å€¼800ï¼‰ï¼šä½éœ€æ±‚ä»»åŠ¡ï¼Œæ¯ç§èµ„æºéœ€æ±‚ 1-2 å•ä½
+% ç±»å‹2ï¼ˆä»·å€¼1000ï¼‰ï¼šä¸­ç­‰éœ€æ±‚ä»»åŠ¡ï¼Œæ¯ç§èµ„æºéœ€æ±‚ 2-3 å•ä½
+% ç±»å‹3ï¼ˆä»·å€¼1500ï¼‰ï¼šé«˜éœ€æ±‚ä»»åŠ¡ï¼Œæ¯ç§èµ„æºéœ€æ±‚ 3-5 å•ä½
 
 task_type_demands = zeros(num_task_types, num_resources);
 
-% ÀàĞÍ1£ºµÍĞèÇó (1-2µ¥Î»)
+% ç±»å‹1ï¼šä½éœ€æ±‚ (1-2å•ä½)
 task_type_demands(1, :) = randi([0, 4], 1, num_resources);
 
-% ÀàĞÍ2£ºÖĞµÈĞèÇó (2-3µ¥Î»)
+% ç±»å‹2ï¼šä¸­ç­‰éœ€æ±‚ (2-3å•ä½)
 task_type_demands(2, :) = randi([0, 6], 1, num_resources);
 
-% ÀàĞÍ3£º¸ßĞèÇó (3-5µ¥Î»)
+% ç±»å‹3ï¼šé«˜éœ€æ±‚ (3-5å•ä½)
 task_type_demands(3, :) = randi([0, 8], 1, num_resources);
 
-%% ³õÊ¼»¯×ÊÔ´Ö´ĞĞÊ±¼ä
-% ¼ÆËã¸÷ÈÎÎñÀàĞÍµÄ×ÊÔ´Ö´ĞĞÍêËùĞèµÄÈ«²¿Ê±¼ä
+%% åˆå§‹åŒ–èµ„æºæ‰§è¡Œæ—¶é—´
+% è®¡ç®—å„ä»»åŠ¡ç±»å‹çš„èµ„æºæ‰§è¡Œå®Œæ‰€éœ€çš„å…¨éƒ¨æ—¶é—´
 task_type_duration_by_resource = zeros(num_task_types, num_resources);
 for t = 1:num_task_types
-    needed = task_type_demands(t, :) > 0;  % ÕÒ³ö¸ÃÈÎÎñÀàĞÍĞèÒªµÄ×ÊÔ´
+    needed = task_type_demands(t, :) > 0;  % æ‰¾å‡ºè¯¥ä»»åŠ¡ç±»å‹éœ€è¦çš„èµ„æº
     task_type_duration_by_resource(t, needed) = resource_exec_time(needed);
 end
 
-% Í¬²½¸üĞÂÃ¿¸öÈÎÎñÀàĞÍµÄ×ÜÖ´ĞĞÊ±¼ä£¨ÓÉ×ÊÔ´ÀàĞÍÖ´ĞĞÊ±¼äÇóºÍµÃµ½£©
-% task_type_duration: ¸÷ÈÎÎñÀàĞÍµÄ×ÜÖ´ĞĞÊ±¼ä (1¡ÁTÏòÁ¿)
+% åŒæ­¥æ›´æ–°æ¯ä¸ªä»»åŠ¡ç±»å‹çš„æ€»æ‰§è¡Œæ—¶é—´ï¼ˆç”±èµ„æºç±»å‹æ‰§è¡Œæ—¶é—´æ±‚å’Œå¾—åˆ°ï¼‰
+% task_type_duration: å„ä»»åŠ¡ç±»å‹çš„æ€»æ‰§è¡Œæ—¶é—´ (1Ã—Tå‘é‡)
 task_type_duration = sum(task_type_duration_by_resource, 2)';
 
-%% ³õÊ¼»¯ÈÎÎñºÍÖÇÄÜÌå
-% ÈÎÎñ½á¹¹ÌåÊı×é³õÊ¼»¯
-task_priorities = randperm(M);  % Éú³ÉÈÎÎñÓÅÏÈ¼¶µÄËæ»úÅÅÁĞ
+%% åˆå§‹åŒ–ä»»åŠ¡å’Œæ™ºèƒ½ä½“
+% ä»»åŠ¡ç»“æ„ä½“æ•°ç»„åˆå§‹åŒ–
+task_priorities = randperm(M);  % ç”Ÿæˆä»»åŠ¡ä¼˜å…ˆçº§çš„éšæœºæ’åˆ—
 for j = 1:M    
-    tasks(j).id = j;                        % ÈÎÎñID
-    tasks(j).priority = task_priorities(j); % ÈÎÎñÓÅÏÈ¼¶£¨1~MµÄÅÅÁĞ£©
-    tasks(j).x = round(rand(1) * (WORLD.XMAX - WORLD.XMIN) + WORLD.XMIN);  % ÈÎÎñX×ø±ê
-    tasks(j).y = round(rand(1) * (WORLD.YMAX - WORLD.YMIN) + WORLD.YMIN);  % ÈÎÎñY×ø±ê
+    tasks(j).id = j;                        % ä»»åŠ¡ID
+    tasks(j).priority = task_priorities(j); % ä»»åŠ¡ä¼˜å…ˆçº§ï¼ˆ1~Mçš„æ’åˆ—ï¼‰
+    tasks(j).x = round(rand(1) * (WORLD.XMAX - WORLD.XMIN) + WORLD.XMIN);  % ä»»åŠ¡Xåæ ‡
+    tasks(j).y = round(rand(1) * (WORLD.YMAX - WORLD.YMIN) + WORLD.YMIN);  % ä»»åŠ¡Yåæ ‡
     
-    % ÏÈËæ»úÈ·¶¨ÀàĞÍ£¬È»ºóÀàĞÍ¾ö¶¨¼ÛÖµºÍĞèÇó
-    tasks(j).type = randi(num_task_types, 1, 1);                           % ÈÎÎñÀàĞÍ£¨1~num_task_types£©
-    tasks(j).value = WORLD.value(tasks(j).type);                           % ÀàĞÍ¾ö¶¨¼ÛÖµ£ºÀàĞÍ1¡ú300, ÀàĞÍ2¡ú500, ÀàĞÍ3¡ú1000
-    tasks(j).resource_demand = task_type_demands(tasks(j).type, :);        % ÀàĞÍ¾ö¶¨×ÊÔ´ĞèÇó£¨1¡ÁKÏòÁ¿£©
-    tasks(j).duration_by_resource = task_type_duration_by_resource(tasks(j).type, :);  % °´×ÊÔ´·Ö½âµÄÖ´ĞĞÊ±¼ä
-    % ĞŞ¸Ä£º²¢ĞĞÖ´ĞĞÄ£ĞÍÏÂ£¬ÈÎÎñ×ÜÊ±³¤ÓÉ×îºÄÊ±×ÊÔ´µÄÖ´ĞĞÊ±¼ä¾ö¶¨£¨max£©¶ø·ÇÇóºÍ£¨sum£©
-    tasks(j).duration = max(tasks(j).duration_by_resource);                % ÈÎÎñ×ÜÖ´ĞĞÊ±¼ä (±ê³ÆÖµ£¬Êµ¼ÊÖ´ĞĞÊ±¼äÈ¡¾öÓÚ·ÖÅä×ÊÔ´µÄÊ¹ÓÃÇé¿ö)
-    tasks(j).WORLD = WORLD;                                                % ÈÎÎñËùÔÚÊÀ½ç¿Õ¼ä²ÎÊı
+    % å…ˆéšæœºç¡®å®šç±»å‹ï¼Œç„¶åç±»å‹å†³å®šä»·å€¼å’Œéœ€æ±‚
+    tasks(j).type = randi(num_task_types, 1, 1);                           % ä»»åŠ¡ç±»å‹ï¼ˆ1~num_task_typesï¼‰
+    tasks(j).value = WORLD.value(tasks(j).type);                           % ç±»å‹å†³å®šä»·å€¼ï¼ˆæŒ‰ WORLD.value ç´¢å¼•ï¼‰
+    tasks(j).resource_demand = task_type_demands(tasks(j).type, :);        % ç±»å‹å†³å®šèµ„æºéœ€æ±‚ï¼ˆ1Ã—Kå‘é‡ï¼‰
+    tasks(j).duration_by_resource = task_type_duration_by_resource(tasks(j).type, :);  % æŒ‰èµ„æºåˆ†è§£çš„æ‰§è¡Œæ—¶é—´
+    % ä¿®æ”¹ï¼šå¹¶è¡Œæ‰§è¡Œæ¨¡å‹ä¸‹ï¼Œä»»åŠ¡æ€»æ—¶é•¿ç”±æœ€è€—æ—¶èµ„æºçš„æ‰§è¡Œæ—¶é—´å†³å®šï¼ˆmaxï¼‰è€Œéæ±‚å’Œï¼ˆsumï¼‰
+    tasks(j).duration = max(tasks(j).duration_by_resource);                % ä»»åŠ¡æ€»æ‰§è¡Œæ—¶é—´ (æ ‡ç§°å€¼ï¼Œå®é™…æ‰§è¡Œæ—¶é—´å–å†³äºåˆ†é…èµ„æºçš„ä½¿ç”¨æƒ…å†µ)
+    tasks(j).WORLD = WORLD;                                                % ä»»åŠ¡æ‰€åœ¨ä¸–ç•Œç©ºé—´å‚æ•°
 end
 
-% ÖÇÄÜÌå½á¹¹ÌåÊı×é³õÊ¼»¯
+% æ™ºèƒ½ä½“ç»“æ„ä½“æ•°ç»„åˆå§‹åŒ–
 for i = 1:N
-    agents(i).id = i;                       % ÖÇÄÜÌåID
-    agents(i).vel = agent_velocity;         % ÖÇÄÜÌåÒÆ¶¯ËÙ¶È
-    agents(i).x = round(rand(1) * (WORLD.XMAX - WORLD.XMIN) + WORLD.XMIN);  % ÖÇÄÜÌåX×ø±ê
-    agents(i).y = round(rand(1) * (WORLD.YMAX - WORLD.YMIN) + WORLD.YMIN);  % ÖÇÄÜÌåY×ø±ê
-    agents(i).detprob = agent_detprob_min + (agent_detprob_max - agent_detprob_min) * rand();  % ¼ì²â¸ÅÂÊÔÚ[min, max]·¶Î§ÄÚËæ»úÈ¡Öµ
-    agents(i).resources = randi([min_resource_value, max_resource_value], num_resources, 1);  % ÖÇÄÜÌåÓµÓĞµÄ¸÷Àà×ÊÔ´Á¿£¨K¡Á1ÏòÁ¿£©
-    agents(i).Emax = agent_Emax_min + agent_Emax_range*rand(); % ÖÇÄÜÌå×î´óÄÜÁ¿Öµ
-    agents(i).fuel = agent_fuel;            % ÖÇÄÜÌåÈ¼ÁÏÏûºÄÂÊ
-    agents(i).beta = agent_beta;            % Ö´ĞĞÄÜºÄÏµÊı
+    agents(i).id = i;                       % æ™ºèƒ½ä½“ID
+    agents(i).vel = agent_velocity;         % æ™ºèƒ½ä½“ç§»åŠ¨é€Ÿåº¦
+    agents(i).x = round(rand(1) * (WORLD.XMAX - WORLD.XMIN) + WORLD.XMIN);  % æ™ºèƒ½ä½“Xåæ ‡
+    agents(i).y = round(rand(1) * (WORLD.YMAX - WORLD.YMIN) + WORLD.YMIN);  % æ™ºèƒ½ä½“Yåæ ‡
+    agents(i).detprob = agent_detprob_min + (agent_detprob_max - agent_detprob_min) * rand();  % æ£€æµ‹æ¦‚ç‡åœ¨[min, max]èŒƒå›´å†…éšæœºå–å€¼
+    agents(i).resources = randi([min_resource_value, max_resource_value], num_resources, 1);  % æ™ºèƒ½ä½“æ‹¥æœ‰çš„å„ç±»èµ„æºé‡ï¼ˆKÃ—1å‘é‡ï¼‰
+    agents(i).Emax = agent_Emax_min + agent_Emax_range*rand(); % æ™ºèƒ½ä½“æœ€å¤§èƒ½é‡å€¼
+    agents(i).fuel = agent_fuel;            % æ™ºèƒ½ä½“ç‡ƒæ–™æ¶ˆè€—ç‡
+    agents(i).beta = agent_beta;            % æ‰§è¡Œèƒ½è€—ç³»æ•°
 end
 
-%% ³õÊ¼»¯Ëã·¨²ÎÊı½á¹¹
+%% åˆå§‹åŒ–ç®—æ³•å‚æ•°ç»“æ„
 Value_Params = init_value_params(N, M, K, num_task_types, task_type_demands, ...
                                   SA_Temperature, SA_alpha, SA_Tmin, SA_max_stable_iterations, ...
                                   obs_times, num_rounds, resource_confidence);
 
-%% ÔËĞĞÁªÃËĞÎ³ÉËã·¨
+%% è¿è¡Œè”ç›Ÿå½¢æˆç®—æ³•
 [Value_data, history_data] = SA_Value_main(agents,tasks,AddPara,Value_Params);
 
 
 
 toc
 
-%% ´òÓ¡ÁªÃË½á¹¹ºÍ×ÊÔ´·ÖÅä
+%% æ‰“å°è”ç›Ÿç»“æ„å’Œèµ„æºåˆ†é…
 fprintf('\n========================================\n');
-fprintf('          ÁªÃËĞÎ³É½á¹û\n');
+fprintf('          è”ç›Ÿå½¢æˆç»“æœ\n');
 fprintf('========================================\n\n');
 
-% Êä³ö±í¸ñÓëÍ³¼Æ£ºµ÷ÓÃ¶ÀÁ¢º¯Êı
+% è¾“å‡ºè¡¨æ ¼ä¸ç»Ÿè®¡ï¼šè°ƒç”¨ç‹¬ç«‹å‡½æ•°
 task_demand = display_task_resource_demand(tasks, K, M);
 
-% ÌáÈ¡ÁªÃË½á¹¹¾ØÕó²¢²Ã¼ôÖÁÈÎÎñÊı
+% æå–è”ç›Ÿç»“æ„çŸ©é˜µå¹¶è£å‰ªè‡³ä»»åŠ¡æ•°
 coal = Value_data(1).coalitionstru;
 if size(coal, 1) > M
     coal = coal(1:M, :);
 end
 
-% ÈÎÎñÒÑ·ÖÅä×ÊÔ´¡¢ÖÇÄÜÌå×ÊÔ´Óë·ÖÅä¡¢ÈÎÎñĞòÁĞ¡¢Î´·ÖÅäÈÎÎñ¡¢×ÊÔ´Æ¥ÅäÏêÇé
+% ä»»åŠ¡å·²åˆ†é…èµ„æºã€æ™ºèƒ½ä½“èµ„æºä¸åˆ†é…ã€ä»»åŠ¡åºåˆ—ã€æœªåˆ†é…ä»»åŠ¡ã€èµ„æºåŒ¹é…è¯¦æƒ…
 task_allocated = display_task_allocated_resources(Value_data, K, M);
 agent_owned = display_agent_owned_resources(agents, K, N);
 agent_allocated = display_agent_allocated_resources(Value_data, K, N, M);
@@ -159,59 +159,59 @@ display_task_resource_match_details(tasks, task_demand, task_allocated, K, M);
 
 fprintf('\n========================================\n\n');
 
-%% ÌáÈ¡ÁªÃË³ÉÔ±
-% ÎªÃ¿¸öÈÎÎñÌáÈ¡²ÎÓë¸ÃÈÎÎñµÄÖÇÄÜÌå¼¯ºÏ
+%% æå–è”ç›Ÿæˆå‘˜
+% ä¸ºæ¯ä¸ªä»»åŠ¡æå–å‚ä¸è¯¥ä»»åŠ¡çš„æ™ºèƒ½ä½“é›†åˆ
 for j=1:Value_Params.M
-    lianmengchengyuan(j).member=find(Value_data(1).coalitionstru(j,:)~=0);  % ÕÒµ½ÈÎÎñjµÄÁªÃË³ÉÔ±£¨ÖÇÄÜÌåIDÁĞ±í£©
+    lianmengchengyuan(j).member=find(Value_data(1).coalitionstru(j,:)~=0);  % æ‰¾åˆ°ä»»åŠ¡jçš„è”ç›Ÿæˆå‘˜ï¼ˆæ™ºèƒ½ä½“IDåˆ—è¡¨ï¼‰
 end
 
-%% ´òÓ¡ĞÅÄîÑİ»¯ºÍ¹Û²âÍ³¼Æ
+%% æ‰“å°ä¿¡å¿µæ¼”åŒ–å’Œè§‚æµ‹ç»Ÿè®¡
 % display_belief_evolution(history_data, tasks, WORLD, N, M, num_task_types, num_rounds);
 
-% %% »æÍ¼
-% % ¿ÉÊÓ»¯ÁªÃËĞÎ³É½á¹û¡¢ÖÇÄÜÌå-ÈÎÎñ·ÖÅäµÈ
+% %% ç»˜å›¾
+% % å¯è§†åŒ–è”ç›Ÿå½¢æˆç»“æœã€æ™ºèƒ½ä½“-ä»»åŠ¡åˆ†é…ç­‰
 plot_main_results(agents, tasks, lianmengchengyuan, history_data, N, M, num_rounds, WORLD.value, Value_data);
 
-%% ¶¯Ì¬ÏÔÊ¾»úÆ÷ÈËÖ´ĞĞÈÎÎñ¹ı³Ì
-fprintf('²¥·Å»úÆ÷ÈËÈÎÎñÖ´ĞĞ¶¯»­...\n');
-anim_options.speed_factor = 2.0;      % ¶¯»­ËÙ¶È£¨Ô½´óÔ½¿ì£©
-anim_options.show_time = true;        % ÏÔÊ¾Ê±¼ä
-anim_options.save_video = false;      % ÊÇ·ñ±£´æÎªÊÓÆµ
+%% åŠ¨æ€æ˜¾ç¤ºæœºå™¨äººæ‰§è¡Œä»»åŠ¡è¿‡ç¨‹
+fprintf('æ’­æ”¾æœºå™¨äººä»»åŠ¡æ‰§è¡ŒåŠ¨ç”»...\n');
+anim_options.speed_factor = 2.0;      % åŠ¨ç”»é€Ÿåº¦ï¼ˆè¶Šå¤§è¶Šå¿«ï¼‰
+anim_options.show_time = true;        % æ˜¾ç¤ºæ—¶é—´
+anim_options.save_video = false;      % æ˜¯å¦ä¿å­˜ä¸ºè§†é¢‘
 animate_agent_execution(agents, tasks, Value_data, anim_options);
 
-%% ·ÖÎö·ÖÎ»ÊıĞèÇóÑİ»¯
-% Ñ¡ÔñÒª·ÖÎöµÄÖÇÄÜÌåºÍÈÎÎñ
+%% åˆ†æåˆ†ä½æ•°éœ€æ±‚æ¼”åŒ–
+% é€‰æ‹©è¦åˆ†æçš„æ™ºèƒ½ä½“å’Œä»»åŠ¡
 % agent_id = 1;
 % task_id = 3;
 % display_quantile_demand_evolution(history_data, tasks, Value_Params, agent_id, task_id);
 
-%% »æÖÆÁªÃËÑİ»¯ºÍÈÎÎñÍê³É¶ÈÍ¼±í
-fprintf('»æÖÆÁªÃËÑİ»¯ºÍÈÎÎñÍê³É¶ÈÍ¼±í...\n');
+%% ç»˜åˆ¶è”ç›Ÿæ¼”åŒ–å’Œä»»åŠ¡å®Œæˆåº¦å›¾è¡¨
+fprintf('ç»˜åˆ¶è”ç›Ÿæ¼”åŒ–å’Œä»»åŠ¡å®Œæˆåº¦å›¾è¡¨...\n');
 plot_coalition_evolution(history_data, tasks, Value_Params);
 
-%% »æÖÆÈÎÎñÆÚÍûÊÕÒæÑİ»¯Í¼
-% fprintf('»æÖÆÈÎÎñÆÚÍûÊÕÒæÑİ»¯Í¼...\n');
+%% ç»˜åˆ¶ä»»åŠ¡æœŸæœ›æ”¶ç›Šæ¼”åŒ–å›¾
+% fprintf('ç»˜åˆ¶ä»»åŠ¡æœŸæœ›æ”¶ç›Šæ¼”åŒ–å›¾...\n');
 % plot_expected_value_evolution(history_data, tasks, Value_Params);
 
-% %% »æÖÆÁªÃËĞ§ÓÃÑİ»¯Í¼£¨»ùÓÚÊµ¼ÊĞèÇó£©
-% fprintf('»æÖÆÁªÃËĞ§ÓÃÑİ»¯Í¼£¨»ùÓÚÊµ¼ÊĞèÇó£©...\n');
+% %% ç»˜åˆ¶è”ç›Ÿæ•ˆç”¨æ¼”åŒ–å›¾ï¼ˆåŸºäºå®é™…éœ€æ±‚ï¼‰
+% fprintf('ç»˜åˆ¶è”ç›Ÿæ•ˆç”¨æ¼”åŒ–å›¾ï¼ˆåŸºäºå®é™…éœ€æ±‚ï¼‰...\n');
 % plot_coalition_utility_evolution(history_data, tasks, Value_Params);
 
-% %% »æÖÆĞ§ÓÃ¶Ô±ÈÍ¼£¨Êµ¼ÊĞèÇó vs ÆÚÍûĞèÇó£©
-% fprintf('»æÖÆĞ§ÓÃ¶Ô±ÈÍ¼£¨Êµ¼ÊĞèÇó vs ÆÚÍûĞèÇó£©...\n');
+% %% ç»˜åˆ¶æ•ˆç”¨å¯¹æ¯”å›¾ï¼ˆå®é™…éœ€æ±‚ vs æœŸæœ›éœ€æ±‚ï¼‰
+% fprintf('ç»˜åˆ¶æ•ˆç”¨å¯¹æ¯”å›¾ï¼ˆå®é™…éœ€æ±‚ vs æœŸæœ›éœ€æ±‚ï¼‰...\n');
 % plot_utility_comparison(history_data, tasks, Value_Params, agents, Value_data);
 
-% %% »æÖÆÖÇÄÜÌåÈÎÎñ·ÖÅäÍ¼
-% fprintf('»æÖÆÖÇÄÜÌåÈÎÎñ·ÖÅäÓë×ÊÔ´Ê¹ÓÃÍ¼...\n');
+% %% ç»˜åˆ¶æ™ºèƒ½ä½“ä»»åŠ¡åˆ†é…å›¾
+% fprintf('ç»˜åˆ¶æ™ºèƒ½ä½“ä»»åŠ¡åˆ†é…ä¸èµ„æºä½¿ç”¨å›¾...\n');
 % plot_agent_task_assignment(Value_data, agents, tasks, Value_Params);
 
-% %% ÏÔÊ¾ºÍ»æÖÆÈÎÎñÖ´ĞĞµ÷¶ÈĞÅÏ¢
+% %% æ˜¾ç¤ºå’Œç»˜åˆ¶ä»»åŠ¡æ‰§è¡Œè°ƒåº¦ä¿¡æ¯
 % fprintf('\n========================================\n');
-% fprintf('ÏÔÊ¾ÈÎÎñÖ´ĞĞµ÷¶ÈĞÅÏ¢...\n');
+% fprintf('æ˜¾ç¤ºä»»åŠ¡æ‰§è¡Œè°ƒåº¦ä¿¡æ¯...\n');
 % display_task_schedule(Value_data, agents, tasks, Value_Params);
 
-% fprintf('»æÖÆÈÎÎñµ÷¶È¸ÊÌØÍ¼...\n');
+% fprintf('ç»˜åˆ¶ä»»åŠ¡è°ƒåº¦ç”˜ç‰¹å›¾...\n');
 % plot_task_schedule_gantt(Value_data, agents, tasks, Value_Params);
 
-% fprintf('»æÖÆ¸÷ÖÇÄÜÌåÏêÏ¸Ê±¼äÏß...\n');
+% fprintf('ç»˜åˆ¶å„æ™ºèƒ½ä½“è¯¦ç»†æ—¶é—´çº¿...\n');
 % plot_agent_timelines(Value_data, agents, tasks, Value_Params);

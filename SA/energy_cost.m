@@ -29,8 +29,7 @@
     
     % 2. 计算路径距离
     startXY = [agents(agentIdx).x, agents(agentIdx).y];
-    pts = [startXY; get_task_positions(orderedTasks, tasks); startXY];
-    totalDistance = sum(sqrt(sum(diff(pts).^2, 2)));
+    totalDistance = OCFUtils.compute_route_distance(startXY, orderedTasks, tasks);
     
     % 3. 获取能量模型参数
     alpha_fly = agents(agentIdx).fuel;   % 飞行能耗系数
@@ -199,15 +198,6 @@ function [t_fly_total, t_wait_total, t_exec_total, arrivals] = calc_with_global_
 end
 
 %% ========== 基础工具函数 ==========
-
-function pos = get_task_positions(task_list, tasks)
-% 获取任务列表中所有任务的位置坐标
-    n = numel(task_list);
-    pos = zeros(n, 2);
-    for ii = 1:n
-        pos(ii, :) = [tasks(task_list(ii)).x, tasks(task_list(ii)).y];
-    end
-end
 
 function participants = get_participants(SC, task_idx, N, tol)
 % 获取指定任务的所有参与者（智能体）ID列表
