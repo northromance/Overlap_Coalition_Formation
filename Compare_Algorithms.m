@@ -1,4 +1,4 @@
-clear; clc; close all;
+﻿clear; clc; close all;
 
 %% ========================================================================
 %  Multi-algorithm comparison framework for coalition formation
@@ -25,10 +25,10 @@ fprintf('=======================================================================
 addpath("Main_fun\");             % core scenario/init functions 核心初始化/场景函数
 addpath("SA\");                    % SA algorithm 模拟退火算法
 addpath("plots\");                 % visualization helpers 绘图辅助
-addpath("Com_Baseline\");          % Greedy baseline 贪心基线
-addpath("Com_Huo2025\");           % Huo2025 algorithm
-addpath("Com_Qi2023\");            % Qi2023 algorithm
-addpath("Com_PSO\");           % PSO algorithm 粒子群算法
+addpath("comalg/Com_Baseline/");          % Greedy baseline 贪心基线
+addpath("comalg/Com_Huo2025/");           % Huo2025 algorithm
+addpath("comalg/Com_Qi2023/");            % Qi2023 algorithm
+addpath("comalg/Com_PSO/");           % PSO algorithm 粒子群算法
 
 %% ========================================================================
 %  Scenario configuration (adjust for debugging as needed)
@@ -182,10 +182,10 @@ fprintf('Scenario initialized (%.2f s)\n\n', init_time);
 %% Define algorithms
 all_algorithms = {
     struct('id', 1, 'name', 'SA_Value',        'func', @SA_Value_main,       'folder', 'SA',           'color', [0.2, 0.6, 0.8]); % 模拟退火
-    struct('id', 2, 'name', 'Greedy baseline', 'func', @Greedy_Baseline_main,'folder', 'Com_Baseline', 'color', [0.5, 0.5, 0.5]); % 贪心基线
-    struct('id', 3, 'name', 'Huo2025',         'func', @Huo2025_main,        'folder', 'Com_Huo2025',  'color', [0.8, 0.2, 0.2]); % Huo2025
-    struct('id', 4, 'name', 'Qi2023',          'func', @Qi2023_main,         'folder', 'Com_Qi2023',   'color', [0.2, 0.8, 0.2]); % Qi2023
-    struct('id', 5, 'name', 'PSO',     'func', @PSO_main,        'folder', 'Com_Qin2025',  'color', [0.8, 0.8, 0.2]); % 粒子群
+    struct('id', 2, 'name', 'Greedy baseline', 'func', @Greedy_Baseline_main,'folder', 'comalg/Com_Baseline', 'color', [0.5, 0.5, 0.5]); % 贪心基线
+    struct('id', 3, 'name', 'Huo2025',         'func', @Huo2025_main,        'folder', 'comalg/Com_Huo2025',  'color', [0.8, 0.2, 0.2]); % Huo2025
+    struct('id', 4, 'name', 'Qi2023',          'func', @Qi2023_main,         'folder', 'comalg/Com_Qi2023',   'color', [0.2, 0.8, 0.2]); % Qi2023
+    struct('id', 5, 'name', 'PSO',     'func', @PSO_main,        'folder', 'comalg/Com_PSO',  'color', [0.8, 0.8, 0.2]); % 粒子群
 }; % 可根据需要增删算法
 
 fprintf('Available algorithms:\n');
@@ -318,3 +318,6 @@ end
 fprintf('========================================================================\n');
 fprintf('                    Comparison done\n');
 fprintf('========================================================================\n\n');
+
+
+
