@@ -1,51 +1,51 @@
-function [t_fly_total, T_exec_total, totalDistance, requiredEnergy, orderedTasks, task_arrival_times, t_wait_total] = ...
+ï»¿function [t_fly_total, T_exec_total, totalDistance, requiredEnergy, orderedTasks, task_arrival_times, t_wait_total] = ...
     energy_cost(agentIdx, assignedTasks, agents, tasks, Value_Params, R_agent, SC)
-% ¼ÆËãÖÇÄÜÌåÖ´ĞĞÈÎÎñĞòÁĞµÄÊ±¼äºÍÄÜÁ¿ÏûºÄ£¨¹Ì¶¨ËÙ¶È+µÈ´ıÄ£ĞÍ£©
+% è®¡ç®—æ™ºèƒ½ä½“æ‰§è¡Œä»»åŠ¡åºåˆ—çš„æ—¶é—´å’Œèƒ½é‡æ¶ˆè€—ï¼ˆå›ºå®šé€Ÿåº¦+ç­‰å¾…æ¨¡å‹ï¼‰
 %
-% Êä³ö²ÎÊı£º
-%   t_fly_total       - ×Ü·ÉĞĞÊ±¼ä£¨¹Ì¶¨ËÙ¶È·ÉĞĞ£©
-%   T_exec_total      - ×ÜÖ´ĞĞÊ±¼ä£¨¸ÃÖÇÄÜÌåÊµ¼ÊÖ´ĞĞÈÎÎñµÄÊ±¼ä£©
-%   totalDistance     - ×Ü·ÉĞĞ¾àÀë
-%   requiredEnergy    - ×ÜÄÜÁ¿ÏûºÄ
-%   orderedTasks      - °´ÓÅÏÈ¼¶ÅÅĞòºóµÄÈÎÎñĞòÁĞ
-%   task_arrival_times- ¸÷ÈÎÎñµÄÍ¬²½¿ªÊ¼Ê±¼ä£¨Êµ¼Ê¿ªÊ¼Ö´ĞĞµÄÊ±¿Ì£©
-%   t_wait_total      - ×ÜµÈ´ıÊ±¼ä£¨ÏÈµ½´ïºóµÈ´ıÆäËûÖÇÄÜÌåµÄÊ±¼ä£©
+% è¾“å‡ºå‚æ•°ï¼š
+%   t_fly_total       - æ€»é£è¡Œæ—¶é—´ï¼ˆå›ºå®šé€Ÿåº¦é£è¡Œï¼‰
+%   T_exec_total      - æ€»æ‰§è¡Œæ—¶é—´ï¼ˆè¯¥æ™ºèƒ½ä½“å®é™…æ‰§è¡Œä»»åŠ¡çš„æ—¶é—´ï¼‰
+%   totalDistance     - æ€»é£è¡Œè·ç¦»
+%   requiredEnergy    - æ€»èƒ½é‡æ¶ˆè€—
+%   orderedTasks      - æŒ‰ä¼˜å…ˆçº§æ’åºåçš„ä»»åŠ¡åºåˆ—
+%   task_arrival_times- å„ä»»åŠ¡çš„åŒæ­¥å¼€å§‹æ—¶é—´ï¼ˆå®é™…å¼€å§‹æ‰§è¡Œçš„æ—¶åˆ»ï¼‰
+%   t_wait_total      - æ€»ç­‰å¾…æ—¶é—´ï¼ˆå…ˆåˆ°è¾¾åç­‰å¾…å…¶ä»–æ™ºèƒ½ä½“çš„æ—¶é—´ï¼‰
 %
-% Í¬²½»úÖÆËµÃ÷£¨¹Ì¶¨ËÙ¶È+µÈ´ıÄ£ĞÍ£©£º
-%   1. Ã¿¸öÖÇÄÜÌåÒÔ¹Ì¶¨ËÙ¶È·ÉĞĞ£¬²»µ÷ÕûËÙ¶È
-%   2. ÏÈµ½´ïµÄÖÇÄÜÌåÔÚÈÎÎñµãµÈ´ıºóµ½´ïµÄÖÇÄÜÌå
-%   3. ËùÓĞ²ÎÓëÕßµ½Æëºó£¬Í¬²½¿ªÊ¼Ö´ĞĞÈÎÎñ
-%   4. Ö´ĞĞÍê³Éºó£¬ËùÓĞ²ÎÓëÕßÍ¬Ê±Àë¿ªÇ°ÍùÏÂÒ»¸öÈÎÎñ
+% åŒæ­¥æœºåˆ¶è¯´æ˜ï¼ˆå›ºå®šé€Ÿåº¦+ç­‰å¾…æ¨¡å‹ï¼‰ï¼š
+%   1. æ¯ä¸ªæ™ºèƒ½ä½“ä»¥å›ºå®šé€Ÿåº¦é£è¡Œï¼Œä¸è°ƒæ•´é€Ÿåº¦
+%   2. å…ˆåˆ°è¾¾çš„æ™ºèƒ½ä½“åœ¨ä»»åŠ¡ç‚¹ç­‰å¾…ååˆ°è¾¾çš„æ™ºèƒ½ä½“
+%   3. æ‰€æœ‰å‚ä¸è€…åˆ°é½åï¼ŒåŒæ­¥å¼€å§‹æ‰§è¡Œä»»åŠ¡
+%   4. æ‰§è¡Œå®Œæˆåï¼Œæ‰€æœ‰å‚ä¸è€…åŒæ—¶ç¦»å¼€å‰å¾€ä¸‹ä¸€ä¸ªä»»åŠ¡
 %
-% ÄÜÁ¿Ä£ĞÍ£º
-%   ×ÜÄÜÁ¿ = ·ÉĞĞÊ±¼ä ¡Á ¦Á_fly + µÈ´ıÊ±¼ä ¡Á ¦Á_wait + Ö´ĞĞÊ±¼ä ¡Á ¦Â
-%   ÆäÖĞ ¦Á_wait Ä¬ÈÏÎª ¦Á_fly ¡Á 0.5£¨ĞüÍ£ÄÜºÄÔ¼Îª·ÉĞĞµÄÒ»°ë£©
+% èƒ½é‡æ¨¡å‹ï¼š
+%   æ€»èƒ½é‡ = é£è¡Œæ—¶é—´ Ã— Î±_fly + ç­‰å¾…æ—¶é—´ Ã— Î±_wait + æ‰§è¡Œæ—¶é—´ Ã— Î²
+%   å…¶ä¸­ Î±_wait é»˜è®¤ä¸º Î±_fly Ã— 0.5ï¼ˆæ‚¬åœèƒ½è€—çº¦ä¸ºé£è¡Œçš„ä¸€åŠï¼‰
 
-    tol = 1e-9;  % ÊıÖµÈİ²î
-    enable_sync = (nargin >= 7) && ~isempty(SC);  % ÊÇ·ñÆôÓÃÍ¬²½»úÖÆ
+    tol = 1e-9;  % æ•°å€¼å®¹å·®
+    enable_sync = (nargin >= 7) && ~isempty(SC);  % æ˜¯å¦å¯ç”¨åŒæ­¥æœºåˆ¶
     
-    % 1. °´priorityÅÅĞòµ±Ç°ÖÇÄÜÌåµÄÈÎÎñ
-    orderedTasks = sort_tasks_by_priority(assignedTasks, tasks);
+    % 1. æŒ‰priorityæ’åºå½“å‰æ™ºèƒ½ä½“çš„ä»»åŠ¡
+    orderedTasks = OCFUtils.sort_tasks_by_priority(assignedTasks, tasks);
     
-    % 2. ¼ÆËãÂ·¾¶¾àÀë
+    % 2. è®¡ç®—è·¯å¾„è·ç¦»
     startXY = [agents(agentIdx).x, agents(agentIdx).y];
     pts = [startXY; get_task_positions(orderedTasks, tasks); startXY];
     totalDistance = sum(sqrt(sum(diff(pts).^2, 2)));
     
-    % 3. »ñÈ¡ÄÜÁ¿Ä£ĞÍ²ÎÊı
-    alpha_fly = agents(agentIdx).fuel;   % ·ÉĞĞÄÜºÄÏµÊı
-    alpha_wait = alpha_fly * 0.5;        % µÈ´ıÄÜºÄÏµÊı£¨ĞüÍ££¬Ô¼Îª·ÉĞĞµÄÒ»°ë£©
-    beta = agents(agentIdx).beta;        % Ö´ĞĞÄÜºÄÏµÊı
-    v = agents(agentIdx).vel;            % ¹Ì¶¨·ÉĞĞËÙ¶È
+    % 3. è·å–èƒ½é‡æ¨¡å‹å‚æ•°
+    alpha_fly = agents(agentIdx).fuel;   % é£è¡Œèƒ½è€—ç³»æ•°
+    alpha_wait = alpha_fly * 0.5;        % ç­‰å¾…èƒ½è€—ç³»æ•°ï¼ˆæ‚¬åœï¼Œçº¦ä¸ºé£è¡Œçš„ä¸€åŠï¼‰
+    beta = agents(agentIdx).beta;        % æ‰§è¡Œèƒ½è€—ç³»æ•°
+    v = agents(agentIdx).vel;            % å›ºå®šé£è¡Œé€Ÿåº¦
     
-    % 4. ¼ÆËã·ÉĞĞÊ±¼ä¡¢µÈ´ıÊ±¼äºÍÖ´ĞĞÊ±¼ä
+    % 4. è®¡ç®—é£è¡Œæ—¶é—´ã€ç­‰å¾…æ—¶é—´å’Œæ‰§è¡Œæ—¶é—´
     if ~enable_sync
-        % ÎŞÍ¬²½Ä£Ê½£º¼òµ¥¼ÆËã
+        % æ— åŒæ­¥æ¨¡å¼ï¼šç®€å•è®¡ç®—
         t_fly_total = totalDistance / max(v, tol);
         t_wait_total = 0;
         task_arrival_times = zeros(numel(orderedTasks), 1);
         
-        % ¼ÆËãÖ´ĞĞÊ±¼ä
+        % è®¡ç®—æ‰§è¡Œæ—¶é—´
         T_exec_total = 0;
         for ii = 1:numel(orderedTasks)
             m = orderedTasks(ii);
@@ -56,127 +56,127 @@ function [t_fly_total, T_exec_total, totalDistance, requiredEnergy, orderedTasks
             T_exec_total = T_exec_total + calc_exec_time(tasks(m), R_row, Value_Params, tol);
         end
     else
-        % Í¬²½Ä£Ê½£ºÊ¹ÓÃÈ«¾Öµ÷¶È¼ÆËã
+        % åŒæ­¥æ¨¡å¼ï¼šä½¿ç”¨å…¨å±€è°ƒåº¦è®¡ç®—
         [t_fly_total, t_wait_total, T_exec_total, task_arrival_times] = calc_with_global_sync(...
             agentIdx, orderedTasks, agents, tasks, Value_Params, SC, R_agent, tol);
     end
     
-    % 5. ¼ÆËã×ÜÄÜÁ¿
+    % 5. è®¡ç®—æ€»èƒ½é‡
     requiredEnergy = t_fly_total * alpha_fly + t_wait_total * alpha_wait + T_exec_total * beta;
 end
 
-%% ========== È«¾ÖÍ¬²½µ÷¶ÈºËĞÄº¯Êı ==========
+%% ========== å…¨å±€åŒæ­¥è°ƒåº¦æ ¸å¿ƒå‡½æ•° ==========
 
 function [t_fly_total, t_wait_total, t_exec_total, arrivals] = calc_with_global_sync(...
     agentIdx, myOrderedTasks, agents, tasks, Value_Params, SC, R_agent, tol)
-% Ê¹ÓÃÈ«¾Öµ÷¶È»úÖÆ¼ÆËã·ÉĞĞÊ±¼ä¡¢µÈ´ıÊ±¼ä¡¢Ö´ĞĞÊ±¼äºÍµ½´ïÊ±¼ä
+% ä½¿ç”¨å…¨å±€è°ƒåº¦æœºåˆ¶è®¡ç®—é£è¡Œæ—¶é—´ã€ç­‰å¾…æ—¶é—´ã€æ‰§è¡Œæ—¶é—´å’Œåˆ°è¾¾æ—¶é—´
 %
-% ¹Ì¶¨ËÙ¶È+µÈ´ıÄ£ĞÍ£º
-%   1. Ã¿¸öÖÇÄÜÌåÒÔ¹Ì¶¨ËÙ¶È·ÉĞĞ
-%   2. ¼ÆËãÃ¿¸öÖÇÄÜÌåµÄÊµ¼Êµ½´ïÊ±¼ä
-%   3. Í¬²½¿ªÊ¼Ê±¼ä = max(ËùÓĞ²ÎÓëÕßµÄµ½´ïÊ±¼ä)
-%   4. µÈ´ıÊ±¼ä = Í¬²½¿ªÊ¼Ê±¼ä - ×Ô¼ºµÄµ½´ïÊ±¼ä
+% å›ºå®šé€Ÿåº¦+ç­‰å¾…æ¨¡å‹ï¼š
+%   1. æ¯ä¸ªæ™ºèƒ½ä½“ä»¥å›ºå®šé€Ÿåº¦é£è¡Œ
+%   2. è®¡ç®—æ¯ä¸ªæ™ºèƒ½ä½“çš„å®é™…åˆ°è¾¾æ—¶é—´
+%   3. åŒæ­¥å¼€å§‹æ—¶é—´ = max(æ‰€æœ‰å‚ä¸è€…çš„åˆ°è¾¾æ—¶é—´)
+%   4. ç­‰å¾…æ—¶é—´ = åŒæ­¥å¼€å§‹æ—¶é—´ - è‡ªå·±çš„åˆ°è¾¾æ—¶é—´
 %
-% ·µ»ØÖµ£º
-%   t_fly_total  - ¸ÃÖÇÄÜÌåµÄ×Ü·ÉĞĞÊ±¼ä£¨¹Ì¶¨ËÙ¶È£©
-%   t_wait_total - ¸ÃÖÇÄÜÌåµÄ×ÜµÈ´ıÊ±¼ä£¨µÈ´ıÆäËûÖÇÄÜÌå£©
-%   t_exec_total - ¸ÃÖÇÄÜÌåµÄ×ÜÖ´ĞĞÊ±¼ä
-%   arrivals     - ¸÷ÈÎÎñµÄÍ¬²½¿ªÊ¼Ê±¼ä
+% è¿”å›å€¼ï¼š
+%   t_fly_total  - è¯¥æ™ºèƒ½ä½“çš„æ€»é£è¡Œæ—¶é—´ï¼ˆå›ºå®šé€Ÿåº¦ï¼‰
+%   t_wait_total - è¯¥æ™ºèƒ½ä½“çš„æ€»ç­‰å¾…æ—¶é—´ï¼ˆç­‰å¾…å…¶ä»–æ™ºèƒ½ä½“ï¼‰
+%   t_exec_total - è¯¥æ™ºèƒ½ä½“çš„æ€»æ‰§è¡Œæ—¶é—´
+%   arrivals     - å„ä»»åŠ¡çš„åŒæ­¥å¼€å§‹æ—¶é—´
 
-    N = Value_Params.N;  % ÖÇÄÜÌåÊıÁ¿
-    M = Value_Params.M;  % ÈÎÎñÊıÁ¿
+    N = Value_Params.N;  % æ™ºèƒ½ä½“æ•°é‡
+    M = Value_Params.M;  % ä»»åŠ¡æ•°é‡
     
-    % --- ³õÊ¼»¯ËùÓĞÖÇÄÜÌåµÄ×´Ì¬ ---
-    % agent_state(i).pos       - µ±Ç°Î»ÖÃ [x, y]
-    % agent_state(i).ready_time - ¿ÉÒÔ³ö·¢Ç°ÍùÏÂÒ»¸öÈÎÎñµÄÊ±¿Ì
+    % --- åˆå§‹åŒ–æ‰€æœ‰æ™ºèƒ½ä½“çš„çŠ¶æ€ ---
+    % agent_state(i).pos       - å½“å‰ä½ç½® [x, y]
+    % agent_state(i).ready_time - å¯ä»¥å‡ºå‘å‰å¾€ä¸‹ä¸€ä¸ªä»»åŠ¡çš„æ—¶åˆ»
     agent_state = struct('pos', {}, 'ready_time', {});
     for i = 1:N
-        agent_state(i).pos = [agents(i).x, agents(i).y];  % ³õÊ¼Î»ÖÃ
-        agent_state(i).ready_time = 0;                    % ³õÊ¼Ê±¿Ì¿ÉÒÔ³ö·¢
+        agent_state(i).pos = [agents(i).x, agents(i).y];  % åˆå§‹ä½ç½®
+        agent_state(i).ready_time = 0;                    % åˆå§‹æ—¶åˆ»å¯ä»¥å‡ºå‘
     end
     
-    % --- »ñÈ¡È«¾ÖÈÎÎñÓÅÏÈ¼¶Ë³Ğò ---
+    % --- è·å–å…¨å±€ä»»åŠ¡ä¼˜å…ˆçº§é¡ºåº ---
     all_tasks = 1:M;
-    global_order = sort_tasks_by_priority(all_tasks, tasks);
+    global_order = OCFUtils.sort_tasks_by_priority(all_tasks, tasks);
     
-    % --- ¼ÇÂ¼Ã¿¸öÈÎÎñµÄĞÅÏ¢£¨ÓÃÓÚ·µ»Ø£© ---
-    task_sync_start = zeros(M, 1);    % ÈÎÎñmµÄÍ¬²½¿ªÊ¼Ê±¼ä
-    task_exec_time = zeros(M, 1);     % ÈÎÎñmµÄÁªÃËÖ´ĞĞÊ±¼ä
+    % --- è®°å½•æ¯ä¸ªä»»åŠ¡çš„ä¿¡æ¯ï¼ˆç”¨äºè¿”å›ï¼‰ ---
+    task_sync_start = zeros(M, 1);    % ä»»åŠ¡mçš„åŒæ­¥å¼€å§‹æ—¶é—´
+    task_exec_time = zeros(M, 1);     % ä»»åŠ¡mçš„è”ç›Ÿæ‰§è¡Œæ—¶é—´
     
-    % --- °´È«¾ÖÓÅÏÈ¼¶Ë³Ğò´¦ÀíÃ¿¸öÈÎÎñ ---
+    % --- æŒ‰å…¨å±€ä¼˜å…ˆçº§é¡ºåºå¤„ç†æ¯ä¸ªä»»åŠ¡ ---
     for order_idx = 1:M
         task_id = global_order(order_idx);
         task_pos = [tasks(task_id).x, tasks(task_id).y];
         
-        % ÕÒµ½¸ÃÈÎÎñµÄËùÓĞ²ÎÓëÕß
+        % æ‰¾åˆ°è¯¥ä»»åŠ¡çš„æ‰€æœ‰å‚ä¸è€…
         participants = get_participants(SC, task_id, N, tol);
         
         if isempty(participants)
-            continue;  % Ã»ÓĞÖÇÄÜÌå²ÎÓë£¬Ìø¹ı
+            continue;  % æ²¡æœ‰æ™ºèƒ½ä½“å‚ä¸ï¼Œè·³è¿‡
         end
         
-        % --- ¼ÆËãÃ¿¸ö²ÎÓëÕßµÄµ½´ïÊ±¼ä£¨¹Ì¶¨ËÙ¶È·ÉĞĞ£© ---
+        % --- è®¡ç®—æ¯ä¸ªå‚ä¸è€…çš„åˆ°è¾¾æ—¶é—´ï¼ˆå›ºå®šé€Ÿåº¦é£è¡Œï¼‰ ---
         arrival_times = zeros(numel(participants), 1);
         for k = 1:numel(participants)
             agent_id = participants(k);
-            v = agents(agent_id).vel;  % ¹Ì¶¨ËÙ¶È
+            v = agents(agent_id).vel;  % å›ºå®šé€Ÿåº¦
             
-            % ·ÉĞĞ¾àÀëºÍÊ±¼ä
+            % é£è¡Œè·ç¦»å’Œæ—¶é—´
             dist = norm(task_pos - agent_state(agent_id).pos);
             fly_time = dist / max(v, tol);
             
-            % µ½´ïÊ±¼ä = ¿É³ö·¢Ê±¿Ì + ·ÉĞĞÊ±¼ä
+            % åˆ°è¾¾æ—¶é—´ = å¯å‡ºå‘æ—¶åˆ» + é£è¡Œæ—¶é—´
             arrival_times(k) = agent_state(agent_id).ready_time + fly_time;
         end
         
-        % --- Í¬²½¿ªÊ¼Ê±¼ä = ËùÓĞ²ÎÓëÕßÖĞ×îÍíµ½´ïµÄÊ±¼ä ---
+        % --- åŒæ­¥å¼€å§‹æ—¶é—´ = æ‰€æœ‰å‚ä¸è€…ä¸­æœ€æ™šåˆ°è¾¾çš„æ—¶é—´ ---
         sync_start = max(arrival_times);
         task_sync_start(task_id) = sync_start;
         
-        % --- ¼ÆËã¸ÃÈÎÎñµÄÖ´ĞĞÊ±¼ä£¨ÁªÃË²¢ĞĞÖ´ĞĞ£¬È¡×î³¤£© ---
+        % --- è®¡ç®—è¯¥ä»»åŠ¡çš„æ‰§è¡Œæ—¶é—´ï¼ˆè”ç›Ÿå¹¶è¡Œæ‰§è¡Œï¼Œå–æœ€é•¿ï¼‰ ---
         t_exec = calc_coalition_exec_time(SC, task_id, tasks(task_id), Value_Params, tol);
         task_exec_time(task_id) = t_exec;
         
-        % --- ¸üĞÂËùÓĞ²ÎÓëÕßµÄ×´Ì¬ ---
-        % ËùÓĞ²ÎÓëÕßÔÚsync_startÊ±¿Ì¿ªÊ¼Ö´ĞĞ£¬sync_start + t_execÊ±¿ÌÍê³É
+        % --- æ›´æ–°æ‰€æœ‰å‚ä¸è€…çš„çŠ¶æ€ ---
+        % æ‰€æœ‰å‚ä¸è€…åœ¨sync_startæ—¶åˆ»å¼€å§‹æ‰§è¡Œï¼Œsync_start + t_execæ—¶åˆ»å®Œæˆ
         for k = 1:numel(participants)
             agent_id = participants(k);
-            agent_state(agent_id).pos = task_pos;              % ¸üĞÂÎ»ÖÃ
-            agent_state(agent_id).ready_time = sync_start + t_exec;  % Íê³Éºó¿ÉÒÔ³ö·¢
+            agent_state(agent_id).pos = task_pos;              % æ›´æ–°ä½ç½®
+            agent_state(agent_id).ready_time = sync_start + t_exec;  % å®Œæˆåå¯ä»¥å‡ºå‘
         end
     end
     
-    % --- ¼ÆËãµ±Ç°ÖÇÄÜÌå(agentIdx)µÄÏêÏ¸Ê±¼ä ---
-    t_fly_total = 0;    % ×Ü·ÉĞĞÊ±¼ä
-    t_wait_total = 0;   % ×ÜµÈ´ıÊ±¼ä
-    t_exec_total = 0;   % ×ÜÖ´ĞĞÊ±¼ä
+    % --- è®¡ç®—å½“å‰æ™ºèƒ½ä½“(agentIdx)çš„è¯¦ç»†æ—¶é—´ ---
+    t_fly_total = 0;    % æ€»é£è¡Œæ—¶é—´
+    t_wait_total = 0;   % æ€»ç­‰å¾…æ—¶é—´
+    t_exec_total = 0;   % æ€»æ‰§è¡Œæ—¶é—´
     arrivals = zeros(numel(myOrderedTasks), 1);
     
     current_pos = [agents(agentIdx).x, agents(agentIdx).y];
-    current_ready_time = 0;  % µ±Ç°¿É³ö·¢Ê±¿Ì
+    current_ready_time = 0;  % å½“å‰å¯å‡ºå‘æ—¶åˆ»
     v = agents(agentIdx).vel;
     
     for ii = 1:numel(myOrderedTasks)
         task_id = myOrderedTasks(ii);
         task_pos = [tasks(task_id).x, tasks(task_id).y];
         
-        % --- ·ÉĞĞÊ±¼ä£¨¹Ì¶¨ËÙ¶È£© ---
+        % --- é£è¡Œæ—¶é—´ï¼ˆå›ºå®šé€Ÿåº¦ï¼‰ ---
         dist = norm(task_pos - current_pos);
         fly_time = dist / max(v, tol);
         t_fly_total = t_fly_total + fly_time;
         
-        % --- ÎÒµÄµ½´ïÊ±¼ä ---
+        % --- æˆ‘çš„åˆ°è¾¾æ—¶é—´ ---
         my_arrival = current_ready_time + fly_time;
         
-        % --- Í¬²½¿ªÊ¼Ê±¼ä£¨´ÓÈ«¾Öµ÷¶È»ñÈ¡£© ---
+        % --- åŒæ­¥å¼€å§‹æ—¶é—´ï¼ˆä»å…¨å±€è°ƒåº¦è·å–ï¼‰ ---
         sync_start = task_sync_start(task_id);
         arrivals(ii) = sync_start;
         
-        % --- µÈ´ıÊ±¼ä = Í¬²½¿ªÊ¼ - ÎÒµÄµ½´ï ---
+        % --- ç­‰å¾…æ—¶é—´ = åŒæ­¥å¼€å§‹ - æˆ‘çš„åˆ°è¾¾ ---
         wait_time = max(0, sync_start - my_arrival);
         t_wait_total = t_wait_total + wait_time;
         
-        % --- ¸ÃÖÇÄÜÌåÔÚ¸ÃÈÎÎñÉÏµÄÖ´ĞĞÊ±¼ä ---
+        % --- è¯¥æ™ºèƒ½ä½“åœ¨è¯¥ä»»åŠ¡ä¸Šçš„æ‰§è¡Œæ—¶é—´ ---
         if ~isempty(SC) && task_id <= numel(SC) && ~isempty(SC{task_id})
             SC_m = SC{task_id};
             R_row = SC_m(agentIdx, :);
@@ -186,37 +186,22 @@ function [t_fly_total, t_wait_total, t_exec_total, arrivals] = calc_with_global_
         my_exec_time = calc_exec_time(tasks(task_id), R_row, Value_Params, tol);
         t_exec_total = t_exec_total + my_exec_time;
         
-        % --- ¸üĞÂ×´Ì¬ ---
-        % Ê¹ÓÃÁªÃËÖ´ĞĞÊ±¼äÀ´¸üĞÂready_time£¨ËùÓĞÈËÒ»ÆğÍê³É£©
+        % --- æ›´æ–°çŠ¶æ€ ---
+        % ä½¿ç”¨è”ç›Ÿæ‰§è¡Œæ—¶é—´æ¥æ›´æ–°ready_timeï¼ˆæ‰€æœ‰äººä¸€èµ·å®Œæˆï¼‰
         coalition_exec = task_exec_time(task_id);
         current_ready_time = sync_start + coalition_exec;
         current_pos = task_pos;
     end
     
-    % --- ¼ÓÉÏ·µ»ØÆğµãµÄ·ÉĞĞÊ±¼ä ---
+    % --- åŠ ä¸Šè¿”å›èµ·ç‚¹çš„é£è¡Œæ—¶é—´ ---
     return_dist = norm([agents(agentIdx).x, agents(agentIdx).y] - current_pos);
     t_fly_total = t_fly_total + return_dist / max(v, tol);
 end
 
-%% ========== »ù´¡¹¤¾ßº¯Êı ==========
-
-function ordered = sort_tasks_by_priority(task_list, tasks)
-% °´ÓÅÏÈ¼¶¶ÔÈÎÎñÁĞ±íÅÅĞò£¨ÓÅÏÈ¼¶ÊıÖµÔ½Ğ¡Ô½ÏÈÖ´ĞĞ£©
-    if isempty(task_list)
-        ordered = [];
-        return;
-    end
-    if isfield(tasks, 'priority')
-        priorities = arrayfun(@(t) tasks(t).priority, task_list);
-        [~, idx] = sort(priorities);
-        ordered = task_list(idx);
-    else
-        ordered = sort(task_list);
-    end
-end
+%% ========== åŸºç¡€å·¥å…·å‡½æ•° ==========
 
 function pos = get_task_positions(task_list, tasks)
-% »ñÈ¡ÈÎÎñÁĞ±íÖĞËùÓĞÈÎÎñµÄÎ»ÖÃ×ø±ê
+% è·å–ä»»åŠ¡åˆ—è¡¨ä¸­æ‰€æœ‰ä»»åŠ¡çš„ä½ç½®åæ ‡
     n = numel(task_list);
     pos = zeros(n, 2);
     for ii = 1:n
@@ -225,7 +210,7 @@ function pos = get_task_positions(task_list, tasks)
 end
 
 function participants = get_participants(SC, task_idx, N, tol)
-% »ñÈ¡Ö¸¶¨ÈÎÎñµÄËùÓĞ²ÎÓëÕß£¨ÖÇÄÜÌå£©IDÁĞ±í
+% è·å–æŒ‡å®šä»»åŠ¡çš„æ‰€æœ‰å‚ä¸è€…ï¼ˆæ™ºèƒ½ä½“ï¼‰IDåˆ—è¡¨
     if isempty(SC) || task_idx > numel(SC)
         participants = [];
         return;
@@ -234,7 +219,7 @@ function participants = get_participants(SC, task_idx, N, tol)
 end
 
 function t_exec = calc_exec_time(task, R_row, Value_Params, tol)
-% ¼ÆËãµ¥ÖÇÄÜÌåÖ´ĞĞÈÎÎñµÄÊ±¼ä£¨²¢ĞĞÄ£ĞÍ£ºÈ¡Ê¹ÓÃ×ÊÔ´ÖĞ×î³¤Ê±¼ä£©
+% è®¡ç®—å•æ™ºèƒ½ä½“æ‰§è¡Œä»»åŠ¡çš„æ—¶é—´ï¼ˆå¹¶è¡Œæ¨¡å‹ï¼šå–ä½¿ç”¨èµ„æºä¸­æœ€é•¿æ—¶é—´ï¼‰
     if ~isempty(R_row)
         used = R_row > tol;
     else
@@ -258,7 +243,7 @@ function t_exec = calc_exec_time(task, R_row, Value_Params, tol)
 end
 
 function t_exec = calc_coalition_exec_time(SC, task_idx, task, Value_Params, tol)
-% ¼ÆËãÁªÃËÖ´ĞĞÈÎÎñµÄÊ±¼ä£¨È¡ËùÓĞ²ÎÓëÕßÖĞ×î³¤µÄÖ´ĞĞÊ±¼ä£©
+% è®¡ç®—è”ç›Ÿæ‰§è¡Œä»»åŠ¡çš„æ—¶é—´ï¼ˆå–æ‰€æœ‰å‚ä¸è€…ä¸­æœ€é•¿çš„æ‰§è¡Œæ—¶é—´ï¼‰
     alloc = SC{task_idx};
     exec_times = [];
     for i = 1:Value_Params.N
@@ -268,3 +253,4 @@ function t_exec = calc_coalition_exec_time(SC, task_idx, task, Value_Params, tol
     end
     t_exec = max([exec_times, 0]);
 end
+
