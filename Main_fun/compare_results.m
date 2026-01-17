@@ -1,16 +1,16 @@
-function comparison_stats = compare_results(results, agents, tasks, Value_Params)
-% COMPARE_RESULTS ¶Ô±È·ÖÎö¶à¸öËã·¨µÄ½á¹û
+ï»¿function comparison_stats = compare_results(results, agents, tasks, Value_Params)
+% COMPARE_RESULTS å¯¹æ¯”åˆ†æå¤šä¸ªç®—æ³•çš„ç»“æœ
 %
-% ÊäÈë:
-%   results - °üº¬ËùÓĞËã·¨½á¹ûµÄ½á¹¹Ìå
-%   agents - ÖÇÄÜÌåÊı×é
-%   tasks - ÈÎÎñÊı×é
-%   Value_Params - Ëã·¨²ÎÊı
+% è¾“å…¥:
+%   results - åŒ…å«æ‰€æœ‰ç®—æ³•ç»“æœçš„ç»“æ„ä½“
+%   agents - æ™ºèƒ½ä½“æ•°ç»„
+%   tasks - ä»»åŠ¡æ•°ç»„
+%   Value_Params - ç®—æ³•å‚æ•°
 %
-% Êä³ö:
-%   comparison_stats - °üº¬¸÷Ëã·¨ĞÔÄÜÖ¸±êµÄ½á¹¹Ìå
+% è¾“å‡º:
+%   comparison_stats - åŒ…å«å„ç®—æ³•æ€§èƒ½æŒ‡æ ‡çš„ç»“æ„ä½“
 
-    % »ñÈ¡Ëã·¨ÊıÁ¿
+    % è·å–ç®—æ³•æ•°é‡
     alg_names = fieldnames(results);
     num_algorithms = length(alg_names);
     
@@ -20,11 +20,11 @@ function comparison_stats = compare_results(results, agents, tasks, Value_Params
         alg_name = alg_names{i};
         alg_result = results.(alg_name);
         
-        % »ù±¾ĞÅÏ¢
+        % åŸºæœ¬ä¿¡æ¯
         comparison_stats.(alg_name).name = alg_result.name;
         comparison_stats.(alg_name).computation_time = alg_result.computation_time;
         
-        % ¼ì²éÊÇ·ñÓĞ´íÎó
+        % æ£€æŸ¥æ˜¯å¦æœ‰é”™è¯¯
         if isfield(alg_result, 'error')
             comparison_stats.(alg_name).has_error = true;
             comparison_stats.(alg_name).error_message = alg_result.error.message;
@@ -33,30 +33,30 @@ function comparison_stats = compare_results(results, agents, tasks, Value_Params
         
         comparison_stats.(alg_name).has_error = false;
         
-        % ÌáÈ¡Value_dataºÍhistory_data
+        % æå–Value_dataå’Œhistory_data
         Value_data = alg_result.Value_data;
         history_data = [];
         if isfield(alg_result, 'history_data')
             history_data = alg_result.history_data;
         end
         
-        %% 1. ×ÜĞ§ÓÃ
+        %% 1. æ€»æ•ˆç”¨
         total_utility = 0;
         
         if isfield(Value_data, 'totalvalue')
-            % Ö±½ÓÓĞtotalvalue×Ö¶Î£¨ÈçHuo2025£©
+            % ç›´æ¥æœ‰totalvalueå­—æ®µï¼ˆå¦‚Huo2025ï¼‰
             total_utility = Value_data(1).totalvalue;
         elseif ~isempty(history_data) && isfield(history_data, 'rounds')
-            % ´Óhistory_data»ñÈ¡×îºóÒ»ÂÖµÄtask_utilities
+            % ä»history_dataè·å–æœ€åä¸€è½®çš„task_utilities
             num_rounds = length(history_data.rounds);
             if num_rounds > 0 && isfield(history_data.rounds(num_rounds), 'task_utilities')
                 total_utility = sum(history_data.rounds(num_rounds).task_utilities);
             end
         end
         
-        % Èç¹ûÉÏÃæÃ»»ñÈ¡µ½£¬³¢ÊÔ´ÓSC¼ÆËã
+        % å¦‚æœä¸Šé¢æ²¡è·å–åˆ°ï¼Œå°è¯•ä»SCè®¡ç®—
         if total_utility == 0 && isfield(Value_data, 'SC')
-            % SAËã·¨£º´ÓSC¼ÆËã×ÜĞ§ÓÃ
+            % SAç®—æ³•ï¼šä»SCè®¡ç®—æ€»æ•ˆç”¨
             try
                 SC = Value_data(1).SC;
                 M_tasks = min(length(SC), length(tasks));
@@ -65,12 +65,12 @@ function comparison_stats = compare_results(results, agents, tasks, Value_Params
                         participants = find(any(SC{m} > 0, 2))';
                         if ~isempty(participants)
                             for ag_idx = participants
-                                % ¼ÆËãÖÇÄÜÌå¶ÔÈÎÎñµÄĞ§ÓÃ¹±Ï×
+                                % è®¡ç®—æ™ºèƒ½ä½“å¯¹ä»»åŠ¡çš„æ•ˆç”¨è´¡çŒ®
                                 allocated = SC{m}(ag_idx, :);
                                 actual_demand = tasks(m).resource_demand;
                                 task_value = tasks(m).value;
                                 
-                                % ¼ÆËã×ÊÔ´¹±Ï×±ÈÀı
+                                % è®¡ç®—èµ„æºè´¡çŒ®æ¯”ä¾‹
                                 contrib_ratio = 0;
                                 valid_resources = 0;
                                 for k = 1:length(actual_demand)
@@ -88,24 +88,24 @@ function comparison_stats = compare_results(results, agents, tasks, Value_Params
                     end
                 end
             catch ME
-                fprintf('¾¯¸æ: ¼ÆËã×ÜĞ§ÓÃÊ±³ö´í - %s\n', ME.message);
+                fprintf('è­¦å‘Š: è®¡ç®—æ€»æ•ˆç”¨æ—¶å‡ºé”™ - %s\n', ME.message);
             end
         end
         
         comparison_stats.(alg_name).total_utility = total_utility;
         
-        %% 2. ÁªÃË½á¹¹·ÖÎö
+        %% 2. è”ç›Ÿç»“æ„åˆ†æ
         coal = Value_data(1).coalitionstru;
         M = size(coal, 1);
         N = size(coal, 2);
         
-        % ²Ã¼ôÖÁÈÎÎñÊı
+        % è£å‰ªè‡³ä»»åŠ¡æ•°
         if M > length(tasks)
             coal = coal(1:length(tasks), :);
             M = length(tasks);
         end
         
-        % Í³¼ÆÁªÃËÊıÁ¿£¨ÓĞÖÇÄÜÌå²ÎÓëµÄÈÎÎñ£©
+        % ç»Ÿè®¡è”ç›Ÿæ•°é‡ï¼ˆæœ‰æ™ºèƒ½ä½“å‚ä¸çš„ä»»åŠ¡ï¼‰
         num_coalitions = 0;
         coalition_sizes = [];
         for j = 1:M
@@ -117,7 +117,7 @@ function comparison_stats = compare_results(results, agents, tasks, Value_Params
         end
         comparison_stats.(alg_name).num_coalitions = num_coalitions;
         
-        % ÁªÃË´óĞ¡Í³¼Æ
+        % è”ç›Ÿå¤§å°ç»Ÿè®¡
         if ~isempty(coalition_sizes)
             comparison_stats.(alg_name).avg_coalition_size = mean(coalition_sizes);
             comparison_stats.(alg_name).max_coalition_size = max(coalition_sizes);
@@ -128,26 +128,26 @@ function comparison_stats = compare_results(results, agents, tasks, Value_Params
             comparison_stats.(alg_name).min_coalition_size = 0;
         end
         
-        %% 3. ÈÎÎñÍê³É¶ÈºÍ×ÊÔ´Æ¥Åä¶È·ÖÎö
+        %% 3. ä»»åŠ¡å®Œæˆåº¦å’Œèµ„æºåŒ¹é…åº¦åˆ†æ
         comparison_stats.(alg_name).completed_tasks = num_coalitions;
         comparison_stats.(alg_name).task_completion_rate = num_coalitions / length(tasks) * 100;
         
-        % ¼ÆËãÃ¿¸öÈÎÎñµÄ×ÊÔ´Íê³É¶È D_C
+        % è®¡ç®—æ¯ä¸ªä»»åŠ¡çš„èµ„æºå®Œæˆåº¦ D_C
         task_completion_degrees = zeros(M, 1);
         
-        % ÅĞ¶ÏÊÇ·ñÓĞSC£¨×ÊÔ´ÁªÃË½á¹¹£©
+        % åˆ¤æ–­æ˜¯å¦æœ‰SCï¼ˆèµ„æºè”ç›Ÿç»“æ„ï¼‰
         if isfield(Value_data, 'SC') && ~isempty(Value_data(1).SC)
-            % SAËã·¨£º´ÓSC¼ÆËãÃ¿¸öÈÎÎñµÄÍê³É¶È
+            % SAç®—æ³•ï¼šä»SCè®¡ç®—æ¯ä¸ªä»»åŠ¡çš„å®Œæˆåº¦
             SC = Value_data(1).SC;
             for j = 1:min(M, length(SC))
                 if ~isempty(SC{j})
                     task_demand = tasks(j).resource_demand;
-                    % Ê¹ÓÃÍ¨ÓÃº¯Êı¼ÆËãÈÎÎñÍê³É¶È
-                    task_completion_degrees(j) = calc_task_completion_degree(SC{j}, task_demand, Value_Params.K);
+                    % ä½¿ç”¨é€šç”¨å‡½æ•°è®¡ç®—ä»»åŠ¡å®Œæˆåº¦
+                    task_completion_degrees(j) = OCFUtils.calc_task_completion_degree(SC{j}, task_demand, Value_Params.K);
                 end
             end
         elseif isfield(Value_data, 'agentresources') && ~isempty(Value_data(1).agentresources)
-            % ÆäËûËã·¨£º´Óagentresources¼ÆËã
+            % å…¶ä»–ç®—æ³•ï¼šä»agentresourcesè®¡ç®—
             agentresources = Value_data(1).agentresources;
             agentresources_size = size(agentresources);
             num_dims = ndims(agentresources);
@@ -156,7 +156,7 @@ function comparison_stats = compare_results(results, agents, tasks, Value_Params
                 members = find(coal(j, :) ~= 0);
                 if ~isempty(members)
                     task_demand = tasks(j).resource_demand;
-                    % ÊÕ¼¯·ÖÅäµÄ×ÊÔ´
+                    % æ”¶é›†åˆ†é…çš„èµ„æº
                     allocated = zeros(1, Value_Params.K);
                     for k = 1:Value_Params.K
                         if num_dims >= 3
@@ -166,32 +166,32 @@ function comparison_stats = compare_results(results, agents, tasks, Value_Params
                                 end
                             end
                         elseif num_dims == 2
-                            % 2Î¬Çé¿ö£º¼ÙÉè×Ü×ÊÔ´ÒÑ·ÖÅä
+                            % 2ç»´æƒ…å†µï¼šå‡è®¾æ€»èµ„æºå·²åˆ†é…
                             if j <= agentresources_size(2)
-                                allocated(k) = task_demand(k);  % ½üËÆÖµ
+                                allocated(k) = task_demand(k);  % è¿‘ä¼¼å€¼
                             end
                         end
                     end
-                    % Ê¹ÓÃÍ¨ÓÃº¯Êı¼ÆËãÈÎÎñÍê³É¶È
-                    task_completion_degrees(j) = calc_task_completion_degree(allocated, task_demand, Value_Params.K);
+                    % ä½¿ç”¨é€šç”¨å‡½æ•°è®¡ç®—ä»»åŠ¡å®Œæˆåº¦
+                    task_completion_degrees(j) = OCFUtils.calc_task_completion_degree(allocated, task_demand, Value_Params.K);
                 end
             end
         end
         
-        % Í³¼ÆÈÎÎñÍê³ÉÇé¿ö£¨Ê¹ÓÃÇóºÍ¹éÒ»»¯·½Ê½£©
-        comparison_stats.(alg_name).task_completion_degrees = task_completion_degrees;  % ¸÷ÈÎÎñÍê³É¶ÈÃ÷Ï¸
-        comparison_stats.(alg_name).total_completion_score = sum(task_completion_degrees);  % ×ÜÍê³É·ÖÊı£¨µÈĞ§Íê³ÉÈÎÎñÊı£©
-        comparison_stats.(alg_name).normalized_completion_rate = (sum(task_completion_degrees) / M) * 100;  % ¹éÒ»»¯Íê³ÉÂÊ
-        comparison_stats.(alg_name).avg_task_completion = mean(task_completion_degrees(task_completion_degrees > 0));  % ÓĞÁªÃËÈÎÎñµÄÆ½¾ùÍê³É¶È
-        comparison_stats.(alg_name).fully_completed_tasks = sum(task_completion_degrees >= 0.999);  % ÍêÈ«Íê³ÉµÄÈÎÎñÊı
-        comparison_stats.(alg_name).partially_completed_tasks = sum(task_completion_degrees > 0 & task_completion_degrees < 0.999);  % ²¿·ÖÍê³ÉµÄÈÎÎñÊı
+        % ç»Ÿè®¡ä»»åŠ¡å®Œæˆæƒ…å†µï¼ˆä½¿ç”¨æ±‚å’Œå½’ä¸€åŒ–æ–¹å¼ï¼‰
+        comparison_stats.(alg_name).task_completion_degrees = task_completion_degrees;  % å„ä»»åŠ¡å®Œæˆåº¦æ˜ç»†
+        comparison_stats.(alg_name).total_completion_score = sum(task_completion_degrees);  % æ€»å®Œæˆåˆ†æ•°ï¼ˆç­‰æ•ˆå®Œæˆä»»åŠ¡æ•°ï¼‰
+        comparison_stats.(alg_name).normalized_completion_rate = (sum(task_completion_degrees) / M) * 100;  % å½’ä¸€åŒ–å®Œæˆç‡
+        comparison_stats.(alg_name).avg_task_completion = mean(task_completion_degrees(task_completion_degrees > 0));  % æœ‰è”ç›Ÿä»»åŠ¡çš„å¹³å‡å®Œæˆåº¦
+        comparison_stats.(alg_name).fully_completed_tasks = sum(task_completion_degrees >= 0.999);  % å®Œå…¨å®Œæˆçš„ä»»åŠ¡æ•°
+        comparison_stats.(alg_name).partially_completed_tasks = sum(task_completion_degrees > 0 & task_completion_degrees < 0.999);  % éƒ¨åˆ†å®Œæˆçš„ä»»åŠ¡æ•°
         
-        % ´¦ÀíNaNÇé¿ö
+        % å¤„ç†NaNæƒ…å†µ
         if isnan(comparison_stats.(alg_name).avg_task_completion)
             comparison_stats.(alg_name).avg_task_completion = 0;
         end
         
-        %% 4. ×ÊÔ´ÀûÓÃÂÊ
+        %% 4. èµ„æºåˆ©ç”¨ç‡
         total_resources_available = 0;
         total_resources_allocated = 0;
         
@@ -199,7 +199,7 @@ function comparison_stats = compare_results(results, agents, tasks, Value_Params
             total_resources_available = total_resources_available + sum(agents(ag_idx).resources);
         end
         
-        % ÓÅÏÈÊ¹ÓÃSC½á¹¹¼ÆËã×ÊÔ´·ÖÅä
+        % ä¼˜å…ˆä½¿ç”¨SCç»“æ„è®¡ç®—èµ„æºåˆ†é…
         if isfield(Value_data, 'SC') && ~isempty(Value_data(1).SC)
             SC = Value_data(1).SC;
             for m = 1:min(length(SC), M)
@@ -218,7 +218,7 @@ function comparison_stats = compare_results(results, agents, tasks, Value_Params
                         total_resources_allocated = total_resources_allocated + ...
                             sum(Value_data(1).agentresources(ag_idx, task_idx, :));
                     else
-                        % 2Î¬Çé¿ö
+                        % 2ç»´æƒ…å†µ
                         total_resources_allocated = total_resources_allocated + ...
                             Value_data(1).agentresources(ag_idx, task_idx);
                     end
@@ -233,7 +233,7 @@ function comparison_stats = compare_results(results, agents, tasks, Value_Params
             comparison_stats.(alg_name).resource_utilization = 0;
         end
         
-        %% 5. ÖÇÄÜÌå²ÎÓë¶È
+        %% 5. æ™ºèƒ½ä½“å‚ä¸åº¦
         agent_participation = zeros(1, N);
         for ag_idx = 1:N
             agent_participation(ag_idx) = sum(coal(:, ag_idx) ~= 0);
@@ -243,7 +243,7 @@ function comparison_stats = compare_results(results, agents, tasks, Value_Params
         comparison_stats.(alg_name).max_agent_participation = max(agent_participation);
         comparison_stats.(alg_name).agent_participation_std = std(agent_participation);
         
-        %% 6. ÄÜÁ¿ÏûºÄÍ³¼Æ£¨Èç¹ûÓĞÏà¹ØÊı¾İ£©
+        %% 6. èƒ½é‡æ¶ˆè€—ç»Ÿè®¡ï¼ˆå¦‚æœæœ‰ç›¸å…³æ•°æ®ï¼‰
         if isfield(Value_data, 'energy_cost')
             comparison_stats.(alg_name).total_energy_cost = sum(Value_data(1).energy_cost);
             comparison_stats.(alg_name).avg_energy_per_task = ...
@@ -253,7 +253,7 @@ function comparison_stats = compare_results(results, agents, tasks, Value_Params
             comparison_stats.(alg_name).avg_energy_per_task = NaN;
         end
         
-        %% 7. ÈÎÎñ¼ÛÖµÍ³¼Æ
+        %% 7. ä»»åŠ¡ä»·å€¼ç»Ÿè®¡
         total_value_achieved = 0;
         total_value_possible = 0;
         
@@ -270,7 +270,7 @@ function comparison_stats = compare_results(results, agents, tasks, Value_Params
         comparison_stats.(alg_name).value_achievement_rate = ...
             total_value_achieved / total_value_possible * 100;
         
-        %% 8. Ğ§ÓÃĞ§ÂÊ£¨Ğ§ÓÃ/¼ÆËãÊ±¼ä£©
+        %% 8. æ•ˆç”¨æ•ˆç‡ï¼ˆæ•ˆç”¨/è®¡ç®—æ—¶é—´ï¼‰
         if comparison_stats.(alg_name).computation_time > 0
             comparison_stats.(alg_name).utility_efficiency = ...
                 comparison_stats.(alg_name).total_utility / ...
@@ -279,7 +279,7 @@ function comparison_stats = compare_results(results, agents, tasks, Value_Params
             comparison_stats.(alg_name).utility_efficiency = Inf;
         end
         
-        %% 9. ×ÊÔ´Æ¥Åä¶È
+        %% 9. èµ„æºåŒ¹é…åº¦
         total_demand = 0;
         total_allocated = 0;
         
@@ -299,14 +299,14 @@ function comparison_stats = compare_results(results, agents, tasks, Value_Params
                     total_demand = total_demand + task_demand(k);
                     if num_dims >= 3
                         for ag_idx = members
-                            % ¼ì²éË÷ÒıÊÇ·ñÔÚ·¶Î§ÄÚ
+                            % æ£€æŸ¥ç´¢å¼•æ˜¯å¦åœ¨èŒƒå›´å†…
                             if ag_idx <= agentresources_size(1) && j <= agentresources_size(2) && k <= agentresources_size(3)
                                 total_allocated = total_allocated + ...
                                     Value_data(1).agentresources(ag_idx, j, k);
                             end
                         end
                     elseif num_dims == 2
-                        % 2Î¬Çé¿ö£º¼ÙÉèÊÇ (agent, task) ¸ñÊ½
+                        % 2ç»´æƒ…å†µï¼šå‡è®¾æ˜¯ (agent, task) æ ¼å¼
                         for ag_idx = members
                             if ag_idx <= agentresources_size(1) && j <= agentresources_size(2)
                                 total_allocated = total_allocated + ...

@@ -1,42 +1,42 @@
-%% ¸öÌåĞ§ÓÃ°´±ÈÀı·ÖÅäÊ¾Àı
+ï»¿%% ä¸ªä½“æ•ˆç”¨æŒ‰æ¯”ä¾‹åˆ†é…ç¤ºä¾‹
 % 
-% ¹«Ê½: u_n = (|A_m^(n)| / sum(|A_m^(n')|)) * U_m(A_m)
+% å…¬å¼: u_n = (|A_m^(n)| / sum(|A_m^(n')|)) * U_m(A_m)
 %
-% ÆäÖĞ:
-%   u_n - UAV nµÄ¸öÌåĞ§ÓÃ
-%   |A_m^(n)| - UAV n¶ÔÈÎÎñm¹±Ï×µÄ×ÊÔ´×ÜÁ¿
-%   sum(|A_m^(n')|) - ÁªÃË³ÉÔ±¶ÔÈÎÎñm¹±Ï×µÄ×Ü×ÊÔ´Á¿
-%   U_m(A_m) - ÈÎÎñmµÄ×ÜĞ§ÓÃ
+% å…¶ä¸­:
+%   u_n - UAV nçš„ä¸ªä½“æ•ˆç”¨
+%   |A_m^(n)| - UAV nå¯¹ä»»åŠ¡mè´¡çŒ®çš„èµ„æºæ€»é‡
+%   sum(|A_m^(n')|) - è”ç›Ÿæˆå‘˜å¯¹ä»»åŠ¡mè´¡çŒ®çš„æ€»èµ„æºé‡
+%   U_m(A_m) - ä»»åŠ¡mçš„æ€»æ•ˆç”¨
 
-%% Ê¾Àı³¡¾°
-% ÈÎÎñ1: ¼ÛÖµ100, ĞèÇó[10, 20]
-% UAV1¹±Ï×[5, 10], UAV2¹±Ï×[5, 10]
-% ÈÎÎñ×ÜĞ§ÓÃ: 100 * 1.0 - ¾àÀë³É±¾ = 95
+%% ç¤ºä¾‹åœºæ™¯
+% ä»»åŠ¡1: ä»·å€¼100, éœ€æ±‚[10, 20]
+% UAV1è´¡çŒ®[5, 10], UAV2è´¡çŒ®[5, 10]
+% ä»»åŠ¡æ€»æ•ˆç”¨: 100 * 1.0 - è·ç¦»æˆæœ¬ = 95
 
-% ¼ÆËã¸öÌå¹±Ï×±ÈÀı
-A_1_uav1 = norm([5, 10]);    % UAV1¹±Ï×Á¿: sqrt(25+100) = 11.18
-A_1_uav2 = norm([5, 10]);    % UAV2¹±Ï×Á¿: sqrt(25+100) = 11.18
-total_contribution = A_1_uav1 + A_1_uav2;  % ×Ü¹±Ï×: 22.36
+% è®¡ç®—ä¸ªä½“è´¡çŒ®æ¯”ä¾‹
+A_1_uav1 = norm([5, 10]);    % UAV1è´¡çŒ®é‡: sqrt(25+100) = 11.18
+A_1_uav2 = norm([5, 10]);    % UAV2è´¡çŒ®é‡: sqrt(25+100) = 11.18
+total_contribution = A_1_uav1 + A_1_uav2;  % æ€»è´¡çŒ®: 22.36
 
-% °´±ÈÀı·ÖÅä
+% æŒ‰æ¯”ä¾‹åˆ†é…
 u_uav1 = (A_1_uav1 / total_contribution) * 95;  % 47.5
 u_uav2 = (A_1_uav2 / total_contribution) * 95;  % 47.5
 
-fprintf('ÈÎÎñ×ÜĞ§ÓÃ: %.2f\n', 95);
-fprintf('UAV1¸öÌåĞ§ÓÃ: %.2f (¹±Ï×±ÈÀı: %.1f%%)\n', u_uav1, A_1_uav1/total_contribution*100);
-fprintf('UAV2¸öÌåĞ§ÓÃ: %.2f (¹±Ï×±ÈÀı: %.1f%%)\n', u_uav2, A_1_uav2/total_contribution*100);
-fprintf('Ğ§ÓÃ×ÜºÍ: %.2f (Ó¦µÈÓÚÈÎÎñ×ÜĞ§ÓÃ)\n', u_uav1 + u_uav2);
+fprintf('ä»»åŠ¡æ€»æ•ˆç”¨: %.2f\n', 95);
+fprintf('UAV1ä¸ªä½“æ•ˆç”¨: %.2f (è´¡çŒ®æ¯”ä¾‹: %.1f%%)\n', u_uav1, A_1_uav1/total_contribution*100);
+fprintf('UAV2ä¸ªä½“æ•ˆç”¨: %.2f (è´¡çŒ®æ¯”ä¾‹: %.1f%%)\n', u_uav2, A_1_uav2/total_contribution*100);
+fprintf('æ•ˆç”¨æ€»å’Œ: %.2f (åº”ç­‰äºä»»åŠ¡æ€»æ•ˆç”¨)\n', u_uav1 + u_uav2);
 
-%% ÕıÈ·µÄ¸öÌåĞ§ÓÃ¼ÆËãº¯Êı
+%% æ­£ç¡®çš„ä¸ªä½“æ•ˆç”¨è®¡ç®—å‡½æ•°
 function individual_utilities = calc_individual_utility(SC, agent_resources, tasks, dist_matrix, N, M, K)
-    % ·µ»ØN¡ÁM¾ØÕó£¬Ã¿¸öÔªËØÊÇUAV n´ÓÈÎÎñm»ñµÃµÄ¸öÌåĞ§ÓÃ
+    % è¿”å›NÃ—MçŸ©é˜µï¼Œæ¯ä¸ªå…ƒç´ æ˜¯UAV nä»ä»»åŠ¡mè·å¾—çš„ä¸ªä½“æ•ˆç”¨
     individual_utilities = zeros(N, M);
     
     for m = 1:M
-        % ÕÒµ½²ÎÓëÈÎÎñmµÄUAV
+        % æ‰¾åˆ°å‚ä¸ä»»åŠ¡mçš„UAV
         members = [];
         allocated = zeros(1, K);
-        contributions = zeros(N, 1);  % Ã¿¸öUAVµÄ¹±Ï×Á¿
+        contributions = zeros(N, 1);  % æ¯ä¸ªUAVçš„è´¡çŒ®é‡
         
         for n = 1:N
             if any(SC(m, n, :) > 0)
@@ -48,18 +48,18 @@ function individual_utilities = calc_individual_utility(SC, agent_resources, tas
                         allocated(z) = allocated(z) + agent_resources(n, z);
                     end
                 end
-                % ¼ÆËã¸ÃUAVµÄ¹±Ï×Á¿ |A_m^(n)|
+                % è®¡ç®—è¯¥UAVçš„è´¡çŒ®é‡ |A_m^(n)|
                 contributions(n) = norm(agent_alloc);
             end
         end
         
         if ~isempty(members)
-            % ¼ÆËãÈÎÎñmµÄ×ÜĞ§ÓÃ
+            % è®¡ç®—ä»»åŠ¡mçš„æ€»æ•ˆç”¨
             demand = tasks(m).resource_demand(:)';
             if length(demand) < K
                 demand = [demand, zeros(1, K - length(demand))];
             end
-            D_C = calc_task_completion_degree(allocated, demand, K);
+            D_C = OCFUtils.calc_task_completion_degree(allocated, demand, K);
             
             total_dist = 0;
             for n = members
@@ -67,7 +67,7 @@ function individual_utilities = calc_individual_utility(SC, agent_resources, tas
             end
             U_m = tasks(m).value * D_C - total_dist * 0.1;
             
-            % °´±ÈÀı·ÖÅä¸øÃ¿¸ö³ÉÔ±
+            % æŒ‰æ¯”ä¾‹åˆ†é…ç»™æ¯ä¸ªæˆå‘˜
             total_contribution = sum(contributions);
             if total_contribution > 0
                 for n = members

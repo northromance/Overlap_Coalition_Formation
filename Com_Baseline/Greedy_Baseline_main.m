@@ -102,7 +102,7 @@
             demand = tasks(j).resource_demand;  % 1×K
             
             % 计算任务完成度 D_C（使用统一函数）
-            D_C = calc_task_completion_degree(allocated, demand, K);
+            D_C = OCFUtils.calc_task_completion_degree(allocated, demand, K);
             
             % 计算距离成本
             total_distance = 0;

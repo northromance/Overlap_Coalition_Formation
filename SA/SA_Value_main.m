@@ -223,7 +223,7 @@ for counter=1:Value_Params.num_rounds
             Z_c = nnz(actual_demand > 1e-9);
             if Z_c > 0
                 % 使用通用函数计算任务完成度
-                D_C = calc_task_completion_degree(final_SC{m}, actual_demand, Value_Params.K);
+                D_C = OCFUtils.calc_task_completion_degree(final_SC{m}, actual_demand, Value_Params.K);
                 history_data.rounds(counter).task_completion(m) = D_C;
             end
         end

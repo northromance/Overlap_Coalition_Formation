@@ -56,14 +56,14 @@ end
 total_resources = sum(SC_m, 1);
 
 % 计算资源完成度 D_C
-D_C = calc_task_completion_degree(total_resources, demand, K);
+D_C = OCFUtils.calc_task_completion_degree(total_resources, demand, K);
 if D_C == 0
     agentutility = 0;
     return;
 end
 
 % 计算资源贡献比例 r_n(C)
-r_n_C = calc_resource_contribution_ratio(SC_m, numbercolumn, member_ids);
+r_n_C = OCFUtils.calc_resource_contribution_ratio(SC_m, numbercolumn, member_ids);
 
 % 计算期望价值 V_C（基于belief，支持可变任务类型）
 task_types = Value_Params.task_type;
@@ -90,4 +90,5 @@ else
 end
 
 end
+
 

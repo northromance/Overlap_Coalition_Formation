@@ -232,7 +232,7 @@ for counter=1:Value_Params.num_rounds
         
         % 计算资源完成度 D_C
         % 使用通用函数计算任务完成度
-        D_C = calc_task_completion_degree(total_resources, demand, K);
+        D_C = OCFUtils.calc_task_completion_degree(total_resources, demand, K);
         
         % 计算期望价值 V_C
         values = tasks(j).WORLD.value;

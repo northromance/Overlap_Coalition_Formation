@@ -1,49 +1,49 @@
-function individual_utility = overlap_coalition_self_utility_actual(n, task_m, SC, agents, tasks, Value_Params)
-% ¼ÆËãÖÇÄÜÌåÔÚÌØ¶¨ÈÎÎñÁªÃËÖĞµÄ¸öÌåĞ§ÓÃ£¨»ùÓÚÊµ¼ÊĞèÇóºÍ¼ÛÖµ£©
-% utility_n(C) = r_n(C) ¡Á V_C ¡Á D_C - (t_wait ¡Á ¦Á + T_exec ¡Á ¦Â)
+ï»¿function individual_utility = overlap_coalition_self_utility_actual(n, task_m, SC, agents, tasks, Value_Params)
+% è®¡ç®—æ™ºèƒ½ä½“åœ¨ç‰¹å®šä»»åŠ¡è”ç›Ÿä¸­çš„ä¸ªä½“æ•ˆç”¨ï¼ˆåŸºäºå®é™…éœ€æ±‚å’Œä»·å€¼ï¼‰
+% utility_n(C) = r_n(C) Ã— V_C Ã— D_C - (t_wait Ã— Î± + T_exec Ã— Î²)
 
     if task_m < 1 || task_m > Value_Params.M
         individual_utility = 0;
         return;
     end
 
-    % »ñÈ¡ÁªÃË³ÉÔ±
+    % è·å–è”ç›Ÿæˆå‘˜
     member_idx = find(any(SC{task_m} > 0, 2))';
     if isempty(member_idx)
         individual_utility = 0;
         return;
     end
 
-    % Ê¹ÓÃÊµ¼Ê×ÊÔ´ĞèÇó
+    % ä½¿ç”¨å®é™…èµ„æºéœ€æ±‚
     actual_demand = tasks(task_m).resource_demand;
 
-    % ¼ÆËãÍê³É¶È D_C
-    D_C = calc_task_completion_degree(SC{task_m}, actual_demand, Value_Params.K);
+    % è®¡ç®—å®Œæˆåº¦ D_C
+    D_C = OCFUtils.calc_task_completion_degree(SC{task_m}, actual_demand, Value_Params.K);
     if D_C == 0
         individual_utility = 0;
         return;
     end
 
-    % ¼ÆËã×ÊÔ´¹±Ï×±ÈÀı r_n(C)
-    r_n_C = calc_resource_contribution_ratio(SC{task_m}, n, member_idx);
+    % è®¡ç®—èµ„æºè´¡çŒ®æ¯”ä¾‹ r_n(C)
+    r_n_C = OCFUtils.calc_resource_contribution_ratio(SC{task_m}, n, member_idx);
 
-    % Ê¹ÓÃÊµ¼Ê¼ÛÖµ
+    % ä½¿ç”¨å®é™…ä»·å€¼
     V_C = tasks(task_m).value;
 
-    % ¼ÆËãÄÜÁ¿ÏûºÄ
+    % è®¡ç®—èƒ½é‡æ¶ˆè€—
     [t_wait, T_exec] = calc_energy_cost(n, task_m, SC, agents, tasks, Value_Params);
 
-    % ¼ÆËã×îÖÕĞ§ÓÃ
+    % è®¡ç®—æœ€ç»ˆæ•ˆç”¨
     revenue = r_n_C * V_C * D_C;
     cost = t_wait * agents(n).fuel + T_exec * agents(n).beta;
     individual_utility = revenue - cost;
 end
 
-%% ========== ¸¨Öúº¯Êı ==========
+%% ========== è¾…åŠ©å‡½æ•° ==========
 
 function [t_fly, t_wait, T_exec] = calc_energy_cost(n, task_m, SC, agents, tasks, Value_Params)
-% ¼ÆËãÖÇÄÜÌåµÄ·ÉĞĞÊ±¼ä¡¢µÈ´ıÊ±¼äºÍÖ´ĞĞÊ±¼ä
-    % »ñÈ¡ÖÇÄÜÌå²ÎÓëµÄËùÓĞÈÎÎñ
+% è®¡ç®—æ™ºèƒ½ä½“çš„é£è¡Œæ—¶é—´ã€ç­‰å¾…æ—¶é—´å’Œæ‰§è¡Œæ—¶é—´
+    % è·å–æ™ºèƒ½ä½“å‚ä¸çš„æ‰€æœ‰ä»»åŠ¡
     agent_tasks = find(cellfun(@(x) any(x(n, :) > 0), SC))';
     
     if isempty(agent_tasks) || ~ismember(task_m, agent_tasks)
@@ -53,16 +53,16 @@ function [t_fly, t_wait, T_exec] = calc_energy_cost(n, task_m, SC, agents, tasks
         return;
     end
     
-    % ¹¹½¨×ÊÔ´·ÖÅä¾ØÕó
+    % æ„å»ºèµ„æºåˆ†é…çŸ©é˜µ
     R_agent = zeros(Value_Params.M, Value_Params.K);
     for m = 1:Value_Params.M
         R_agent(m, :) = SC{m}(n, :);
     end
     
-    % µ÷ÓÃÄÜÁ¿¼ÆËã£¨ĞÂ½Ó¿Ú£ºt_fly, T_exec, dist, energy, ordered, arrivals, t_wait£©
+    % è°ƒç”¨èƒ½é‡è®¡ç®—ï¼ˆæ–°æ¥å£ï¼št_fly, T_exec, dist, energy, ordered, arrivals, t_waitï¼‰
     [t_fly, ~, ~, ~, orderedTasks, ~, t_wait] = energy_cost(n, agent_tasks, agents, tasks, Value_Params, R_agent, SC);
     
-    % ¼ÆËãµ½task_mÎªÖ¹µÄÖ´ĞĞÊ±¼ä
+    % è®¡ç®—åˆ°task_mä¸ºæ­¢çš„æ‰§è¡Œæ—¶é—´
     task_pos = find(orderedTasks == task_m, 1);
     T_exec = calc_exec_time_to_task(orderedTasks(1:task_pos), R_agent, tasks, Value_Params);
 end

@@ -124,6 +124,66 @@
             r = r ./ sum(r, 2);
         end
 
+        function r_n = calc_resource_contribution_ratio(SC_m, agent_idx, member_indices)
+            % calc_resource_contribution_ratio 计算智能体在联盟中的资源贡献比例 r_n(C)
+            % 计算公式：r_n(C) = ||A_n|| / Σ||A_i||，其中 A_n 为 agent 的资源向量
+            % 输入：
+            %   SC_m           : 任务m的资源分配矩阵 (N×K)
+            %   agent_idx      : 要计算贡献比例的智能体索引（行号）
+            %   member_indices : 参与该任务的所有智能体索引向量
+            % 输出：
+            %   r_n            : 资源贡献比例 (0~1)，若总资源为0则平均分配
+            A_n = norm(SC_m(agent_idx, :));
+            total_norm = 0;
+            for i = 1:numel(member_indices)
+                member_id = member_indices(i);
+                total_norm = total_norm + norm(SC_m(member_id, :));
+            end
+            if total_norm > 1e-9
+                r_n = A_n / total_norm;
+            else
+                r_n = 1 / max(numel(member_indices), 1);
+            end
+        end
+
+        function D_C = calc_task_completion_degree(allocated_resources, task_demand, K)
+            % calc_task_completion_degree 计算任务的资源完成度 D_C
+            % 计算公式：D_C = (1/Z_c) × Σ min(allocated_k / demand_k, 1.0)
+            % 输入：
+            %   allocated_resources : 分配给任务的资源向量 (1×K) 或矩阵 (N×K)
+            %   task_demand          : 任务的资源需求向量 (1×K)
+            %   K                    : 资源类型数量
+            % 输出：
+            %   D_C                  : 任务完成度 (0~1)，表示资源满足程度
+            if size(allocated_resources, 1) > 1
+                allocated = sum(allocated_resources, 1);
+            else
+                allocated = allocated_resources;
+            end
+
+            if numel(allocated) < K
+                allocated = [allocated, zeros(1, K - numel(allocated))];
+            end
+            if numel(task_demand) < K
+                task_demand = [task_demand, zeros(1, K - numel(task_demand))];
+            end
+
+            Z_c = nnz(task_demand > 1e-9);
+            if Z_c == 0
+                D_C = 1;
+                return;
+            end
+
+            D_C = 0;
+            for k = 1:K
+                if task_demand(k) > 1e-9
+                    ratio = min(allocated(k) / task_demand(k), 1.0);
+                    D_C = D_C + ratio;
+                end
+            end
+            D_C = D_C / Z_c;
+        end
+
         function seed = set_seed(seed)
             % set_seed 设置随机种子，兼容 rand/randn/rng。
             % 输入：
