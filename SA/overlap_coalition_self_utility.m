@@ -40,7 +40,7 @@ function individual_utility = overlap_coalition_self_utility(n, task_m, SC, agen
     % α_wait 默认为 α × 0.5（悬停能耗）
     revenue = r_n_C * V_C * D_C;
     alpha_fly = agents(n).fuel;
-    alpha_wait = alpha_fly * 0.5;
+    alpha_wait = agents(n).wait_fuel;
     cost = t_fly * alpha_fly + t_wait * alpha_wait + T_exec * agents(n).beta;
     individual_utility = revenue - cost;
 end

@@ -33,7 +33,11 @@
     
     % 3. 获取能量模型参数
     alpha_fly = agents(agentIdx).fuel;   % 飞行能耗系数
-    alpha_wait = alpha_fly * 0.5;        % 等待能耗系数（悬停，约为飞行的一半）
+    % 等待能耗系数：优先使用显式 wait_fuel，缺省时退回飞行能耗的一半
+    alpha_wait = alpha_fly * 0.5;
+    if isfield(agents, 'wait_fuel') && isfield(agents(agentIdx), 'wait_fuel') && ~isempty(agents(agentIdx).wait_fuel)
+        alpha_wait = agents(agentIdx).wait_fuel;
+    end
     beta = agents(agentIdx).beta;        % 执行能耗系数
     v = agents(agentIdx).vel;            % 固定飞行速度
     
