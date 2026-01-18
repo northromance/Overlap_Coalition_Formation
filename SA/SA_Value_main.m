@@ -1,4 +1,4 @@
-function [Value_data, history_data]= SA_Value_main(agents,tasks,AddPara,Value_Params)
+﻿function [Value_data, history_data]= SA_Value_main(agents,tasks,AddPara,Value_Params)
 % SA_Value_main - 基于模拟退火的重叠联盟形成主函数
 %
 % 输出参数：
@@ -235,67 +235,10 @@ for counter=1:Value_Params.num_rounds
         curTaskList{i} = find(final_coalitionstru(1:Value_Params.M, i) ~= 0);
     end
     
-    %% 记录观测（每个参与任务各采样obs_times次）
-    for i = 1:Value_Params.N
-        taskIds = curTaskList{i};
-        if isempty(taskIds)
-            continue; % 该智能体本轮未参与任何真实任务(只在void)，不产生观测
-        end
-        
-        for tIdx = 1:numel(taskIds)
-            taskId = taskIds(tIdx);
-            
-            % 真实价值在候选集中的索引(1..3)
-            taskindex = find(tasks(taskId).value == tasks(taskId).WORLD.value);
-            % 非真实价值的索引(长度=2)
-            nontaskindex = find(tasks(taskId).value ~= tasks(taskId).WORLD.value);
-            
-            for m = 1:Value_Params.obs_times
-                % 观测模型：正确检测概率=detprob，误检均匀分布到其他类别
-                r = rand;
-                if r <= agents(i).detprob
-                    % 正确检测
-                    Value_data(i).observe(taskId, taskindex) = Value_data(i).observe(taskId, taskindex) + 1;
-                else
-                    % 误检：均匀随机选择一个非真实类别（50%-50%）
-                    chosen_idx = nontaskindex(randi(2));
-                    Value_data(i).observe(taskId, chosen_idx) = Value_data(i).observe(taskId, chosen_idx) + 1;
-                end
-            end
-        end
-    end
-    
-    % 聚合所有智能体的新观测
-    for j=1:Value_Params.M
-        for k=1:Value_Params.task_type
-            for i=1:Value_Params.N
-                summatrix(j,k)=summatrix(j,k)+ Value_data(i).observe(j,  k)-Value_data(i).preobserve(j,  k);  % 累计新观测
-            end
-        end
-    end
-    
-    % 同步观测给所有智能体
+    %% 记录观测并更新信念（统一调用工具函数）
+    [Value_data, summatrix] = OCFUtils.collect_observations(Value_data, agents, tasks, Value_Params, curTaskList, summatrix);
+    Value_data = OCFUtils.update_belief_from_observations(Value_data, Value_Params);
 
-    for i=1:Value_Params.N
-        for j=1:Value_Params.M
-            for k=1:Value_Params.task_type
-                Value_data(i).preobserve(j,k)= summatrix(j,k);  % 更新前次观测
-                Value_data(i).observe(j,  k)= summatrix(j,k);   % 更新当前观测
-            end
-        end
-    end
-    
-    %% 根据观测更新信念（Dirichlet后验）
-    for i=1:Value_Params.N
-        for j=1:Value_Params.M
-            alpha_params = ones(1, Value_Params.task_type);
-            for k=1:Value_Params.task_type
-                alpha_params(k) = 1 + Value_data(i).observe(j,k);
-            end
-            Value_data(i).initbelief(j,1:end)=OCFUtils.drchrnd(alpha_params,1)';  % Dirichlet采样
-        end
-    end
-    
     %% 信念广播：同步各智能体的信念到other中
     for i = 1:Value_Params.N
         for j = 1:Value_Params.N
@@ -305,3 +248,5 @@ for counter=1:Value_Params.num_rounds
     
 end
 end
+
+

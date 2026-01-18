@@ -184,6 +184,80 @@
             D_C = D_C / Z_c;
         end
 
+        function [Value_data, summatrix] = collect_observations(Value_data, agents, tasks, Value_Params, curTaskList, summatrix)
+            % collect_observations 执行观测并同步观测矩阵
+            % 输入：
+            %   Value_data   : 包含 observe/preobserve 的结构体数组
+            %   agents       : 智能体数组（需含 detprob）
+            %   tasks        : 任务数组（需含 value 与 WORLD.value）
+            %   Value_Params : 参数结构（需含 M、N、task_type、obs_times）
+            %   curTaskList  : 长度 N 的 cell，每个元素为该智能体本轮参与的任务ID列表
+            %   summatrix    : 全局观测累积矩阵 (M×task_type)，可选，缺省则置零
+            % 输出：
+            %   Value_data   : 更新后的观测计数
+            %   summatrix    : 累积后的全局观测矩阵
+            if nargin < 6 || isempty(summatrix)
+                summatrix = zeros(Value_Params.M, Value_Params.task_type);
+            end
+
+            % 单个智能体的观测采样
+            for i = 1:Value_Params.N
+                taskIds = curTaskList{i};
+                if isempty(taskIds)
+                    continue;
+                end
+                for tIdx = 1:numel(taskIds)
+                    taskId = taskIds(tIdx);
+                    % 真值索引与非真值索引
+                    taskindex = find(tasks(taskId).value == tasks(taskId).WORLD.value);
+                    nontaskindex = find(tasks(taskId).value ~= tasks(taskId).WORLD.value);
+                    for m = 1:Value_Params.obs_times
+                        r = rand;
+                        if r <= agents(i).detprob || isempty(nontaskindex)
+                            % 正确观测
+                            Value_data(i).observe(taskId, taskindex) = Value_data(i).observe(taskId, taskindex) + 1;
+                        else
+                            % 错误观测：均匀从非真值中选一类
+                            chosen_idx = nontaskindex(randi(numel(nontaskindex)));
+                            Value_data(i).observe(taskId, chosen_idx) = Value_data(i).observe(taskId, chosen_idx) + 1;
+                        end
+                    end
+                end
+            end
+
+            % 聚合全体智能体的新增观测
+            for j = 1:Value_Params.M
+                for k = 1:Value_Params.task_type
+                    for i = 1:Value_Params.N
+                        summatrix(j, k) = summatrix(j, k) + Value_data(i).observe(j, k) - Value_data(i).preobserve(j, k);
+                    end
+                end
+            end
+
+            % 同步观测矩阵到所有智能体
+            for i = 1:Value_Params.N
+                for j = 1:Value_Params.M
+                    for k = 1:Value_Params.task_type
+                        Value_data(i).preobserve(j, k) = summatrix(j, k);
+                        Value_data(i).observe(j, k) = summatrix(j, k);
+                    end
+                end
+            end
+        end
+
+        function Value_data = update_belief_from_observations(Value_data, Value_Params)
+            % update_belief_from_observations 基于观测计数做Dirichlet后验更新
+            % 输入：
+            %   Value_data   : 包含 observe 的结构体数组
+            %   Value_Params : 参数结构（需含 N、M、task_type）
+            for i = 1:Value_Params.N
+                for j = 1:Value_Params.M
+                    alpha_params = 1 + Value_data(i).observe(j, 1:Value_Params.task_type);
+                    Value_data(i).initbelief(j, 1:end) = OCFUtils.drchrnd(alpha_params, 1)';
+                end
+            end
+        end
+
         function seed = set_seed(seed)
             % set_seed 设置随机种子，兼容 rand/randn/rng。
             % 输入：

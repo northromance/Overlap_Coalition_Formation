@@ -1,6 +1,6 @@
 ﻿function individual_utility = overlap_coalition_self_utility_actual(n, task_m, SC, agents, tasks, Value_Params)
 % 计算智能体在特定任务联盟中的个体效用（基于实际需求和价值）
-% utility_n(C) = r_n(C) × V_C × D_C - (t_wait × α + T_exec × β)
+% utility_n(C) = r_n(C) × V_C × D_C - (t_fly × α + t_wait × α_wait + T_exec × β)
 
     if task_m < 1 || task_m > Value_Params.M
         individual_utility = 0;
@@ -30,12 +30,17 @@
     % 使用实际价值
     V_C = tasks(task_m).value;
 
-    % 计算能量消耗
-    [t_wait, T_exec] = calc_energy_cost(n, task_m, SC, agents, tasks, Value_Params);
+    % 计算能量消耗（返回飞行、等待、执行时间）
+    [t_fly, t_wait, T_exec] = calc_energy_cost(n, task_m, SC, agents, tasks, Value_Params);
 
     % 计算最终效用
     revenue = r_n_C * V_C * D_C;
-    cost = t_wait * agents(n).fuel + T_exec * agents(n).beta;
+    alpha_fly = agents(n).fuel;
+    alpha_wait = alpha_fly * 0.5;
+    if isfield(agents, 'wait_fuel') && isfield(agents(n), 'wait_fuel') && ~isempty(agents(n).wait_fuel)
+        alpha_wait = agents(n).wait_fuel;
+    end
+    cost = t_fly * alpha_fly + t_wait * alpha_wait + T_exec * agents(n).beta;
     individual_utility = revenue - cost;
 end
 

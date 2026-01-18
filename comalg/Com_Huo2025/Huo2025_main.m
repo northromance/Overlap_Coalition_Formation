@@ -128,48 +128,18 @@ for counter=1:Value_Params.num_rounds
         end
     end
     
-    %记录一次联盟形成后观测次数
+    % 记录一次联盟形成后观测次数（统一函数）
+    curTaskList = cell(1, Value_Params.N);
     for i=1:Value_Params.N
-        if  curnumberrow(i)~=Value_Params.M+1
-            for m=1:Value_Params.obs_times 
-                taskindex=find(tasks(curnumberrow(i)).value== tasks(curnumberrow(i)).WORLD.value);
-                nontaskindex=find(tasks(curnumberrow(i)).value~= tasks(curnumberrow(i)).WORLD.value);
-                if rand<=agents(i).detprob
-                    Value_data(i).observe(curnumberrow(i),  taskindex)= Value_data(i).observe(curnumberrow(i),taskindex)+1;%更新观测矩阵
-                elseif ~isempty(nontaskindex)
-                    wrong_idx = nontaskindex(randi(numel(nontaskindex)));
-                    Value_data(i).observe(curnumberrow(i),  wrong_idx)= Value_data(i).observe(curnumberrow(i),wrong_idx)+1;%更新观测矩阵
-                end
-            end
+        if curnumberrow(i)~=Value_Params.M+1
+            curTaskList{i} = curnumberrow(i);
+        else
+            curTaskList{i} = [];
         end
     end
-    
-    for j=1:Value_Params.M
-        for k=1:task_types
-            for i=1:Value_Params.N
-                summatrix(j,k)=summatrix(j,k)+ Value_data(i).observe(j,  k)-Value_data(i).preobserve(j,  k);
-            end
-        end
-    end
-    
-    for i=1:Value_Params.N
-        for j=1:Value_Params.M
-            for k=1:task_types
-                Value_data(i).preobserve(j,k)= summatrix(j,k);
-                Value_data(i).observe(j,  k)= summatrix(j,k);
-            end
-        end
-    end
-    
-    %
-    %一次联盟形成后根据观测更新belief
-    for i=1:Value_Params.N
-        for j=1:Value_Params.M
-            alpha_params = 1 + Value_data(i).observe(j, 1:task_types);
-            Value_data(i).initbelief(j,1:end)=OCFUtils.drchrnd(alpha_params,1)';
-        end
-    end
-    
+    [Value_data, summatrix] = OCFUtils.collect_observations(Value_data, agents, tasks, Value_Params, curTaskList, summatrix);
+    Value_data = OCFUtils.update_belief_from_observations(Value_data, Value_Params);
+
     % 计算基于资源分配的联盟效用
     Rcost = zeros(Value_Params.M, Value_Params.N);
     coalition_utility = zeros(1, Value_Params.M);  % 每个联盟的效用
@@ -183,6 +153,8 @@ for counter=1:Value_Params.num_rounds
         K = 6;  % 默认值
     end
     
+    eps_val = 1e-9;  % 数值容差
+
     for j = 1:Value_Params.M
         lianmeng(j).member = find(Value_data(1).coalitionstru(j,:) ~= 0);
         
@@ -241,15 +213,58 @@ for counter=1:Value_Params.num_rounds
         
         % 计算联盟收益 = V_C × D_C
         coalition_revenue = V_C * D_C;
-        
-        % 计算每个成员的移动代价
+
+        % 计算等待/飞行/执行成本，参考 Value_utility 中的模型
+        % 1) 各成员到达时间（单程，不返回）
+        arrival_times = zeros(1, numel(member_ids));
+        for idx = 1:numel(member_ids)
+            mid = member_ids(idx);
+            start_xy = [agents(mid).x, agents(mid).y];
+            one_way_dist = OCFUtils.compute_route_distance(start_xy, j, tasks, false);
+            v_mid = eps_val;
+            if isfield(agents(mid), 'vel') && ~isempty(agents(mid).vel)
+                v_mid = max(agents(mid).vel, eps_val);
+            end
+            arrival_times(idx) = one_way_dist / v_mid;
+        end
+        sync_start = max(arrival_times);
+
+        % 2) 任务执行时间：取需求中最耗时资源（并行执行模型）
+        task_exec_time = 0;
+        if isfield(tasks(j), 'duration_by_resource') && ~isempty(tasks(j).duration_by_resource)
+            task_exec_time = max(tasks(j).duration_by_resource(:));
+        elseif isfield(tasks(j), 'duration')
+            task_exec_time = tasks(j).duration;
+        end
+
+        % 3) 成员成本（往返飞行 + 等待 + 执行）
         coalition_cost = 0;
-        for i = 1:length(member_ids)
-            member_id = member_ids(i);
-            dist = sqrt((agents(member_id).x - tasks(j).x)^2 ...
-                      + (agents(member_id).y - tasks(j).y)^2);
-            Rcost(j, i) = dist * agents(member_id).fuel;
-            coalition_cost = coalition_cost + Rcost(j, i);
+        for idx = 1:numel(member_ids)
+            member_id = member_ids(idx);
+            start_xy = [agents(member_id).x, agents(member_id).y];
+            total_dist = OCFUtils.compute_route_distance(start_xy, j, tasks); % 闭环往返
+            v_mid = eps_val;
+            if isfield(agents(member_id), 'vel') && ~isempty(agents(member_id).vel)
+                v_mid = max(agents(member_id).vel, eps_val);
+            end
+            fly_time = total_dist / v_mid;
+
+            my_arrival = arrival_times(idx);
+            wait_time = max(0, sync_start - my_arrival);
+
+            alpha_fly = agents(member_id).fuel;
+            alpha_wait = alpha_fly * 0.5;
+            if isfield(agents, 'wait_fuel') && isfield(agents(member_id), 'wait_fuel') && ~isempty(agents(member_id).wait_fuel)
+                alpha_wait = agents(member_id).wait_fuel;
+            end
+            beta = 0;
+            if isfield(agents, 'beta') && isfield(agents(member_id), 'beta')
+                beta = agents(member_id).beta;
+            end
+
+            member_cost = fly_time * alpha_fly + wait_time * alpha_wait + task_exec_time * beta;
+            Rcost(j, member_id) = member_cost;
+            coalition_cost = coalition_cost + member_cost;
         end
         
         % 联盟效用 = 收益 - 代价
@@ -317,3 +332,4 @@ Value_data_out = final_Value_data;
 Value_data = Value_data_out;
 
 end
+
