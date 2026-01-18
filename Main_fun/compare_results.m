@@ -270,6 +270,13 @@
         comparison_stats.(alg_name).value_achievement_rate = ...
             total_value_achieved / total_value_possible * 100;
         
+        % 记录加权总价值（按完成度累加，关注执行价值与完成率）
+        task_values = arrayfun(@(t) t.value, tasks(1:M));
+        completed_value = sum(task_values(:) .* task_completion_degrees(1:M));
+        comparison_stats.(alg_name).completed_value = completed_value;
+        comparison_stats.(alg_name).completed_value_rate = completed_value / total_value_possible * 100;
+        comparison_stats.(alg_name).completed_value_by_task = task_values(:) .* task_completion_degrees(1:M);
+        
         %% 8. 效用效率（效用/计算时间）
         if comparison_stats.(alg_name).computation_time > 0
             comparison_stats.(alg_name).utility_efficiency = ...

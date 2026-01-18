@@ -202,20 +202,24 @@
 
             % 单个智能体的观测采样
             for i = 1:Value_Params.N
-                taskIds = curTaskList{i};
-                if isempty(taskIds)
-                    continue;
-                end
-                for tIdx = 1:numel(taskIds)
-                    taskId = taskIds(tIdx);
-                    % 真值索引与非真值索引
-                    taskindex = find(tasks(taskId).value == tasks(taskId).WORLD.value);
-                    nontaskindex = find(tasks(taskId).value ~= tasks(taskId).WORLD.value);
-                    for m = 1:Value_Params.obs_times
-                        r = rand;
-                        if r <= agents(i).detprob || isempty(nontaskindex)
-                            % 正确观测
-                            Value_data(i).observe(taskId, taskindex) = Value_data(i).observe(taskId, taskindex) + 1;
+                    taskIds = curTaskList{i};
+                    if isempty(taskIds)
+                        continue;
+                    end
+                    for tIdx = 1:numel(taskIds)
+                        taskId = taskIds(tIdx);
+                        % 真值索引与非真值索引
+                        taskindex = find(tasks(taskId).value == tasks(taskId).WORLD.value, 1);
+                        nontaskindex = find(tasks(taskId).value ~= tasks(taskId).WORLD.value);
+                        if isempty(taskindex)
+                            % 若未匹配到真值索引，跳过该观测，避免维度错误
+                            continue;
+                        end
+                        for m = 1:Value_Params.obs_times
+                            r = rand;
+                            if r <= agents(i).detprob || isempty(nontaskindex)
+                                % 正确观测
+                                Value_data(i).observe(taskId, taskindex) = Value_data(i).observe(taskId, taskindex) + 1;
                         else
                             % 错误观测：均匀从非真值中选一类
                             chosen_idx = nontaskindex(randi(numel(nontaskindex)));

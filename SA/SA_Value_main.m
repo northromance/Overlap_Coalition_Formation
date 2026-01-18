@@ -239,6 +239,13 @@ for counter=1:Value_Params.num_rounds
     [Value_data, summatrix] = OCFUtils.collect_observations(Value_data, agents, tasks, Value_Params, curTaskList, summatrix);
     Value_data = OCFUtils.update_belief_from_observations(Value_data, Value_Params);
 
+    %% 记录本轮总完成价值（价值×完成度）
+    task_values = arrayfun(@(t) t.value, tasks);
+    % 明确使用列向量，避免隐式扩展导致维度错误
+    completion_vec = history_data.rounds(counter).task_completion(:);
+    history_data.rounds(counter).total_completed_value = sum(task_values(:) .* completion_vec);
+    history_data.rounds(counter).total_value_possible = sum(task_values);
+
     %% 信念广播：同步各智能体的信念到other中
     for i = 1:Value_Params.N
         for j = 1:Value_Params.N
@@ -246,6 +253,20 @@ for counter=1:Value_Params.num_rounds
         end
     end
     
+    %% 汇总完成价值历史
+    total_value_history = zeros(1, Value_Params.num_rounds);
+    for rr = 1:Value_Params.num_rounds
+        if rr <= numel(history_data.rounds) && isfield(history_data.rounds(rr), 'total_completed_value')
+            val = history_data.rounds(rr).total_completed_value;
+            if ~isscalar(val)
+                val = sum(val(:));
+            end
+            total_value_history(rr) = val;
+        end
+    end
+    history_data.total_value_history = total_value_history;
+    history_data.total_value_possible = sum(arrayfun(@(t) t.value, tasks));
+
 end
 end
 

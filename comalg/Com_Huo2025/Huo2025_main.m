@@ -63,6 +63,8 @@ for i=1:Value_Params.N %包括agent标号，索引以及初始联盟结构
     Value_data(i).preobserve = zeros(Value_Params.M, task_types);
 end
 summatrix = zeros(Value_Params.M, task_types);  % 汇总观测矩阵
+total_value_history = zeros(1, Value_Params.num_rounds);  % 每轮完成价值
+total_value_possible = sum(arrayfun(@(t) t.value, tasks));  % 所有任务的总潜在价值
 
 for k=1: Value_Params.N   %所有agents放在void 任务中
     for j=1:Value_Params.M+1
@@ -155,6 +157,7 @@ for counter=1:Value_Params.num_rounds
     
     eps_val = 1e-9;  % 数值容差
 
+    total_completed_value = 0;  % 本轮完成价值累计
     for j = 1:Value_Params.M
         lianmeng(j).member = find(Value_data(1).coalitionstru(j,:) ~= 0);
         
@@ -269,7 +272,13 @@ for counter=1:Value_Params.num_rounds
         
         % 联盟效用 = 收益 - 代价
         coalition_utility(j) = max(coalition_revenue - coalition_cost, 0);
+
+        % 按实际完成度累积完成价值（用于统计）
+        total_completed_value = total_completed_value + tasks(j).value * D_C;
     end
+
+    % 记录本轮完成价值
+    total_value_history(counter) = total_completed_value;
     
     % 计算总代价
     cost_sum(counter) = sum(Rcost(:));
@@ -324,6 +333,8 @@ history_data.net_profit_evolution = net_profit;
 history_data.cost_evolution = cost_sum;
 history_data.num_rounds = Value_Params.num_rounds;  % 使用传入的轮数参数
 history_data.initial_coalition = initial_coalition;
+history_data.total_value_history = total_value_history;
+history_data.total_value_possible = total_value_possible;
 
 % 6. 将final_Value_data作为第一个输出
 Value_data_out = final_Value_data;
@@ -332,4 +343,8 @@ Value_data_out = final_Value_data;
 Value_data = Value_data_out;
 
 end
+
+
+
+
 

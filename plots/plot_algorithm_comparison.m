@@ -1,16 +1,17 @@
-function plot_algorithm_comparison(results, comparison_stats, num_algorithms)
-% PLOT_ALGORITHM_COMPARISON »æÖÆËã·¨¶Ô±ÈÍ¼±í
+ï»¿function plot_algorithm_comparison(results, comparison_stats, num_algorithms)
+% PLOT_ALGORITHM_COMPARISON ç»˜åˆ¶ç®—æ³•å¯¹æ¯”å›¾è¡¨
 %
-% ÊäÈë:
-%   results - °üº¬ËùÓĞËã·¨½á¹ûµÄ½á¹¹Ìå
-%   comparison_stats - Ëã·¨ĞÔÄÜÍ³¼Æ
-%   num_algorithms - Ëã·¨ÊıÁ¿
+% è¾“å…¥:
+%   results - åŒ…å«æ‰€æœ‰ç®—æ³•ç»“æœçš„ç»“æ„ä½“
+%   comparison_stats - ç®—æ³•æ€§èƒ½ç»Ÿè®¡
+%   num_algorithms - ç®—æ³•æ•°é‡
 
     alg_names = fieldnames(results);
     
-    % ÌáÈ¡Êı¾İÓÃÓÚ»æÍ¼
+    % æå–æ•°æ®ç”¨äºç»˜å›¾
     names_list = {};
     utilities = [];
+    completed_values = [];
     comp_times = [];
     coalitions = [];
     completion_rates = [];
@@ -27,9 +28,14 @@ function plot_algorithm_comparison(results, comparison_stats, num_algorithms)
         
         names_list{end+1} = stats.name;
         utilities(end+1) = stats.total_utility;
+        if isfield(stats, 'completed_value')
+            completed_values(end+1) = stats.completed_value;
+        else
+            completed_values(end+1) = stats.total_value_achieved;
+        end
         comp_times(end+1) = stats.computation_time;
         coalitions(end+1) = stats.num_coalitions;
-        completion_rates(end+1) = stats.normalized_completion_rate;  % Ê¹ÓÃ¹éÒ»»¯Íê³ÉÂÊ£¨¿¼ÂÇ×ÊÔ´Âú×ã¶È£©
+        completion_rates(end+1) = stats.normalized_completion_rate;  % ä½¿ç”¨å½’ä¸€åŒ–å®Œæˆç‡ï¼ˆè€ƒè™‘èµ„æºæ»¡è¶³åº¦ï¼‰
         resource_utils(end+1) = stats.resource_utilization;
         
         if isfield(results.(alg_name), 'color')
@@ -42,14 +48,14 @@ function plot_algorithm_comparison(results, comparison_stats, num_algorithms)
     valid_count = length(names_list);
     
     if valid_count == 0
-        fprintf('¾¯¸æ: Ã»ÓĞÓĞĞ§µÄËã·¨½á¹ûÓÃÓÚ»æÍ¼\n');
+        fprintf('è­¦å‘Š: æ²¡æœ‰æœ‰æ•ˆçš„ç®—æ³•ç»“æœç”¨äºç»˜å›¾\n');
         return;
     end
     
-    %% ´´½¨×ÛºÏ¶Ô±ÈÍ¼
-    fig = figure('Name', 'Ëã·¨ĞÔÄÜ¶Ô±È', 'Position', [100, 100, 1400, 900]);
+    %% åˆ›å»ºç»¼åˆå¯¹æ¯”å›¾
+    figure('Name', 'ç®—æ³•æ€§èƒ½å¯¹æ¯”', 'Position', [100, 100, 1400, 900]);
     
-    %% ×ÓÍ¼1: ×ÜĞ§ÓÃ¶Ô±È
+    %% å­å›¾1: æ€»æ•ˆç”¨å¯¹æ¯”
     subplot(2, 3, 1);
     bar_colors = colors;
     b = bar(utilities);
@@ -59,17 +65,17 @@ function plot_algorithm_comparison(results, comparison_stats, num_algorithms)
     end
     set(gca, 'XTickLabel', names_list, 'XTick', 1:valid_count);
     xtickangle(45);
-    ylabel('×ÜĞ§ÓÃ');
-    title('×ÜĞ§ÓÃ¶Ô±È');
+    ylabel('æ€»æ•ˆç”¨');
+    title('æ€»æ•ˆç”¨å¯¹æ¯”');
     grid on;
     
-    % ÔÚÖù×´Í¼ÉÏÌí¼ÓÊıÖµ±êÇ©
+    % åœ¨æŸ±çŠ¶å›¾ä¸Šæ·»åŠ æ•°å€¼æ ‡ç­¾
     for k = 1:valid_count
         text(k, utilities(k), sprintf('%.1f', utilities(k)), ...
              'HorizontalAlignment', 'center', 'VerticalAlignment', 'bottom');
     end
     
-    %% ×ÓÍ¼2: ¼ÆËãÊ±¼ä¶Ô±È
+    %% å­å›¾2: è®¡ç®—æ—¶é—´å¯¹æ¯”
     subplot(2, 3, 2);
     b = bar(comp_times);
     b.FaceColor = 'flat';
@@ -78,8 +84,8 @@ function plot_algorithm_comparison(results, comparison_stats, num_algorithms)
     end
     set(gca, 'XTickLabel', names_list, 'XTick', 1:valid_count);
     xtickangle(45);
-    ylabel('Ê±¼ä (Ãë)');
-    title('¼ÆËãÊ±¼ä¶Ô±È');
+    ylabel('æ—¶é—´ (ç§’)');
+    title('è®¡ç®—æ—¶é—´å¯¹æ¯”');
     grid on;
     
     for k = 1:valid_count
@@ -87,7 +93,7 @@ function plot_algorithm_comparison(results, comparison_stats, num_algorithms)
              'HorizontalAlignment', 'center', 'VerticalAlignment', 'bottom');
     end
     
-    %% ×ÓÍ¼3: ÁªÃËÊıÁ¿¶Ô±È
+    %% å­å›¾3: è”ç›Ÿæ•°é‡å¯¹æ¯”
     subplot(2, 3, 3);
     b = bar(coalitions);
     b.FaceColor = 'flat';
@@ -96,8 +102,8 @@ function plot_algorithm_comparison(results, comparison_stats, num_algorithms)
     end
     set(gca, 'XTickLabel', names_list, 'XTick', 1:valid_count);
     xtickangle(45);
-    ylabel('ÁªÃËÊıÁ¿');
-    title('ĞÎ³ÉÁªÃËÊıÁ¿¶Ô±È');
+    ylabel('è”ç›Ÿæ•°é‡');
+    title('å½¢æˆè”ç›Ÿæ•°é‡å¯¹æ¯”');
     grid on;
     
     for k = 1:valid_count
@@ -105,7 +111,7 @@ function plot_algorithm_comparison(results, comparison_stats, num_algorithms)
              'HorizontalAlignment', 'center', 'VerticalAlignment', 'bottom');
     end
     
-    %% ×ÓÍ¼4: ÈÎÎñÍê³ÉÂÊ¶Ô±È
+    %% å­å›¾4: ä»»åŠ¡å®Œæˆç‡å¯¹æ¯”
     subplot(2, 3, 4);
     b = bar(completion_rates);
     b.FaceColor = 'flat';
@@ -114,8 +120,8 @@ function plot_algorithm_comparison(results, comparison_stats, num_algorithms)
     end
     set(gca, 'XTickLabel', names_list, 'XTick', 1:valid_count);
     xtickangle(45);
-    ylabel('Íê³ÉÂÊ (%)');
-    title('ÈÎÎñÍê³ÉÂÊ¶Ô±È');
+    ylabel('å®Œæˆç‡ (%)');
+    title('ä»»åŠ¡å®Œæˆç‡å¯¹æ¯”');
     grid on;
     ylim([0, 110]);
     
@@ -124,7 +130,7 @@ function plot_algorithm_comparison(results, comparison_stats, num_algorithms)
              'HorizontalAlignment', 'center', 'VerticalAlignment', 'bottom');
     end
     
-    %% ×ÓÍ¼5: ×ÊÔ´ÀûÓÃÂÊ¶Ô±È
+    %% å­å›¾5: èµ„æºåˆ©ç”¨ç‡å¯¹æ¯”
     subplot(2, 3, 5);
     b = bar(resource_utils);
     b.FaceColor = 'flat';
@@ -133,8 +139,8 @@ function plot_algorithm_comparison(results, comparison_stats, num_algorithms)
     end
     set(gca, 'XTickLabel', names_list, 'XTick', 1:valid_count);
     xtickangle(45);
-    ylabel('ÀûÓÃÂÊ (%)');
-    title('×ÊÔ´ÀûÓÃÂÊ¶Ô±È');
+    ylabel('åˆ©ç”¨ç‡ (%)');
+    title('èµ„æºåˆ©ç”¨ç‡å¯¹æ¯”');
     grid on;
     
     for k = 1:valid_count
@@ -142,90 +148,137 @@ function plot_algorithm_comparison(results, comparison_stats, num_algorithms)
              'HorizontalAlignment', 'center', 'VerticalAlignment', 'bottom');
     end
     
-    %% ×ÓÍ¼6: Ğ§ÓÃĞ§ÂÊ¶Ô±È£¨ÒÑÒş²Ø£©
-    % subplot(2, 3, 6);
-    % efficiency = utilities ./ comp_times;
-    % b = bar(efficiency);
-    % b.FaceColor = 'flat';
-    % for k = 1:valid_count
-    %     b.CData(k,:) = bar_colors(k,:);
-    % end
-    % set(gca, 'XTickLabel', names_list, 'XTick', 1:valid_count);
-    % xtickangle(45);
-    % ylabel('Ğ§ÓÃ/Ãë');
-    % title('Ğ§ÓÃĞ§ÂÊ¶Ô±È');
-    % grid on;
-    % 
-    % for k = 1:valid_count
-    %     text(k, efficiency(k), sprintf('%.1f', efficiency(k)), ...
-    %          'HorizontalAlignment', 'center', 'VerticalAlignment', 'bottom');
-    % end
+    %% å­å›¾6: å®Œæˆä»·å€¼ï¼ˆä»·å€¼Ã—å®Œæˆåº¦ï¼‰
+    subplot(2, 3, 6);
+    b = bar(completed_values);
+    b.FaceColor = 'flat';
+    for k = 1:valid_count
+        b.CData(k,:) = bar_colors(k,:);
+    end
+    set(gca, 'XTickLabel', names_list, 'XTick', 1:valid_count);
+    xtickangle(45);
+    ylabel('å®Œæˆä»·å€¼');
+    title('å®Œæˆä»·å€¼å¯¹æ¯”');
+    grid on;
+    for k = 1:valid_count
+        text(k, completed_values(k), sprintf('%.1f', completed_values(k)), ...
+             'HorizontalAlignment', 'center', 'VerticalAlignment', 'bottom');
+    end
     
-    % µ÷ÕûÕûÌå²¼¾Ö
-    sgtitle('ÁªÃËĞÎ³ÉËã·¨ĞÔÄÜ×ÛºÏ¶Ô±È', 'FontSize', 14, 'FontWeight', 'bold');
+    % è°ƒæ•´æ•´ä½“å¸ƒå±€
+    sgtitle('è”ç›Ÿå½¢æˆç®—æ³•æ€§èƒ½ç»¼åˆå¯¹æ¯”', 'FontSize', 14, 'FontWeight', 'bold');
     
-    %% Èç¹ûÓĞ¶à¸öËã·¨£¬´´½¨À×´ïÍ¼
+    %% å¦‚æœæœ‰å¤šä¸ªç®—æ³•ï¼Œåˆ›å»ºé›·è¾¾å›¾
     if valid_count >= 2
-        figure('Name', 'Ëã·¨ĞÔÄÜÀ×´ïÍ¼', 'Position', [150, 150, 800, 600]);
+        figure('Name', 'ç®—æ³•æ€§èƒ½é›·è¾¾å›¾', 'Position', [150, 150, 800, 600]);
         
-        % ×¼±¸À×´ïÍ¼Êı¾İ£¨¹éÒ»»¯µ½0-1£©
+        % å‡†å¤‡é›·è¾¾å›¾æ•°æ®ï¼ˆå½’ä¸€åŒ–åˆ°0-1ï¼‰
         radar_data = zeros(valid_count, 5);
         
-        % 1. ×ÜĞ§ÓÃ£¨¹éÒ»»¯£©
+        % 1. æ€»æ•ˆç”¨ï¼ˆå½’ä¸€åŒ–ï¼‰
         if max(utilities) > 0
             radar_data(:, 1) = utilities' / max(utilities);
         end
         
-        % 2. ¼ÆËãËÙ¶È£¨Ê±¼äµÄµ¹Êı£¬¹éÒ»»¯£©
+        % 2. è®¡ç®—é€Ÿåº¦ï¼ˆæ—¶é—´çš„å€’æ•°ï¼Œå½’ä¸€åŒ–ï¼‰
         speeds = 1 ./ comp_times;
         if max(speeds) > 0
             radar_data(:, 2) = speeds' / max(speeds);
         end
         
-        % 3. ÈÎÎñÍê³ÉÂÊ£¨ÒÑ¾­ÊÇ°Ù·Ö±È£¬³ıÒÔ100£©
+        % 3. ä»»åŠ¡å®Œæˆç‡ï¼ˆå·²ç»æ˜¯ç™¾åˆ†æ¯”ï¼Œé™¤ä»¥100ï¼‰
         radar_data(:, 3) = completion_rates' / 100;
         
-        % 4. ×ÊÔ´ÀûÓÃÂÊ£¨ÒÑ¾­ÊÇ°Ù·Ö±È£¬³ıÒÔ100£©
+        % 4. èµ„æºåˆ©ç”¨ç‡ï¼ˆå·²ç»æ˜¯ç™¾åˆ†æ¯”ï¼Œé™¤ä»¥100ï¼‰
         radar_data(:, 4) = resource_utils' / 100;
         
-        % 5. ÁªÃËÊıÁ¿£¨¹éÒ»»¯£©
+        % 5. è”ç›Ÿæ•°é‡ï¼ˆå½’ä¸€åŒ–ï¼‰
         if max(coalitions) > 0
             radar_data(:, 5) = coalitions' / max(coalitions);
         end
         
-        % À×´ïÍ¼±êÇ©
-        radar_labels = {'×ÜĞ§ÓÃ', '¼ÆËãËÙ¶È', 'ÈÎÎñÍê³ÉÂÊ', '×ÊÔ´ÀûÓÃÂÊ', 'ÁªÃËÊıÁ¿'};
+        % é›·è¾¾å›¾æ ‡ç­¾
+        radar_labels = {'æ€»æ•ˆç”¨', 'è®¡ç®—é€Ÿåº¦', 'ä»»åŠ¡å®Œæˆç‡', 'èµ„æºåˆ©ç”¨ç‡', 'è”ç›Ÿæ•°é‡'};
         
-        % »æÖÆÀ×´ïÍ¼
+        % ç»˜åˆ¶é›·è¾¾å›¾
         angles = linspace(0, 2*pi, 6);
         
         hold on;
         for i = 1:valid_count
-            data_point = [radar_data(i, :), radar_data(i, 1)];  % ±ÕºÏ
+            data_point = [radar_data(i, :), radar_data(i, 1)];  % é—­åˆ
             plot(angles, data_point, 'o-', 'LineWidth', 2, ...
                  'Color', colors(i, :), 'MarkerFaceColor', colors(i, :), ...
                  'DisplayName', names_list{i});
         end
         
-        % »æÖÆÍø¸ñ
+        % ç»˜åˆ¶ç½‘æ ¼
         for r = 0.2:0.2:1
             plot(angles, r * ones(size(angles)), ':', 'Color', [0.7, 0.7, 0.7]);
         end
         
-        % ÉèÖÃ×ø±êÖá
+        % è®¾ç½®åæ ‡è½´
         ax = gca;
         ax.XTick = angles(1:end-1);
         ax.XTickLabel = radar_labels;
         ax.YLim = [0, 1.2];
         
-        % Ìí¼ÓÍ¼Àı
+        % æ·»åŠ å›¾ä¾‹
         legend('Location', 'northeastoutside');
-        title('Ëã·¨×ÛºÏĞÔÄÜÀ×´ïÍ¼', 'FontSize', 12, 'FontWeight', 'bold');
+        title('ç®—æ³•ç»¼åˆæ€§èƒ½é›·è¾¾å›¾', 'FontSize', 12, 'FontWeight', 'bold');
         grid on;
         axis equal;
         hold off;
     end
     
-    fprintf('? ¶Ô±ÈÍ¼±í»æÖÆÍê³É\n');
+    %% è‹¥å­˜åœ¨å†å²å®Œæˆä»·å€¼ï¼Œåˆ™ç»˜åˆ¶æ¼”åŒ–æ›²çº¿
+    value_histories = {};
+    hist_names = {};
+    for i = 1:num_algorithms
+        alg_name = alg_names{i};
+        res = results.(alg_name);
+        if ~isfield(res, 'history_data') || isempty(res.history_data)
+            continue;
+        end
+        hd = res.history_data;
+        vals = [];
+        if isfield(hd, 'total_value_history') && ~isempty(hd.total_value_history)
+            vals = hd.total_value_history;
+        elseif isfield(hd, 'rounds')
+            try
+                num_r = numel(hd.rounds);
+                vals = zeros(1, num_r);
+                for rr = 1:num_r
+                    if isfield(hd.rounds(rr), 'total_completed_value')
+                        vals(rr) = hd.rounds(rr).total_completed_value;
+                    end
+                end
+                if all(vals == 0)
+                    vals = [];
+                end
+            catch
+                vals = [];
+            end
+        end
+        if ~isempty(vals)
+            value_histories{end+1} = vals;
+            hist_names{end+1} = res.name;
+        end
+    end
+    
+    if ~isempty(value_histories)
+        figure('Name', 'å®Œæˆä»·å€¼æ¼”åŒ–', 'Position', [200, 200, 900, 500]);
+        hold on;
+        for i = 1:numel(value_histories)
+            plot(value_histories{i}, 'LineWidth', 2, 'DisplayName', hist_names{i});
+        end
+        xlabel('è½®æ¬¡');
+        ylabel('å®Œæˆä»·å€¼ï¼ˆä»·å€¼Ã—å®Œæˆåº¦ï¼‰');
+        title('å®Œæˆä»·å€¼æ¼”åŒ–å¯¹æ¯”');
+        grid on;
+        legend('Location', 'best');
+        hold off;
+    end
+    
+    fprintf('? å¯¹æ¯”å›¾è¡¨ç»˜åˆ¶å®Œæˆ\n');
     
 end
