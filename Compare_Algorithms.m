@@ -55,15 +55,15 @@ WORLD_YMIN = 0; WORLD_YMAX = 100;
 WORLD_ZMIN = 0; WORLD_ZMAX = 0;
 
 % Agent parameters
-agent_velocity = 2;
+agent_velocity = 2; % vel速度
 agent_detprob_min = 0.9;
 agent_detprob_max = 1.0;
 agent_Emax_min = 300;
 agent_Emax_range = 50;
-agent_fuel = 1;
+agent_fuel = 1;               % 飞行油耗
 agent_wait_fuel = 0.5;        % 等待阶段的油耗率（独立于飞行油耗）
-agent_beta = 1;
-min_resource_value = 2;
+agent_beta = 1;              % 执行任务油耗
+min_resource_value = 2;      % 智能体资源值最大最小设置
 max_resource_value = 4;
 
 % Task resource demand ranges (per task type)
@@ -81,9 +81,9 @@ SA_Tmin = 0.01;
 SA_max_stable_iterations = 5;
 
 % Observation/game params
-obs_times = 50;      % per task per round (SA-specific)
-num_rounds = 50;     % game rounds (SA/Huo use)
-resource_confidence = 0.7;  % quantile confidence (SA-specific)
+obs_times = 50;      % 观测次数
+num_rounds = 50;     % 博弈轮数
+resource_confidence = 0.7;  % 分位数置信度
 
 % Qi2023 utility params
 Qi_beta_m = 1.0;   % 任务完成率权重
@@ -114,12 +114,14 @@ WORLD.ZMIN = WORLD_ZMIN; WORLD.ZMAX = WORLD_ZMAX;
 WORLD.value = task_values;
 
 % Task type demands
+% 三种类型的需求
 task_type_demands = zeros(num_task_types, K);
 task_type_demands(1, :) = randi([0, task_type1_demand_max], 1, K); % 低需求
 task_type_demands(2, :) = randi([0, task_type2_demand_max], 1, K); % 中等需求
 task_type_demands(3, :) = randi([0, task_type3_demand_max], 1, K); % 高需求
 
 % Task durations by resource
+% 根据需求 每个需求所需要的时间
 task_type_duration_by_resource = zeros(num_task_types, K);
 for t = 1:num_task_types
     needed = task_type_demands(t, :) > 0;
@@ -157,8 +159,8 @@ end
 
 % Algorithm shared params
 Value_Params = init_value_params(N, M, K, num_task_types, task_type_demands, ...
-                                  SA_Temperature, SA_alpha, SA_Tmin, SA_max_stable_iterations, ...
-                                  obs_times, num_rounds, resource_confidence); % 通用参数结构（不同算法可复用）
+    SA_Temperature, SA_alpha, SA_Tmin, SA_max_stable_iterations, ...
+    obs_times, num_rounds, resource_confidence); % 通用参数结构（不同算法可复用）
 
 % Qi2023 extras
 Value_Params.Qi_beta_m = Qi_beta_m;
@@ -188,7 +190,7 @@ all_algorithms = {
     struct('id', 3, 'name', 'Huo2025',         'func', @Huo2025_main,        'folder', 'comalg/Com_Huo2025',  'color', [0.8, 0.2, 0.2]); % Huo2025
     struct('id', 4, 'name', 'Qi2023',          'func', @Qi2023_main,         'folder', 'comalg/Com_Qi2023',   'color', [0.2, 0.8, 0.2]); % Qi2023
     struct('id', 5, 'name', 'PSO',     'func', @PSO_main,        'folder', 'comalg/Com_PSO',  'color', [0.8, 0.8, 0.2]); % 粒子群
-}; % 可根据需要增删算法
+    }; % 可根据需要增删算法
 
 fprintf('Available algorithms:\n');
 for i = 1:length(all_algorithms)
@@ -265,35 +267,35 @@ if enabled_count > 0
     fprintf('========================================================================\n\n');
 
     fprintf('%-20s | %10s | %10s | %10s | %10s\n', ...
-            'Algorithm', 'Utility', '#Coal', 'NormComp', 'Time(s)');
+        'Algorithm', 'Utility', '#Coal', 'NormComp', 'Time(s)');
     fprintf('%s\n', repmat('-', 1, 80));
     for i = 1:enabled_count
         stats = comparison_stats.(sprintf('alg%d', i));
         if isfield(stats, 'total_utility')
             fprintf('%-20s | %10.2f | %10d | %10.2f%% | %10.2f\n', ...
-                    stats.name, stats.total_utility, stats.num_coalitions, ...
-                    stats.normalized_completion_rate, stats.computation_time);
+                stats.name, stats.total_utility, stats.num_coalitions, ...
+                stats.normalized_completion_rate, stats.computation_time);
         else
             fprintf('%-20s | %10s | %10s | %10s | %10.2f\n', ...
-                    stats.name, 'error', 'error', 'error', stats.computation_time);
+                stats.name, 'error', 'error', 'error', stats.computation_time);
         end
     end
     fprintf('%s\n\n', repmat('-', 1, 80));
 
     fprintf('\nTask completion details:\n'); % 任务完成情况明细
     fprintf('%-20s | %10s | %10s | %10s | %10s\n', ...
-            'Algorithm', 'EqvDone', 'Full', 'Partial', 'AvgComp');
+        'Algorithm', 'EqvDone', 'Full', 'Partial', 'AvgComp');
     fprintf('%s\n', repmat('-', 1, 80));
     for i = 1:enabled_count
         stats = comparison_stats.(sprintf('alg%d', i));
         if isfield(stats, 'total_completion_score')
             fprintf('%-20s | %10.2f | %10d | %10d | %10.2f%%\n', ...
-                    stats.name, stats.total_completion_score, ...
-                    stats.fully_completed_tasks, stats.partially_completed_tasks, ...
-                    stats.avg_task_completion * 100);
+                stats.name, stats.total_completion_score, ...
+                stats.fully_completed_tasks, stats.partially_completed_tasks, ...
+                stats.avg_task_completion * 100);
         else
             fprintf('%-20s | %10s | %10s | %10s | %10s\n', ...
-                    stats.name, '-', '-', '-', '-');
+                stats.name, '-', '-', '-', '-');
         end
     end
     fprintf('%s\n\n', repmat('-', 1, 80));
@@ -310,7 +312,7 @@ if enabled_count > 0
         filename = sprintf('results/comparison_results_seed%d_%s.mat', SEED, timestamp);
         fprintf('Saving results to: %s\n', filename);
         save(filename, 'results', 'comparison_stats', 'agents', 'tasks', ...
-             'Value_Params', 'WORLD', 'scenario_info', 'enabled_algorithms');
+            'Value_Params', 'WORLD', 'scenario_info', 'enabled_algorithms');
         fprintf('results saved\n\n');
     end
 else

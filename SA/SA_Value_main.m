@@ -1,4 +1,4 @@
-﻿function [Value_data, history_data]= SA_Value_main(agents,tasks,AddPara,Value_Params)
+function [Value_data, history_data]= SA_Value_main(agents,tasks,AddPara,Value_Params)
 % SA_Value_main - 基于模拟退火的重叠联盟形成主函数
 %
 % 输出参数：
@@ -86,29 +86,29 @@ end
 %% 初始化历史记录结构体
 
 % 预分配结构体数组
-for round = 1:Value_Params.num_rounds
-    for i = 1:Value_Params.N
-        history_data.rounds(round).agents(i).belief = zeros(Value_Params.M, Value_Params.task_type);
-        history_data.rounds(round).agents(i).observations = zeros(Value_Params.M, Value_Params.task_type);
-        history_data.rounds(round).agents(i).quantile_demand = zeros(Value_Params.M, Value_Params.K);  % 分位数需求
-        % 任务调度信息
-        history_data.rounds(round).agents(i).task_schedule = struct();
-        history_data.rounds(round).agents(i).task_schedule.task_sequence = [];
-        history_data.rounds(round).agents(i).task_schedule.arrival_times = [];
-        history_data.rounds(round).agents(i).task_schedule.start_times = [];
-        history_data.rounds(round).agents(i).task_schedule.execution_times = [];
-        history_data.rounds(round).agents(i).task_schedule.completion_times = [];
-        history_data.rounds(round).agents(i).task_schedule.total_flight_time = 0;
-        history_data.rounds(round).agents(i).task_schedule.total_execution_time = 0;
-        history_data.rounds(round).agents(i).task_schedule.total_energy = 0;
+for round = 1:Value_Params.num_rounds  % 循环遍历每一轮
+    for i = 1:Value_Params.N  % 循环遍历每一个 agent
+        history_data.rounds(round).agents(i).belief = zeros(Value_Params.M, Value_Params.task_type);  % 初始化 agent 的信念矩阵（用于任务类型预测）
+        history_data.rounds(round).agents(i).observations = zeros(Value_Params.M, Value_Params.task_type);  % 初始化 agent 的观察矩阵（用于任务类型观察）
+        history_data.rounds(round).agents(i).quantile_demand = zeros(Value_Params.M, Value_Params.K);  % 初始化 agent 的分位数需求矩阵（用于资源需求的分位数）
+        history_data.rounds(round).agents(i).task_schedule = struct();  % 初始化 agent 的任务调度信息
+        history_data.rounds(round).agents(i).task_schedule.task_sequence = [];  % 初始化任务序列数组
+        history_data.rounds(round).agents(i).task_schedule.arrival_times = [];  % 初始化每个任务的到达时间
+        history_data.rounds(round).agents(i).task_schedule.start_times = [];  % 初始化每个任务的开始时间
+        history_data.rounds(round).agents(i).task_schedule.execution_times = [];  % 初始化每个任务的执行时间
+        history_data.rounds(round).agents(i).task_schedule.completion_times = [];  % 初始化每个任务的完成时间
+        history_data.rounds(round).agents(i).task_schedule.total_flight_time = 0;  % 初始化 agent 的总飞行时间
+        history_data.rounds(round).agents(i).task_schedule.total_execution_time = 0;  % 初始化 agent 的总执行时间
+        history_data.rounds(round).agents(i).task_schedule.total_energy = 0;  % 初始化 agent 的总能量消耗
     end
-    history_data.rounds(round).coalition_structure = [];
-    history_data.rounds(round).SC = [];  % 资源联盟结构
-    history_data.rounds(round).task_utilities = zeros(Value_Params.M, 1);  % 每个任务的联盟效用
-    history_data.rounds(round).Rcost = 0;
-    history_data.rounds(round).cost_sum = 0;
-    history_data.rounds(round).net_profit = 0;
+    history_data.rounds(round).coalition_structure = [];  % 初始化联盟结构（每一轮的联盟结构为空）
+    history_data.rounds(round).SC = [];  % 资源联盟结构（每一轮为空）
+    history_data.rounds(round).task_utilities = zeros(Value_Params.M, 1);  % 初始化任务效用（每个任务一个效用）
+    history_data.rounds(round).Rcost = 0;  % 初始化本轮的总资源成本
+    history_data.rounds(round).cost_sum = 0;  % 初始化本轮的总成本
+    history_data.rounds(round).net_profit = 0;  % 初始化本轮的净利润
 end
+
 
 %% 主循环：博弈迭代
 for counter=1:Value_Params.num_rounds
@@ -121,7 +121,7 @@ for counter=1:Value_Params.num_rounds
         if isfield(Value_Params, 'resource_confidence') && Value_Params.resource_confidence > 0
             for j = 1:Value_Params.M
                 belief_j = Value_data(i).initbelief(j, :);
-                quantile_demand_j = calculate_demand_quantile(belief_j, ...
+                quantile_demand_j = OCFUtils.calculate_demand_quantile(belief_j, ...
                     Value_Params.task_type_demands, ...
                     Value_Params.resource_confidence);
                 history_data.rounds(counter).agents(i).quantile_demand(j, :) = quantile_demand_j;
@@ -148,10 +148,10 @@ for counter=1:Value_Params.num_rounds
             % 计算已分配资源和缺口
             
             % 计算已经分配的资源和剩余资源的缺口
-            [allocated_resources, resource_gap] = calc_gaps(Value_data(ii), agents, tasks, Value_Params);
+            [allocated_resources, resource_gap] = calc_gaps(Value_data(ii), Value_Params);
             
             % 重叠联盟形成
-            [inc_ii, Value_data_ii] = Overlap_Coalition_Formation(agents, tasks, Value_data(ii), Value_Params,counter,AddPara, allocated_resources, resource_gap);  % 联盟形成
+            [inc_ii, Value_data_ii] = Overlap_Coalition_Formation(agents, tasks, Value_data(ii), Value_Params, resource_gap);  % 联盟形成
             incremental(ii) = inc_ii;  % 记录效用增量
             
             

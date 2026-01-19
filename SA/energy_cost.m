@@ -1,4 +1,4 @@
-﻿function [t_fly_total, T_exec_total, totalDistance, requiredEnergy, orderedTasks, task_arrival_times, t_wait_total] = ...
+function [t_fly_total, T_exec_total, totalDistance, requiredEnergy, orderedTasks, task_arrival_times, t_wait_total] = ...
     energy_cost(agentIdx, assignedTasks, agents, tasks, Value_Params, R_agent, SC)
 % 计算智能体执行任务序列的时间和能量消耗（固定速度+等待模型）
 %
@@ -33,11 +33,8 @@
     
     % 3. 获取能量模型参数
     alpha_fly = agents(agentIdx).fuel;   % 飞行能耗系数
-    % 等待能耗系数：优先使用显式 wait_fuel，缺省时退回飞行能耗的一半
-    alpha_wait = alpha_fly * 0.5;
-    if isfield(agents, 'wait_fuel') && isfield(agents(agentIdx), 'wait_fuel') && ~isempty(agents(agentIdx).wait_fuel)
-        alpha_wait = agents(agentIdx).wait_fuel;
-    end
+    alpha_wait = agents(agentIdx).wait_fuel;
+
     beta = agents(agentIdx).beta;        % 执行能耗系数
     v = agents(agentIdx).vel;            % 固定飞行速度
     
@@ -56,7 +53,7 @@
             if nargin >= 6 && ~isempty(R_agent)
                 R_row = R_agent(m, :);
             end
-            T_exec_total = T_exec_total + calc_exec_time(tasks(m), R_row, Value_Params, tol);
+            T_exec_total = T_exec_total + OCFUtils.calc_exec_time(tasks(m), R_row, Value_Params, tol);
         end
     else
         % 同步模式：使用全局调度计算
@@ -112,7 +109,7 @@ function [t_fly_total, t_wait_total, t_exec_total, arrivals] = calc_with_global_
         task_pos = [tasks(task_id).x, tasks(task_id).y];
         
         % 找到该任务的所有参与者
-        participants = get_participants(SC, task_id, N, tol);
+        participants = OCFUtils.get_participants(SC, task_id, N, tol);
         
         if isempty(participants)
             continue;  % 没有智能体参与，跳过
@@ -137,7 +134,7 @@ function [t_fly_total, t_wait_total, t_exec_total, arrivals] = calc_with_global_
         task_sync_start(task_id) = sync_start;
         
         % --- 计算该任务的执行时间（联盟并行执行，取最长） ---
-        t_exec = calc_coalition_exec_time(SC, task_id, tasks(task_id), Value_Params, tol);
+        t_exec = OCFUtils.calc_coalition_exec_time(SC, task_id, tasks(task_id), Value_Params, tol);
         task_exec_time(task_id) = t_exec;
         
         % --- 更新所有参与者的状态 ---
@@ -186,7 +183,7 @@ function [t_fly_total, t_wait_total, t_exec_total, arrivals] = calc_with_global_
         else
             R_row = R_agent(task_id, :);
         end
-        my_exec_time = calc_exec_time(tasks(task_id), R_row, Value_Params, tol);
+        my_exec_time = OCFUtils.calc_exec_time(tasks(task_id), R_row, Value_Params, tol);
         t_exec_total = t_exec_total + my_exec_time;
         
         % --- 更新状态 ---
@@ -202,49 +199,4 @@ function [t_fly_total, t_wait_total, t_exec_total, arrivals] = calc_with_global_
 end
 
 %% ========== 基础工具函数 ==========
-
-function participants = get_participants(SC, task_idx, N, tol)
-% 获取指定任务的所有参与者（智能体）ID列表
-    if isempty(SC) || task_idx > numel(SC)
-        participants = [];
-        return;
-    end
-    participants = find(any(SC{task_idx} > tol, 2))';
-end
-
-function t_exec = calc_exec_time(task, R_row, Value_Params, tol)
-% 计算单智能体执行任务的时间（并行模型：取使用资源中最长时间）
-    if ~isempty(R_row)
-        used = R_row > tol;
-    else
-        used = true(1, Value_Params.K);
-    end
-    
-    if isfield(task, 'duration_by_resource')
-        dur = task.duration_by_resource(:)';
-        if isscalar(dur)
-            t_exec = dur;
-        else
-            dur = dur(1:min(numel(dur), Value_Params.K));
-            used = used(1:numel(dur));
-            t_exec = max([dur(used), 0]);
-        end
-    elseif isfield(task, 'duration')
-        t_exec = task.duration;
-    else
-        t_exec = 1.0;
-    end
-end
-
-function t_exec = calc_coalition_exec_time(SC, task_idx, task, Value_Params, tol)
-% 计算联盟执行任务的时间（取所有参与者中最长的执行时间）
-    alloc = SC{task_idx};
-    exec_times = [];
-    for i = 1:Value_Params.N
-        if any(alloc(i, :) > tol)
-            exec_times = [exec_times, calc_exec_time(task, alloc(i, :), Value_Params, tol)];
-        end
-    end
-    t_exec = max([exec_times, 0]);
-end
 

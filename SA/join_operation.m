@@ -1,154 +1,136 @@
-function [Value_data, incremental_join] = join_operation(Value_data, agents, tasks, Value_Params, probs)
+ï»¿function [Value_data, incremental_join] = join_operation(Value_data, agents, tasks, Value_Params, probs)
 
 
 incremental_join = 0;
 agentID = Value_data.agentID;
 tol = 1e-9;
 
-% agentID -> agents Ë÷Òı
+% agentID -> agents ç´¢å¼•
 agentIdx = agentID;
 
-% verbose£º´òÓ¡µ÷ÊÔĞÅÏ¢£¨Ä¬ÈÏ¿ª£¬¿ÉÔÚ Value_Params.verbose ¹Ø±Õ£©
+% verboseï¼šæ‰“å°è°ƒè¯•ä¿¡æ¯ï¼ˆé»˜è®¤å¼€ï¼Œå¯åœ¨ Value_Params.verbose å…³é—­ï¼‰
 verbose = true;
 if isfield(Value_Params, 'verbose')
     verbose = logical(Value_Params.verbose);
 end
 
-% Ö÷Á÷³Ì£º¶ÔÃ¿ÖÖ×ÊÔ´ÀàĞÍ r ³éÒ»¸öºòÑ¡ÈÎÎñ -> ¿ÉĞĞĞÔ -> ¼ÆËã¦¤U -> ½ÓÊÜÔòÍË³ö
+% ä¸»æµç¨‹ï¼šå¯¹æ¯ç§èµ„æºç±»å‹ r æŠ½ä¸€ä¸ªå€™é€‰ä»»åŠ¡ -> å¯è¡Œæ€§ -> è®¡ç®—Î”U -> æ¥å—åˆ™é€€å‡º
 for r = 1:Value_Params.K
-    
-    % r ÀàĞÍ×ÊÔ´ÏÂ£¬¶Ô¸÷ÈÎÎñµÄÑ¡Ôñ¸ÅÂÊ
-    row = probs(r, :);
-    row_sum = sum(row);
-    if row_sum <= 0
-        continue;
-    end
-    
-    % cumulative sampling£¨²»ÒÀÀµ randsample£©
-    edges = cumsum(row);
-    x = rand() * edges(end);
-    
-    % ³éÑùµÃµ½ºòÑ¡ÈÎÎñ target
-    target = find(edges >= x, 1, 'first');
+    % ä»»åŠ¡æŠ½æ ·
+    target = OCFUtils.sample_task_from_probs(probs(r, :), Value_Params.M);
     if isempty(target)
         continue;
     end
     
-    % Ö»ÔÊĞí¼ÓÈëÕæÊµÈÎÎñ 1..M
-    if target < 1 || target > Value_Params.M
-        error('³¬³ö±ß½ç');
-    end
-    
-    
-    %% 1) Éú³É²Ù×÷Ç°/ºóµÄÁªÃË½á¹¹Óë×ÊÔ´·ÖÅä
-    % Êä³ö£ºSC_P/SC_Q=²Ù×÷Ç°/ºóÁªÃË½á¹¹£»R_agent_P/R_agent_Q=¸ÃÖÇÄÜÌå²Ù×÷Ç°/ºó×ÊÔ´·ÖÅä(M¡ÁK)
-    % ¼ÆËãµÄÊÇ¼ÓÈë²Ù×÷Ö®ºóÕûÌåÁªÃË½á¹¹±ä»¯ºÍÖÇÄÜÌå×ÊÔ´·ÖÅä±ä»¯
-    % R_agent_P Îª²Ù×÷Ç°¸öÌå×ÊÔ´·ÖÅä¾ØÕó£¬R_agent_Q Îª²Ù×÷ºó¸öÌå×ÊÔ´·ÖÅä¾ØÕó
+    %% 1) ç”Ÿæˆæ“ä½œå‰/åçš„è”ç›Ÿç»“æ„ä¸èµ„æºåˆ†é…
+    % è¾“å‡ºï¼šSC_P/SC_Q=æ“ä½œå‰/åè”ç›Ÿç»“æ„ï¼›R_agent_P/R_agent_Q=è¯¥æ™ºèƒ½ä½“æ“ä½œå‰/åèµ„æºåˆ†é…(MÃ—K)
+    % è®¡ç®—çš„æ˜¯åŠ å…¥æ“ä½œä¹‹åæ•´ä½“è”ç›Ÿç»“æ„å˜åŒ–å’Œæ™ºèƒ½ä½“èµ„æºåˆ†é…å˜åŒ–
+    % R_agent_P ä¸ºæ“ä½œå‰ä¸ªä½“èµ„æºåˆ†é…çŸ©é˜µï¼ŒR_agent_Q ä¸ºæ“ä½œåä¸ªä½“èµ„æºåˆ†é…çŸ©é˜µ
     
     [SC_P, SC_Q, R_agent_P, R_agent_Q] = join_changes(Value_data, agents, Value_Params, target, agentID, r);
     
-    %% 2) ¿ÉĞĞĞÔ¼ì²â£º²»¿ÉĞĞÖ±½ÓÌø¹ı£¬¼ÌĞøÏÂÒ»ÖÖ×ÊÔ´ÀàĞÍ
+    %% 2) å¯è¡Œæ€§æ£€æµ‹ï¼šä¸å¯è¡Œç›´æ¥è·³è¿‡ï¼Œç»§ç»­ä¸‹ä¸€ç§èµ„æºç±»å‹
     [feasible, info] = validate_feasibility(Value_data, agents, tasks, Value_Params, agentID, SC_P, SC_Q, R_agent_P, R_agent_Q, target, r);
     if ~feasible
         if verbose
-            % ½âÊÍ²»¿ÉĞĞÔ­Òò
+            % è§£é‡Šä¸å¯è¡ŒåŸå› 
             reason_str = info.reason;
             switch reason_str
                 case 'agent_not_found'
-                    reason_detail = 'ÖÇÄÜÌå²»´æÔÚ';
+                    reason_detail = 'æ™ºèƒ½ä½“ä¸å­˜åœ¨';
                 case 'bad_R_agent_Q_size'
-                    reason_detail = '×ÊÔ´¾ØÕóÎ¬¶È´íÎó';
+                    reason_detail = 'èµ„æºçŸ©é˜µç»´åº¦é”™è¯¯';
                 case 'negative_allocation'
-                    reason_detail = '×ÊÔ´·ÖÅäÎª¸º';
+                    reason_detail = 'èµ„æºåˆ†é…ä¸ºè´Ÿ';
                 case 'capacity_exceeded'
-                    reason_detail = '³¬³ö×ÊÔ´ÈİÁ¿';
+                    reason_detail = 'è¶…å‡ºèµ„æºå®¹é‡';
                 case 'energy_insufficient'
-                    reason_detail = 'ÄÜÁ¿²»×ã';
+                    reason_detail = 'èƒ½é‡ä¸è¶³';
                 otherwise
                     reason_detail = reason_str;
             end
-            fprintf('ÖÇÄÜÌå%d: ×ÊÔ´ÀàĞÍ%d¼ÓÈëÈÎÎñ%d²»¿ÉĞĞ£¨Ô­Òò£º%s£©\n', agentID, r, target, reason_detail);
+            fprintf('æ™ºèƒ½ä½“%d: èµ„æºç±»å‹%dåŠ å…¥ä»»åŠ¡%dä¸å¯è¡Œï¼ˆåŸå› ï¼š%sï¼‰\n', agentID, r, target, reason_detail);
         end
         continue;
     end
     
     
-    %% 4) ¼ÆËã¦¤U£ºoverlap_coalition_utility ·µ»Ø LHS(SC_Q,SC_P)-RHS(SC_Q,SC_P)
+    %% 4) è®¡ç®—Î”Uï¼šoverlap_coalition_utility è¿”å› LHS(SC_Q,SC_P)-RHS(SC_Q,SC_P)
     delta_U = overlap_coalition_utility(tasks, agents, SC_P, SC_Q, agentID, Value_Params, Value_data);
     
     
-    %% 5) ¾ö²ß£º¦¤U>0 ±Ø½ÓÊÕ£»·ñÔò°´ SA ¸ÅÂÊ½ÓÊÜ²î½â
+    %% 5) å†³ç­–ï¼šÎ”U>0 å¿…æ¥æ”¶ï¼›å¦åˆ™æŒ‰ SA æ¦‚ç‡æ¥å—å·®è§£
     accept_join = false;
     
     if delta_U > 0
-        % Èç¹ûĞ§ÓÃ²î´óÓÚ0£¬Ö±½Ó¼ÓÈëÁªÃË
+        % å¦‚æœæ•ˆç”¨å·®å¤§äº0ï¼Œç›´æ¥åŠ å…¥è”ç›Ÿ
         accept_join = true;
-        % fprintf('ÖÇÄÜÌå%d: ¼ÓÈëÈÎÎñ%d(×ÊÔ´ÀàĞÍ%d), ¦¤U=%.4f > 0\n', agentID, target, r, delta_U);
+        % fprintf('æ™ºèƒ½ä½“%d: åŠ å…¥ä»»åŠ¡%d(èµ„æºç±»å‹%d), Î”U=%.4f > 0\n', agentID, target, r, delta_U);
     else
-        % Èç¹ûĞ§ÓÃ²î <= 0£¬Ê¹ÓÃÄ£ÄâÍË»ğ¸ÅÂÊÅĞ¶ÏÊÇ·ñ¼ÓÈëÁªÃË£¨¿ÉÄÜ½ÓÊÜ²î½â£©
-        T = Value_Params.Temperature;  % ´Ó²ÎÊıÖĞ»ñÈ¡ÎÂ¶È
+        % å¦‚æœæ•ˆç”¨å·® <= 0ï¼Œä½¿ç”¨æ¨¡æ‹Ÿé€€ç«æ¦‚ç‡åˆ¤æ–­æ˜¯å¦åŠ å…¥è”ç›Ÿï¼ˆå¯èƒ½æ¥å—å·®è§£ï¼‰
+        T = Value_Params.Temperature;  % ä»å‚æ•°ä¸­è·å–æ¸©åº¦
         
-        P_join = exp(delta_U / T);  % ½ÓÊÜ¸ÅÂÊ
+        P_join = exp(delta_U / T);  % æ¥å—æ¦‚ç‡
         
-        % ¸ù¾İËæ»úÊıÅĞ¶ÏÊÇ·ñ¼ÓÈëÁªÃË
+        % æ ¹æ®éšæœºæ•°åˆ¤æ–­æ˜¯å¦åŠ å…¥è”ç›Ÿ
         if rand() < P_join
             accept_join = true;
-            % fprintf('ÖÇÄÜÌå%d: ¼ÓÈëÈÎÎñ%d(×ÊÔ´ÀàĞÍ%d), ¦¤U=%.4f, SA½ÓÊÜ¸ÅÂÊ=%.4f\n', ...
+            % fprintf('æ™ºèƒ½ä½“%d: åŠ å…¥ä»»åŠ¡%d(èµ„æºç±»å‹%d), Î”U=%.4f, SAæ¥å—æ¦‚ç‡=%.4f\n', ...
             %     agentID, target, r, delta_U, P_join);
         else
-            % fprintf('ÖÇÄÜÌå%d: ¾Ü¾ø¼ÓÈëÈÎÎñ%d(×ÊÔ´ÀàĞÍ%d), ¦¤U=%.4f, SA¾Ü¾ø\n', ...
+            % fprintf('æ™ºèƒ½ä½“%d: æ‹’ç»åŠ å…¥ä»»åŠ¡%d(èµ„æºç±»å‹%d), Î”U=%.4f, SAæ‹’ç»\n', ...
             %     agentID, target, r, delta_U);
         end
     end
     
-    %% ========== Ö´ĞĞ¾ö²ß ==========
+    %% ========== æ‰§è¡Œå†³ç­– ==========
     if accept_join
-        % ½ÓÊÜ£º¸üĞÂ×ÊÔ´ÁªÃË½á¹¹ SC£¬²¢Í¬²½¸üĞÂ coalitionstru£¨¾ØÕó£©
+        % æ¥å—ï¼šæ›´æ–°èµ„æºè”ç›Ÿç»“æ„ SCï¼Œå¹¶åŒæ­¥æ›´æ–° coalitionstruï¼ˆçŸ©é˜µï¼‰
         Value_data.SC = SC_Q;
         Value_data.resources_matrix = R_agent_Q;
         
-        % ¸üĞÂ coalitionstru: (M+1)¡ÁN ÁªÃË³ÉÔ±¾ØÕó
-        % ×÷ÓÃ£º¼ÇÂ¼Ã¿¸öÖÇÄÜÌå²ÎÓëÁËÄÄĞ©ÈÎÎñ
-        % ½á¹¹£ºµÚ1-MĞĞ¶ÔÓ¦ÕæÊµÈÎÎñ£¬µÚM+1ĞĞ¶ÔÓ¦voidÈÎÎñ£¨Î´·ÖÅäÈÎºÎÈÎÎñ£©
-        %       coalitionstru(m, i) = agentID ±íÊ¾ÖÇÄÜÌåi²ÎÓëÈÎÎñm
+        % æ›´æ–° coalitionstru: (M+1)Ã—N è”ç›Ÿæˆå‘˜çŸ©é˜µ
+        % ä½œç”¨ï¼šè®°å½•æ¯ä¸ªæ™ºèƒ½ä½“å‚ä¸äº†å“ªäº›ä»»åŠ¡
+        % ç»“æ„ï¼šç¬¬1-Mè¡Œå¯¹åº”çœŸå®ä»»åŠ¡ï¼Œç¬¬M+1è¡Œå¯¹åº”voidä»»åŠ¡ï¼ˆæœªåˆ†é…ä»»ä½•ä»»åŠ¡ï¼‰
+        %       coalitionstru(m, i) = agentID è¡¨ç¤ºæ™ºèƒ½ä½“iå‚ä¸ä»»åŠ¡m
         
-        % 1) ÕÒ³ö¸ÃÖÇÄÜÌåÓĞ×ÊÔ´·ÖÅäµÄËùÓĞÈÎÎñ
-        %    any(..., 2) °´ĞĞ¼ì²é£ºÖ»Òª¸ÃÈÎÎñÓĞÈÎºÎ×ÊÔ´ÀàĞÍ·ÖÅäÁ¿>0£¬¾ÍËã²ÎÓë
+        % 1) æ‰¾å‡ºè¯¥æ™ºèƒ½ä½“æœ‰èµ„æºåˆ†é…çš„æ‰€æœ‰ä»»åŠ¡
+        %    any(..., 2) æŒ‰è¡Œæ£€æŸ¥ï¼šåªè¦è¯¥ä»»åŠ¡æœ‰ä»»ä½•èµ„æºç±»å‹åˆ†é…é‡>0ï¼Œå°±ç®—å‚ä¸
         assignedTasksPost = find(any(Value_data.resources_matrix > tol, 2));
         
-        % 2) ¸´ÖÆµ±Ç°ÁªÃË½á¹¹£¬×¼±¸¸üĞÂ
+        % 2) å¤åˆ¶å½“å‰è”ç›Ÿç»“æ„ï¼Œå‡†å¤‡æ›´æ–°
         coalition_after = Value_data.coalitionstru;
         
-        % 3) Çå¿Õ¸ÃÖÇÄÜÌåÔÚËùÓĞÕæÊµÈÎÎñÉÏµÄ¾É±ê¼Ç
+        % 3) æ¸…ç©ºè¯¥æ™ºèƒ½ä½“åœ¨æ‰€æœ‰çœŸå®ä»»åŠ¡ä¸Šçš„æ—§æ ‡è®°
         coalition_after(1:Value_Params.M, agentIdx) = 0;
         
-        % 4) ÔÚ²ÎÓëµÄÈÎÎñĞĞ±ê¼ÇÖÇÄÜÌåID
+        % 4) åœ¨å‚ä¸çš„ä»»åŠ¡è¡Œæ ‡è®°æ™ºèƒ½ä½“ID
         for mIdx = assignedTasksPost'
             coalition_after(mIdx, agentIdx) = agents(agentIdx).id;
         end
         
-        % 5) ´¦ÀívoidÈÎÎñĞĞ£¨µÚM+1ĞĞ£©
+        % 5) å¤„ç†voidä»»åŠ¡è¡Œï¼ˆç¬¬M+1è¡Œï¼‰
         if isempty(assignedTasksPost)
-            % Èç¹û¸ÃÖÇÄÜÌåÎ´²ÎÓëÈÎºÎÈÎÎñ£¬±ê¼Çµ½voidĞĞ
+            % å¦‚æœè¯¥æ™ºèƒ½ä½“æœªå‚ä¸ä»»ä½•ä»»åŠ¡ï¼Œæ ‡è®°åˆ°voidè¡Œ
             coalition_after(Value_Params.M + 1, agentIdx) = agents(agentIdx).id;
         else
-            % Èç¹û²ÎÓëÁËÖÁÉÙ1¸öÈÎÎñ£¬Çå³ıvoid±ê¼Ç
+            % å¦‚æœå‚ä¸äº†è‡³å°‘1ä¸ªä»»åŠ¡ï¼Œæ¸…é™¤voidæ ‡è®°
             coalition_after(Value_Params.M + 1, agentIdx) = 0;
         end
         
-        % 6) Ğ´»Ø¸üĞÂºóµÄÁªÃË½á¹¹
+        % 6) å†™å›æ›´æ–°åçš„è”ç›Ÿç»“æ„
         Value_data.coalitionstru = coalition_after;
         
         incremental_join = 1;
         % 
-        % % ´òÓ¡¹Ø¼ü±ä»¯
-        % fprintf('  ×ÊÔ´·ÖÅä±ä»¯: ÈÎÎñ%d»ñµÃ×ÊÔ´ÀàĞÍ%dµÄÊıÁ¿%.2f\n', ...
+        % % æ‰“å°å…³é”®å˜åŒ–
+        % fprintf('  èµ„æºåˆ†é…å˜åŒ–: ä»»åŠ¡%dè·å¾—èµ„æºç±»å‹%dçš„æ•°é‡%.2f\n', ...
         %     target, r, R_agent_Q(target, r));
         % 
-        % Ò»µ©ÕÒµ½¿É½ÓÊÜµÄ¼ÓÈë²Ù×÷¾ÍÌø³ö
+        % ä¸€æ—¦æ‰¾åˆ°å¯æ¥å—çš„åŠ å…¥æ“ä½œå°±è·³å‡º
         break;
     else
-        % ¾Ü¾ø£º»Ø¹ö×ÊÔ´·ÖÅä£¬¼ÌĞøÏÂÒ»ÖÖ×ÊÔ´ÀàĞÍ
+        % æ‹’ç»ï¼šå›æ»šèµ„æºåˆ†é…ï¼Œç»§ç»­ä¸‹ä¸€ç§èµ„æºç±»å‹
         Value_data.resources_matrix = R_agent_P;
     end
     
