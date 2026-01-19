@@ -1,106 +1,31 @@
-function Value_data = update_task_schedule(Value_data, agents, tasks, Value_Params)
-% UPDATE_TASK_SCHEDULE ¸üĞÂÖÇÄÜÌåµÄÈÎÎñÖ´ĞĞĞòÁĞºÍÊ±¼äĞÅÏ¢
-%
-% ¹¦ÄÜ£º
-%   ±éÀúËùÓĞÖÇÄÜÌå£¬¸ù¾İµ±Ç°µÄÁªÃË½á¹¹ (SC) ºÍ×ÊÔ´·ÖÅä (R_agent)£¬
-%   µ÷ÓÃ energy_cost º¯Êı¼ÆËãÎïÀí¹ı³Ì£¨·ÉĞĞ¡¢µÈ´ı¡¢Ö´ĞĞ£©£¬
-%   ²¢½«ÏêÏ¸µÄÊ±¼äÖáÊı¾İ£¨¿ªÊ¼Ê±¼ä¡¢Íê³ÉÊ±¼äµÈ£©±£´æµ½ Value_data.task_schedule ÖĞ¡£
-%
-% ÊäÈë£º
-%   Value_data   - °üº¬ÖÇÄÜÌå×´Ì¬£¨SC, resources_matrixµÈ£©
-%   agents       - ÖÇÄÜÌåÊôĞÔ
-%   tasks        - ÈÎÎñÊôĞÔ
-%   Value_Params - È«¾Ö²ÎÊı
-%
-% Êä³ö£º
-%   Value_data   - ¸üĞÂÁË .task_schedule ×Ö¶ÎµÄ½á¹¹Ìå
-
-    tol = 1e-9;  % ÊıÖµÈİ²î
+ï»¿function Value_data = update_task_schedule(Value_data, agents, tasks, Value_Params)
+% UPDATE_TASK_SCHEDULE æ›´æ–°æ™ºèƒ½ä½“çš„ä»»åŠ¡æ‰§è¡Œåºåˆ—å’Œæ—¶é—´ä¿¡æ¯
+    tol = 1e-9;
     N = Value_Params.N;
     M = Value_Params.M;
-    
     for i = 1:N
-        % »ñÈ¡µ±Ç°ÖÇÄÜÌåÊÓ½ÇµÄÁªÃË½á¹¹ºÍ×ÊÔ´·ÖÅä
         SC = Value_data(i).SC;
         R_agent = Value_data(i).resources_matrix;
-        
-        % 1. »ñÈ¡¸ÃÖÇÄÜÌå²ÎÓëµÄËùÓĞÈÎÎñ ID
-        % Âß¼­£ºÔÚ SC ÖĞ²éÕÒµÚ i ĞĞ£¨´ú±í×Ô¼º£©×ÊÔ´Í¶Èë > 0 µÄÈÎÎñ
         assigned_tasks = find(cellfun(@(x) any(x(i, :) > tol), SC))';
-        
-        % 2. Èç¹ûÃ»ÓĞÈÎÎñ£¬Çå¿Õµ÷¶È±í²¢Ìø¹ı
         if isempty(assigned_tasks)
             Value_data(i).task_schedule = empty_schedule();
             continue;
         end
-        
-        % 3. µ÷ÓÃºËĞÄÎïÀíÒıÇæ energy_cost
-        % ×÷ÓÃ£ºÄ£Äâ·ÉĞĞºÍÍ¬²½¹ı³Ì£¬¼ÆËã×ÜÖ¸±êºÍ¹Ø¼üÊ±¼äµã
-        % ÊäÈë£ºassigned_tasks (Î´ÅÅĞò), SC (ÆôÓÃÍ¬²½»úÖÆ)
-        % Êä³ö£º
-        %   t_flight: ×Ü·ÉĞĞÊ±¼ä
-        %   T_exec:   ¸öÈË×ÜÖ´ĞĞÊ±¼ä
-        %   energy:   ×ÜÄÜÁ¿ÏûºÄ
-        %   ordered_tasks: °´ÓÅÏÈ¼¶ÅÅĞòºóµÄÈÎÎñĞòÁĞ
-        %   task_arrival_times: ¸÷ÈÎÎñµÄ¡¾Í¬²½¿ªÊ¼Ê±¼ä¡¿(¼´ËùÓĞÈËµ½ÆëµÄÊ±¿Ì)
-        %   t_wait:   ×ÜµÈ´ıÊ±¼ä
-        [t_flight, T_exec, ~, energy, ordered_tasks, task_arrival_times, t_wait] = ...
-            energy_cost(i, assigned_tasks, agents, tasks, Value_Params, R_agent, SC);
-        
-        % 4. ÖØ½¨ÏêÏ¸Ê±¼äÖá
-        % energy_cost ·µ»ØµÄÊÇºê¹ÛÊı¾İ£¬ÕâÀï½«ÆäÕ¹¿ªÎªÃ¿¸öÈÎÎñµÄ¾ßÌåÊ±¼ä¶Î
-        num_tasks = numel(ordered_tasks);
-        start_times = zeros(num_tasks, 1);      % ÈÎÎñ¿ªÊ¼Ê±¿Ì (Start)
-        execution_times = zeros(num_tasks, 1);  % ÈÎÎñ³ÖĞøÊ±³¤ (Duration)
-        completion_times = zeros(num_tasks, 1); % ÈÎÎñ½áÊøÊ±¿Ì (End)
-        
-        current_time = 0; % Ä£ÄâÊ±ÖÓ
-        current_pos = [agents(i).x, agents(i).y]; % ³õÊ¼Î»ÖÃ
-        v_max = agents(i).vel;
-        
-        for ii = 1:num_tasks
-            task_idx = ordered_tasks(ii);
-            task_pos = [tasks(task_idx).x, tasks(task_idx).y];
-            
-            % ¼ÆËã¸öÈËµ½´ïÊ±¿Ì (½öÓÃÓÚÂß¼­Ğ£Ñé£¬Êµ¼ÊÊ¹ÓÃ task_arrival_times)
-            % my_arrival = current_time + ·ÉĞĞÊ±¼ä
-            my_arrival = current_time + norm(task_pos - current_pos) / max(v_max, tol);
-            
-            % È·¶¨¡¾¿ªÊ¼Ê±¼ä¡¿
-            % Èç¹û energy_cost ·µ»ØÁËÍ¬²½ºóµÄ¿ªÊ¼Ê±¼ä£¬ÔòÊ¹ÓÃËü£¨°üº¬ÁËµÈ´ı¶ÓÓÑµÄÊ±¼ä£©
-            % ·ñÔò£¨ÎŞÍ¬²½Ä£Ê½£©£¬¿ªÊ¼Ê±¼ä = ÎÒµ½´ïµÄÊ±¼ä
-            if ii <= numel(task_arrival_times) && task_arrival_times(ii) > 0
-                start_times(ii) = task_arrival_times(ii);
-            else
-                start_times(ii) = my_arrival;
-            end
-            
-            % ¼ÆËã¡¾Ö´ĞĞÊ±³¤¡¿
-            % ×¢Òâ£ºÕâÀï¼ÆËãµÄÊÇÁªÃË²ãÃæµÄÖ´ĞĞÊ±¼ä£¨¾ö¶¨ÁËºÎÊ±ÄÜÀë¿ª£©
-            execution_times(ii) = calc_task_exec_time(SC, task_idx, tasks(task_idx), R_agent, Value_Params, tol);
-            
-            % ¼ÆËã¡¾½áÊøÊ±¼ä¡¿
-            completion_times(ii) = start_times(ii) + execution_times(ii);
-            
-            % ¸üĞÂ×´Ì¬£¬×¼±¸Ç°ÍùÏÂÒ»Õ¾
-            current_time = completion_times(ii);
-            current_pos = task_pos;
-        end
-        
-        % 5. ´æ´¢ÏêÏ¸Êı¾İµ½ Value_data
+        % ç›´æ¥ä½¿ç”¨ energy_cost è¿”å›çš„è¯¦ç»†æ—¶é—´ä¿¡æ¯
+        [t_flight, T_exec, ~, energy, ordered_tasks, task_arrival_times, t_wait, start_times, execution_times, completion_times] = energy_cost(i, assigned_tasks, agents, tasks, Value_Params, R_agent, SC);
+        % å­˜å‚¨è¯¦ç»†æ•°æ®åˆ° Value_data
         Value_data(i).task_schedule.task_sequence = ordered_tasks;
         Value_data(i).task_schedule.arrival_times = task_arrival_times;
         Value_data(i).task_schedule.start_times = start_times;
         Value_data(i).task_schedule.execution_times = execution_times;
         Value_data(i).task_schedule.completion_times = completion_times;
         Value_data(i).task_schedule.total_flight_time = t_flight;
-        Value_data(i).task_schedule.total_wait_time = t_wait;  % ¼ÇÂ¼µÈ´ıÊ±¼ä
+        Value_data(i).task_schedule.total_wait_time = t_wait;
         Value_data(i).task_schedule.total_execution_time = T_exec;
         Value_data(i).task_schedule.total_energy = energy;
     end
 end
 
-%% ¸¨Öúº¯Êı£º´´½¨¿Õµ÷¶È½á¹¹
 function schedule = empty_schedule()
     schedule.task_sequence = [];
     schedule.arrival_times = [];
@@ -111,32 +36,4 @@ function schedule = empty_schedule()
     schedule.total_wait_time = 0;
     schedule.total_execution_time = 0;
     schedule.total_energy = 0;
-end
-
-%% ¸¨Öúº¯Êı£º¼ÆËãÈÎÎñµÄÁªÃËÖ´ĞĞÊ±¼ä
-function t_exec = calc_task_exec_time(SC, task_idx, task, R_agent, Value_Params, tol)
-% ¼ÆËãÂß¼­£º²¢ĞĞÖ´ĞĞÄ£ĞÍ¡£
-% ÈÎÎñµÄÍê³ÉÊ±¼äÈ¡¾öÓÚ×îºÄÊ±µÄÄÇÒ»ÖÖ×ÊÔ´ÀàĞÍ£¨¶Ì°åĞ§Ó¦£©¡£
-% Ö»ÒªÁªÃËÖĞÓĞÈÎºÎ³ÉÔ±Ìá¹©ÁËÄ³ÖÖ×ÊÔ´£¬¸Ã×ÊÔ´ÀàĞÍµÄºÄÊ±¾Í»á±»¼ÆÈë¡£
-
-    SC_m = SC{task_idx}; % »ñÈ¡¸ÃÈÎÎñµÄÁªÃË×ÊÔ´·ÖÅä¾ØÕó (N x K)
-    
-    % »ñÈ¡Ã¿ÖÖ×ÊÔ´ÀàĞÍ¶ÔÓ¦µÄ»ù´¡ºÄÊ±
-    if isfield(task, 'duration_by_resource') && ~isempty(task.duration_by_resource)
-        dur = task.duration_by_resource(:)';
-    else
-        dur = ones(1, Value_Params.K) * 10; % Ä¬ÈÏºÄÊ±
-    end
-    
-    % È·¶¨ÄÄĞ©×ÊÔ´ÀàĞÍ±»Ê¹ÓÃÁË
-    % sum(SC_m, 1) ¼ÆËãÃ¿ÖÖ×ÊÔ´µÄ×ÜÍ¶ÈëÁ¿
-    % > tol ±íÊ¾¸Ã×ÊÔ´ÀàĞÍÓĞÈËÌá¹©
-    usedTypes = sum(SC_m, 1) > tol;
-    
-    % °²È«½Ø¶Ï£¬·ÀÖ¹Î¬¶È²»Æ¥Åä
-    dur = dur(1:min(numel(dur), Value_Params.K));
-    usedTypes = usedTypes(1:numel(dur));
-    
-    % È¡±»Ê¹ÓÃ×ÊÔ´ÖĞµÄ×î´óºÄÊ±×÷ÎªÈÎÎñ×ÜºÄÊ±
-    t_exec = max([dur(usedTypes), 0]);
 end
