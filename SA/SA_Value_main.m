@@ -139,22 +139,14 @@ for counter=1:Value_Params.num_rounds
     
     %% SA主循环
     while(doneflag == 0)
-        incremental = zeros(1, Value_Params.N);  % 各智能体效用增量
+
         
         % 计算已分配资源和缺口
         
         % 顺序遍历各智能体进行联盟优化
         for ii = 1:Value_Params.N
-            % 计算已分配资源和缺口
-            
-            % 计算已经分配的资源和剩余资源的缺口
-            [allocated_resources, resource_gap] = calc_gaps(Value_data(ii), Value_Params);
-            
             % 重叠联盟形成
-            [inc_ii, Value_data_ii] = Overlap_Coalition_Formation(agents, tasks, Value_data(ii), Value_Params, resource_gap);  % 联盟形成
-            incremental(ii) = inc_ii;  % 记录效用增量
-            
-            
+            [Value_data_ii] = Overlap_Coalition_Formation(agents, tasks, Value_data(ii), Value_Params);  % 联盟形成
             % 传递联盟结构给下一智能体
             if ii < Value_Params.N
                 Value_data(ii + 1).coalitionstru = Value_data_ii.coalitionstru;  % 传递成员结构
@@ -238,14 +230,14 @@ for counter=1:Value_Params.num_rounds
     %% 记录观测并更新信念（统一调用工具函数）
     [Value_data, summatrix] = OCFUtils.collect_observations(Value_data, agents, tasks, Value_Params, curTaskList, summatrix);
     Value_data = OCFUtils.update_belief_from_observations(Value_data, Value_Params);
-
+    
     %% 记录本轮总完成价值（价值×完成度）
     task_values = arrayfun(@(t) t.value, tasks);
     % 明确使用列向量，避免隐式扩展导致维度错误
     completion_vec = history_data.rounds(counter).task_completion(:);
     history_data.rounds(counter).total_completed_value = sum(task_values(:) .* completion_vec);
     history_data.rounds(counter).total_value_possible = sum(task_values);
-
+    
     %% 信念广播：同步各智能体的信念到other中
     for i = 1:Value_Params.N
         for j = 1:Value_Params.N
@@ -266,7 +258,7 @@ for counter=1:Value_Params.num_rounds
     end
     history_data.total_value_history = total_value_history;
     history_data.total_value_possible = sum(arrayfun(@(t) t.value, tasks));
-
+    
 end
 end
 

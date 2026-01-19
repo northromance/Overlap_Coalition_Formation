@@ -30,7 +30,7 @@ for r = 1:Value_Params.K
     [SC_P, SC_Q, R_agent_P, R_agent_Q] = join_changes(Value_data, agents, Value_Params, target, agentID, r);
     
     %% 2) 可行性检测：不可行直接跳过，继续下一种资源类型
-    [feasible, info] = validate_feasibility(Value_data, agents, tasks, Value_Params, agentID, SC_P, SC_Q, R_agent_P, R_agent_Q, target, r);
+    [feasible, info, cost_data] = validate_feasibility(Value_data, agents, tasks, Value_Params, agentID, SC_P, SC_Q, R_agent_P, R_agent_Q, target, r);
     if ~feasible
         if verbose
             % 解释不可行原因
@@ -88,6 +88,10 @@ for r = 1:Value_Params.K
         % 接受：更新资源联盟结构 SC，并同步更新 coalitionstru（矩阵）
         Value_data.SC = SC_Q;
         Value_data.resources_matrix = R_agent_Q;
+        % 复用能量/路径计算结果
+        if exist('cost_data', 'var')
+            Value_data.cost_data = cost_data;
+        end
         
         % 更新 coalitionstru: (M+1)×N 联盟成员矩阵
         % 作用：记录每个智能体参与了哪些任务

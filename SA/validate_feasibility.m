@@ -1,11 +1,12 @@
-function [isFeasible, info] = validate_feasibility(Value_data, agents, tasks, Value_Params, agentID, SC_P, SC_Q, R_agent_P, R_agent_Q, target, r)
-% join¿ÉĞĞĞÔ¼ì²â£º·Ç¸º·ÖÅä¡¢Ğ¯´øÁ¿¡¢ÄÜÁ¿¿É´ïĞÔ
+ï»¿function [isFeasible, info, cost_data] = validate_feasibility(Value_data, agents, tasks, Value_Params, agentID, SC_P, SC_Q, R_agent_P, R_agent_Q, target, r)
+% join/leave å¯è¡Œæ€§æ£€æµ‹ï¼šéè´Ÿåˆ†é…ã€æºå¸¦é‡ã€èƒ½é‡å¯è¾¾æ€§
 
     info = struct('reason', '');
+    cost_data = struct();
     isFeasible = true;
     tol = 1e-9;
 
-    % agentID -> agentsÏÂ±ê
+    % agentID -> agentsä¸‹æ ‡
     agentIdx = agentID;
     if agentIdx < 1 || agentIdx > numel(agents)
         agentIdx = find([agents.id] == agentID, 1, 'first');
@@ -16,21 +17,21 @@ function [isFeasible, info] = validate_feasibility(Value_data, agents, tasks, Va
         end
     end
 
-    % Î¬¶È¼ì²é
+    % ç»´åº¦æ£€æŸ¥
     if isempty(R_agent_Q) || any(size(R_agent_Q) ~= [Value_Params.M, Value_Params.K])
         isFeasible = false;
         info.reason = 'bad_R_agent_Q_size';
         return;
     end
 
-    % ·Ç¸ºÔ¼Êø
+    % éè´Ÿçº¦æŸ
     if min(R_agent_Q(:)) < -tol
         isFeasible = false;
         info.reason = 'negative_allocation';
         return;
     end
 
-    % Ğ¯´øÁ¿Ô¼Êø
+    % æºå¸¦é‡çº¦æŸ
     cap = Value_data.resources(:);
     if numel(cap) ~= Value_Params.K
         isFeasible = false;
@@ -45,16 +46,28 @@ function [isFeasible, info] = validate_feasibility(Value_data, agents, tasks, Va
         return;
     end
 
-    % ÄÜÁ¿¿É´ïĞÔ
+    % èƒ½é‡å¯è¾¾æ€§
     energyCap = agents(agentIdx).Emax;
     assignedTasks = find(cellfun(@(x) any(x(agentIdx, :) > tol), SC_Q))';
 
-    % ĞÂ½Ó¿Ú·µ»Ø7¸öÖµ: [t_fly, T_exec, dist, energy, ordered, arrivals, t_wait]
-    [~, ~, ~, requiredEnergy, ~, ~, ~] = energy_cost(agentIdx, assignedTasks, agents, tasks, Value_Params, R_agent_Q, SC_Q);
+    % æ–°æ¥å£è¿”å›7ä¸ªå€¼: [t_fly, T_exec, dist, energy, ordered, arrivals, t_wait]
+    [t_fly_total, T_exec_total, totalDistance, requiredEnergy, orderedTasks, task_arrival_times, t_wait_total] = ...
+        energy_cost(agentIdx, assignedTasks, agents, tasks, Value_Params, R_agent_Q, SC_Q);
 
     if requiredEnergy > energyCap + tol
         isFeasible = false;
         info.reason = 'energy_insufficient';
         return;
     end
+
+    % é€šè¿‡æ—¶è¿”å›æˆæœ¬æ•°æ®ï¼Œä¾¿äºåç»­å¤ç”¨
+    cost_data = struct( ...
+        'requiredEnergy', requiredEnergy, ...
+        'orderedTasks', orderedTasks, ...
+        'task_arrival_times', task_arrival_times, ...
+        't_fly_total', t_fly_total, ...
+        't_wait_total', t_wait_total, ...
+        'T_exec_total', T_exec_total, ...
+        'totalDistance', totalDistance, ...
+        'assignedTasks', assignedTasks);
 end

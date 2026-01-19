@@ -1,25 +1,25 @@
-function [Value_data, incremental_leave] = leave_operation(Value_data, agents, tasks, Value_Params, probs)
-% leave_operation: ³¢ÊÔÈÃÖÇÄÜÌå´ÓÒÑ¼ÓÈëµÄÈÎÎñÖĞ³·»Ø²¿·Ö×ÊÔ´¡£
-% ²Î¿¼ join_operation µÄÁ÷³Ì£º³éÑùºòÑ¡¡¢¹¹ÔìÇ°ºó×´Ì¬¡¢×ö¿ÉĞĞĞÔÑéÖ¤¡¢¼ÆËã¦¤U ²¢°´Ä£ÄâÍË»ğ¹æÔò¾ö¶¨ÊÇ·ñ·ÅÆú¡£
+ï»¿function [Value_data, incremental_leave] = leave_operation(Value_data, agents, tasks, Value_Params, probs)
+% leave_operation: å°è¯•è®©æ™ºèƒ½ä½“ä»å·²åŠ å…¥çš„ä»»åŠ¡ä¸­æ’¤å›éƒ¨åˆ†èµ„æºã€‚
+% å‚è€ƒ join_operation çš„æµç¨‹ï¼šæŠ½æ ·å€™é€‰ã€æ„é€ å‰åçŠ¶æ€ã€åšå¯è¡Œæ€§éªŒè¯ã€è®¡ç®—Î”U å¹¶æŒ‰æ¨¡æ‹Ÿé€€ç«è§„åˆ™å†³å®šæ˜¯å¦æ”¾å¼ƒã€‚
 %
-% ÊäÈë²ÎÊı£º
-%   Value_data   - ÖÇÄÜÌåµÄÊı¾İ½á¹¹£¬°üº¬ agentID¡¢SC£¨×ÊÔ´ÁªÃË½á¹¹£©¡¢resources_matrix µÈ
-%   agents       - ËùÓĞÖÇÄÜÌåµÄ½á¹¹ÌåÊı×é
-%   tasks        - ËùÓĞÈÎÎñµÄ½á¹¹ÌåÊı×é
-%   Value_Params - ²ÎÊı½á¹¹Ìå£¨M=ÈÎÎñÊı¡¢K=×ÊÔ´ÀàĞÍÊı¡¢N=ÖÇÄÜÌåÊı¡¢Temperature=Ä£ÄâÍË»ğÎÂ¶ÈµÈ£©
-%   probs        - K¡ÁM ¾ØÕó£¬probs(r,j) ±íÊ¾×ÊÔ´ÀàĞÍrÏÂÑ¡ÔñÈÎÎñjµÄ¸ÅÂÊ£¨ÓÃÓÚ¼ÓÈ¨³éÑù£©
+% è¾“å…¥å‚æ•°ï¼š
+%   Value_data   - æ™ºèƒ½ä½“çš„æ•°æ®ç»“æ„ï¼ŒåŒ…å« agentIDã€SCï¼ˆèµ„æºè”ç›Ÿç»“æ„ï¼‰ã€resources_matrix ç­‰
+%   agents       - æ‰€æœ‰æ™ºèƒ½ä½“çš„ç»“æ„ä½“æ•°ç»„
+%   tasks        - æ‰€æœ‰ä»»åŠ¡çš„ç»“æ„ä½“æ•°ç»„
+%   Value_Params - å‚æ•°ç»“æ„ä½“ï¼ˆM=ä»»åŠ¡æ•°ã€K=èµ„æºç±»å‹æ•°ã€N=æ™ºèƒ½ä½“æ•°ã€Temperature=æ¨¡æ‹Ÿé€€ç«æ¸©åº¦ç­‰ï¼‰
+%   probs        - KÃ—M çŸ©é˜µï¼Œprobs(r,j) è¡¨ç¤ºèµ„æºç±»å‹rä¸‹é€‰æ‹©ä»»åŠ¡jçš„æ¦‚ç‡ï¼ˆç”¨äºåŠ æƒæŠ½æ ·ï¼‰
 %
-% Êä³ö²ÎÊı£º
-%   Value_data        - ¸üĞÂºóµÄÖÇÄÜÌåÊı¾İ½á¹¹
-%   incremental_leave - ÊÇ·ñ³É¹¦Ö´ĞĞÁË³·³ö²Ù×÷£¨1=³É¹¦£¬0=Ê§°Ü£©
+% è¾“å‡ºå‚æ•°ï¼š
+%   Value_data        - æ›´æ–°åçš„æ™ºèƒ½ä½“æ•°æ®ç»“æ„
+%   incremental_leave - æ˜¯å¦æˆåŠŸæ‰§è¡Œäº†æ’¤å‡ºæ“ä½œï¼ˆ1=æˆåŠŸï¼Œ0=å¤±è´¥ï¼‰
 
-incremental_leave = 0;  % ³õÊ¼»¯³·³ö±êÖ¾Îª0£¨Î´³·³ö£©
-agentID = Value_data.agentID;  % »ñÈ¡µ±Ç°ÖÇÄÜÌåµÄID
-M = Value_Params.M;  % ÈÎÎñ×ÜÊı
-K = Value_Params.K;  % ×ÊÔ´ÀàĞÍ×ÜÊı
-tol = 1e-9;  % ÊıÖµÈİ²î£¬ÓÃÓÚ¸¡µãÊı±È½Ï
+incremental_leave = 0;  % åˆå§‹åŒ–æ’¤å‡ºæ ‡å¿—ä¸º0ï¼ˆæœªæ’¤å‡ºï¼‰
+agentID = Value_data.agentID;  % è·å–å½“å‰æ™ºèƒ½ä½“çš„ID
+M = Value_Params.M;  % ä»»åŠ¡æ€»æ•°
+K = Value_Params.K;  % èµ„æºç±»å‹æ€»æ•°
+tol = 1e-9;  % æ•°å€¼å®¹å·®ï¼Œç”¨äºæµ®ç‚¹æ•°æ¯”è¾ƒ
 
-% ÖÇÄÜÌåË÷Òı×ª»»
+% æ™ºèƒ½ä½“ç´¢å¼•è½¬æ¢
 agentIdx = agentID;
 if agentIdx < 1 || agentIdx > numel(agents) || ~isstruct(agents(agentIdx))
     agentIdx = find([agents.id] == agentID, 1, 'first');
@@ -28,189 +28,192 @@ if agentIdx < 1 || agentIdx > numel(agents) || ~isstruct(agents(agentIdx))
     end
 end
 
-% ÉèÖÃµ÷ÊÔÊä³ö¿ª¹Ø
+% è®¾ç½®è°ƒè¯•è¾“å‡ºå¼€å…³
 verbose = true;
 if isfield(Value_Params, 'verbose')
     verbose = logical(Value_Params.verbose);
 end
 
-% ±¸·İÔ­Ê¼×ÊÔ´·ÖÅä¾ØÕó£¨ÈôËùÓĞ³·³ö³¢ÊÔ¶¼Ê§°Ü£¬Ôò»Ø¹ö£©
+% å¤‡ä»½åŸå§‹èµ„æºåˆ†é…çŸ©é˜µï¼ˆè‹¥æ‰€æœ‰æ’¤å‡ºå°è¯•éƒ½å¤±è´¥ï¼Œåˆ™å›æ»šï¼‰
 original_resources_matrix = Value_data.resources_matrix;
 
-% Ç°ÖÃ¼ì²é£ºÈç¹ûÖÇÄÜÌåÃ»ÓĞ·ÖÅä×ÊÔ´¸øÈÎºÎÈÎÎñ£¬Ö±½Ó·µ»Ø
+% å‰ç½®æ£€æŸ¥ï¼šå¦‚æœæ™ºèƒ½ä½“æ²¡æœ‰åˆ†é…èµ„æºç»™ä»»ä½•ä»»åŠ¡ï¼Œç›´æ¥è¿”å›
 if all(Value_data.resources_matrix(:) <= tol)
-    % ¸ÃÖÇÄÜÌåÎ´²ÎÓëÈÎºÎÈÎÎñ£¬ÎŞĞè³·³ö
+    % è¯¥æ™ºèƒ½ä½“æœªå‚ä¸ä»»ä½•ä»»åŠ¡ï¼Œæ— éœ€æ’¤å‡º
     if verbose
-        % fprintf('ÖÇÄÜÌå%d: Î´·ÖÅäÈÎºÎ×ÊÔ´£¬ÎŞĞèÍË³ö²Ù×÷\n', agentID);
+        % fprintf('æ™ºèƒ½ä½“%d: æœªåˆ†é…ä»»ä½•èµ„æºï¼Œæ— éœ€é€€å‡ºæ“ä½œ\n', agentID);
     end
     return;
 end
 
-%% Ö÷Ñ­»·£º±éÀúÃ¿ÖÖ×ÊÔ´ÀàĞÍ£¬³¢ÊÔ³·³ö
+%% ä¸»å¾ªç¯ï¼šéå†æ¯ç§èµ„æºç±»å‹ï¼Œå°è¯•æ’¤å‡º
 for r = 1:K
-    % 1) ÕÒ³öµ±Ç°ÖÇÄÜÌåÔÚ×ÊÔ´ÀàĞÍrÉÏÒÑ·ÖÅäµÄËùÓĞÈÎÎñ
-    currentAllocColumn = Value_data.resources_matrix(:, r);  % ¸ÃÖÇÄÜÌå¶ÔËùÓĞÈÎÎñµÄ×ÊÔ´r·ÖÅä
-    candidateTasks = find(currentAllocColumn > tol);  % ÕÒ³öÓĞ·ÖÅäµÄÈÎÎñ£¨·ÖÅäÁ¿>0£©
+    % 1) æ‰¾å‡ºå½“å‰æ™ºèƒ½ä½“åœ¨èµ„æºç±»å‹rä¸Šå·²åˆ†é…çš„æ‰€æœ‰ä»»åŠ¡
+    currentAllocColumn = Value_data.resources_matrix(:, r);  % è¯¥æ™ºèƒ½ä½“å¯¹æ‰€æœ‰ä»»åŠ¡çš„èµ„æºråˆ†é…
+    candidateTasks = find(currentAllocColumn > tol);  % æ‰¾å‡ºæœ‰åˆ†é…çš„ä»»åŠ¡ï¼ˆåˆ†é…é‡>0ï¼‰
     if isempty(candidateTasks)
-        % ¸Ã×ÊÔ´ÀàĞÍÎ´·ÖÅä¸øÈÎºÎÈÎÎñ£¬Ìø¹ı
+        % è¯¥èµ„æºç±»å‹æœªåˆ†é…ç»™ä»»ä½•ä»»åŠ¡ï¼Œè·³è¿‡
         continue;
     end
 
-    % 2) ±éÀú¸Ã×ÊÔ´ÀàĞÍÏÂµÄËùÓĞºòÑ¡ÈÎÎñ£¬Öğ¸ö³¢ÊÔ³·³ö
+    % 2) éå†è¯¥èµ„æºç±»å‹ä¸‹çš„æ‰€æœ‰å€™é€‰ä»»åŠ¡ï¼Œé€ä¸ªå°è¯•æ’¤å‡º
     for taskIdx = 1:numel(candidateTasks)
-        sourceTask = candidateTasks(taskIdx);  % µ±Ç°³¢ÊÔ³·³öµÄÈÎÎñ
+        sourceTask = candidateTasks(taskIdx);  % å½“å‰å°è¯•æ’¤å‡ºçš„ä»»åŠ¡
 
-        % 3) »ñÈ¡µ±Ç°·ÖÅäÁ¿£¬¼ì²éÊÇ·ñÓĞĞ§
-        currentAmount = currentAllocColumn(sourceTask);  % ¸ÃÈÎÎñÉÏ×ÊÔ´rµÄµ±Ç°·ÖÅäÁ¿
+        % 3) è·å–å½“å‰åˆ†é…é‡ï¼Œæ£€æŸ¥æ˜¯å¦æœ‰æ•ˆ
+        currentAmount = currentAllocColumn(sourceTask);  % è¯¥ä»»åŠ¡ä¸Šèµ„æºrçš„å½“å‰åˆ†é…é‡
         if currentAmount <= tol
-            % ·ÖÅäÁ¿½Ó½ü0£¬ÎŞ·¨³·³ö£¬Ìø¹ı¸ÃÈÎÎñ
+            % åˆ†é…é‡æ¥è¿‘0ï¼Œæ— æ³•æ’¤å‡ºï¼Œè·³è¿‡è¯¥ä»»åŠ¡
             continue;
         end
 
-        % 4) ³·³öÈ«²¿¸Ã×ÊÔ´ÀàĞÍ£ºÖ±½Ó½«¸ÃÈÎÎñÉÏµÄ×ÊÔ´ÀàĞÍr·ÖÅäÁ¿ÇåÁã
-        remainingAmount = 0;  % ³·³öºó¸ÃÈÎÎñ¸Ã×ÊÔ´ÀàĞÍ·ÖÅäÁ¿Îª0
-        releasedAmount = currentAmount;  % ÊÍ·ÅÈ«²¿·ÖÅäÁ¿
+        % 4) æ’¤å‡ºå…¨éƒ¨è¯¥èµ„æºç±»å‹ï¼šç›´æ¥å°†è¯¥ä»»åŠ¡ä¸Šçš„èµ„æºç±»å‹råˆ†é…é‡æ¸…é›¶
+        remainingAmount = 0;  % æ’¤å‡ºåè¯¥ä»»åŠ¡è¯¥èµ„æºç±»å‹åˆ†é…é‡ä¸º0
+        releasedAmount = currentAmount;  % é‡Šæ”¾å…¨éƒ¨åˆ†é…é‡
         if releasedAmount <= tol
-            % ÊÍ·ÅÁ¿Ì«Ğ¡£¬Ìø¹ı¸ÃÈÎÎñ
+            % é‡Šæ”¾é‡å¤ªå°ï¼Œè·³è¿‡è¯¥ä»»åŠ¡
             continue;
         end
 
-        % ========== 8) ¹¹Ôì²Ù×÷Ç°ºóµÄ×´Ì¬ ==========
-        % 8.1) ²Ù×÷Ç°×´Ì¬£¨P = Previous£©
-        SC_P = Value_data.SC;  % ²Ù×÷Ç°µÄ×ÊÔ´ÁªÃË½á¹¹£¨cellÊı×é£©
-        R_agent_P = Value_data.resources_matrix;  % ²Ù×÷Ç°¸ÃÖÇÄÜÌåµÄ×ÊÔ´·ÖÅä¾ØÕó (M¡ÁK)
+        % ========== 8) æ„é€ æ“ä½œå‰åçš„çŠ¶æ€ ==========
+        % 8.1) æ“ä½œå‰çŠ¶æ€ï¼ˆP = Previousï¼‰
+        SC_P = Value_data.SC;  % æ“ä½œå‰çš„èµ„æºè”ç›Ÿç»“æ„ï¼ˆcellæ•°ç»„ï¼‰
+        R_agent_P = Value_data.resources_matrix;  % æ“ä½œå‰è¯¥æ™ºèƒ½ä½“çš„èµ„æºåˆ†é…çŸ©é˜µ (MÃ—K)
 
-        % 8.2) ²Ù×÷ºó×´Ì¬£¨Q = Query/ĞÂ×´Ì¬£©
-        % ½« sourceTask ÉÏ×ÊÔ´ÀàĞÍrµÄ·ÖÅäÁ¿¼õÉÙµ½ remainingAmount
-        R_agent_Q = R_agent_P;  % ÏÈ¸´ÖÆ
-        R_agent_Q(sourceTask, r) = remainingAmount;  % ĞŞ¸Ä³·³öÈÎÎñµÄ×ÊÔ´·ÖÅä
+        % 8.2) æ“ä½œåçŠ¶æ€ï¼ˆQ = Query/æ–°çŠ¶æ€ï¼‰
+        % å°† sourceTask ä¸Šèµ„æºç±»å‹rçš„åˆ†é…é‡å‡å°‘åˆ° remainingAmount
+        R_agent_Q = R_agent_P;  % å…ˆå¤åˆ¶
+        R_agent_Q(sourceTask, r) = remainingAmount;  % ä¿®æ”¹æ’¤å‡ºä»»åŠ¡çš„èµ„æºåˆ†é…
 
-        % 8.3) Í¬²½¸üĞÂ SC_Q£º½«¸ÃÖÇÄÜÌåÔÚËùÓĞÈÎÎñÉÏµÄĞÂ·ÖÅäĞ´Èë
-        SC_Q = SC_P;  % ÏÈ¸´ÖÆÕû¸öÁªÃË½á¹¹
+        % 8.3) åŒæ­¥æ›´æ–° SC_Qï¼šå°†è¯¥æ™ºèƒ½ä½“åœ¨æ‰€æœ‰ä»»åŠ¡ä¸Šçš„æ–°åˆ†é…å†™å…¥
+        SC_Q = SC_P;  % å…ˆå¤åˆ¶æ•´ä¸ªè”ç›Ÿç»“æ„
         for m = 1:M
-            taskMatrix = SC_Q{m};  % »ñÈ¡ÈÎÎñmµÄ×ÊÔ´·ÖÅä¾ØÕó (N¡ÁK)
-            taskMatrix(agentIdx, :) = R_agent_Q(m, :);  % ¸üĞÂ¸ÃÖÇÄÜÌåµÄ·ÖÅä
-            SC_Q{m} = taskMatrix;  % Ğ´»Ø
+            taskMatrix = SC_Q{m};  % è·å–ä»»åŠ¡mçš„èµ„æºåˆ†é…çŸ©é˜µ (NÃ—K)
+            taskMatrix(agentIdx, :) = R_agent_Q(m, :);  % æ›´æ–°è¯¥æ™ºèƒ½ä½“çš„åˆ†é…
+            SC_Q{m} = taskMatrix;  % å†™å›
         end
 
-        % ========== 9) ¿ÉĞĞĞÔ¼ì²â£¨Ó²Ô¼Êø£© ==========
-        % ¼ì²é³·³öºóÊÇ·ñÂú×ã£º·Ç¸º·ÖÅä¡¢ÈİÁ¿Ô¼Êø¡¢ÄÜÁ¿¿É´ïĞÔµÈ
-        [feasible, info] = validate_feasibility(Value_data, agents, tasks, Value_Params, agentID, SC_P, SC_Q, R_agent_P, R_agent_Q, sourceTask, r);
+        % ========== 9) å¯è¡Œæ€§æ£€æµ‹ï¼ˆç¡¬çº¦æŸï¼‰ ==========
+        % æ£€æŸ¥æ’¤å‡ºåæ˜¯å¦æ»¡è¶³ï¼šéè´Ÿåˆ†é…ã€å®¹é‡çº¦æŸã€èƒ½é‡å¯è¾¾æ€§ç­‰
+        [feasible, info, cost_data] = validate_feasibility(Value_data, agents, tasks, Value_Params, agentID, SC_P, SC_Q, R_agent_P, R_agent_Q, sourceTask, r);
         if ~feasible
-            % ²»¿ÉĞĞ£¬Ìø¹ı´Ë´Î³·³ö³¢ÊÔ
+            % ä¸å¯è¡Œï¼Œè·³è¿‡æ­¤æ¬¡æ’¤å‡ºå°è¯•
             if verbose
                 reason_str = 'unknown';
                 if isfield(info, 'reason')
-                    reason_str = info.reason;  % »ñÈ¡²»¿ÉĞĞµÄ¾ßÌåÔ­Òò
+                    reason_str = info.reason;  % è·å–ä¸å¯è¡Œçš„å…·ä½“åŸå› 
                 end
-                % ½âÊÍ²»¿ÉĞĞÔ­Òò
+                % è§£é‡Šä¸å¯è¡ŒåŸå› 
                 switch reason_str
                     case 'agent_not_found'
-                        reason_detail = 'ÖÇÄÜÌå²»´æÔÚ';
+                        reason_detail = 'æ™ºèƒ½ä½“ä¸å­˜åœ¨';
                     case 'bad_R_agent_Q_size'
-                        reason_detail = '×ÊÔ´¾ØÕóÎ¬¶È´íÎó';
+                        reason_detail = 'èµ„æºçŸ©é˜µç»´åº¦é”™è¯¯';
                     case 'negative_allocation'
-                        reason_detail = '×ÊÔ´·ÖÅäÎª¸º';
+                        reason_detail = 'èµ„æºåˆ†é…ä¸ºè´Ÿ';
                     case 'capacity_exceeded'
-                        reason_detail = '³¬³ö×ÊÔ´ÈİÁ¿';
+                        reason_detail = 'è¶…å‡ºèµ„æºå®¹é‡';
                     case 'energy_insufficient'
-                        reason_detail = 'ÄÜÁ¿²»×ã';
+                        reason_detail = 'èƒ½é‡ä¸è¶³';
                     otherwise
                         reason_detail = reason_str;
                 end
-                fprintf('ÖÇÄÜÌå%d: ×ÊÔ´ÀàĞÍ%dÍË³öÈÎÎñ%d²»¿ÉĞĞ£¨Ô­Òò£º%s£©\n', agentID, r, sourceTask, reason_detail);
+                fprintf('æ™ºèƒ½ä½“%d: èµ„æºç±»å‹%dé€€å‡ºä»»åŠ¡%dä¸å¯è¡Œï¼ˆåŸå› ï¼š%sï¼‰\n', agentID, r, sourceTask, reason_detail);
             end
-            continue;  % ¼ÌĞø³¢ÊÔÏÂÒ»ÖÖ×ÊÔ´ÀàĞÍ
+            continue;  % ç»§ç»­å°è¯•ä¸‹ä¸€ç§èµ„æºç±»å‹
         end
 
-        % ========== 10) ¼ÆËãĞ§ÓÃ±ä»¯ ¦¤U ==========
-        % ÁÙÊ±Ğ´Èë²Ù×÷ºó×ÊÔ´¾ØÕó£¬ÓÃÓÚĞ§ÓÃ¼ÆËã
+        % ========== 10) è®¡ç®—æ•ˆç”¨å˜åŒ– Î”U ==========
+        % ä¸´æ—¶å†™å…¥æ“ä½œåèµ„æºçŸ©é˜µï¼Œç”¨äºæ•ˆç”¨è®¡ç®—
         Value_data.resources_matrix = R_agent_Q;
-        % µ÷ÓÃ overlap_coalition_utility ¼ÆËã ¦¤U = U(SC_Q) - U(SC_P)
-        % ·µ»ØÖµ > 0 ±íÊ¾³·³öºóĞ§ÓÃÌáÉı£»< 0 ±íÊ¾Ğ§ÓÃÏÂ½µ
+        % è°ƒç”¨ overlap_coalition_utility è®¡ç®— Î”U = U(SC_Q) - U(SC_P)
+        % è¿”å›å€¼ > 0 è¡¨ç¤ºæ’¤å‡ºåæ•ˆç”¨æå‡ï¼›< 0 è¡¨ç¤ºæ•ˆç”¨ä¸‹é™
         delta_U = overlap_coalition_utility(tasks, agents, SC_P, SC_Q, agentID, Value_Params, Value_data);
 
-        % ========== 11) ¾ö²ß£ºÊÇ·ñ½ÓÊÜ´Ë´Î³·³ö ==========
-        accept_leave = false;  % ³õÊ¼»¯½ÓÊÜ±êÖ¾
+        % ========== 11) å†³ç­–ï¼šæ˜¯å¦æ¥å—æ­¤æ¬¡æ’¤å‡º ==========
+        accept_leave = false;  % åˆå§‹åŒ–æ¥å—æ ‡å¿—
         if delta_U > 0
-            % Çé¿ö1£º¦¤U > 0£¬³·³öºóĞ§ÓÃÌáÉı£¬Ö±½Ó½ÓÊÜ
+            % æƒ…å†µ1ï¼šÎ”U > 0ï¼Œæ’¤å‡ºåæ•ˆç”¨æå‡ï¼Œç›´æ¥æ¥å—
             accept_leave = true;
             if verbose
-                % fprintf('ÖÇÄÜÌå%d: ÍË³öÈÎÎñ%d(×ÊÔ´ÀàĞÍ%d), ¦¤U=%.4f > 0\n', agentID, sourceTask, r, delta_U);
+                % fprintf('æ™ºèƒ½ä½“%d: é€€å‡ºä»»åŠ¡%d(èµ„æºç±»å‹%d), Î”U=%.4f > 0\n', agentID, sourceTask, r, delta_U);
             end
         else
-            % Çé¿ö2£º¦¤U <= 0£¬³·³öºóĞ§ÓÃÏÂ½µ£¬Ê¹ÓÃÄ£ÄâÍË»ğ¸ÅÂÊ½ÓÊÜ²î½â
-            T = 1;  % Ä¬ÈÏÎÂ¶È
+            % æƒ…å†µ2ï¼šÎ”U <= 0ï¼Œæ’¤å‡ºåæ•ˆç”¨ä¸‹é™ï¼Œä½¿ç”¨æ¨¡æ‹Ÿé€€ç«æ¦‚ç‡æ¥å—å·®è§£
+            T = 1;  % é»˜è®¤æ¸©åº¦
             if isfield(Value_Params, 'Temperature') && ~isempty(Value_Params.Temperature)
-                T = Value_Params.Temperature;  % »ñÈ¡µ±Ç°ÍË»ğÎÂ¶È
+                T = Value_Params.Temperature;  % è·å–å½“å‰é€€ç«æ¸©åº¦
             end
             if abs(T) < tol
-                T = 1;  % ·ÀÖ¹ÎÂ¶È¹ıĞ¡µ¼ÖÂÊıÖµÎÊÌâ
+                T = 1;  % é˜²æ­¢æ¸©åº¦è¿‡å°å¯¼è‡´æ•°å€¼é—®é¢˜
             end
-            % Ä£ÄâÍË»ğ½ÓÊÜ¸ÅÂÊ£ºP = exp(¦¤U / T)
-            % ÎÂ¶ÈÔ½¸ß£¬½ÓÊÜ²î½âµÄ¸ÅÂÊÔ½´ó£»¦¤U Ô½½Ó½ü0£¬½ÓÊÜ¸ÅÂÊÔ½´ó
+            % æ¨¡æ‹Ÿé€€ç«æ¥å—æ¦‚ç‡ï¼šP = exp(Î”U / T)
+            % æ¸©åº¦è¶Šé«˜ï¼Œæ¥å—å·®è§£çš„æ¦‚ç‡è¶Šå¤§ï¼›Î”U è¶Šæ¥è¿‘0ï¼Œæ¥å—æ¦‚ç‡è¶Šå¤§
             acceptProb = exp(delta_U / T);
             if rand() < acceptProb
-                % ÒÔ¸ÅÂÊ acceptProb ½ÓÊÜ²î½â
+                % ä»¥æ¦‚ç‡ acceptProb æ¥å—å·®è§£
                 accept_leave = true;
                 if verbose
-                    % fprintf('ÖÇÄÜÌå%d: ÍË³öÈÎÎñ%d(×ÊÔ´ÀàĞÍ%d), ¦¤U=%.4f, SA½ÓÊÜ¸ÅÂÊ=%.4f\n', ...
+                    % fprintf('æ™ºèƒ½ä½“%d: é€€å‡ºä»»åŠ¡%d(èµ„æºç±»å‹%d), Î”U=%.4f, SAæ¥å—æ¦‚ç‡=%.4f\n', ...
                     %     agentID, sourceTask, r, delta_U, acceptProb);
                 end
             else
-                % ¾Ü¾ø²î½â
+                % æ‹’ç»å·®è§£
                 if verbose
-                    % fprintf('ÖÇÄÜÌå%d: ¾Ü¾øÍË³öÈÎÎñ%d(×ÊÔ´ÀàĞÍ%d), ¦¤U=%.4f, SA¾Ü¾ø\n', ...
+                    % fprintf('æ™ºèƒ½ä½“%d: æ‹’ç»é€€å‡ºä»»åŠ¡%d(èµ„æºç±»å‹%d), Î”U=%.4f, SAæ‹’ç»\n', ...
                     %     agentID, sourceTask, r, delta_U);
                 end
             end
         end
 
-        % ========== 12) Ö´ĞĞ¾ö²ß½á¹û ==========
+        % ========== 12) æ‰§è¡Œå†³ç­–ç»“æœ ==========
         if accept_leave
-            % ½ÓÊÜ³·³ö£º¸üĞÂËùÓĞÏà¹Ø×´Ì¬
-            Value_data.SC = SC_Q;  % ½ÓÊÜ³·³ö£¬Ğ´»ØÁªÃË½á¹¹
+            % æ¥å—æ’¤å‡ºï¼šæ›´æ–°æ‰€æœ‰ç›¸å…³çŠ¶æ€
+            Value_data.SC = SC_Q;  % æ¥å—æ’¤å‡ºï¼Œå†™å›è”ç›Ÿç»“æ„
+            if exist('cost_data', 'var')
+                Value_data.cost_data = cost_data;  % å¤ç”¨å·²ç®—å¥½çš„èƒ½é‡/è·¯å¾„æ•°æ®
+            end
 
-            % 12.1) ÕÒ³ö³·³öºó¸ÃÖÇÄÜÌåÈÔ²ÎÓëµÄËùÓĞÈÎÎñ
-            assignedTasksPost = find(any(R_agent_Q > tol, 2));  % ÈÎÒâ×ÊÔ´ÀàĞÍ·ÖÅä>0µÄÈÎÎñ
+            % 12.1) æ‰¾å‡ºæ’¤å‡ºåè¯¥æ™ºèƒ½ä½“ä»å‚ä¸çš„æ‰€æœ‰ä»»åŠ¡
+            assignedTasksPost = find(any(R_agent_Q > tol, 2));  % ä»»æ„èµ„æºç±»å‹åˆ†é…>0çš„ä»»åŠ¡
 
-            % 12.2) ¸üĞÂ coalitionstru ¾ØÕó
+            % 12.2) æ›´æ–° coalitionstru çŸ©é˜µ
             coalition_after = Value_data.coalitionstru;
-            coalition_after(1:M, agentIdx) = 0;  % ÏÈÇå¿Õ¸ÃÖÇÄÜÌåÔÚËùÓĞÕæÊµÈÎÎñÉÏµÄ±ê¼Ç
+            coalition_after(1:M, agentIdx) = 0;  % å…ˆæ¸…ç©ºè¯¥æ™ºèƒ½ä½“åœ¨æ‰€æœ‰çœŸå®ä»»åŠ¡ä¸Šçš„æ ‡è®°
             for mIdx = assignedTasksPost'
-                % ±ê¼Ç¸ÃÖÇÄÜÌå²ÎÓëµÄÈÎÎñ
+                % æ ‡è®°è¯¥æ™ºèƒ½ä½“å‚ä¸çš„ä»»åŠ¡
                 coalition_after(mIdx, agentIdx) = agents(agentIdx).id;
             end
             if isempty(assignedTasksPost)
-                % Èô³·³öºó²»²ÎÓëÈÎºÎÈÎÎñ£¬Ôò·ÅÈë¿ÕÈÎÎñĞĞ
+                % è‹¥æ’¤å‡ºåä¸å‚ä¸ä»»ä½•ä»»åŠ¡ï¼Œåˆ™æ”¾å…¥ç©ºä»»åŠ¡è¡Œ
                 coalition_after(M + 1, agentIdx) = agents(agentIdx).id;
             else
-                % ÈôÈÔ²ÎÓëÖÁÉÙÒ»¸öÈÎÎñ£¬ÔòÇå¿Õ¿ÕÈÎÎñĞĞ±ê¼Ç
+                % è‹¥ä»å‚ä¸è‡³å°‘ä¸€ä¸ªä»»åŠ¡ï¼Œåˆ™æ¸…ç©ºç©ºä»»åŠ¡è¡Œæ ‡è®°
                 coalition_after(M + 1, agentIdx) = 0;
             end
             Value_data.coalitionstru = coalition_after;
 
-            % 12.3) ÉèÖÃ³·³ö³É¹¦±êÖ¾£¬´òÓ¡ÈÕÖ¾£¬²¢Ìø³öËùÓĞÑ­»·
-            incremental_leave = 1;  % ±ê¼Ç±¾ÂÖ³É¹¦Ö´ĞĞÁË³·³ö
+            % 12.3) è®¾ç½®æ’¤å‡ºæˆåŠŸæ ‡å¿—ï¼Œæ‰“å°æ—¥å¿—ï¼Œå¹¶è·³å‡ºæ‰€æœ‰å¾ªç¯
+            incremental_leave = 1;  % æ ‡è®°æœ¬è½®æˆåŠŸæ‰§è¡Œäº†æ’¤å‡º
             if verbose
-                % fprintf('  ×ÊÔ´·ÖÅä±ä»¯: ÈÎÎñ%dÊÍ·Å×ÊÔ´ÀàĞÍ%dÊıÁ¿%.2f\n', sourceTask, r, releasedAmount);
+                % fprintf('  èµ„æºåˆ†é…å˜åŒ–: ä»»åŠ¡%dé‡Šæ”¾èµ„æºç±»å‹%dæ•°é‡%.2f\n', sourceTask, r, releasedAmount);
             end
-            break;  % Ìø³öºòÑ¡ÈÎÎñÑ­»·
+            break;  % è·³å‡ºå€™é€‰ä»»åŠ¡å¾ªç¯
         else
-            % ¾Ü¾ø³·³ö£º»Ø¹ö resources_matrix µ½²Ù×÷Ç°×´Ì¬
+            % æ‹’ç»æ’¤å‡ºï¼šå›æ»š resources_matrix åˆ°æ“ä½œå‰çŠ¶æ€
             Value_data.resources_matrix = R_agent_P;
         end
-    end  % ½áÊøºòÑ¡ÈÎÎñÑ­»·
+    end  % ç»“æŸå€™é€‰ä»»åŠ¡å¾ªç¯
 
-    % Èç¹ûÒÑ³É¹¦³·³ö£¬Ìø³ö×ÊÔ´ÀàĞÍÑ­»·
+    % å¦‚æœå·²æˆåŠŸæ’¤å‡ºï¼Œè·³å‡ºèµ„æºç±»å‹å¾ªç¯
     if incremental_leave == 1
         break;
     end
 end
 
-% ========== 13) È«¾Ö»Ø¹ö¼ì²é ==========
-% Èô±¾ÂÖËùÓĞ×ÊÔ´ÀàĞÍµÄ³·³ö³¢ÊÔ¶¼Ê§°Ü£¨incremental_leave ÈÔÎª0£©£¬
-% Ôò½« resources_matrix »Ø¹öµ½½øÈëº¯ÊıÊ±µÄ³õÊ¼×´Ì¬
+% ========== 13) å…¨å±€å›æ»šæ£€æŸ¥ ==========
+% è‹¥æœ¬è½®æ‰€æœ‰èµ„æºç±»å‹çš„æ’¤å‡ºå°è¯•éƒ½å¤±è´¥ï¼ˆincremental_leave ä»ä¸º0ï¼‰ï¼Œ
+% åˆ™å°† resources_matrix å›æ»šåˆ°è¿›å…¥å‡½æ•°æ—¶çš„åˆå§‹çŠ¶æ€
 if incremental_leave == 0
     Value_data.resources_matrix = original_resources_matrix;
 end

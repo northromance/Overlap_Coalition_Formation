@@ -1,4 +1,4 @@
-function [incremental, Value_data] = Overlap_Coalition_Formation(agents, tasks, Value_data, Value_Params, resource_gap)
+ï»¿function [Value_data] = Overlap_Coalition_Formation(agents, tasks, Value_data, Value_Params)
 % Overlap_Coalition_Formation - single-agent coalition update (overlapping coalitions allowed)
 %
 % Inputs:
@@ -6,7 +6,6 @@ function [incremental, Value_data] = Overlap_Coalition_Formation(agents, tasks, 
 %   tasks        - task structs
 %   Value_data   - current agent state (coalitions, resources, etc.)
 %   Value_Params - global params (N, M, K)
-%   resource_gap - MxK matrix of per-task resource gaps
 %
 % Outputs:
 %   incremental  - 1 if coalition structure changed, 0 otherwise
@@ -19,13 +18,17 @@ backup.unif = Value_data.unif;
 backup.SC = Value_data.SC;
 backup.resources_matrix = Value_data.resources_matrix;
 
+%% Compute resource gaps on the fly for this agent
+[~, resource_gap] = calc_gaps(Value_data, Value_Params);
+     % è®¡ç®—å·²ç»åˆ†é…çš„èµ„æºå’Œå‰©ä½™èµ„æºçš„ç¼ºå£
+
 %% Task selection probabilities (K x M)
-% ¸ù¾İ×ÊÔ´È±¿Ú ÓÅÏÈ¼¶ ¾àÀëµÈ¼ÆËã Ã¿¸öÈÎÎñµÄÑ¡Ôñ¸ÅÂÊ 
+% æ ¹æ®èµ„æºç¼ºå£ ä¼˜å…ˆçº§ è·ç¦»ç­‰è®¡ç®— æ¯ä¸ªä»»åŠ¡çš„é€‰æ‹©æ¦‚ç‡
 probs = select_probs(Value_data, agents, tasks, Value_Params, resource_gap);
 Value_data.selectProb = probs;
 
 %% Coalition operations: try join, else leave
-% ³¢ÊÔ¼ÓÈëÈÎÎñ 
+% å°è¯•åŠ å…¥ä»»åŠ¡
 [Value_data, incremental_join] = join_operation(Value_data, agents, tasks, Value_Params, probs);
 if ~incremental_join
     [Value_data, ~] = leave_operation(Value_data, agents, tasks, Value_Params, probs);
