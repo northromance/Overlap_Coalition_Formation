@@ -3,16 +3,6 @@ function [incremental, current_task_idx, Value_data] = Value_order(agents, tasks
     incremental = 0; 
     agentID = Value_data.agentID;
     M = Value_Params.M;
-    
-    % --- 防御性初始化 ---
-    if ~isfield(Value_data, 'resources_matrix') || isempty(Value_data.resources_matrix)
-        Value_data.resources_matrix = zeros(M, Value_Params.K);
-    end
-    if ~isfield(Value_data, 'SC') || isempty(Value_data.SC)
-        Value_data.SC = cell(M, 1);
-        [Value_data.SC{:}] = deal(zeros(Value_Params.N, Value_Params.K));
-    end
-    
     % --- 备份原始状态 (Snapshot) ---
     AValue_data = Value_data; % 深拷贝备份
     
@@ -47,7 +37,7 @@ function [incremental, current_task_idx, Value_data] = Value_order(agents, tasks
         Value_data.resources_matrix = R_agent_Q;
         
         % C. 计算假设效用
-        sim_teammates = find(Value_data.coalitionstru(j, :) ~= 0);
+        sim_teammates = find(Value_data.coalitionstru(j, :) ~= 0); % 当前小组成员
         candidateagentutility(j) = Value_utility(...
             agents, tasks, j, agent_col_idx, sim_teammates, ...
             Value_data, Value_Params, SC_Q, R_agent_Q);
@@ -90,7 +80,6 @@ function [incremental, current_task_idx, Value_data] = Value_order(agents, tasks
     % 2. 应用资源变化
     Value_data.SC = SC_Q;
     Value_data.resources_matrix = R_agent_Q;
-    
     % 3. 应用成员结构变化
     Value_data.coalitionstru(current_task_idx, agent_col_idx) = 0;
     Value_data.coalitionstru(target_task_idx, agent_col_idx) = agentID;

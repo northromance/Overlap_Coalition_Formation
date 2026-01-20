@@ -7,6 +7,7 @@ for k=1:Value_Params.N
              ||((Value_data(k).iteration==Value_data(n).iteration)&&(Value_data(k).unif>Value_data(n).unif))
 %                if GAME_data(k).unif>GAME_data(n).unif
          Value_data(n).coalitionstru=Value_data(k).coalitionstru;
+         Value_data(n).SC=Value_data(k).SC;
          Value_data(n).iteration=Value_data(k).iteration;
          Value_data(n).unif=Value_data(k).unif;
            end

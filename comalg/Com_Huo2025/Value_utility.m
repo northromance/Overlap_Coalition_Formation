@@ -1,110 +1,97 @@
-function agentutility = Value_utility(agents, tasks, numberrow, numbercolumn, numberofcoworker, Value_data, Value_Params, SC, R_agent)
-% VALUE_UTILITY 計算智能體在特定資源分配狀態下的預期淨效用
+function agentutility = Value_utility(agents, tasks, numberrow, numbercolumn, ~, Value_data, Value_Params, SC, R_agent)
+% VALUE_UTILITY 计算智能体在特定资源分配状态下的预期净效用
 %
-% 核心邏輯：
-%   Utility = max(0, Revenue - Cost)
-%   1. Revenue (收益): 取決於資源貢獻比、任務期望價值、任務完成度。
-%   2. Cost (成本): 調用全局同步機制，計算考慮了路徑依賴和等待時間的總能耗。
-%
-% 輸入：
-%   SC, R_agent : 提議狀態下的聯盟結構與資源分配矩陣（通常為 SC_Q, R_agent_Q）
+% 核心逻辑：Utility = max(0, Revenue - Cost)
+% 输入：SC/R_agent 为提议状态（假设移动后）的结构
 
-    %% 0. 初始化參數
+    %% 0. 初始化与快速剪枝
     tol = 1e-9;
     
-    % --- 1. 特殊情況：虛任務 (Void Task) ---
-    % 虛任務代表閒置狀態，無效用產生，直接返回 0
-    if (numberrow == Value_Params.M + 1)
+    % 若为 Void 任务 (M+1)，无收益，直接返回
+    if numberrow > Value_Params.M
         agentutility = 0;
         return;
     end
-
-    %% 1. 準備基礎數據
+    
+    agent_id = numbercolumn; % 列索引即为 Agent ID
+    
+    %% 1. 准备基础数据 (基于信念的需求估算)
     K = Value_Params.K;
-    demand = tasks(numberrow).resource_demand(:)'; % 獲取當前任務需求向量
-    agent_id = numbercolumn;                       % 根據上下文，此處列索引即為智能體 ID
-
-    % --- 2. 解析參與者 (Participants Parsing) ---
-    % 注意：優先從傳入的提議狀態 SC 中解析，確保計算的是"假設移動後"的情況
-    % numberofcoworker 僅作為輔助參考，SC{numberrow} 才是真實數據源
     
-    participants = OCFUtils.get_participants(SC, numberrow, tol);
-    SC_task = SC{numberrow}; % 獲取該任務的資源分配矩陣 (N x K)
+    % 提取计算分位数需求所需的参数
+    belief = Value_data.initbelief(numberrow, :); 
+    task_type_demands = Value_Params.task_type_demands; 
     
-    % 防衛性檢查：確保解析出的成員在矩陣範圍內
-    valid_members = participants(participants <= size(SC_task, 1));
-    if isempty(valid_members)
-        agentutility = 0;
-        return;
+    % 获取置信度，若参数未定义则默认为 0.9
+    if isfield(Value_Params, 'resource_confidence')
+        confidence = Value_Params.resource_confidence;
+    else
+        confidence = 0.9; 
     end
-
-    %% 2. 計算收益 (Revenue Calculation)
-    % 公式：Revenue = 完成度(D_C) * 期望價值(V_C) * 貢獻比例(r_n)
     
-    % A. 計算任務完成度 (Completion Degree, D_C)
-    % 匯總所有成員投入的資源，對比需求計算滿足率
-    total_resources = sum(SC_task(valid_members, :), 1);
+    % 计算基于信念的估计需求 (而非真实需求)
+    demand = OCFUtils.calculate_demand_quantile(belief, task_type_demands, confidence);
+    
+    %% 2. 计算收益 (Revenue)
+    % 公式：收益 = 完成度(D_C) * 期望价值(V_C) * 贡献比(r_n)
+    
+    % A. 解析参与者与资源
+    % 优先从 SC (提议状态) 解析
+    participants = OCFUtils.get_participants(SC, numberrow, tol);
+    SC_task = SC{numberrow}; 
+    
+    % B. 计算任务完成度 (D_C)
+    total_resources = sum(SC_task(participants, :), 1);
     D_C = OCFUtils.calc_task_completion_degree(total_resources, demand, K);
     
     if D_C <= tol
-        agentutility = 0; % 若無法完成任何需求，收益為 0
+        agentutility = 0; % 无法满足任何需求，收益为0
         return;
     end
-
-    % B. 計算資源貢獻比例 (Contribution Ratio, r_n_C)
-    % 確保 agent_row_idx 有效，計算當前智能體投入資源佔總投入的比例
-    agent_row_idx = agent_id;
-    if agent_row_idx < 1 || agent_row_idx > size(SC_task, 1)
-        agent_row_idx = valid_members(1); % 異常回退
-    end
-    r_n_C = OCFUtils.calc_resource_contribution_ratio(SC_task, agent_row_idx, valid_members);
-
-    % C. 計算期望價值 (Expected Value, V_C)
-    % 結合貝葉斯信念 (initbelief) 與真實價值表，計算加權期望值
+    
+    % C. 计算资源贡献比例 (r_n)
+    r_n_C = OCFUtils.calc_resource_contribution_ratio(SC_task, agent_id, participants);
+    
+    % D. 计算期望价值 (V_C)
+    % 期望价值 = Σ (类型价值 * 类型信念概率)
     task_types = Value_Params.task_type;
-    if isempty(task_types)
-        task_types = numel(tasks(numberrow).WORLD.value);
-    end
-    
     values = tasks(numberrow).WORLD.value;
-    tlen = min([task_types, numel(values), size(Value_data.initbelief, 2)]);
-    % 點乘求和：Sum(P(Type) * Value(Type))
-    V_C = sum(values(1:tlen) .* Value_data.initbelief(numberrow, 1:tlen));
-
-    % D. 總收益
-    revenue = r_n_C * V_C * D_C;
-
-    %% 3. 計算成本 (Cost Calculation - Global Sync)
-    % 公式：Cost = 飛行能耗 + 等待能耗 + 執行能耗
-    % 關鍵：必須基於智能體的完整任務序列進行路徑規劃
     
-    % 提取能耗係數
+    % 维度对齐处理
+    tlen = min([task_types, numel(values), size(belief, 2)]);
+    V_C = sum(values(1:tlen) .* belief(1:tlen));
+    
+    % E. 总收益
+    revenue = r_n_C * V_C * D_C;
+    
+    %% 3. 计算成本 (Cost) - 全局同步机制
+    % 公式：成本 = 飞行能耗 + 等待能耗 + 执行能耗
+    
+    % 提取能耗系数
     alpha_fly = agents(agent_id).fuel;
     alpha_wait = agents(agent_id).wait_fuel;
     beta = agents(agent_id).beta;
-
-    % A. 構建任務序列
-    % 從資源矩陣 R_agent 中找出該智能體參與的所有任務
+    
+    % A. 构建任务序列 (基于 R_agent 提议状态)
     myOrderedTasks = find(any(R_agent > tol, 2))';
     
-    % 確保當前評估的任務 (numberrow) 包含在序列中 (處理剛剛加入尚未寫入 R_agent 的情況)
-    if isempty(myOrderedTasks)
-        myOrderedTasks = numberrow;
-    elseif ~ismember(numberrow, myOrderedTasks)
-        myOrderedTasks = [numberrow, myOrderedTasks];
+    % 确保当前考察的任务包含在序列中
+    if isempty(myOrderedTasks), myOrderedTasks = numberrow;
+    elseif ~ismember(numberrow, myOrderedTasks), myOrderedTasks = [numberrow, myOrderedTasks];
     end
     
-    % B. 全局同步計算
-    % 調用物理引擎，模擬移動、同步等待和執行過程
-    % 注意：這裡 myOrderedTasks 會在內部根據優先級重新排序
-    [t_fly_total, t_wait_total, t_exec_total] = calc_with_global_sync( ...
-        agent_id, myOrderedTasks, agents, tasks, Value_Params, SC, R_agent, tol);
-
-    % C. 總成本
-    cost = t_fly_total * alpha_fly + t_wait_total * alpha_wait + t_exec_total * beta;
-
-    %% 4. 計算淨效用 (Net Utility)
-    % 如果成本高於收益，則效用歸零（理性代理不執行虧本任務）
+    % 按优先级排序任务 (物理引擎需要有序输入)
+    orderedTasks = OCFUtils.sort_tasks_by_priority(myOrderedTasks, tasks);
+    
+    % B. 调用物理引擎 (计算时间消耗)
+    [t_fly, t_wait, t_exec] = calc_with_global_sync( ...
+        agent_id, orderedTasks, agents, tasks, Value_Params, SC, R_agent, tol);
+    
+    % C. 聚合总成本
+    cost = t_fly * alpha_fly + t_wait * alpha_wait + t_exec * beta;
+    
+    %% 4. 计算净效用
+    % 理性约束：收益必须大于成本
     if revenue > cost
         agentutility = revenue - cost;
     else

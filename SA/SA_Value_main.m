@@ -293,4 +293,17 @@ for counter=1:Value_Params.num_rounds
     history_data.total_value_possible = sum(arrayfun(@(t) t.value, tasks));
     
 end
+
+% 假设 Value_data 是 1xN 的结构体数组
+[is_valid, error_log] = check_OCF_consistency(Value_data, agents, Value_Params);
+
+if ~is_consistent
+    disp('数据有严重问题，停止后续分析！');
+    % 可以打印 logs 查看详情
+end
+
+
+
+
+
 end
