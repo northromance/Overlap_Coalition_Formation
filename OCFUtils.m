@@ -426,16 +426,95 @@ classdef OCFUtils
         %% ==================== 9. 随机数控制 ====================
         
         function seed = set_seed(seed)
-            % set_seed 统一设置随机数种子，保证实验可复现。
+        % set_seed 统一设置随机数种子，保证实验可复现。
+        
+        if nargin < 1 || isempty(seed)
+            % 如果没提供种子，使用系统时钟生成一个动态种子
+            seed = floor(sum(1000 * clock));
+        end
+        
+        rand('seed', seed);   % 设置 rand (均匀分布) 的种子
+        randn('seed', seed);  % 设置 randn (正态分布) 的种子
+        rng(seed, 'twister'); % 使用现代的 Mersenne Twister 生成器设置 rng
+        end
+        
+        
+        function [SC_P, SC_Q, R_agent_P, R_agent_Q] = calc_move_changes(Value_data, agents, Value_Params, cur_task_idx, target_task_idx, agent_col_idx)
+        % CALC_MOVE_CHANGES 计算智能体从当前任务移动到目标任务后的状态变化
+        %
+        % 假设：
+        %   这是一个“全额”移动操作。智能体会将所有资源从 cur_task 撤出，
+        %   并将其所有资源投入到 target_task 中。
+        %
+        % 输入：
+        %   Value_data      : 包含 SC 和 resources_matrix 的数据结构
+        %   agents          : 智能体数组 (用于获取资源能力)
+        %   Value_Params    : 全局参数 (M, K 等)
+        %   cur_task_idx    : 当前任务 ID (若 > M 则视为 Void/无任务)
+        %   target_task_idx : 目标任务 ID (若 > M 则视为 Void/无任务)
+        %   agent_col_idx   : 智能体在 SC 矩阵中的列索引 (通常等于 agentID)
+        %
+        % 输出：
+        %   SC_P, R_agent_P : 移动前的状态 (Previous)
+        %   SC_Q, R_agent_Q : 移动后的状态 (Query)
+        
+        %% 1. 准备基础数据
+        M = Value_Params.M;
+        K = Value_Params.K;
+        agentID = Value_data.agentID;
+        
+        % 获取智能体的完整资源能力 (1 x K)
+        raw_res = agents(agentID).resources(:)';
+        if length(raw_res) >= K
+            agent_res_profile = raw_res(1:K);
+        else
+            agent_res_profile = [raw_res, zeros(1, K - length(raw_res))];
+        end
+        
+        %% 2. 记录操作前状态 (P - Previous)
+        SC_P = Value_data.SC;
+        R_agent_P = Value_data.resources_matrix;
+        
+        %% 3. 构造操作后状态 (Q - Query) - 先复制
+        SC_Q = SC_P;
+        R_agent_Q = R_agent_P;
+        
+        %% 4. 执行“撤出” (Leave Current)
+        % 如果当前任务是有效任务 (<= M)，则将其资源清零
+        if cur_task_idx <= M
+            % A. 更新个体资源矩阵
+            R_agent_Q(cur_task_idx, :) = 0;
             
-            if nargin < 1 || isempty(seed)
-                % 如果没提供种子，使用系统时钟生成一个动态种子
-                seed = floor(sum(1000 * clock));
+            % B. 更新全局联盟结构 SC
+            if cur_task_idx <= numel(SC_Q) && ~isempty(SC_Q{cur_task_idx})
+                % 确保索引不越界
+                if agent_col_idx <= size(SC_Q{cur_task_idx}, 1)
+                    SC_Q{cur_task_idx}(agent_col_idx, :) = 0;
+                end
             end
+        end
+        
+        %% 5. 执行“加入” (Join Target)
+        % 如果目标任务是有效任务 (<= M)，则投入所有资源
+        % (如果是 Void 任务 M+1，则不做任何操作，相当于只撤出不加入)
+        if target_task_idx <= M
+            % A. 更新个体资源矩阵
+            R_agent_Q(target_task_idx, :) = agent_res_profile;
             
-            rand('seed', seed);   % 设置 rand (均匀分布) 的种子
-            randn('seed', seed);  % 设置 randn (正态分布) 的种子
-            rng(seed, 'twister'); % 使用现代的 Mersenne Twister 生成器设置 rng
+            % B. 更新全局联盟结构 SC
+            if target_task_idx <= numel(SC_Q)
+                % 如果该任务的 SC 尚未初始化，则初始化
+                if isempty(SC_Q{target_task_idx})
+                    SC_Q{target_task_idx} = zeros(Value_Params.N, K);
+                end
+                
+                % 写入资源
+                if agent_col_idx <= size(SC_Q{target_task_idx}, 1)
+                    SC_Q{target_task_idx}(agent_col_idx, :) = agent_res_profile;
+                end
+            end
+        end
+        
         end
     end
 end

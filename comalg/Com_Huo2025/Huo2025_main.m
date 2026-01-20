@@ -61,6 +61,18 @@ for i=1:Value_Params.N %包括agent标号，索引以及初始联盟结构
     Value_data(i).initbelief=zeros(Value_Params.M+1,task_types);
     Value_data(i).observe = zeros(Value_Params.M, task_types);
     Value_data(i).preobserve = zeros(Value_Params.M, task_types);
+    
+    % 初始化资源分配矩阵 (M×K): 记录该智能体对每个任务投入的具体资源量
+    Value_data(i).resources_matrix = zeros(Value_Params.M, Value_Params.K);
+    
+    % 新联盟结构矩阵 (SC): 这是一个 Cell 数组，每个 Cell 存储一个任务的 (N×K) 分配详情
+    % SC{m}(n, k) 表示智能体 n 在任务 m 上投入的第 k 种资源量
+    Value_data(i).SC = cell(Value_Params.M, 1);      
+    for m = 1:Value_Params.M
+        Value_data(i).SC{m} = zeros(Value_Params.N, Value_Params.K);  
+        % 初始时资源分配为0
+        Value_data(i).SC{m}(i, :) = Value_data(i).resources_matrix(m, :);
+    end
 end
 summatrix = zeros(Value_Params.M, task_types);  % 汇总观测矩阵
 total_value_history = zeros(1, Value_Params.num_rounds);  % 每轮完成价值

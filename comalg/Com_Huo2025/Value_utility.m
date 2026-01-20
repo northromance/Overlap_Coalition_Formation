@@ -68,31 +68,51 @@ function agentutility = Value_utility(agents, tasks, numberrow, numbercolumn, nu
     % 定义数值容差，防止分母为 0
     eps_val = 1e-9;
 
-    %% 5. 构建资源分配矩阵 SC_m (Snapshot)
-    % 这一步是为了估算联盟的总能力。
-    % 注意：此处采用了【全额贡献假设】。即假设只要加入了联盟，
-    % 智能体就会投入其拥有的全部资源上限 (agents.resources)。
-    % 这通常用于贪婪算法或初步评估，而非精确的资源调度。
-    SC_m = zeros(length(agents), K); % 初始化 N x K 矩阵
+    %% 5. 获取/构建联盟资源矩阵 SC_task (Snapshot)
+    % 优先使用 Value_data.SC 中的资源分配结构（例如 SC_Q），否则退回到全额贡献假设。
+    use_SC = false;
+    if isfield(Value_data, 'SC') && numberrow <= numel(Value_data.SC) && ~isempty(Value_data.SC{numberrow})
+        SC_task = Value_data.SC{numberrow};
+        % 对齐资源维度
+        if size(SC_task, 2) < K
+            SC_task(:, end+1:K) = 0;
+        elseif size(SC_task, 2) > K
+            SC_task = SC_task(:, 1:K);
+        end
+        use_SC = true;
+    else
+        SC_task = [];
+    end
     
-    for i = 1:length(member_ids)
-        member_id = member_ids(i);                                        % 成员 ID
-        if isfield(agents(member_id), 'resources')
-            member_resources = agents(member_id).resources(:)';           % 获取该成员的最大资源能力
-            
-            % 填充矩阵，确保维度匹配
-            if length(member_resources) >= K
-                SC_m(member_id, :) = member_resources(1:K);               % 截取前 K 维
-            else
-                SC_m(member_id, 1:length(member_resources)) = member_resources; % 维度不足补0
+    if ~use_SC
+        % 退化：按照成员最大资源全额投入构造矩阵（原逻辑）
+        SC_task = zeros(length(agents), K); % 初始化 N x K 矩阵
+        for i = 1:length(member_ids)
+            member_id = member_ids(i);                                        % 成员 ID
+            if isfield(agents(member_id), 'resources')
+                member_resources = agents(member_id).resources(:)';           % 获取该成员的最大资源能力
+                
+                % 填充矩阵，确保维度匹配
+                if length(member_resources) >= K
+                    SC_task(member_id, :) = member_resources(1:K);            % 截取前 K 维
+                else
+                    SC_task(member_id, 1:length(member_resources)) = member_resources; % 维度不足补0
+                end
             end
         end
+    end
+    
+    % 仅保留有效成员行
+    valid_members = member_ids(member_ids <= size(SC_task, 1));
+    if isempty(valid_members)
+        agentutility = 0;
+        return;
     end
 
     %% 6. 计算收益 (Revenue) 相关指标
     
-    % 6.1 联盟总资源：将所有成员的资源累加
-    total_resources = sum(SC_m, 1);
+    % 6.1 联盟总资源：按有效成员将资源累加
+    total_resources = sum(SC_task(valid_members, :), 1);
     
     % 6.2 资源完成度 (D_C)：衡量提供的资源满足了多少需求 (0~1)
     % 如果完成度为 0，说明没有任何有效资源投入，效用直接为 0
@@ -104,7 +124,12 @@ function agentutility = Value_utility(agents, tasks, numberrow, numbercolumn, nu
 
     % 6.3 资源贡献比例 (r_n)：当前智能体贡献占团队总贡献的比例
     % 公式：r_n = ||My_Resource|| / sum(||Member_Resources||)
-    r_n_C = OCFUtils.calc_resource_contribution_ratio(SC_m, agent_id, member_ids);
+    % agent 行索引：若超界则退回到第一个有效成员，避免空行
+    agent_row_idx = agent_id;
+    if agent_row_idx < 1 || agent_row_idx > size(SC_task, 1)
+        agent_row_idx = valid_members(1);
+    end
+    r_n_C = OCFUtils.calc_resource_contribution_ratio(SC_task, agent_row_idx, valid_members);
 
     % 6.4 期望价值 (Expected Value, V_C)
     % 任务价值不是固定的，而是基于智能体的信念 (Belief) 计算的期望值。

@@ -1,111 +1,164 @@
-function [incremental, curnumberrow, Value_data] = Value_order(agents, tasks, Value_data, Value_Params)
-% VALUE_ORDER ÖÇÄÜÌå×ÔÖ÷ÈÎÎñÑ¡Ôñº¯Êı
+ï»¿function [incremental, curnumberrow, Value_data] = Value_order(agents, tasks, Value_data, Value_Params)
+% VALUE_ORDER æ™ºèƒ½ä½“è‡ªä¸»ä»»åŠ¡é€‰æ‹©å‡½æ•°
 % 
-% ¹¦ÄÜ£º
-%   ÖÇÄÜÌå±éÀúËùÓĞ¿ÉÑ¡ÈÎÎñ£¨°üÀ¨¿ÕÏĞ Void ÈÎÎñ£©£¬¼ÆËã¡°Èç¹ûÎÒ¼ÓÈë¸ÃÈÎÎñ¡±ÄÜ»ñµÃµÄÔ¤ÆÚĞ§ÓÃ¡£
-%   Èç¹û·¢ÏÖÓĞ±Èµ±Ç°ÈÎÎñĞ§ÓÃ¸ü¸ßµÄÑ¡Ïî£¬ÔòÖ´ĞĞ×ªÒÆ²Ù×÷£¨¸üĞÂÁªÃË½á¹¹£©¡£
+% åŠŸèƒ½ï¼š
+%   æ™ºèƒ½ä½“éå†æ‰€æœ‰å¯é€‰ä»»åŠ¡ï¼ˆåŒ…æ‹¬ç©ºé—² Void ä»»åŠ¡ï¼‰ï¼Œè®¡ç®—â€œå¦‚æœæˆ‘åŠ å…¥è¯¥ä»»åŠ¡â€èƒ½è·å¾—çš„é¢„æœŸæ•ˆç”¨ã€‚
+%   å¦‚æœå‘ç°æœ‰æ¯”å½“å‰ä»»åŠ¡æ•ˆç”¨æ›´é«˜çš„é€‰é¡¹ï¼Œåˆ™æ‰§è¡Œè½¬ç§»æ“ä½œï¼ˆæ›´æ–°è”ç›Ÿç»“æ„ï¼‰ã€‚
 %
-% ÊäÈë£º
-%   agents       - ÖÇÄÜÌåÁĞ±í
-%   tasks        - ÈÎÎñÁĞ±í
-%   Value_data   - °üº¬µ±Ç°ÁªÃË½á¹¹(coalitionstru)ºÍÖÇÄÜÌåIDµÄÊı¾İ
-%   Value_Params - È«¾Ö²ÎÊı£¨M, NµÈ£©
+% è¾“å…¥ï¼š
+%   agents       - æ™ºèƒ½ä½“åˆ—è¡¨
+%   tasks        - ä»»åŠ¡åˆ—è¡¨
+%   Value_data   - åŒ…å«å½“å‰è”ç›Ÿç»“æ„(coalitionstru)å’Œæ™ºèƒ½ä½“IDçš„æ•°æ®
+%   Value_Params - å…¨å±€å‚æ•°ï¼ˆM, Nç­‰ï¼‰
 %
-% Êä³ö£º
-%   incremental  - ±ä»¯±êÖ¾Î» (1=·¢ÉúÁË±ä¶¯, 0=Î´±ä¶¯)
-%   curnumberrow - ÖÇÄÜÌåÔÚ±ä¶¯Ç°µÄÈÎÎñID
-%   Value_data   - ¸üĞÂºóµÄÖÇÄÜÌå×´Ì¬Êı¾İ
+% è¾“å‡ºï¼š
+%   incremental  - å˜åŒ–æ ‡å¿—ä½ (1=å‘ç”Ÿäº†å˜åŠ¨, 0=æœªå˜åŠ¨)
+%   curnumberrow - æ™ºèƒ½ä½“åœ¨å˜åŠ¨å‰çš„ä»»åŠ¡ID
+%   Value_data   - æ›´æ–°åçš„æ™ºèƒ½ä½“çŠ¶æ€æ•°æ®
 
-    %% 1. ³õÊ¼»¯Óë×´Ì¬±¸·İ
-    incremental = 0; % ³õÊ¼»¯±êÖ¾Î»£¬0 ±íÊ¾½á¹¹Î´¸Ä±ä
+    %% 1. åˆå§‹åŒ–ä¸çŠ¶æ€å¤‡ä»½
+    incremental = 0; % åˆå§‹åŒ–æ ‡å¿—ä½ï¼Œ0 è¡¨ç¤ºç»“æ„æœªæ”¹å˜
+    agentID = Value_data.agentID;
     
-    % ±¸·İµ±Ç°µÄÁªÃË½á¹¹ºÍÆäËû×´Ì¬£¬ÓÃÓÚ¡°ÊÔÌ½¡±ºóµÄ»Ø¹ö
-    % ÒòÎªºóÃæ»áÔÚÑ­»·Àï·´¸´ĞŞ¸Ä coalitionstru À´¼ÆËã¼ÙÉèĞ§ÓÃ
-    AValue_data.initcoalitionstru = Value_data.coalitionstru; 
-    AValue_data.inititeration = Value_data.iteration;
-    AValue_data.initunif = Value_data.unif;
-    
-    %% 2. »ñÈ¡µ±Ç°×´Ì¬
-    % ÕÒµ½µ±Ç°ÖÇÄÜÌåËùÔÚµÄĞĞ£¨ÈÎÎñID£©ºÍÁĞ£¨AgentË÷Òı£©
-    % coalitionstru ÊÇ (M+1) x N µÄ¾ØÕó
-    [curnumberrow, curnumbercolumn] = find(Value_data.coalitionstru == Value_data.agentID);
-    
-    % ÕÒµ½µ±Ç°ÈÎÎñµÄËùÓĞ¶ÓÓÑ£¨ÁĞË÷Òı£©
-    curnumberofcoworker = find(Value_data.coalitionstru(curnumberrow, :) ~= 0);
-    
-    % ¼ÆËã¡¾µ±Ç°¡¿Ğ§ÓÃ
-    curagentutility = Value_utility(agents, tasks, curnumberrow, curnumbercolumn, curnumberofcoworker, Value_data, Value_Params);
-    
-    %% 3. ÊÔÌ½ËùÓĞ¿ÉÄÜµÄÈÎÎñ (What-If Analysis)
-    % ±éÀúÈÎÎñ 1 µ½ M£¬ÒÔ¼° M+1 (VoidÈÎÎñ)
-    candidateagentutility = zeros(1, Value_Params.M + 1); % Ô¤·ÖÅäÊı×é
-    
-    for j = 1 : Value_Params.M + 1
-        % --- 3.1 ¹¹Ôì¼ÙÉè³¡¾° ---
-        % Ã¿´ÎÑ­»·Ç°£¬ÏÈ»Ö¸´µ½³õÊ¼µÄÁªÃË½á¹¹£¬±£Ö¤»·¾³´¿¾»
-        Value_data.coalitionstru = AValue_data.initcoalitionstru; 
-        
-        % Ä£Äâ²Ù×÷1£º´Óµ±Ç°ÈÎÎñÖĞÒÆ³ı×Ô¼º
-        Value_data.coalitionstru(curnumberrow, curnumbercolumn) = 0;
-        
-        % Ä£Äâ²Ù×÷2£º½«×Ô¼º¼ÓÈëµ½ºòÑ¡ÈÎÎñ j ÖĞ
-        % ×¢Òâ£ºÕâÀï¼ÙÉè Value_data.agentID ¿ÉÒÔÖ±½ÓÓÃ×÷ÁĞË÷Òı
-        % ¸üÑÏ½÷µÄĞ´·¨Ó¦¸ÃÊÇÊ¹ÓÃ curnumbercolumn
-        Value_data.coalitionstru(j, Value_data.agentID) = Value_data.agentID; 
-        
-        % --- 3.2 ¼ÆËã¼ÙÉèĞ§ÓÃ ---
-        % »ñÈ¡¼ÙÉèÈÎÎñ j ÖĞµÄËùÓĞ¶ÓÓÑ
-        candidatenumberofcoworker = find(Value_data.coalitionstru(j, :) ~= 0);
-        
-        % µ÷ÓÃ Utility º¯Êı¼ÆËãÔÚĞÂ»·¾³ÏÂµÄĞ§ÓÃ
-        candidateagentutility(j) = Value_utility(agents, tasks, j, Value_data.agentID, candidatenumberofcoworker, Value_data, Value_Params);
+    % ç¡®ä¿èµ„æº/è”ç›Ÿç»“æ„å­˜åœ¨
+    if ~isfield(Value_data, 'resources_matrix') || isempty(Value_data.resources_matrix)
+        Value_data.resources_matrix = zeros(Value_Params.M, Value_Params.K);
     end
-    
-    %% 4. ¾ö²ßÂß¼­
-    % ÕÒµ½ËùÓĞºòÑ¡ÖĞĞ§ÓÃ×î´óµÄÄÇ¸ö
-    [value, taskindex] = max(candidateagentutility);
-    % [value, taskindex] = sort(candidateagentutility, 'descend'); % (ÒÑ×¢ÊÍ) ±¸ÓÃµÄÅÅĞòÂß¼­
-    
-    if value == 0
-        % --- Çé¿ö A: ×î´óĞ§ÓÃÎª 0 ---
-        % ËµÃ÷È¥ÄÄÀï¶¼Ã»ÊÕÒæ£¬»òÕßËùÓĞÈÎÎñ¶¼ÎŞ·¨²úÉúÕıĞ§ÓÃ¡£
-        % ²ßÂÔ£ºÇ¿ÖÆÒÆ¶¯µ½ Void ÈÎÎñ (µÚ M+1 ĞĞ)£¬¼´Ñ¡Ôñ¡°ĞİÏ¢/¿ÕÏĞ¡±¡£
-        
-        % »Ö¸´Ô­Ê¼½á¹¹
-        Value_data.coalitionstru = AValue_data.initcoalitionstru;
-        % ´Óµ±Ç°ÈÎÎñÒÆ³ı
-        Value_data.coalitionstru(curnumberrow, curnumbercolumn) = 0;
-        % ÒÆ¶¯µ½ Void ÈÎÎñ (M+1)
-        Value_data.coalitionstru(Value_Params.M + 1, curnumbercolumn) = Value_data.agentID;
-        
-        % ×¢Òâ£ºÕâÀïËäÈ»¸Ä±äÁË½á¹¹£¬µ« incremental Ã»ÓĞÖÃ 1£¬
-        % Õâ¿ÉÄÜÒâÎ¶×Å¡°È¥ĞİÏ¢¡±²»±»ÊÓÎªÒ»´ÎÓĞĞ§µÄ¡°ÁªÃË½ø»¯²½Öè¡±£¬»òÕß½ö½öÊÇÖØÖÃ¡£
-        
-    else
-        % --- Çé¿ö B: ´æÔÚÕıĞ§ÓÃ ---
-        if value > curagentutility
-            % Ö»ÓĞµ±¡¾ĞÂÈÎÎñĞ§ÓÃ > µ±Ç°Ğ§ÓÃ¡¿Ê±£¬²Å¾ö¶¨×ªÒÆ (Greedy)
-            incremental = 1; % ±ê¼Ç½á¹¹·¢ÉúÁË¸Ä±ä
-            
-            % ¸üĞÂÍ³¼ÆĞÅÏ¢
-            Value_data.iteration = Value_data.iteration + 1; % µü´ú´ÎÊı+1
-            Value_data.unif = rand(1); % ¸üĞÂËæ»ú±äÁ¿£¨¿ÉÄÜÓÃÓÚºóĞø¼ÇÂ¼»òËæ»úÈÅ¶¯£©
+    if ~isfield(Value_data, 'SC') || isempty(Value_data.SC)
+        Value_data.SC = cell(Value_Params.M, 1);
+        for m = 1:Value_Params.M
+            Value_data.SC{m} = zeros(Value_Params.N, Value_Params.K);
         end
     end
     
-    %% 5. Ö´ĞĞ×îÖÕ¸üĞÂ
-    if incremental == 0
-        % Èç¹ûÃ»ÓĞÕÒµ½¸üºÃµÄÈÎÎñ£¨»òÕß×î´óĞ§ÓÃÎª0ÇÒÈ¥ĞİÏ¢ÁË£©£¬
-        % ÕâÀïµÄÂß¼­ÉÔÏÔ¸´ÔÓ£º
-        % Èç¹ûÉÏÃæ value==0 Ö´ĞĞÁËÒÆ¶¯£¬ÕâÀïÓÖ°Ñ initcoalitionstru ¸²¸Ç»ØÈ¥ÁË£¿
-        % **Ç±ÔÚÂß¼­ÎÊÌâ**£ºÈç¹û value==0£¬ÉÏÃæµÄĞŞ¸Ä»á±»ÕâĞĞ¸²¸Ç£¬µ¼ÖÂ agent Ã»ÓĞÈ¥ Void¡£
-        % ½¨Òé¼ì²é£º³ı·Ç value==0 µÄ·ÖÖ§Ô­±¾¾ÍÊÇÏë»Ø¹ö£¬»òÕß incremental Ó¦ÔÚ value==0 Ê±Ò²ÖÃ1¡£
+    % è®°å½•å½“å‰æ™ºèƒ½ä½“çš„å®Œæ•´èµ„æºå‘é‡
+    agent_resource_profile = zeros(1, Value_Params.K);
+    if agentID <= numel(agents) && isfield(agents(agentID), 'resources') && ~isempty(agents(agentID).resources)
+        res_tmp = agents(agentID).resources(:)';
+        len_res = min(length(res_tmp), Value_Params.K);
+        agent_resource_profile(1:len_res) = res_tmp(1:len_res);
+    end
+    
+    % å¤‡ä»½å½“å‰çš„è”ç›Ÿç»“æ„å’Œå…¶ä»–çŠ¶æ€ï¼Œç”¨äºâ€œè¯•æ¢â€åçš„å›æ»š
+    % å› ä¸ºåé¢ä¼šåœ¨å¾ªç¯é‡Œåå¤ä¿®æ”¹ coalitionstru æ¥è®¡ç®—å‡è®¾æ•ˆç”¨
+    AValue_data.initcoalitionstru = Value_data.coalitionstru; 
+    AValue_data.inititeration = Value_data.iteration;
+    AValue_data.initunif = Value_data.unif;
+    AValue_data.initSC = Value_data.SC;
+    AValue_data.initresources_matrix = Value_data.resources_matrix;
+    
+    %% 2. è·å–å½“å‰çŠ¶æ€
+    % æ‰¾åˆ°å½“å‰æ™ºèƒ½ä½“æ‰€åœ¨çš„è¡Œï¼ˆä»»åŠ¡IDï¼‰å’Œåˆ—ï¼ˆAgentç´¢å¼•ï¼‰
+    % coalitionstru æ˜¯ (M+1) x N çš„çŸ©é˜µ
+    [curnumberrow, curnumbercolumn] = find(Value_data.coalitionstru == Value_data.agentID);
+    
+    % æ‰¾åˆ°å½“å‰ä»»åŠ¡çš„æ‰€æœ‰é˜Ÿå‹ï¼ˆåˆ—ç´¢å¼•ï¼‰
+    curnumberofcoworker = find(Value_data.coalitionstru(curnumberrow, :) ~= 0);
+    
+    % è®¡ç®—ã€å½“å‰ã€‘æ•ˆç”¨
+    curagentutility = Value_utility(agents, tasks, curnumberrow, curnumbercolumn, curnumberofcoworker, Value_data, Value_Params);
+    
+    %% 3. è¯•æ¢æ‰€æœ‰å¯èƒ½çš„ä»»åŠ¡ (What-If Analysis)
+    % éå†ä»»åŠ¡ 1 åˆ° Mï¼Œä»¥åŠ M+1 (Voidä»»åŠ¡)
+    candidateagentutility = zeros(1, Value_Params.M + 1); % é¢„åˆ†é…æ•°ç»„
+    
+    for j = 1 : Value_Params.M + 1
+        % --- 3.1 æ„é€ å‡è®¾åœºæ™¯ ---
+        % æ¯æ¬¡å¾ªç¯å‰ï¼Œå…ˆæ¢å¤åˆ°åˆå§‹çš„è”ç›Ÿç»“æ„ï¼Œä¿è¯ç¯å¢ƒçº¯å‡€
+        Value_data.coalitionstru = AValue_data.initcoalitionstru; 
+        Value_data.SC = AValue_data.initSC;
+        Value_data.resources_matrix = AValue_data.initresources_matrix;
+        
+        % æ¨¡æ‹Ÿæ“ä½œ1ï¼šä»å½“å‰ä»»åŠ¡ä¸­ç§»é™¤è‡ªå·±
+        Value_data.coalitionstru(curnumberrow, curnumbercolumn) = 0;
+        % æ¨¡æ‹Ÿæ“ä½œ2ï¼šå°†è‡ªå·±åŠ å…¥åˆ°å€™é€‰ä»»åŠ¡ j ä¸­
+        Value_data.coalitionstru(j, Value_data.agentID) = Value_data.agentID; 
+        Value_data.resources_matrix(:,:) = 0;
+        [SC_P, SC_Q, R_agent_P, R_agent_Q] = calc_move_changes(Value_data, agents, Value_Params, curnumberrow, j, curnumbercolumn);
+        % --- 3.2 è®¡ç®—å‡è®¾æ•ˆç”¨ ---
+        % è·å–å‡è®¾ä»»åŠ¡ j ä¸­çš„æ‰€æœ‰é˜Ÿå‹
+        candidatenumberofcoworker = find(Value_data.coalitionstru(j, :) ~= 0);
+        
+        % è°ƒç”¨ Utility å‡½æ•°è®¡ç®—åœ¨æ–°ç¯å¢ƒä¸‹çš„æ•ˆç”¨
+        candidateagentutility(j) = Value_utility(agents, tasks, j, Value_data.agentID, candidatenumberofcoworker, Value_data, Value_Params,SC_P, SC_Q, R_agent_P, R_agent_Q);
+    end
+    
+    %% 4. å†³ç­–é€»è¾‘
+    % æ‰¾åˆ°æ‰€æœ‰å€™é€‰ä¸­æ•ˆç”¨æœ€å¤§çš„é‚£ä¸ª
+    [value, taskindex] = max(candidateagentutility);
+    % [value, taskindex] = sort(candidateagentutility, 'descend'); % (å·²æ³¨é‡Š) å¤‡ç”¨çš„æ’åºé€»è¾‘
+    
+    if value == 0
+        % --- æƒ…å†µ A: æœ€å¤§æ•ˆç”¨ä¸º 0 ---
+        % è¯´æ˜å»å“ªé‡Œéƒ½æ²¡æ”¶ç›Šï¼Œæˆ–è€…æ‰€æœ‰ä»»åŠ¡éƒ½æ— æ³•äº§ç”Ÿæ­£æ•ˆç”¨ã€‚
+        % ç­–ç•¥ï¼šå¼ºåˆ¶ç§»åŠ¨åˆ° Void ä»»åŠ¡ (ç¬¬ M+1 è¡Œ)ï¼Œå³é€‰æ‹©â€œä¼‘æ¯/ç©ºé—²â€ã€‚
+        
+        % æ¢å¤åŸå§‹ç»“æ„
         Value_data.coalitionstru = AValue_data.initcoalitionstru;
+        % ä»å½“å‰ä»»åŠ¡ç§»é™¤
+        Value_data.coalitionstru(curnumberrow, curnumbercolumn) = 0;
+        % ç§»åŠ¨åˆ° Void ä»»åŠ¡ (M+1)
+        Value_data.coalitionstru(Value_Params.M + 1, curnumbercolumn) = Value_data.agentID;
+        
+        % æ³¨æ„ï¼šè¿™é‡Œè™½ç„¶æ”¹å˜äº†ç»“æ„ï¼Œä½† incremental æ²¡æœ‰ç½® 1ï¼Œ
+        % è¿™å¯èƒ½æ„å‘³ç€â€œå»ä¼‘æ¯â€ä¸è¢«è§†ä¸ºä¸€æ¬¡æœ‰æ•ˆçš„â€œè”ç›Ÿè¿›åŒ–æ­¥éª¤â€ï¼Œæˆ–è€…ä»…ä»…æ˜¯é‡ç½®ã€‚
+        
     else
-        % È·ÈÏ×ªÒÆ£ºÖ´ĞĞÕæÕıµÄ½á¹¹¸üĞÂ
-        Value_data.coalitionstru = AValue_data.initcoalitionstru; % ÏÈÄÃµ½µ×°å
-        Value_data.coalitionstru(curnumberrow, curnumbercolumn) = 0; % ÍË³ö¾ÉÈÎÎñ
-        Value_data.coalitionstru(taskindex, curnumbercolumn) = Value_data.agentID; % ¼ÓÈëĞÂÓÅÑ¡ÈÎÎñ
+        % --- æƒ…å†µ B: å­˜åœ¨æ­£æ•ˆç”¨ ---
+        if value > curagentutility
+            % åªæœ‰å½“ã€æ–°ä»»åŠ¡æ•ˆç”¨ > å½“å‰æ•ˆç”¨ã€‘æ—¶ï¼Œæ‰å†³å®šè½¬ç§» (Greedy)
+            incremental = 1; % æ ‡è®°ç»“æ„å‘ç”Ÿäº†æ”¹å˜
+            
+            % æ›´æ–°ç»Ÿè®¡ä¿¡æ¯
+            Value_data.iteration = Value_data.iteration + 1; % è¿­ä»£æ¬¡æ•°+1
+            Value_data.unif = rand(1); % æ›´æ–°éšæœºå˜é‡ï¼ˆå¯èƒ½ç”¨äºåç»­è®°å½•æˆ–éšæœºæ‰°åŠ¨ï¼‰
+        end
+    end
+    
+    %% 5. æ‰§è¡Œæœ€ç»ˆæ›´æ–°
+    if incremental == 0
+        % å¦‚æœæ²¡æœ‰æ‰¾åˆ°æ›´å¥½çš„ä»»åŠ¡ï¼ˆæˆ–è€…æœ€å¤§æ•ˆç”¨ä¸º0ä¸”å»ä¼‘æ¯äº†ï¼‰ï¼Œ
+        % è¿™é‡Œçš„é€»è¾‘ç¨æ˜¾å¤æ‚ï¼š
+        % å¦‚æœä¸Šé¢ value==0 æ‰§è¡Œäº†ç§»åŠ¨ï¼Œè¿™é‡ŒåˆæŠŠ initcoalitionstru è¦†ç›–å›å»äº†ï¼Ÿ
+        % **æ½œåœ¨é€»è¾‘é—®é¢˜**ï¼šå¦‚æœ value==0ï¼Œä¸Šé¢çš„ä¿®æ”¹ä¼šè¢«è¿™è¡Œè¦†ç›–ï¼Œå¯¼è‡´ agent æ²¡æœ‰å» Voidã€‚
+        % å»ºè®®æ£€æŸ¥ï¼šé™¤é value==0 çš„åˆ†æ”¯åŸæœ¬å°±æ˜¯æƒ³å›æ»šï¼Œæˆ–è€… incremental åº”åœ¨ value==0 æ—¶ä¹Ÿç½®1ã€‚
+        Value_data.coalitionstru = AValue_data.initcoalitionstru;
+        Value_data.SC = AValue_data.initSC;
+        Value_data.resources_matrix = AValue_data.initresources_matrix;
+    else
+        % ç¡®è®¤è½¬ç§»ï¼šæ‰§è¡ŒçœŸæ­£çš„ç»“æ„æ›´æ–°
+        Value_data.coalitionstru = AValue_data.initcoalitionstru; % å…ˆæ‹¿åˆ°åº•æ¿
+        Value_data.coalitionstru(curnumberrow, curnumbercolumn) = 0; % é€€å‡ºæ—§ä»»åŠ¡
+        Value_data.coalitionstru(taskindex, curnumbercolumn) = Value_data.agentID; % åŠ å…¥æ–°ä¼˜é€‰ä»»åŠ¡
+        
+        % åŒæ­¥æ›´æ–°èµ„æº/SC ç»“æ„
+        Value_data.SC = AValue_data.initSC;
+        Value_data.resources_matrix = AValue_data.initresources_matrix;
+        if curnumberrow <= Value_Params.M
+            Value_data.resources_matrix(curnumberrow, :) = 0;
+            if curnumberrow <= numel(Value_data.SC) && ~isempty(Value_data.SC{curnumberrow}) ...
+                    && curnumbercolumn <= size(Value_data.SC{curnumberrow}, 1)
+                Value_data.SC{curnumberrow}(curnumbercolumn, :) = 0;
+            end
+        end
+        
+        if taskindex <= Value_Params.M
+            Value_data.resources_matrix(taskindex, :) = agent_resource_profile;
+            if taskindex <= numel(Value_data.SC) && ~isempty(Value_data.SC{taskindex}) && curnumbercolumn <= size(Value_data.SC{taskindex}, 1)
+                klen = min(Value_Params.K, size(Value_data.SC{taskindex}, 2));
+                Value_data.SC{taskindex}(curnumbercolumn, 1:klen) = agent_resource_profile(1:klen);
+                if klen < size(Value_data.SC{taskindex}, 2)
+                    Value_data.SC{taskindex}(curnumbercolumn, klen+1:end) = 0;
+                end
+            end
+        else
+            Value_data.resources_matrix(:,:) = 0;
+            for m = 1:min(numel(Value_data.SC), Value_Params.M)
+                if ~isempty(Value_data.SC{m}) && curnumbercolumn <= size(Value_data.SC{m}, 1)
+                    Value_data.SC{m}(curnumbercolumn, :) = 0;
+                end
+            end
+        end
     end
     
 end
