@@ -42,7 +42,7 @@ function [t_fly_total, t_wait_total, t_exec_total, start_times, execution_times,
         task_id = global_order(order_idx);
         task_pos = [tasks(task_id).x, tasks(task_id).y];
         
-        participants = OCFUtils.get_participants(SC, task_id, N, tol);
+        participants = OCFUtils.get_participants(SC, task_id, tol);
         if isempty(participants), continue; end
         
         % --- 计算每个参与者的到达时刻 ---

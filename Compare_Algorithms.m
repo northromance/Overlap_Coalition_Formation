@@ -42,7 +42,7 @@ task_values = [800, 1000, 1500];  % three task types
 num_task_types = length(task_values);
 
 % Algorithm selection
-algorithms_to_run_ids = [3];  % 选择要运行的算法 1=SA_Value, 2=Greedy, 3=Huo2025, 4=Qi2023, 5=PSO
+algorithms_to_run_ids = [1,3];  % 选择要运行的算法 1=SA_Value, 2=Greedy, 3=Huo2025, 4=Qi2023, 5=PSO
 
 % Display/save options
 save_results = true;  % 是否保存结果到 MAT 文件
