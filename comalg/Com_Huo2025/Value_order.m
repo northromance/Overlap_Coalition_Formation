@@ -1,4 +1,4 @@
-﻿function [incremental, curnumberrow, Value_data] = Value_order(agents, tasks, Value_data, Value_Params)
+function [incremental, curnumberrow, Value_data] = Value_order(agents, tasks, Value_data, Value_Params)
 % VALUE_ORDER 智能体自主任务选择函数
 % 
 % 功能：
@@ -54,9 +54,14 @@
     
     % 找到当前任务的所有队友（列索引）
     curnumberofcoworker = find(Value_data.coalitionstru(curnumberrow, :) ~= 0);
+
+
+    % 计算当前的结构
+    SC = Value_data.SC;
+    R_agent = Value_data.resources_matrix; 
     
     % 计算【当前】效用
-    curagentutility = Value_utility(agents, tasks, curnumberrow, curnumbercolumn, curnumberofcoworker, Value_data, Value_Params);
+    curagentutility = Value_utility(agents, tasks, curnumberrow, curnumbercolumn, curnumberofcoworker, Value_data, Value_Params, SC, R_agent);
     
     %% 3. 试探所有可能的任务 (What-If Analysis)
     % 遍历任务 1 到 M，以及 M+1 (Void任务)
@@ -73,14 +78,16 @@
         Value_data.coalitionstru(curnumberrow, curnumbercolumn) = 0;
         % 模拟操作2：将自己加入到候选任务 j 中
         Value_data.coalitionstru(j, Value_data.agentID) = Value_data.agentID; 
-        Value_data.resources_matrix(:,:) = 0;
-        [SC_P, SC_Q, R_agent_P, R_agent_Q] = calc_move_changes(Value_data, agents, Value_Params, curnumberrow, j, curnumbercolumn);
+
+        [~, SC_Q, ~, R_agent_Q] = OCFUtils.calc_move_changes(Value_data, agents, Value_Params, curnumberrow, j, curnumbercolumn);
         % --- 3.2 计算假设效用 ---
         % 获取假设任务 j 中的所有队友
         candidatenumberofcoworker = find(Value_data.coalitionstru(j, :) ~= 0);
+        Value_data.SC = SC_Q;
+        Value_data.resources_matrix = R_agent_Q;
         
         % 调用 Utility 函数计算在新环境下的效用
-        candidateagentutility(j) = Value_utility(agents, tasks, j, Value_data.agentID, candidatenumberofcoworker, Value_data, Value_Params,SC_P, SC_Q, R_agent_P, R_agent_Q);
+        candidateagentutility(j) = Value_utility(agents, tasks, j, Value_data.agentID, candidatenumberofcoworker, Value_data, Value_Params,SC_Q,R_agent_Q);
     end
     
     %% 4. 决策逻辑

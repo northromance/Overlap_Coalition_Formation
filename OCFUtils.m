@@ -149,7 +149,7 @@ classdef OCFUtils
         
         %% ==================== 4. 任务执行与时间计算 ====================
         
-        function participants = get_participants(SC, task_idx, N, tol)
+        function participants = get_participants(SC, task_idx, tol)
             % get_participants 从联盟结构 SC 中找出参与特定任务的所有智能体 ID。
             
             if isempty(SC) || task_idx > numel(SC)
