@@ -25,7 +25,7 @@ M = 10;                         % number of tasks
 K = 6;                          % number of resource types
 task_values = [800, 1000, 1500];  % three task types
 num_task_types = length(task_values);
-algorithms_to_run_ids = [3];  % 选择要运行的算法 1=SA_Value, 2=Greedy, 3=Huo2025, 4=Qi2023, 5=PSO
+algorithms_to_run_ids = [1,3];  % 选择要运行的算法 1=SA_Value, 2=Greedy, 3=Huo2025, 4=Qi2023, 5=PSO
 
 %%
 % Display/save options
@@ -244,21 +244,28 @@ fprintf('=======================================================================
 % 对比各算法的统计指标，输出表格/绘图/存档
 if enabled_count > 0
     fprintf('Analyzing results...\n');
-    comparison_stats = compare_results(results, agents, tasks, Value_Params); % 统计与对比各算法指标
+    % [修改] 必须传入完整参数，因为 compare_results 内部需要用 Value_Params.M
+    comparison_stats = compare_results(results); 
 
     fprintf('\n========================================================================\n');
     fprintf('                    Performance summary\n');
     fprintf('========================================================================\n\n');
 
+    % [修改] 表头调整：展示 Utility(效用), Cost(成本), #Coal(执行任务数), Time(时间)
     fprintf('%-20s | %10s | %10s | %10s | %10s\n', ...
-        'Algorithm', 'Utility', '#Coal', 'NormComp', 'Time(s)');
+        'Algorithm', 'Utility', 'Cost', '#Coal', 'Time(s)');
     fprintf('%s\n', repmat('-', 1, 80));
+
     for i = 1:enabled_count
         stats = comparison_stats.(sprintf('alg%d', i));
         if isfield(stats, 'total_utility')
-            fprintf('%-20s | %10.2f | %10d | %10.2f%% | %10.2f\n', ...
-                stats.name, stats.total_utility, stats.num_coalitions, ...
-                stats.normalized_completion_rate, stats.computation_time);
+            % [修改] 对应极简版的数据字段
+            fprintf('%-20s | %10.2f | %10.2f | %10d | %10.2f\n', ...
+                stats.name, ...
+                stats.total_utility, ...
+                stats.total_cost, ...      % 新增：显示总成本
+                stats.num_coalitions, ...  % 显示：形成了几个联盟(被执行的任务数)
+                stats.computation_time);
         else
             fprintf('%-20s | %10s | %10s | %10s | %10.2f\n', ...
                 stats.name, 'error', 'error', 'error', stats.computation_time);
@@ -266,26 +273,32 @@ if enabled_count > 0
     end
     fprintf('%s\n\n', repmat('-', 1, 80));
 
-    fprintf('\nTask completion details:\n'); % 任务完成情况明细
-    fprintf('%-20s | %10s | %10s | %10s | %10s\n', ...
-        'Algorithm', 'EqvDone', 'Full', 'Partial', 'AvgComp');
-    fprintf('%s\n', repmat('-', 1, 80));
+    fprintf('\nTask Completion Details:\n'); 
+    % [修改] 表头调整：仅保留 总完成价值 和 平均完成率
+    % 去掉了 Full/Partial 计数列
+    fprintf('%-20s | %15s | %15s\n', ...
+        'Algorithm', 'Total Value', 'Avg Rate (%)');
+    fprintf('%s\n', repmat('-', 1, 65)); % 缩短分割线
+
     for i = 1:enabled_count
         stats = comparison_stats.(sprintf('alg%d', i));
         if isfield(stats, 'total_completion_score')
-            fprintf('%-20s | %10.2f | %10d | %10d | %10.2f%%\n', ...
-                stats.name, stats.total_completion_score, ...
-                stats.fully_completed_tasks, stats.partially_completed_tasks, ...
-                stats.avg_task_completion * 100);
+            % [修改] avg_task_completion 已经是 (Sum Degrees / M)
+            fprintf('%-20s | %15.2f | %15.2f%%\n', ...
+                stats.name, ...
+                stats.total_completion_score, ...   % 总完成价值
+                stats.avg_task_completion * 100);   % 平均完成率 (0-1 -> %)
         else
-            fprintf('%-20s | %10s | %10s | %10s | %10s\n', ...
-                stats.name, '-', '-', '-', '-');
+            fprintf('%-20s | %15s | %15s\n', ...
+                stats.name, '-', '-');
         end
     end
-    fprintf('%s\n\n', repmat('-', 1, 80));
+    fprintf('%s\n\n', repmat('-', 1, 65));
 
     if show_plots && enabled_count > 1
         fprintf('Plotting comparison charts...\n');
+        % 注意：如果 plot_algorithm_comparison 内部还引用了被删除的字段(如 fully_completed)，
+        % 那个函数也需要对应修改。
         plot_algorithm_comparison(results, comparison_stats, enabled_count);
     end
 
@@ -306,6 +319,5 @@ end
 fprintf('========================================================================\n');
 fprintf('                    Comparison done\n');
 fprintf('========================================================================\n\n');
-
 
 

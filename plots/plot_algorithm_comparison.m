@@ -1,25 +1,30 @@
-﻿function plot_algorithm_comparison(results, comparison_stats, num_algorithms)
-% PLOT_ALGORITHM_COMPARISON 绘制算法对比图表
+function plot_algorithm_comparison(results, comparison_stats, num_algorithms)
+% PLOT_ALGORITHM_COMPARISON 绘制算法对比图表 (适配极简版统计结构)
 %
 % 输入:
-%   results - 包含所有算法结果的结构体
-%   comparison_stats - 算法性能统计
-%   num_algorithms - 算法数量
+%   results          - 包含所有算法结果的结构体 (含 history_data)
+%   comparison_stats - compare_results 输出的统计结构体
+%   num_algorithms   - 算法数量
 
     alg_names = fieldnames(results);
     
-    % 提取数据用于绘图
+    % --- 1. 提取数据用于绘图 ---
     names_list = {};
     utilities = [];
-    completed_values = [];
+    costs = [];              % [新增] 成本
+    completed_values = [];   % 完成价值
     comp_times = [];
-    coalitions = [];
-    completion_rates = [];
-    resource_utils = [];
+    coalitions = [];         % 联盟数
+    avg_rates = [];          % 平均完成率
     colors = [];
     
     for i = 1:num_algorithms
         alg_name = alg_names{i};
+        
+        % 检查统计结果是否存在
+        if ~isfield(comparison_stats, alg_name)
+            continue;
+        end
         stats = comparison_stats.(alg_name);
         
         if stats.has_error
@@ -27,17 +32,16 @@
         end
         
         names_list{end+1} = stats.name;
+        
+        % 提取核心标量
         utilities(end+1) = stats.total_utility;
-        if isfield(stats, 'completed_value')
-            completed_values(end+1) = stats.completed_value;
-        else
-            completed_values(end+1) = stats.total_value_achieved;
-        end
+        costs(end+1) = stats.total_cost;
+        completed_values(end+1) = stats.total_completion_score;
         comp_times(end+1) = stats.computation_time;
         coalitions(end+1) = stats.num_coalitions;
-        completion_rates(end+1) = stats.normalized_completion_rate;  % 使用归一化完成率（考虑资源满足度）
-        resource_utils(end+1) = stats.resource_utilization;
+        avg_rates(end+1) = stats.avg_task_completion * 100; % 转换为百分比
         
+        % 提取颜色
         if isfield(results.(alg_name), 'color')
             colors(end+1, :) = results.(alg_name).color;
         else
@@ -52,233 +56,159 @@
         return;
     end
     
-    %% 创建综合对比图
-    figure('Name', '算法性能对比', 'Position', [100, 100, 1400, 900]);
+    %% --- 2. 创建综合柱状对比图 (2行3列) ---
+    figure('Name', '算法性能综合对比', 'Position', [100, 100, 1400, 900]);
     
-    %% 子图1: 总效用对比
-    subplot(2, 3, 1);
-    bar_colors = colors;
-    b = bar(utilities);
-    b.FaceColor = 'flat';
-    for k = 1:valid_count
-        b.CData(k,:) = bar_colors(k,:);
-    end
-    set(gca, 'XTickLabel', names_list, 'XTick', 1:valid_count);
-    xtickangle(45);
-    ylabel('总效用');
-    title('总效用对比');
-    grid on;
+    % 辅助绘图函数 (内部使用)
+    plot_bar = @(idx, data, title_str, y_label, fmt) ...
+        local_plot_bar(idx, data, title_str, y_label, fmt, names_list, colors, valid_count);
+
+    % 子图1: 总效用 (Utility)
+    plot_bar(1, utilities, '总效用对比 (Utility)', '效用值', '%.1f');
     
-    % 在柱状图上添加数值标签
-    for k = 1:valid_count
-        text(k, utilities(k), sprintf('%.1f', utilities(k)), ...
-             'HorizontalAlignment', 'center', 'VerticalAlignment', 'bottom');
-    end
+    % 子图2: 总成本 (Cost) - [新增]
+    plot_bar(2, costs, '总成本对比 (Cost)', '成本值', '%.1f');
+
+    % 子图3: 总完成价值 (Total Value)
+    plot_bar(3, completed_values, '总完成价值 (Total Value)', '价值', '%.1f');
     
-    %% 子图2: 计算时间对比
-    subplot(2, 3, 2);
-    b = bar(comp_times);
-    b.FaceColor = 'flat';
-    for k = 1:valid_count
-        b.CData(k,:) = bar_colors(k,:);
-    end
-    set(gca, 'XTickLabel', names_list, 'XTick', 1:valid_count);
-    xtickangle(45);
-    ylabel('时间 (秒)');
-    title('计算时间对比');
-    grid on;
+    % 子图4: 计算时间 (Time)
+    plot_bar(4, comp_times, '计算时间对比 (Time)', '时间 (s)', '%.2fs');
     
-    for k = 1:valid_count
-        text(k, comp_times(k), sprintf('%.2fs', comp_times(k)), ...
-             'HorizontalAlignment', 'center', 'VerticalAlignment', 'bottom');
-    end
+    % 子图5: 联盟数量 (# Coalitions)
+    plot_bar(5, coalitions, '执行任务数 (# Coalitions)', '数量', '%d');
     
-    %% 子图3: 联盟数量对比
-    subplot(2, 3, 3);
-    b = bar(coalitions);
-    b.FaceColor = 'flat';
-    for k = 1:valid_count
-        b.CData(k,:) = bar_colors(k,:);
-    end
-    set(gca, 'XTickLabel', names_list, 'XTick', 1:valid_count);
-    xtickangle(45);
-    ylabel('联盟数量');
-    title('形成联盟数量对比');
-    grid on;
+    % 子图6: 平均完成率 (Avg Rate)
+    plot_bar(6, avg_rates, '平均任务完成率 (Avg Rate)', '完成率 (%)', '%.1f%%');
     
-    for k = 1:valid_count
-        text(k, coalitions(k), sprintf('%d', coalitions(k)), ...
-             'HorizontalAlignment', 'center', 'VerticalAlignment', 'bottom');
-    end
+    sgtitle('多算法性能指标综合对比', 'FontSize', 14, 'FontWeight', 'bold');
     
-    %% 子图4: 任务完成率对比
-    subplot(2, 3, 4);
-    b = bar(completion_rates);
-    b.FaceColor = 'flat';
-    for k = 1:valid_count
-        b.CData(k,:) = bar_colors(k,:);
-    end
-    set(gca, 'XTickLabel', names_list, 'XTick', 1:valid_count);
-    xtickangle(45);
-    ylabel('完成率 (%)');
-    title('任务完成率对比');
-    grid on;
-    ylim([0, 110]);
-    
-    for k = 1:valid_count
-        text(k, completion_rates(k), sprintf('%.1f%%', completion_rates(k)), ...
-             'HorizontalAlignment', 'center', 'VerticalAlignment', 'bottom');
-    end
-    
-    %% 子图5: 资源利用率对比
-    subplot(2, 3, 5);
-    b = bar(resource_utils);
-    b.FaceColor = 'flat';
-    for k = 1:valid_count
-        b.CData(k,:) = bar_colors(k,:);
-    end
-    set(gca, 'XTickLabel', names_list, 'XTick', 1:valid_count);
-    xtickangle(45);
-    ylabel('利用率 (%)');
-    title('资源利用率对比');
-    grid on;
-    
-    for k = 1:valid_count
-        text(k, resource_utils(k), sprintf('%.1f%%', resource_utils(k)), ...
-             'HorizontalAlignment', 'center', 'VerticalAlignment', 'bottom');
-    end
-    
-    %% 子图6: 完成价值（价值×完成度）
-    subplot(2, 3, 6);
-    b = bar(completed_values);
-    b.FaceColor = 'flat';
-    for k = 1:valid_count
-        b.CData(k,:) = bar_colors(k,:);
-    end
-    set(gca, 'XTickLabel', names_list, 'XTick', 1:valid_count);
-    xtickangle(45);
-    ylabel('完成价值');
-    title('完成价值对比');
-    grid on;
-    for k = 1:valid_count
-        text(k, completed_values(k), sprintf('%.1f', completed_values(k)), ...
-             'HorizontalAlignment', 'center', 'VerticalAlignment', 'bottom');
-    end
-    
-    % 调整整体布局
-    sgtitle('联盟形成算法性能综合对比', 'FontSize', 14, 'FontWeight', 'bold');
-    
-    %% 如果有多个算法，创建雷达图
+    %% --- 3. 创建雷达图 (如果算法 >= 2) ---
     if valid_count >= 2
         figure('Name', '算法性能雷达图', 'Position', [150, 150, 800, 600]);
         
-        % 准备雷达图数据（归一化到0-1）
+        % 准备雷达图数据（归一化到 0-1）
         radar_data = zeros(valid_count, 5);
         
-        % 1. 总效用（归一化）
-        if max(utilities) > 0
-            radar_data(:, 1) = utilities' / max(utilities);
-        end
+        % 维度1: 总效用 (越大越好)
+        if max(utilities) > 0, radar_data(:, 1) = utilities' / max(utilities); end
         
-        % 2. 计算速度（时间的倒数，归一化）
-        speeds = 1 ./ comp_times;
-        if max(speeds) > 0
-            radar_data(:, 2) = speeds' / max(speeds);
-        end
+        % 维度2: 成本优势 (越小越好 -> 1/Cost 归一化)
+        % 处理成本为0的情况防止除零
+        safe_costs = costs; safe_costs(safe_costs==0) = 1e-6; 
+        inv_costs = 1 ./ safe_costs;
+        if max(inv_costs) > 0, radar_data(:, 2) = inv_costs' / max(inv_costs); end
         
-        % 3. 任务完成率（已经是百分比，除以100）
-        radar_data(:, 3) = completion_rates' / 100;
+        % 维度3: 总价值 (越大越好)
+        if max(completed_values) > 0, radar_data(:, 3) = completed_values' / max(completed_values); end
         
-        % 4. 资源利用率（已经是百分比，除以100）
-        radar_data(:, 4) = resource_utils' / 100;
+        % 维度4: 平均完成率 (已经是0-100，除以100即可，或者归一化到最大值)
+        radar_data(:, 4) = avg_rates' / 100; 
         
-        % 5. 联盟数量（归一化）
-        if max(coalitions) > 0
-            radar_data(:, 5) = coalitions' / max(coalitions);
-        end
+        % 维度5: 计算速度 (越快越好 -> 1/Time 归一化)
+        speeds = 1 ./ (comp_times + 1e-6);
+        if max(speeds) > 0, radar_data(:, 5) = speeds' / max(speeds); end
         
-        % 雷达图标签
-        radar_labels = {'总效用', '计算速度', '任务完成率', '资源利用率', '联盟数量'};
+        % 标签
+        radar_labels = {'总效用', '成本优势(1/Cost)', '总价值', '平均完成率', '计算速度'};
         
-        % 绘制雷达图
-        angles = linspace(0, 2*pi, 6);
-        
+        % 绘图逻辑
+        angles = linspace(0, 2*pi, 6); % 5个点 + 闭合点
         hold on;
         for i = 1:valid_count
-            data_point = [radar_data(i, :), radar_data(i, 1)];  % 闭合
+            data_point = [radar_data(i, :), radar_data(i, 1)]; % 闭合
             plot(angles, data_point, 'o-', 'LineWidth', 2, ...
                  'Color', colors(i, :), 'MarkerFaceColor', colors(i, :), ...
                  'DisplayName', names_list{i});
         end
         
-        % 绘制网格
-        for r = 0.2:0.2:1
-            plot(angles, r * ones(size(angles)), ':', 'Color', [0.7, 0.7, 0.7]);
-        end
-        
-        % 设置坐标轴
-        ax = gca;
-        ax.XTick = angles(1:end-1);
-        ax.XTickLabel = radar_labels;
-        ax.YLim = [0, 1.2];
-        
-        % 添加图例
+        % 网格与修饰
+        for r = 0.2:0.2:1, plot(angles, r * ones(size(angles)), ':', 'Color', [0.7 0.7 0.7]); end
+        ax = gca; ax.XTick = angles(1:end-1); ax.XTickLabel = radar_labels; ax.YLim = [0, 1.2];
         legend('Location', 'northeastoutside');
-        title('算法综合性能雷达图', 'FontSize', 12, 'FontWeight', 'bold');
-        grid on;
-        axis equal;
-        hold off;
+        title('算法综合性能雷达图 (归一化)', 'FontSize', 12, 'FontWeight', 'bold');
+        axis equal; grid on; hold off;
     end
     
-    %% 若存在历史完成价值，则绘制演化曲线
+    %% --- 4. 绘制历史演化曲线 (Total Value History) ---
+    % 检查是否有历史数据
     value_histories = {};
+    utility_histories = {};
     hist_names = {};
+    hist_colors = [];
+    
     for i = 1:num_algorithms
         alg_name = alg_names{i};
         res = results.(alg_name);
-        if ~isfield(res, 'history_data') || isempty(res.history_data)
-            continue;
-        end
-        hd = res.history_data;
-        vals = [];
-        if isfield(hd, 'total_value_history') && ~isempty(hd.total_value_history)
-            vals = hd.total_value_history;
-        elseif isfield(hd, 'rounds')
-            try
-                num_r = numel(hd.rounds);
-                vals = zeros(1, num_r);
-                for rr = 1:num_r
-                    if isfield(hd.rounds(rr), 'total_completed_value')
-                        vals(rr) = hd.rounds(rr).total_completed_value;
-                    end
+        
+        % 直接检查 rounds 结构
+        if isfield(res, 'history_data') && isfield(res.history_data, 'rounds')
+            rounds = res.history_data.rounds;
+            if ~isempty(rounds)
+                % 利用 MATLAB 结构体数组提取特性: [struct.field]
+                % 提取总完成价值
+                if isfield(rounds, 'total_completed_value')
+                    vals = [rounds.total_completed_value];
+                    value_histories{end+1} = vals;
                 end
-                if all(vals == 0)
-                    vals = [];
+                
+                % 提取总效用 (也画一张图)
+                if isfield(rounds, 'coalition_utility') % 这里的 utility 是标量
+                    utils = [rounds.coalition_utility];
+                    utility_histories{end+1} = utils;
                 end
-            catch
-                vals = [];
+                
+                hist_names{end+1} = res.name;
+                if isfield(res, 'color'), hist_colors(end+1, :) = res.color; 
+                else, hist_colors(end+1, :) = [0 0 0]; end
             end
         end
-        if ~isempty(vals)
-            value_histories{end+1} = vals;
-            hist_names{end+1} = res.name;
-        end
     end
     
+    % 绘制 完成价值 演化图
     if ~isempty(value_histories)
-        figure('Name', '完成价值演化', 'Position', [200, 200, 900, 500]);
+        figure('Name', '收敛曲线', 'Position', [200, 200, 1200, 500]);
+        
+        subplot(1, 2, 1);
         hold on;
-        for i = 1:numel(value_histories)
-            plot(value_histories{i}, 'LineWidth', 2, 'DisplayName', hist_names{i});
+        for k = 1:length(value_histories)
+            plot(value_histories{k}, 'LineWidth', 2, 'Color', hist_colors(k,:), 'DisplayName', hist_names{k});
         end
-        xlabel('轮次');
-        ylabel('完成价值（价值×完成度）');
-        title('完成价值演化对比');
-        grid on;
-        legend('Location', 'best');
-        hold off;
+        xlabel('迭代轮次 (Round)'); ylabel('总完成价值');
+        title('总完成价值收敛曲线');
+        grid on; legend('Location', 'best'); hold off;
+        
+        % 绘制 总效用 演化图
+        subplot(1, 2, 2);
+        hold on;
+        for k = 1:length(utility_histories)
+            plot(utility_histories{k}, 'LineWidth', 2, 'Color', hist_colors(k,:), 'DisplayName', hist_names{k});
+        end
+        xlabel('迭代轮次 (Round)'); ylabel('全局净效用');
+        title('全局净效用收敛曲线');
+        grid on; legend('Location', 'best'); hold off;
     end
     
-    fprintf('? 对比图表绘制完成\n');
+    fprintf('✔ 对比图表绘制完成\n');
+end
+
+%% 辅助函数：绘制单个柱状子图
+function local_plot_bar(idx, data, title_str, y_label, fmt, names, colors, count)
+    subplot(2, 3, idx);
+    b = bar(data);
+    b.FaceColor = 'flat';
+    for k = 1:count
+        b.CData(k,:) = colors(k,:);
+    end
+    set(gca, 'XTickLabel', names, 'XTick', 1:count);
+    xtickangle(45);
+    ylabel(y_label);
+    title(title_str);
+    grid on;
     
+    % 添加数值标签
+    for k = 1:count
+        text(k, data(k), sprintf(fmt, data(k)), ...
+             'HorizontalAlignment', 'center', 'VerticalAlignment', 'bottom');
+    end
 end
