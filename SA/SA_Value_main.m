@@ -21,6 +21,8 @@ function [Value_data, history_data]= SA_Value_main(agents,tasks,AddPara,Value_Pa
 
 %% ==================== 1. 初始化阶段 ====================
 eps_val = 1e-6;
+
+history_data = struct();
 %% 初始化智能体数据结构
 for i=1:Value_Params.N
     Value_data(i).agentID=agents(i).id;
@@ -29,20 +31,20 @@ for i=1:Value_Params.N
     Value_data(i).unif=0;            % 用于随机决策的变量
     Value_data(i).coalitionstru=zeros(Value_Params.M+1,Value_Params.N); % 成员矩阵 (任务x智能体)
     Value_data(i).initbelief=zeros(Value_Params.M+1,Value_Params.task_type); % 信念矩阵
-    
+
     % 初始化资源分配矩阵 (M×K): 记录该智能体对每个任务投入的具体资源量
     Value_data(i).resources_matrix = zeros(Value_Params.M, Value_Params.K);
-    
+
     % 新联盟结构矩阵 (SC): 这是一个 Cell 数组，每个 Cell 存储一个任务的 (N×K) 分配详情
     % SC{m}(n, k) 表示智能体 n 在任务 m 上投入的第 k 种资源量
-    Value_data(i).SC = cell(Value_Params.M, 1);      
+    Value_data(i).SC = cell(Value_Params.M, 1);
     for m = 1:Value_Params.M
-        Value_data(i).SC{m} = zeros(Value_Params.N, Value_Params.K);  
+        Value_data(i).SC{m} = zeros(Value_Params.N, Value_Params.K);
         % 初始时资源分配为0
         Value_data(i).SC{m}(i, :) = Value_data(i).resources_matrix(m, :);
     end
     Value_data(i).other = cell(Value_Params.N, 1);   % 用于存储它所认为的“队友的信念”
-    
+
     % 任务执行序列与时间跟踪结构 (用于后续的同步机制计算)
     Value_data(i).task_schedule = struct();
     Value_data(i).task_schedule.task_sequence = [];           % 任务执行顺序
@@ -50,18 +52,18 @@ for i=1:Value_Params.N
     Value_data(i).task_schedule.start_times = [];             % 同步后的开始时刻
     Value_data(i).task_schedule.execution_times = [];         % 个人执行时长
     Value_data(i).task_schedule.completion_times = [];        % 完工时刻
-    Value_data(i).task_schedule.total_flight_time = 0;        
-    Value_data(i).task_schedule.total_execution_time = 0;     
-    Value_data(i).task_schedule.total_energy = 0;             
+    Value_data(i).task_schedule.total_flight_time = 0;
+    Value_data(i).task_schedule.total_execution_time = 0;
+    Value_data(i).task_schedule.total_energy = 0;
 end
 
 %% 初始化void任务（第 M+1 个任务）
 % void 任务代表“空闲”或“未分配”。初始状态下，所有智能体都在 void 任务中。
 for k=1: Value_Params.N
     for j=1:Value_Params.M+1
-        if j==Value_Params.M+1                       
+        if j==Value_Params.M+1
             for i=1:Value_Params.N
-                Value_data(k).coalitionstru(j,i)=agents(i).id;  
+                Value_data(k).coalitionstru(j,i)=agents(i).id;
             end
         end
     end
@@ -71,7 +73,7 @@ end
 % 初始时，智能体不知道任务类型，假设所有类型的概率相等 (1/TypeNum)
 for i=1:Value_Params.N
     for j=1:Value_Params.M
-        Value_data(i).initbelief(j,1:end)=ones(Value_Params.task_type,1)/Value_Params.task_type;  
+        Value_data(i).initbelief(j,1:end)=ones(Value_Params.task_type,1)/Value_Params.task_type;
     end
 end
 
@@ -79,7 +81,7 @@ end
 % 每个智能体维护一份它认为其他智能体拥有的信念（用于通信或共识）
 for i=1:Value_Params.N
     for j = 1:Value_Params.N
-        Value_data(i).other{j}.initbelief = Value_data(j).initbelief;  
+        Value_data(i).other{j}.initbelief = Value_data(j).initbelief;
     end
 end
 
@@ -97,59 +99,59 @@ end
 
 % 赋予智能体初始物理资源
 for i=1:Value_Params.N
-    Value_data(i).resources = agents(i).resources;  
+    Value_data(i).resources = agents(i).resources;
 end
 
 
 %% ==================== 2. 主循环：多轮博弈迭代 ====================
 % counter 代表“第几轮”。每轮结束后，智能体会更新信念，下一轮基于新信念重新分配。
 for counter=1:Value_Params.num_rounds
-    
+
     %% 2.2 SA (模拟退火) 迭代初始化
     T=1;                                  % 迭代步数
-    lastTime=T-1;                         
+    lastTime=T-1;
     previous_SC = Value_data(1).SC;       % 记录上一次的联盟结构用于检测收敛
     k_stable = 0;                         % 稳定计数器 (连续多少次结构没变)
     doneflag = 0;                         % 收敛标志位
-    
-    
+
+
     %% ==================== 3. SA 内循环：联盟形成 ====================
     % 在当前信念下，寻找最优的联盟结构
     while(doneflag == 0)
-        
+
         % --- 3.1 顺序博弈：智能体逐个决策 ---
         % 这种顺序更新机制避免了同时决策导致的冲突
         for ii = 1:Value_Params.N
             % 调用核心函数：重叠联盟形成
             % 智能体 ii 根据当前状态，尝试加入新任务或离开旧任务以提升效用
-            [Value_data_ii] = Overlap_Coalition_Formation(agents, tasks, Value_data(ii), Value_Params); 
-            
+            [Value_data_ii] = Overlap_Coalition_Formation(agents, tasks, Value_data(ii), Value_Params);
+
             % --- 3.2 状态传递 ---
             % 将智能体 ii 更新后的全局联盟结构传递给下一个智能体 (ii+1)
             % 这样 ii+1 决策时看到的是包含 ii 最新变动的环境
             if ii < Value_Params.N
-                Value_data(ii + 1).coalitionstru = Value_data_ii.coalitionstru;  
-                Value_data(ii + 1).SC = Value_data_ii.SC;                        
+                Value_data(ii + 1).coalitionstru = Value_data_ii.coalitionstru;
+                Value_data(ii + 1).SC = Value_data_ii.SC;
             end
         end
-        
+
         % --- 3.3 SA 温度衰减 ---
         % 降低温度，减少接受劣解的概率 (Exploration -> Exploitation)
-        Value_Params.Temperature = Value_Params.alpha * Value_Params.Temperature;  
-        
+        Value_Params.Temperature = Value_Params.alpha * Value_Params.Temperature;
+
         % 获取本轮迭代结束后的最终结构
-        final_SC = Value_data(Value_Params.N).SC;                      
-        final_coalitionstru = Value_data(Value_Params.N).coalitionstru;  
-        T = T + 1;                                                      
-        
+        final_SC = Value_data(Value_Params.N).SC;
+        final_coalitionstru = Value_data(Value_Params.N).coalitionstru;
+        T = T + 1;
+
         % --- 3.4 收敛性检测 ---
         % 如果联盟结构 (SC) 与上一次迭代完全一致，则稳定计数 +1
         if isequal(previous_SC, final_SC)
-            k_stable = k_stable + 1;  
+            k_stable = k_stable + 1;
         else
             k_stable = 0;             % 结构发生变化，重置计数
         end
-        
+
         % 判断是否收敛：
         % 条件1: 结构连续稳定 max_stable_iterations 次
         % 条件2: 温度降到了最低阈值 Tmin
@@ -157,47 +159,55 @@ for counter=1:Value_Params.num_rounds
             disp('Convergence detected: Coalition structure has stabilized for multiple iterations.');
             doneflag = 1;  % 退出 SA 循环
         end
-        
+
         previous_SC = final_SC;  % 更新前次结构
-        
+
         % --- 3.5 同步全局状态 ---
         % 确保所有智能体的本地 Value_data 都更新为最新的一致结构
         for ii = 1:Value_Params.N
-            Value_data(ii).coalitionstru = final_coalitionstru;  
-            Value_data(ii).SC = final_SC; 
+            Value_data(ii).coalitionstru = final_coalitionstru;
+            Value_data(ii).SC = final_SC;
             Value_data(ii).resources_matrix = OCFUtils.get_agent_resource_matrix(Value_data(ii).SC,ii,Value_Params);
         end
-        
+
         % --- 3.6 更新任务调度与能耗 ---
         % 根据确定下来的 SC，计算具体的路径、等待时间、同步时间等
         % 这是计算 Net Profit (净收益) 的基础
         % 这里更新的是智能体路径的价值
         Value_data = update_task_schedule(Value_data, agents, tasks, Value_Params);
+
     end
 
     %% 观测
-     [Value_data, summatrix] = OCFUtils.collect_observations(Value_data, agents, tasks, Value_Params, summatrix,final_SC);
+    [Value_data, summatrix] = OCFUtils.collect_observations(Value_data, agents, tasks, Value_Params, summatrix,final_SC);
     Value_data = OCFUtils.update_belief_from_observations(Value_data, Value_Params);
     %% ==================== 4. 结果记录与评估 ====================
-        % 输出:
-%   coalition_utility     - (Mx1 向量) 每个任务(联盟)的净效用 (总收益 - 总成本)
-%                           注意：此处的成本计算基于智能体的全路径成本。
-%   Rcost                 - (MxN 矩阵) Rcost(j,i) 表示智能体 i 在参与任务 j 时产生的路径总成本
-%   total_completed_value - (标量) 所有任务的加权完成价值总和 sum(Value * D_C)
-%   task_completion_degrees - (Mx1 向量) 每个任务的完成度 D_C (0.0 ~ 1.0)
+    % 输出:
+    %   coalition_utility     - (Mx1 向量) 每个任务(联盟)的净效用 (总收益 - 总成本)
+    %                           注意：此处的成本计算基于智能体的全路径成本。
+    %   Rcost                 - (MxN 矩阵) Rcost(j,i) 表示智能体 i 在参与任务 j 时产生的路径总成本
+    %   total_completed_value - (标量) 所有任务的加权完成价值总和 sum(Value * D_C)
+    %   task_completion_degrees - (Mx1 向量) 每个任务的完成度 D_C (0.0 ~ 1.0)
 
     % 通过当前联盟计算所有联盟产生的总价值
-    [coalition_utility, Rcost, total_completed_value, task_completion_degrees] = evaluate_coalition_metrics(final_SC, agents, tasks, Value_Params, eps_val);
-    
+    [coalition_utility, total_global_cost, total_completed_value, task_completion_degrees] = evaluate_coalition_metrics(final_SC, agents, tasks, Value_Params, eps_val);
+
     %% 4.8 信念广播 (Consensus)
     % 简单的全连接通信：每个智能体将自己的最新信念同步给其他智能体
     for i = 1:Value_Params.N
         for j = 1:Value_Params.N
-            Value_data(i).other{j}.initbelief = Value_data(j).initbelief;  
+            Value_data(i).other{j}.initbelief = Value_data(j).initbelief;
         end
     end
-    
-    
+
+    % 记录
+    history_data = record_history_data(history_data, counter, Value_data, Value_Params, ...
+        final_SC, final_coalitionstru, ...
+        coalition_utility, total_global_cost, ...
+        total_completed_value, task_completion_degrees, ...
+        summatrix);
+
+
 end
 
 % 假设 Value_data 是 1xN 的结构体数组
@@ -207,8 +217,6 @@ if ~is_valid
     disp('数据有严重问题，停止后续分析！');
     % 可以打印 logs 查看详情
 end
-
-
 
 
 

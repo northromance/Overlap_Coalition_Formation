@@ -23,6 +23,7 @@ function [Value_data, history_data] = Huo2025_main(agents, tasks, AddPara, Value
 
 % 生成全连通的通信图（默认所有智能体可以相互通信）
 Graph = ones(Value_Params.N, Value_Params.N);
+history_data = struct();
 
 % 获取任务类型数量 (用于信念向量的维度)
 task_types = Value_Params.task_type;
@@ -140,8 +141,15 @@ for counter = 1:Value_Params.num_rounds
     % --- 观测与信念更新 (Observation & Belief Update) ---
     % 联盟稳定后，智能体执行任务并获得观测值
 
-    Final_SC = Value_data(1).SC;
     % 收集观测值 (模拟传感器数据)
+
+
+
+
+     Final_SC = Value_data(1).SC;
+    final_coalitionstru =  Value_data(1).coalitionstru;
+
+
     [Value_data, summatrix] = OCFUtils.collect_observations(Value_data, agents, tasks, Value_Params, summatrix,Final_SC);
 
     % 利用 Dirichlet 分布更新后验信念
@@ -155,12 +163,14 @@ for counter = 1:Value_Params.num_rounds
     % total_completed_value = 0;
 
     % 遍历每个智能体 根据实际的需求 计算联盟效用 用来存储 跟上面用信念决策不同
-    [coalition_utility, Rcost, total_completed_value,task_completion_degrees] = evaluate_coalition_metrics(Final_SC, agents, tasks, Value_Params, eps_val);
 
+    [coalition_utility, Rcost, total_completed_value,task_completion_degrees] = evaluate_coalition_metrics(Final_SC, agents, tasks, Value_Params, eps_val);
     % 记录本轮统计数据
-    total_value_history(counter) = total_completed_value;  % 真实价值
-    cost_sum(counter) = sum(Rcost(:));                     % 总成本
-    net_profit(counter) = sum(coalition_utility);          % 总净收益
+    history_data = record_history_data(history_data, counter, Value_data, Value_Params, ...
+        Final_SC, final_coalitionstru, ...
+        coalition_utility, Rcost, ...
+        total_completed_value, task_completion_degrees, ...
+        summatrix);
 
     counter = counter + 1; % 似乎多余，for 循环会自动增加
 
@@ -176,18 +186,5 @@ if ~is_consistent
 end
 
 
-% 4. 构建 History Data 结构体
-history_data = struct();
-history_data.algorithm = 'Huo2025';
-history_data.final_utility = net_profit(end);
-history_data.net_profit_evolution = net_profit;
-history_data.cost_evolution = cost_sum;
-history_data.num_rounds = Value_Params.num_rounds;
-history_data.initial_coalition = initial_coalition;
-history_data.total_value_history = total_value_history;
-history_data.total_value_possible = total_value_possible;
-
-% 返回结果
-Value_data = final_Value_data;
 
 end
