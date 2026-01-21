@@ -140,18 +140,9 @@ for counter = 1:Value_Params.num_rounds
     % --- 观测与信念更新 (Observation & Belief Update) ---
     % 联盟稳定后，智能体执行任务并获得观测值
 
-    % 构建当前任务列表
-    curTaskList = cell(1, Value_Params.N);
-    for i = 1:Value_Params.N
-        if curnumberrow(i) ~= Value_Params.M+1
-            curTaskList{i} = curnumberrow(i);
-        else
-            curTaskList{i} = []; % Void 任务无观测
-        end
-    end
-
+    Final_SC = Value_data(1).SC;
     % 收集观测值 (模拟传感器数据)
-    [Value_data, summatrix] = OCFUtils.collect_observations(Value_data, agents, tasks, Value_Params, curTaskList, summatrix);
+    [Value_data, summatrix] = OCFUtils.collect_observations(Value_data, agents, tasks, Value_Params, summatrix,Final_SC);
 
     % 利用 Dirichlet 分布更新后验信念
     Value_data = OCFUtils.update_belief_from_observations(Value_data, Value_Params);
@@ -159,82 +150,12 @@ for counter = 1:Value_Params.num_rounds
 
     %% ==================== 3. 绩效评估 (Evaluation) ====================
     % 根据本轮的联盟形成结果的成本、收益和净效用
-
-    Rcost = zeros(Value_Params.M, Value_Params.N);
-    coalition_utility = zeros(1, Value_Params.M);
-
-    % 资源维度 K（优先参数，其次 agent 定义）
-    K = Value_Params.K;
+    % K = Value_Params.K;
     eps_val = 1e-9;
-    total_completed_value = 0;
+    % total_completed_value = 0;
 
-    % 遍历每个任务，按与 Value_utility 相同的逻辑计算收益/成本
-    for j = 1:Value_Params.M
-        % 参与者：优先用 SC 解析，若无则回落到联盟矩阵
-        participants = OCFUtils.get_participants(Value_data(1).SC,j, eps_val);
-
-        if isempty(participants)
-            coalition_utility(j) = 0;
-            continue;
-        end
-
-        % 真实任务需求（不足补零，超出截断）
-        demand = tasks(j).resource_demand(:)';
-
-        SC_task = Value_data(1).SC{j}; % 当前任务的资源分配联盟结构
-
-        % 完成度与期望价值
-        total_resources = sum(SC_task(participants, :), 1);
-        D_C = OCFUtils.calc_task_completion_degree(total_resources, demand, K);
-        if D_C == 0
-            coalition_utility(j) = 0;
-            continue;
-        end
-
-        V_C = tasks(j).value;
-
-        % 按 Value_utility 逻辑计算每个成员的贡献/成本并求和
-        coalition_cost = 0;
-        coalition_revenue = 0;
-        for idx = 1:numel(participants)
-            pid = participants(idx); % 成员序号
-
-            % 贡献比（r_n）该成员在联盟j下的贡献比率
-            r_n_C = OCFUtils.calc_resource_contribution_ratio(SC_task, pid, participants);
-            agent_revenue = r_n_C * V_C * D_C;
-
-
-            % 成本：全局同步时间表
-            alpha_fly = agents(pid).fuel;
-            alpha_wait = agents(pid).wait_fuel;
-            beta = agents(pid).beta;
-
-
-            % 当前联盟结构
-            SC_global = Value_data(1).SC;
-            % 参与者的资源分配矩阵
-            R_agent_safe = Value_data(pid).resources_matrix;
-
-
-            % B. 找出所有非零投入的任务 ID
-            my_raw_tasks = find(any(R_agent_safe > eps_val, 2))';
-      
-            % D. 使用工具函数按优先级排序
-            my_tasks = OCFUtils.sort_tasks_by_priority(my_raw_tasks, tasks);
-            % ----------------------------------------------------
-            [t_fly_total, t_wait_total, t_exec_total] = calc_with_global_sync( ...
-                pid, my_tasks, agents, tasks, Value_Params, SC_global, R_agent_safe, eps_val);
-
-            agent_cost = t_fly_total * alpha_fly + t_wait_total * alpha_wait + t_exec_total * beta;
-            Rcost(j, pid) = agent_cost;
-
-            coalition_revenue = coalition_revenue + agent_revenue;
-            coalition_cost = coalition_cost + agent_cost;
-        end
-
-        coalition_utility(j) = max(coalition_revenue - coalition_cost, 0);
-        total_completed_value = total_completed_value + tasks(j).value * D_C;
-    end
+    % 遍历每个智能体 根据实际的需求 计算联盟效用 用来存储 跟上面用信念决策不同
+    [coalition_utility, Rcost, total_completed_value,task_completion_degrees] = evaluate_coalition_metrics(Final_SC, agents, tasks, Value_Params, eps_val);
 
     % 记录本轮统计数据
     total_value_history(counter) = total_completed_value;  % 真实价值
@@ -253,33 +174,7 @@ if ~is_consistent
     disp('数据有严重问题，停止后续分析！');
     % 可以打印 logs 查看详情
 end
-% 1. 提取最终的 Value_data
-final_Value_data = struct();
-final_Value_data.coalitionstru = Value_data(1).coalitionstru;  % 最终联盟结构
-final_Value_data.totalvalue = net_profit(end);                 % 最终净收益
 
-% 2. 构建最终资源分配矩阵 (用于绘图或分析)
-final_Value_data.agentresources = zeros(Value_Params.N, Value_Params.M, Value_Params.K);
-for j = 1:Value_Params.M
-    member_ids = find(Value_data(1).coalitionstru(j, :) ~= 0);
-    for i = 1:length(member_ids)
-        member_id = member_ids(i);
-        if isfield(agents(member_id), 'resources')
-            member_res = agents(member_id).resources(:)';
-            if length(member_res) >= Value_Params.K
-                final_Value_data.agentresources(member_id, j, :) = member_res(1:Value_Params.K);
-            elseif ~isempty(member_res)
-                final_Value_data.agentresources(member_id, j, 1:length(member_res)) = member_res;
-            end
-        end
-    end
-end
-
-% 3. 填充历史记录与统计指标f
-final_Value_data.cost_sum = cost_sum(end);
-final_Value_data.net_profit_history = net_profit;
-final_Value_data.cost_history = cost_sum;
-final_Value_data.Rcost = Rcost;
 
 % 4. 构建 History Data 结构体
 history_data = struct();

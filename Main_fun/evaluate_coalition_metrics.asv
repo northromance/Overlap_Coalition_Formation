@@ -1,0 +1,101 @@
+function [coalition_utility, Rcost, total_completed_value] = evaluate_coalition_metrics(SC_global, agents, tasks, Value_Params, eps_val)
+% EVALUATE_COALITION_METRICS 计算当前联盟结构的效用、成本及总完成价值
+%
+% 输入:
+%   Value_data   - 包含 SC (联盟结构) 和 resources_matrix 的数据结构
+%   agents       - 智能体结构体数组 (含 fuel, wait_fuel, beta 等参数)
+%   tasks        - 任务结构体数组 (含 value, resource_demand, priority 等)
+%   Value_Params - 全局参数 (含 M, N, K 等)
+%   eps_val      - (可选) 数值计算容差，默认 1e-6
+%
+% 输出:
+%   coalition_utility     - (Mx1 向量) 每个任务(联盟)的净效用 (Revenue - Cost)
+%   Rcost                 - (MxN 矩阵) Rcost(j,i) 表示智能体 i 在任务 j 计算周期内的总成本
+%   total_completed_value - (标量) 所有任务的加权完成价值总和 (Value * D_C)
+
+    if nargin < 5 || isempty(eps_val)
+        eps_val = 1e-6;
+    end
+
+    M = Value_Params.M;
+    N = Value_Params.N;
+    K = Value_Params.K;
+
+    % 初始化输出变量
+    coalition_utility = zeros(M, 1);
+    Rcost = zeros(M, N);
+    total_completed_value = 0;
+
+    %% 遍历每个任务计算指标
+    for j = 1:M
+        % 1. 获取参与者
+        % 优先用 SC 解析，若无则回落到联盟矩阵逻辑 (由 OCFUtils.get_participants 处理)
+        participants = OCFUtils.get_participants(SC_global, j, eps_val);
+        
+        if isempty(participants)
+            coalition_utility(j) = 0;
+            continue;
+        end
+
+        % 2. 任务基础数据准备
+        % 真实任务需求（转为行向量）
+        demand = tasks(j).resource_demand(:)';
+        SC_task = SC_global{j}; % 当前任务的资源分配矩阵
+        
+        % 3. 计算完成度 D_C
+        total_resources = sum(SC_task(participants, :), 1);
+        D_C = OCFUtils.calc_task_completion_degree(total_resources, demand, K);
+        
+        if D_C == 0
+            coalition_utility(j) = 0;
+            continue;
+        end
+
+        V_C = tasks(j).value;
+        
+        % 4. 计算联盟成员的贡献与成本
+        coalition_cost = 0;
+        coalition_revenue = 0;
+        
+        for idx = 1:numel(participants)
+            pid = participants(idx); % 成员 ID
+            
+            % --- A. 收益 (Revenue) 计算 ---
+            % 计算该成员在联盟 j 下的资源贡献比率
+            r_n_C = OCFUtils.calc_resource_contribution_ratio(SC_task, pid, participants);
+            agent_revenue = r_n_C * V_C * D_C;
+            
+            % --- B. 成本 (Cost) 计算 ---
+            % 提取系数
+            alpha_fly = agents(pid).fuel;
+            alpha_wait = agents(pid).wait_fuel;
+            beta = agents(pid).beta;
+            
+            % 获取该智能体的个体资源矩阵
+            R_agent = get_agent_resource_matrix(SC_global, idx, Value_Params)
+            % 找出所有非零投入的任务 ID (确定任务序列)
+            my_raw_tasks = find(any(R_agent_safe > eps_val, 2))';
+            
+            % 按优先级排序任务序列
+            my_tasks = OCFUtils.sort_tasks_by_priority(my_raw_tasks, tasks);
+            
+            % 调用外部函数计算时间成本 (需确保 calc_with_global_sync 在路径中)
+            [t_fly_total, t_wait_total, t_exec_total] = calc_with_global_sync( ...
+                pid, my_tasks, agents, tasks, Value_Params, SC_global, R_agent_safe, eps_val);
+            
+            agent_cost = t_fly_total * alpha_fly + t_wait_total * alpha_wait + t_exec_total * beta;
+            
+            % --- C. 累加与记录 ---
+            Rcost(j, pid) = agent_cost; % 记录该智能体在此计算上下文下的成本
+            coalition_revenue = coalition_revenue + agent_revenue;
+            coalition_cost = coalition_cost + agent_cost;
+        end
+        
+        % 5. 汇总当前任务结果
+        % 净效用不能为负
+        coalition_utility(j) = max(coalition_revenue - coalition_cost, 0);
+        
+        % 累加总完成价值
+        total_completed_value = total_completed_value + tasks(j).value * D_C;
+    end
+end

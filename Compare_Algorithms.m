@@ -1,20 +1,5 @@
 clear; clc; close all;
 
-%% ========================================================================
-%  Multi-algorithm comparison framework for coalition formation
-%  多算法对比主脚本：在同一场景下运行多种联盟形成算法并比较结果
-%  - Initialize a common scenario (same SEED) for all algorithms
-%    为所有算法初始化相同的随机场景（共享 SEED）
-%  - Run multiple algorithms under the same scenario
-%    在相同场景下运行多种算法
-%  - Compare metrics: total utility, runtime, coalition counts, etc.
-%    比较总效用、运行时间、联盟数量等指标
-%  - Generate comparison tables/plots and save results
-%    生成对比表格/图表并保存结果
-%  - Adjust algorithms_to_run_ids to include/exclude algorithms
-%    通过 algorithms_to_run_ids 选择要运行的算法
-%% ========================================================================
-
 fprintf('\n');
 fprintf('========================================================================\n');
 fprintf('                    Multi-Algorithm Comparison\n');
@@ -35,15 +20,14 @@ addpath("comalg/Com_PSO/");           % PSO algorithm 粒子群算法
 %  场景参数配置（需要调试时可在此调整）
 %% ========================================================================
 SEED = 2437;                    % random seed (shared across algorithms)
-N = 6;                          % number of agents
+N = 3;                          % number of agents
 M = 10;                         % number of tasks
 K = 6;                          % number of resource types
 task_values = [800, 1000, 1500];  % three task types
 num_task_types = length(task_values);
+algorithms_to_run_ids = [3];  % 选择要运行的算法 1=SA_Value, 2=Greedy, 3=Huo2025, 4=Qi2023, 5=PSO
 
-% Algorithm selection
-algorithms_to_run_ids = [1,3];  % 选择要运行的算法 1=SA_Value, 2=Greedy, 3=Huo2025, 4=Qi2023, 5=PSO
-
+%%
 % Display/save options
 save_results = true;  % 是否保存结果到 MAT 文件
 show_plots = true;    % 是否绘制对比图
@@ -58,7 +42,7 @@ WORLD_ZMIN = 0; WORLD_ZMAX = 0;
 agent_velocity = 2; % vel速度
 agent_detprob_min = 0.9;
 agent_detprob_max = 1.0;
-agent_Emax_min = 300;
+agent_Emax_min = 500;
 agent_Emax_range = 50;
 agent_fuel = 1;               % 飞行油耗
 agent_wait_fuel = 0.5;        % 等待阶段的油耗率（独立于飞行油耗）

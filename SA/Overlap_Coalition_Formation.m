@@ -1,4 +1,4 @@
-﻿function [Value_data] = Overlap_Coalition_Formation(agents, tasks, Value_data, Value_Params)
+function [Value_data] = Overlap_Coalition_Formation(agents, tasks, Value_data, Value_Params)
 % Overlap_Coalition_Formation - single-agent coalition update (overlapping coalitions allowed)
 %
 % Inputs:
@@ -16,7 +16,7 @@ backup.coalition = Value_data.coalitionstru;
 backup.iteration = Value_data.iteration;
 backup.unif = Value_data.unif;
 backup.SC = Value_data.SC;
-backup.resources_matrix = Value_data.resources_matrix;
+backup.resources_matrix = OCFUtils.get_agent_resource_matrix(backup.SC , Value_data.agentID, Value_Params);
 
 %% Compute resource gaps on the fly for this agent
 [~, resource_gap] = calc_gaps(Value_data, Value_Params);

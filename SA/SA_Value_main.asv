@@ -100,10 +100,51 @@ for i=1:Value_Params.N
     Value_data(i).resources = agents(i).resources;  
 end
 
+%% 初始化历史记录结构体 (预分配内存以提高速度)
+for round = 1:Value_Params.num_rounds 
+    for i = 1:Value_Params.N  
+        % 记录信念演变
+        history_data.rounds(round).agents(i).belief = zeros(Value_Params.M, Value_Params.task_type);  
+        history_data.rounds(round).agents(i).observations = zeros(Value_Params.M, Value_Params.task_type);  
+        % 记录基于分位数法计算出的“估计需求”
+        history_data.rounds(round).agents(i).quantile_demand = zeros(Value_Params.M, Value_Params.K);  
+        % 记录时间表
+        history_data.rounds(round).agents(i).task_schedule = struct();  
+        % ... (初始化 task_schedule 内部字段，略)
+    end
+    % 记录每一轮最终的联盟结构
+    history_data.rounds(round).coalition_structure = [];  
+    history_data.rounds(round).SC = [];  
+    history_data.rounds(round).task_utilities = zeros(Value_Params.M, 1);  
+    % 记录经济指标
+    history_data.rounds(round).Rcost = 0;      % 资源成本
+    history_data.rounds(round).cost_sum = 0;   % 总成本 (包含移动等)
+    history_data.rounds(round).net_profit = 0; % 净收益
+end
+
 
 %% ==================== 2. 主循环：多轮博弈迭代 ====================
 % counter 代表“第几轮”。每轮结束后，智能体会更新信念，下一轮基于新信念重新分配。
 for counter=1:Value_Params.num_rounds
+    
+    %% 2.1 记录当前轮次的初始状态
+    for i=1:Value_Params.N
+        % 记录当前的信念
+        history_data.rounds(counter).agents(i).belief = Value_data(i).initbelief(1:Value_Params.M, :);
+        history_data.rounds(counter).agents(i).observations = Value_data(i).observe(1:Value_Params.M, :);
+        
+        % 计算并记录当前的“估计需求” (Quantile Demand)
+        % 这是智能体决策的依据：它不使用真实需求，而是根据信念和置信度估算需求
+        if isfield(Value_Params, 'resource_confidence') && Value_Params.resource_confidence > 0
+            for j = 1:Value_Params.M
+                belief_j = Value_data(i).initbelief(j, :);
+                quantile_demand_j = OCFUtils.calculate_demand_quantile(belief_j, ...
+                    Value_Params.task_type_demands, ...
+                    Value_Params.resource_confidence);
+                history_data.rounds(counter).agents(i).quantile_demand(j, :) = quantile_demand_j;
+            end
+        end
+    end
     
     %% 2.2 SA (模拟退火) 迭代初始化
     T=1;                                  % 迭代步数
@@ -171,23 +212,29 @@ for counter=1:Value_Params.num_rounds
         % --- 3.6 更新任务调度与能耗 ---
         % 根据确定下来的 SC，计算具体的路径、等待时间、同步时间等
         % 这是计算 Net Profit (净收益) 的基础
-        % 这里更新的是智能体路径的价值
         Value_data = update_task_schedule(Value_data, agents, tasks, Value_Params);
     end
-
-    %% 观测
-     [Value_data, summatrix] = OCFUtils.collect_observations(Value_data, agents, tasks, Value_Params, summatrix,final_SC);
-    Value_data = OCFUtils.update_belief_from_observations(Value_data, Value_Params);
+    
     %% ==================== 4. 结果记录与评估 ====================
-        % 输出:
-%   coalition_utility     - (Mx1 向量) 每个任务(联盟)的净效用 (总收益 - 总成本)
-%                           注意：此处的成本计算基于智能体的全路径成本。
-%   Rcost                 - (MxN 矩阵) Rcost(j,i) 表示智能体 i 在参与任务 j 时产生的路径总成本
-%   total_completed_value - (标量) 所有任务的加权完成价值总和 sum(Value * D_C)
-%   task_completion_degrees - (Mx1 向量) 每个任务的完成度 D_C (0.0 ~ 1.0)
+  
 
     % 通过当前联盟计算所有联盟产生的总价值
     [coalition_utility, Rcost, total_completed_value, task_completion_degrees] = evaluate_coalition_metrics(final_SC, agents, tasks, Value_Params, eps_val);
+    history_data.rounds(counter).task_utilities = coalition_utility;
+    
+    
+    %% 4.5 提取各智能体的任务列表 (用于后续观测)
+    curTaskList = cell(1, Value_Params.N);
+    for i = 1:Value_Params.N
+        curTaskList{i} = find(final_coalitionstru(1:Value_Params.M, i) ~= 0);
+    end
+    
+    %% 4.6 观测与信念更新 (Bayesian Update)
+    % 1. 收集观测：智能体在参与任务时，会观测到任务的某种特征，从而推断类型
+    [Value_data, summatrix] = OCFUtils.collect_observations(Value_data, agents, tasks, Value_Params, curTaskList, summatrix);
+    % 2. 更新信念：基于狄利克雷分布更新后验概率
+    Value_data = OCFUtils.update_belief_from_observations(Value_data, Value_Params);
+    
     
     %% 4.8 信念广播 (Consensus)
     % 简单的全连接通信：每个智能体将自己的最新信念同步给其他智能体

@@ -1,11 +1,11 @@
-﻿function Value_data = update_task_schedule(Value_data, agents, tasks, Value_Params)
+function Value_data = update_task_schedule(Value_data, agents, tasks, Value_Params)
 % UPDATE_TASK_SCHEDULE 更新智能体的任务执行序列和时间信息
     tol = 1e-9;
     N = Value_Params.N;
     M = Value_Params.M;
     for i = 1:N
         SC = Value_data(i).SC;
-        R_agent = Value_data(i).resources_matrix;
+        R_agent = OCFUtils.get_agent_resource_matrix(SC, i, Value_Params);
         assigned_tasks = find(cellfun(@(x) any(x(i, :) > tol), SC))';
         if isempty(assigned_tasks)
             Value_data(i).task_schedule = empty_schedule();
