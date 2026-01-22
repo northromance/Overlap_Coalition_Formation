@@ -20,7 +20,7 @@ addpath("comalg/Com_PSO/");           % PSO algorithm 粒子群算法
 %  场景参数配置（需要调试时可在此调整）
 %% ========================================================================
 SEED = 2437;                    % random seed (shared across algorithms)
-N = 3;                          % number of agents
+N = 5;                          % number of agents
 M = 10;                         % number of tasks
 K = 6;                          % number of resource types
 task_values = [800, 1000, 1500];  % three task types
@@ -89,7 +89,9 @@ fprintf('  - resources: %d\n', K);
 fprintf('  - rounds: %d\n\n', num_rounds);
 
 tic;
-rand('seed', SEED);
+pro =rand(1, 10);
+rng('default'); % 再次设置相同的种子
+rng(SEED); % 再次设置相同的种子
 
 % WORLD struct
 WORLD.XMIN = WORLD_XMIN; WORLD.XMAX = WORLD_XMAX;

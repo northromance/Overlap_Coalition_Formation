@@ -488,19 +488,19 @@ classdef OCFUtils
 
         %% ==================== 9. 随机数与状态控制 ====================
 
-        function seed = set_seed(seed)
-            % set_seed 统一设置随机数种子，确保实验结果可复现。
-            % 输入：
-            %   seed: (Int, 可选) 种子值。若为空，则使用当前时间生成动态种子。
-
-            if nargin < 1 || isempty(seed)
-                seed = floor(sum(1000 * clock)); % 基于系统时钟生成
-            end
-
-            rand('seed', seed);   % 设置旧版均匀分布种子
-            randn('seed', seed);  % 设置旧版正态分布种子
-            rng(seed, 'twister'); % 使用现代 Mersenne Twister 生成器设置 rng
-        end
+        % function seed = set_seed(seed)
+        %     % set_seed 统一设置随机数种子，确保实验结果可复现。
+        %     % 输入：
+        %     %   seed: (Int, 可选) 种子值。若为空，则使用当前时间生成动态种子。
+        % 
+        %     if nargin < 1 || isempty(seed)
+        %         seed = floor(sum(1000 * clock)); % 基于系统时钟生成
+        %     end
+        % 
+        %     rand('seed', seed);   % 设置旧版均匀分布种子
+        %     randn('seed', seed);  % 设置旧版正态分布种子
+        %     rng(seed, 'twister'); % 使用现代 Mersenne Twister 生成器设置 rng
+        % end
 
         function [SC_P, SC_Q, R_agent_P, R_agent_Q] = calc_move_changes(Value_data, agents, Value_Params, cur_task_idx, target_task_idx, agent_col_idx)
             % calc_move_changes 计算智能体从一个任务迁移到另一个任务时的资源状态变化。

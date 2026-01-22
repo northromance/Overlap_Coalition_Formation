@@ -20,8 +20,8 @@ addpath("comalg/Com_PSO/");           % PSO algorithm 粒子群算法
 %  场景参数配置（需要调试时可在此调整）
 %% ========================================================================
 SEED = 2437;                    % random seed (shared across algorithms)
-N = 3;                          % number of agents
-M = 10;                         % number of tasks
+N = 10;                          % number of agents
+M = 20;                         % number of tasks
 K = 6;                          % number of resource types
 task_values = [800, 1000, 1500];  % three task types
 num_task_types = length(task_values);
@@ -89,7 +89,20 @@ fprintf('  - resources: %d\n', K);
 fprintf('  - rounds: %d\n\n', num_rounds);
 
 tic;
-rand('seed', SEED);
+
+rng('default'); % 再次设置相同的种子
+rng(2); % 再次设置相同的种子
+
+% 2. 调用 OCFUtils 的随机函数
+target1 = OCFUtils.sample_task_from_probs(rand()*ones(10), 10);
+fprintf('第一次结果: %d\n', target1);
+
+% 3. 重置种子
+rng('default'); % 再次设置相同的种子
+rng(12345); % 1. 设置种子
+% 4. 再次调用
+target2 = OCFUtils.sample_task_from_probs(rand()*ones(10), 10);
+fprintf('第二次结果: %d\n', target2);
 
 % WORLD struct
 WORLD.XMIN = WORLD_XMIN; WORLD.XMAX = WORLD_XMAX;

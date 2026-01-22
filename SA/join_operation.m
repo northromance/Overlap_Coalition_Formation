@@ -82,8 +82,8 @@ function [Value_data, incremental_join] = join_operation(Value_data, agents, tas
         else
             T = Value_Params.Temperature;  % 当前温度
             P_join = exp(delta_U / T);     % 接受概率
-            
-            if rand() < P_join
+            number  =rand() ;
+            if number < P_join
                 accept_join = true;
             end
         end
