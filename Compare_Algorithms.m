@@ -7,30 +7,30 @@ fprintf('=======================================================================
 
 %% Add paths
 % 添加项目所需的子目录路径
-addpath("Main_fun\");             % core scenario/init functions 核心初始化/场景函数
-addpath("SA\");                    % SA algorithm 模拟退火算法
+addpath("Main_fun\");             % core scenario/init functions 核心初始�?场景函数
+addpath("SA\");                    % SA algorithm 模拟退火算�?
 addpath("plots\");                 % visualization helpers 绘图辅助
 addpath("comalg/Com_Baseline/");          % Greedy baseline 贪心基线
 addpath("comalg/Com_Huo2025/");           % Huo2025 algorithm
 addpath("comalg/Com_Qi2023/");            % Qi2023 algorithm
-addpath("comalg/Com_PSO/");           % PSO algorithm 粒子群算法
+addpath("comalg/Com_PSO/");           % PSO algorithm 粒子群算�?
 
 %% ========================================================================
 %  Scenario configuration (adjust for debugging as needed)
 %  场景参数配置（需要调试时可在此调整）
 %% ========================================================================
-SEED = 2437;                    % random seed (shared across algorithms)
-N = 6;                          % number of agents
+SEED = 2456;                    % random seed (shared across algorithms)
+N = 5;                          % number of agents
 M = 10;                         % number of tasks
 K = 6;                          % number of resource types
 task_values = [800, 1000, 1500];  % three task types
 num_task_types = length(task_values);
-algorithms_to_run_ids = [3];  % 选择要运行的算法 1=SA_Value, 2=Greedy, 3=Huo2025, 4=Qi2023, 5=PSO
+algorithms_to_run_ids = [1,3];  % 选择要运行的算法 1=SA_Value, 2=Greedy, 3=Huo2025, 4=Qi2023, 5=PSO
 
 %%
 % Display/save options
-save_results = true;  % 是否保存结果到 MAT 文件
-show_plots = true;    % 是否绘制对比图
+save_results = true;  % 是否保存结果�?MAT 文件
+show_plots = true;    % 是否绘制对比�?
 verbose = true;       % 是否打印额外日志
 
 % World bounds and task values
@@ -42,12 +42,12 @@ WORLD_ZMIN = 0; WORLD_ZMAX = 0;
 agent_velocity = 2; % vel速度
 agent_detprob_min = 0.9;
 agent_detprob_max = 1.0;
-agent_Emax_min = 500;
+agent_Emax_min = 1000;
 agent_Emax_range = 50;
-agent_fuel = 1;               % 飞行油耗
+agent_fuel = 1;               % 飞行油�?
 agent_wait_fuel = 0.5;        % 等待阶段的油耗率（独立于飞行油耗）
-agent_beta = 1;              % 执行任务油耗
-min_resource_value = 2;      % 智能体资源值最大最小设置
+agent_beta = 1;              % 执行任务油�?
+min_resource_value = 2;      % 智能体资源值最大最小设�?
 max_resource_value = 4;
 
 % Task resource demand ranges (per task type)
@@ -62,7 +62,7 @@ resource_exec_time = [50 65 50 60 35 45];
 SA_Temperature = 100.0;
 SA_alpha = 0.95;
 SA_Tmin = 0.01;
-SA_max_stable_iterations = 5;
+max_stable_iterations = 5;
 
 % Observation/game params
 obs_times = 50;      % 观测次数
@@ -70,8 +70,8 @@ num_rounds = 50;     % 博弈轮数
 resource_confidence = 0.7;  % 分位数置信度
 
 % Qi2023 utility params
-Qi_beta_m = 1.0;   % 任务完成率权重
-Qi_C_req = 0.5;    % 资源需求系数
+Qi_beta_m = 1.0;   % 任务完成率权�?
+Qi_C_req = 0.5;    % 资源需求系�?
 Qi_omega = 0.1;    % 惩罚/调整参数
 Qi_omega_1 = 1.0;  % 权重1
 Qi_omega_2 = 0.01; % 权重2
@@ -79,7 +79,7 @@ Qi_omega_3 = 0.001;% 权重3
 
 %% ========================================================================
 %  Scenario initialization
-%  场景初始化：生成任务、智能体与共享参数
+%  场景初始化：生成任务、智能体与共享参�?
 %% ========================================================================
 fprintf('Initializing scenario...\n');
 fprintf('  - seed: %d\n', SEED);
@@ -89,9 +89,9 @@ fprintf('  - resources: %d\n', K);
 fprintf('  - rounds: %d\n\n', num_rounds);
 
 tic;
-% pro =rand(1, 10);  % 已删除：在种子设置前调用rand()会导致不可复现
-rng('default'); % 再次设置相同的种子
-rng(SEED); % 再次设置相同的种子
+% pro =rand(1, 10);  % 已删除：在种子设置前调用rand()会导致不可复�?
+rng('default'); % 再次设置相同的种�?
+rng(SEED); % 再次设置相同的种�?
 
 % WORLD struct
 WORLD.XMIN = WORLD_XMIN; WORLD.XMAX = WORLD_XMAX;
@@ -100,14 +100,14 @@ WORLD.ZMIN = WORLD_ZMIN; WORLD.ZMAX = WORLD_ZMAX;
 WORLD.value = task_values;
 
 % Task type demands
-% 三种类型的需求
+% 三种类型的需�?
 task_type_demands = zeros(num_task_types, K);
-task_type_demands(1, :) = randi([0, task_type1_demand_max], 1, K); % 低需求
-task_type_demands(2, :) = randi([0, task_type2_demand_max], 1, K); % 中等需求
-task_type_demands(3, :) = randi([0, task_type3_demand_max], 1, K); % 高需求
+task_type_demands(1, :) = randi([0, task_type1_demand_max], 1, K); % 低需�?
+task_type_demands(2, :) = randi([0, task_type2_demand_max], 1, K); % 中等需�?
+task_type_demands(3, :) = randi([0, task_type3_demand_max], 1, K); % 高需�?
 
 % Task durations by resource
-% 根据需求 每个需求所需要的时间
+% 根据需�?每个需求所需要的时间
 task_type_duration_by_resource = zeros(num_task_types, K);
 for t = 1:num_task_types
     needed = task_type_demands(t, :) > 0;
@@ -125,7 +125,7 @@ for j = 1:M
     tasks(j).value = WORLD.value(tasks(j).type);
     tasks(j).resource_demand = task_type_demands(tasks(j).type, :);
     tasks(j).duration_by_resource = task_type_duration_by_resource(tasks(j).type, :);
-    tasks(j).duration = max(tasks(j).duration_by_resource); % 并行资源模型：总时长取最大值
+    tasks(j).duration = max(tasks(j).duration_by_resource); % 并行资源模型：总时长取最大�?
     tasks(j).WORLD = WORLD;
 end
 
@@ -145,8 +145,8 @@ end
 
 % Algorithm shared params
 Value_Params = init_value_params(N, M, K, num_task_types, task_type_demands, ...
-    SA_Temperature, SA_alpha, SA_Tmin, SA_max_stable_iterations, ...
-    obs_times, num_rounds, resource_confidence); % 通用参数结构（不同算法可复用）
+    SA_Temperature, SA_alpha, SA_Tmin, max_stable_iterations, ...
+    obs_times, num_rounds, resource_confidence); % 通用参数结构（不同算法可复用�?
 
 % Random seed for reproducibility
 Value_Params.seed = SEED;  % 添加随机种子字段，确保算法可复现
@@ -174,12 +174,12 @@ fprintf('Scenario initialized (%.2f s)\n\n', init_time);
 
 %% Define algorithms
 all_algorithms = {
-    struct('id', 1, 'name', 'SA_Value',        'func', @SA_Value_main,       'folder', 'SA',           'color', [0.2, 0.6, 0.8]); % 模拟退火
+    struct('id', 1, 'name', 'SA_Value',        'func', @SA_Value_main,       'folder', 'SA',           'color', [0.2, 0.6, 0.8]); % 模拟退�?
     struct('id', 2, 'name', 'Greedy baseline', 'func', @Greedy_Baseline_main,'folder', 'comalg/Com_Baseline', 'color', [0.5, 0.5, 0.5]); % 贪心基线
     struct('id', 3, 'name', 'Huo2025',         'func', @Huo2025_main,        'folder', 'comalg/Com_Huo2025',  'color', [0.8, 0.2, 0.2]); % Huo2025
     struct('id', 4, 'name', 'Qi2023',          'func', @Qi2023_main,         'folder', 'comalg/Com_Qi2023',   'color', [0.2, 0.8, 0.2]); % Qi2023
-    struct('id', 5, 'name', 'PSO',     'func', @PSO_main,        'folder', 'comalg/Com_PSO',  'color', [0.8, 0.8, 0.2]); % 粒子群
-    }; % 可根据需要增删算法
+    struct('id', 5, 'name', 'PSO',     'func', @PSO_main,        'folder', 'comalg/Com_PSO',  'color', [0.8, 0.8, 0.2]); % 粒子�?
+    }; % 可根据需要增删算�?
 
 fprintf('Available algorithms:\n');
 for i = 1:length(all_algorithms)
@@ -196,7 +196,7 @@ fprintf('\nRunning: [%s]\n\n', num2str(algorithms_to_run_ids));
 AddPara.control = 1;
 
 %% Run selected algorithms
-% 逐个运行已选算法，记录结果与运行时间
+% 逐个运行已选算法，记录结果与运行时�?
 fprintf('========================================================================\n');
 fprintf('                    Running comparisons\n');
 fprintf('========================================================================\n\n');
@@ -217,7 +217,7 @@ for i = 1:length(all_algorithms)
     fprintf('Running: [%d] %s\n', alg.id, alg.name);
     fprintf('----------------------------------------\n');
     try
-        rng(SEED);  % 修复：使用正确的随机数种子设置方法
+        rng(SEED);  % 修复：使用正确的随机数种子设置方�?
         tic;
         [Value_data, history_data] = alg.func(agents, tasks, AddPara, Value_Params);
         comp_time = toc;
@@ -246,17 +246,17 @@ fprintf('                    All runs finished\n');
 fprintf('========================================================================\n\n');
 
 %% Compare results
-% 对比各算法的统计指标，输出表格/绘图/存档
+% 对比各算法的统计指标，输出表�?绘图/存档
 if enabled_count > 0
     fprintf('Analyzing results...\n');
-    % [修改] 必须传入完整参数，因为 compare_results 内部需要用 Value_Params.M
+    % [修改] 必须传入完整参数，因�?compare_results 内部需要用 Value_Params.M
     comparison_stats = compare_results(results,Value_Params); 
 
     fprintf('\n========================================================================\n');
     fprintf('                    Performance summary\n');
     fprintf('========================================================================\n\n');
 
-    % [修改] 表头调整：展示 Utility(效用), Cost(成本), #Coal(执行任务数), Time(时间)
+    % [修改] 表头调整：展�?Utility(效用), Cost(成本), #Coal(执行任务�?, Time(时间)
     fprintf('%-20s | %10s | %10s | %10s | %10s\n', ...
         'Algorithm', 'Utility', 'Cost', '#Coal', 'Time(s)');
     fprintf('%s\n', repmat('-', 1, 80));
@@ -268,8 +268,8 @@ if enabled_count > 0
             fprintf('%-20s | %10.2f | %10.2f | %10d | %10.2f\n', ...
                 stats.name, ...
                 stats.total_utility, ...
-                stats.total_cost, ...      % 新增：显示总成本
-                stats.num_coalitions, ...  % 显示：形成了几个联盟(被执行的任务数)
+                stats.total_cost, ...      % 新增：显示总成�?
+                stats.num_coalitions, ...  % 显示：形成了几个联盟(被执行的任务�?
                 stats.computation_time);
         else
             fprintf('%-20s | %10s | %10s | %10s | %10.2f\n', ...
@@ -279,20 +279,20 @@ if enabled_count > 0
     fprintf('%s\n\n', repmat('-', 1, 80));
 
     fprintf('\nTask Completion Details:\n'); 
-    % [修改] 表头调整：仅保留 总完成价值 和 平均完成率
-    % 去掉了 Full/Partial 计数列
+    % [修改] 表头调整：仅保留 总完成价�?�?平均完成�?
+    % 去掉�?Full/Partial 计数�?
     fprintf('%-20s | %15s | %15s\n', ...
         'Algorithm', 'Total Value', 'Avg Rate (%)');
-    fprintf('%s\n', repmat('-', 1, 65)); % 缩短分割线
+    fprintf('%s\n', repmat('-', 1, 65)); % 缩短分割�?
 
     for i = 1:enabled_count
         stats = comparison_stats.(sprintf('alg%d', i));
         if isfield(stats, 'total_completion_score')
-            % [修改] avg_task_completion 已经是 (Sum Degrees / M)
+            % [修改] avg_task_completion 已经�?(Sum Degrees / M)
             fprintf('%-20s | %15.2f | %15.2f%%\n', ...
                 stats.name, ...
-                stats.total_completion_score, ...   % 总完成价值
-                stats.avg_task_completion * 100);   % 平均完成率 (0-1 -> %)
+                stats.total_completion_score, ...   % 总完成价�?
+                stats.avg_task_completion * 100);   % 平均完成�?(0-1 -> %)
         else
             fprintf('%-20s | %15s | %15s\n', ...
                 stats.name, '-', '-');
@@ -302,13 +302,13 @@ if enabled_count > 0
 
     if show_plots && enabled_count > 1
         fprintf('Plotting comparison charts...\n');
-        % 注意：如果 plot_algorithm_comparison 内部还引用了被删除的字段(如 fully_completed)，
-        % 那个函数也需要对应修改。
+        % 注意：如�?plot_algorithm_comparison 内部还引用了被删除的字段(�?fully_completed)�?
+        % 那个函数也需要对应修改�?
         plot_algorithm_comparison(results, comparison_stats, enabled_count);
     end
 
     if save_results
-        % 保存结果到本地 MAT 文件
+        % 保存结果到本�?MAT 文件
         if ~exist('results', 'dir'); mkdir('results'); end
         timestamp = datestr(now, 'yyyymmdd_HHMMSS');
         filename = sprintf('results/comparison_results_seed%d_%s.mat', SEED, timestamp);
@@ -318,7 +318,7 @@ if enabled_count > 0
         fprintf('results saved\n\n');
     end
 else
-    fprintf('Warning: no algorithms enabled\n\n'); % 未选择算法的提示
+    fprintf('Warning: no algorithms enabled\n\n'); % 未选择算法的提�?
 end
 
 fprintf('========================================================================\n');
