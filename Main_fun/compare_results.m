@@ -1,4 +1,4 @@
-function comparison_stats = compare_results(results)
+function comparison_stats = compare_results(results, Value_Params)
 % COMPARE_RESULTS 极简版：提取关键性能指标
 %
 % 核心逻辑：
@@ -20,10 +20,12 @@ alg_names = fieldnames(results);
 num_algorithms = length(alg_names);
 comparison_stats = struct();
 
+
 %% 2. 遍历算法提取指标
 for i = 1:num_algorithms
     alg_name = alg_names{i};
     alg_result = results.(alg_name);
+    num_active_coalitions = 0;
 
     % 初始化当前算法统计
     stats = struct();
@@ -64,7 +66,8 @@ for i = 1:num_algorithms
     % 逻辑：统计有多少个任务被执行了 (即至少有一个智能体参与)
     % coalitionstru 是 MxN 矩阵
     % 遍历前 M 个任务 (防止 SC 长度超过 M)
-    check_count = min(M, length(SC_global));
+    SC_global = last_round.SC;
+    check_count = min(Value_Params.M, length(SC_global));
 
     for j = 1:check_count
         SC_task = SC_global{j};
@@ -80,7 +83,6 @@ for i = 1:num_algorithms
     stats.num_coalitions = num_active_coalitions;
     % 检查每一行是否存在非零元素 (any return logic vector)
     % sum 计算为 true 的行数
-    stats.num_coalitions = sum(any(coal_matrix ~= 0, 2));
 
     %% 6. 存入总表
     comparison_stats.(alg_name) = stats;
