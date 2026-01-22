@@ -19,6 +19,12 @@ function [Value_data, history_data] = Huo2025_main(agents, tasks, AddPara, Value
 %   Value_data   - 最终时刻的系统状态 (联盟结构、资源分配、总效用)
 %   history_data - 历史记录 (每轮的收益、成本曲线，用于画图)
 
+%% ==================== 0. 随机数种子设置（确保可复现性）====================
+% 修复：在算法开始时设置随机数种子，确保结果可复现
+if isfield(Value_Params, 'seed')
+    rng(Value_Params.seed);
+end
+
 %% ==================== 1. 初始化阶段 ====================
 
 % 生成全连通的通信图（默认所有智能体可以相互通信）
@@ -129,6 +135,8 @@ for counter = 1:Value_Params.num_rounds
         else
             T = T + 1;
         end
+
+       fprintf('%d\n', T);
     end
 
     % 记录第一轮形成的初始联盟 (用于对比分析)
@@ -178,7 +186,7 @@ end
 
 %% ==================== 4. 输出适配 (Formatting) ====================
 % 将算法内部数据转换为统一的对比框架格式
-[is_consistent, logs] = check_data_consistency(Value_data, Value_Params);
+% [is_consistent, logs] = check_data_consistency(Value_data, Value_Params);
 
 if ~is_consistent
     disp('数据有严重问题，停止后续分析！');

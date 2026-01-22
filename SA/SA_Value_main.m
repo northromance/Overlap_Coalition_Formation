@@ -19,6 +19,12 @@ function [Value_data, history_data]= SA_Value_main(agents,tasks,AddPara,Value_Pa
 %   Value_data    - 最终时刻的所有智能体状态
 %   history_data  - 包含每轮详细数据的历史记录结构体
 
+%% ==================== 0. 随机数种子设置（确保可复现性）====================
+% 修复：在算法开始时设置随机数种子，确保结果可复现
+if isfield(Value_Params, 'seed')
+    rng(Value_Params.seed);
+end
+
 %% ==================== 1. 初始化阶段 ====================
 eps_val = 1e-6;
 

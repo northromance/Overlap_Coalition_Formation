@@ -17,6 +17,12 @@
 %   Value_data - 包含联盟结构和效用的结果
 %   history_data - 算法运行历史数据（可选）
 
+    %% ==================== 0. 随机数种子设置（确保可复现性）====================
+    % 修复：在算法开始时设置随机数种子，确保结果可复现
+    if isfield(Value_Params, 'seed')
+        rng(Value_Params.seed);
+    end
+
     %% 提取参数
     N = Value_Params.N;  % 智能体数量
     M = Value_Params.M;  % 任务数量

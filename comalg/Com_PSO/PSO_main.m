@@ -14,6 +14,12 @@
         error('PSO_main requires agents, tasks, AddPara, Value_Params.');
     end
 
+    % ==================== 0. 随机数种子设置（确保可复现性）====================
+    % 修复：在算法开始时设置随机数种子，确保结果可复现
+    if isfield(Value_Params, 'seed')
+        rng(Value_Params.seed);
+    end
+
     % ---------------- 维度信息 ----------------
     M = Value_Params.M;
     N = Value_Params.N;

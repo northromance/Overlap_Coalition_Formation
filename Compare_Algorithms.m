@@ -20,12 +20,12 @@ addpath("comalg/Com_PSO/");           % PSO algorithm 粒子群算法
 %  场景参数配置（需要调试时可在此调整）
 %% ========================================================================
 SEED = 2437;                    % random seed (shared across algorithms)
-N = 5;                          % number of agents
+N = 6;                          % number of agents
 M = 10;                         % number of tasks
 K = 6;                          % number of resource types
 task_values = [800, 1000, 1500];  % three task types
 num_task_types = length(task_values);
-algorithms_to_run_ids = [1,3];  % 选择要运行的算法 1=SA_Value, 2=Greedy, 3=Huo2025, 4=Qi2023, 5=PSO
+algorithms_to_run_ids = [3];  % 选择要运行的算法 1=SA_Value, 2=Greedy, 3=Huo2025, 4=Qi2023, 5=PSO
 
 %%
 % Display/save options
@@ -89,7 +89,7 @@ fprintf('  - resources: %d\n', K);
 fprintf('  - rounds: %d\n\n', num_rounds);
 
 tic;
-pro =rand(1, 10);
+% pro =rand(1, 10);  % 已删除：在种子设置前调用rand()会导致不可复现
 rng('default'); % 再次设置相同的种子
 rng(SEED); % 再次设置相同的种子
 
@@ -147,6 +147,9 @@ end
 Value_Params = init_value_params(N, M, K, num_task_types, task_type_demands, ...
     SA_Temperature, SA_alpha, SA_Tmin, SA_max_stable_iterations, ...
     obs_times, num_rounds, resource_confidence); % 通用参数结构（不同算法可复用）
+
+% Random seed for reproducibility
+Value_Params.seed = SEED;  % 添加随机种子字段，确保算法可复现
 
 % Qi2023 extras
 Value_Params.Qi_beta_m = Qi_beta_m;
@@ -214,7 +217,7 @@ for i = 1:length(all_algorithms)
     fprintf('Running: [%d] %s\n', alg.id, alg.name);
     fprintf('----------------------------------------\n');
     try
-        rand('seed', SEED);
+        rng(SEED);  % 修复：使用正确的随机数种子设置方法
         tic;
         [Value_data, history_data] = alg.func(agents, tasks, AddPara, Value_Params);
         comp_time = toc;
