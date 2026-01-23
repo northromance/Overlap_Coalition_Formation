@@ -184,7 +184,7 @@ function [fitness, sol] = evaluate_particle(position, agents, tasks, Value_Param
             completion(m) = 0;
             continue;
         end
-        completion(m) = OCFUtils.calc_task_completion_degree(alloc_m, demand, K);
+        completion(m) = WorldSim.calc_task_completion_degree(alloc_m, demand, K);
 
         % 资源缺口（未满足量求和）
         allocated_sum = sum(alloc_m, 1);

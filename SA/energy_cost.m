@@ -58,7 +58,7 @@
             if nargin >= 6 && ~isempty(R_agent)
                 R_row = R_agent(task_id, :);
             end
-            exec_t = OCFUtils.calc_exec_time(tasks(task_id), R_row, Value_Params, tol);
+            exec_t = WorldSim.calc_exec_time(tasks(task_id), R_row, Value_Params, tol);
             execution_times(ii) = exec_t;
             completion_times(ii) = start_t + exec_t;
 
@@ -72,7 +72,7 @@
         t_fly_total = t_fly_total + return_dist / max(agents(agentIdx).vel, tol);
     else
         % 同步模式：使用全局调度
-        [t_fly_total, t_wait_total, T_exec_total, start_times, execution_times, completion_times] = calc_with_global_sync(...
+        [t_fly_total, t_wait_total, T_exec_total, start_times, execution_times, completion_times] = WorldSim.calc_with_global_sync(...
             agentIdx, orderedTasks, agents, tasks, Value_Params, SC, R_agent, tol);
     end
 

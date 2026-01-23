@@ -30,7 +30,7 @@ function agentutility = Value_utility(agents, tasks, numberrow, numbercolumn, ~,
     end
     
     % 计算基于信念的估计需求 (而非真实需求)
-    demand = OCFUtils.calculate_demand_quantile(belief, task_type_demands, confidence);
+    demand = WorldSim.calculate_demand_quantile(belief, task_type_demands, confidence);
     
     %% 2. 计算收益 (Revenue)
     % 公式：收益 = 完成度(D_C) * 期望价值(V_C) * 贡献比(r_n)
@@ -42,7 +42,7 @@ function agentutility = Value_utility(agents, tasks, numberrow, numbercolumn, ~,
     
     % B. 计算任务完成度 (D_C)
     total_resources = sum(SC_task(participants, :), 1);
-    D_C = OCFUtils.calc_task_completion_degree(total_resources, demand, K);
+    D_C = WorldSim.calc_task_completion_degree(total_resources, demand, K);
     
     if D_C <= tol
         agentutility = 0; % 无法满足任何需求，收益为0
@@ -84,7 +84,7 @@ function agentutility = Value_utility(agents, tasks, numberrow, numbercolumn, ~,
     orderedTasks = OCFUtils.sort_tasks_by_priority(myOrderedTasks, tasks);
     
     % B. 调用物理引擎 (计算时间消耗)
-    [t_fly, t_wait, t_exec] = calc_with_global_sync( ...
+    [t_fly, t_wait, t_exec] = WorldSim.calc_with_global_sync( ...
         agent_id, orderedTasks, agents, tasks, Value_Params, SC, R_agent, tol);
     
     % C. 聚合总成本

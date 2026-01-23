@@ -53,7 +53,7 @@ function [global_net_utility, total_global_cost, total_completed_value, task_com
         total_resources = sum(SC_task(participants, :), 1);
         
         % 4. 计算完成度 D_C (0~1)
-        D_C = OCFUtils.calc_task_completion_degree(total_resources, demand, K);
+        D_C = WorldSim.calc_task_completion_degree(total_resources, demand, K);
         task_completion_degrees(j) = D_C;
         
         % 5. 累加任务价值 (收益)
@@ -92,7 +92,7 @@ function [global_net_utility, total_global_cost, total_completed_value, task_com
         
         % 4. 计算路径时间 (核心耗时步骤)
         % 计算飞行时间、等待时间、执行时间
-        [t_fly_total, t_wait_total, t_exec_total] = calc_with_global_sync( ...
+        [t_fly_total, t_wait_total, t_exec_total] = WorldSim.calc_with_global_sync( ...
             i, my_tasks, agents, tasks, Value_Params, SC_global, R_agent, eps_val);
         
         % 5. 计算并存储该智能体的总成本

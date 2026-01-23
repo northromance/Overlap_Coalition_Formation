@@ -59,7 +59,7 @@ function individual_utilities = calc_individual_utility(SC, agent_resources, tas
             if length(demand) < K
                 demand = [demand, zeros(1, K - length(demand))];
             end
-            D_C = OCFUtils.calc_task_completion_degree(allocated, demand, K);
+            D_C = WorldSim.calc_task_completion_degree(allocated, demand, K);
             
             total_dist = 0;
             for n = members

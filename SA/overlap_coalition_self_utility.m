@@ -20,7 +20,7 @@
         num_types = size(Value_Params.task_type_demands, 1);
         use_b = b(1:num_types);
         if isfield(Value_Params, 'resource_confidence') && Value_Params.resource_confidence > 0
-            expected_demand = OCFUtils.calculate_demand_quantile(use_b, Value_Params.task_type_demands, Value_Params.resource_confidence);
+            expected_demand = WorldSim.calculate_demand_quantile(use_b, Value_Params.task_type_demands, Value_Params.resource_confidence);
         else
             expected_demand = use_b * Value_Params.task_type_demands;
         end
@@ -29,7 +29,7 @@
     end
 
     % Completion degree
-    D_C = OCFUtils.calc_task_completion_degree(SC{task_m}, expected_demand, Value_Params.K);
+    D_C = WorldSim.calc_task_completion_degree(SC{task_m}, expected_demand, Value_Params.K);
     if D_C == 0
         individual_utility = 0;
         return;

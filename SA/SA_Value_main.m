@@ -185,8 +185,8 @@ for counter=1:Value_Params.num_rounds
     end
 
     %% 观测
-    [Value_data, summatrix] = OCFUtils.collect_observations(Value_data, agents, tasks, Value_Params, summatrix,final_SC);
-    Value_data = OCFUtils.update_belief_from_observations(Value_data, Value_Params);
+    [Value_data, summatrix] = AgentOps.collect_observations(Value_data, agents, tasks, Value_Params, summatrix,final_SC);
+    Value_data = AgentOps.update_belief_from_observations(Value_data, Value_Params);
     %% ==================== 4. 结果记录与评估 ====================
     % 输出:
     %   coalition_utility     - (Mx1 向量) 每个任务(联盟)的净效用 (总收益 - 总成本)

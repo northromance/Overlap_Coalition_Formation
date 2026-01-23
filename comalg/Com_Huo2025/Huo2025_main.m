@@ -189,7 +189,7 @@ for counter = 1:Value_Params.num_rounds
     % 1. 收集观测值 (Collect Observations)
     % 模拟传感器数据，根据任务真实类型生成带噪声的观测。
     % summatrix 累积了所有历史观测，用于 Bayesian 更新。
-    [Value_data, summatrix] = OCFUtils.collect_observations(Value_data, agents, tasks, Value_Params, summatrix, Final_SC);
+    [Value_data, summatrix] = AgentOps.collect_observations(Value_data, agents, tasks, Value_Params, summatrix, Final_SC);
     
     % 2. 更新后验信念 (Update Belief)
     % 利用 Dirichlet 分布 (Beta分布的多维推广) 更新对任务价值的概率估计。

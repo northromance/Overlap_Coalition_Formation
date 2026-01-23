@@ -405,7 +405,7 @@ function utility = calc_coalition_utility(SC, agent_resources, tasks, dist_matri
             end
             
             % 计算资源完成度 r(A_m)
-            r_A_m = OCFUtils.calc_task_completion_degree(allocated, demand, K);
+            r_A_m = WorldSim.calc_task_completion_degree(allocated, demand, K);
             
             % 计算距离成本（作为等待时间的近似）
             total_dist = 0;
@@ -468,7 +468,7 @@ function individual_utility = calc_individual_utility_for_agent(agent_id, SC, ag
         if length(demand) < K
             demand = [demand, zeros(1, K - length(demand))];
         end
-        r_A_m = OCFUtils.calc_task_completion_degree(allocated, demand, K);
+        r_A_m = WorldSim.calc_task_completion_degree(allocated, demand, K);
         
         total_dist = 0;
         for n = members
