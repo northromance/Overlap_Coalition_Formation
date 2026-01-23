@@ -1,202 +1,229 @@
 function [Value_data, history_data] = Huo2025_main(agents, tasks, AddPara, Value_Params)
-% HUO2025_MAIN åŸºäºŽå¤šæ™ºèƒ½ä½“è”ç›Ÿå½¢æˆä¸Žä»»åŠ¡å€¼ä¼°è®¡çš„ä¸»ç®—æ³•å‡½æ•?
+% HUO2025_MAIN »ùÓÚ¶àÖÇÄÜÌåÁªÃËÐÎ³ÉÓëÈÎÎñÖµ¹À¼ÆµÄÖ÷Ëã·¨º¯Êý
 %
-% æ ¸å¿ƒé€»è¾‘ï¼?
-%   è¿™æ˜¯ä¸€ä¸ªåŽ»ä¸­å¿ƒåŒ–çš„å¤šæ™ºèƒ½ä½“ååŒç®—æ³•ï¼Œæ¨¡æ‹Ÿäº†ä»¥ä¸‹è¿‡ç¨‹ï¼?
-%   1. åˆå§‹åŒ–ï¼šæ¯ä¸ªæ™ºèƒ½ä½“æ‹¥æœ‰å¯¹ä»»åŠ¡ä»·å€¼çš„åˆå§‹ä¿¡å¿µï¼ˆInitBeliefï¼‰ã€?
-%   2. ä»»åŠ¡é€‰æ‹© (Value_order)ï¼šæ™ºèƒ½ä½“åŸºäºŽå½“å‰ä¿¡å¿µå’Œè´ªå©ªç­–ç•¥é€‰æ‹©æœ€ä½³ä»»åŠ¡ã€?
-%   3. é€šä¿¡ (Value_communication)ï¼šæ™ºèƒ½ä½“ä¸Žé‚»å±…äº¤æ¢ä¿¡æ¯ï¼Œæ›´æ–°å¯¹ä»»åŠ¡ä»·å€¼çš„è®¤çŸ¥ã€?
-%   4. è§‚æµ‹ä¸Žæ›´æ–?(Collect & Update)ï¼šæ™ºèƒ½ä½“æ‰§è¡Œä»»åŠ¡åŽèŽ·å¾—è§‚æµ‹å€¼ï¼Œåˆ©ç”¨è´å¶æ–¯æŽ¨æ–­æ›´æ–°ä¿¡å¿µã€?
-%   5. è¯„ä¼°ï¼šè®¡ç®—æ¯è½®çš„è”ç›Ÿæ•ˆç”¨ã€æˆæœ¬å’Œå‡€æ”¶ç›Šï¼Œç»Ÿè®¡æ¼”åŒ–æ›²çº¿ã€?
+% ºËÐÄÂß¼­:
+%   ÕâÊÇÒ»¸öÈ¥ÖÐÐÄ»¯µÄ¶àÖÇÄÜÌåÐ­Í¬Ëã·¨£¬Ä£ÄâÁËÒÔÏÂ¹ý³Ì£º
+%   1. ³õÊ¼»¯ (Initialization)£ºÃ¿¸öÖÇÄÜÌåÓµÓÐ¶ÔÈÎÎñ¼ÛÖµµÄ³õÊ¼ÐÅÄî£¨InitBelief£©¡£
+%   2. ÈÎÎñÑ¡Ôñ (Task Selection / Value_order)£ºÖÇÄÜÌå»ùÓÚµ±Ç°ÐÅÄîºÍÌ°À·²ßÂÔÑ¡Ôñ×î¼ÑÈÎÎñ¡£
+%   3. Í¨ÐÅ (Communication / Value_communication)£ºÖÇÄÜÌåÓëÁÚ¾Ó½»»»ÐÅÏ¢£¬¸üÐÂ¶ÔÈÎÎñ¼ÛÖµµÄÈÏÖª¡£
+%   4. ¹Û²âÓë¸üÐÂ (Collect & Update)£ºÖÇÄÜÌåÖ´ÐÐÈÎÎñºó»ñµÃ¹Û²âÖµ£¬ÀûÓÃ±´Ò¶Ë¹ÍÆ¶Ï¸üÐÂÐÅÄî¡£
+%   5. ÆÀ¹À (Evaluation)£º¼ÆËãÃ¿ÂÖµÄÁªÃËÐ§ÓÃ¡¢³É±¾ºÍ¾»ÊÕÒæ£¬Í³¼ÆÑÝ»¯ÇúÏß¡£
 %
-% è¾“å…¥ï¼?
-%   agents       - æ™ºèƒ½ä½“ç»“æž„ä½“æ•°ç»„ (ä½ç½®ã€é€Ÿåº¦ã€èµ„æºã€ä¼ æ„Ÿå™¨å‚æ•°ç­?
-%   tasks        - ä»»åŠ¡ç»“æž„ä½“æ•°ç»?(ä½ç½®ã€çœŸå®žä»·å€¼ã€èµ„æºéœ€æ±‚ç­‰)
-%   AddPara      - é™„åŠ å‚æ•° (ä¿ç•™æŽ¥å£)
-%   Value_Params - å…¨å±€å‚æ•° (M, N, K, è½®æ•°ç­?
+% ÊäÈë:
+%   agents       - ÖÇÄÜÌå½á¹¹ÌåÊý×é (°üº¬Î»ÖÃ¡¢ËÙ¶È¡¢×ÊÔ´ÄÜÁ¦¡¢´«¸ÐÆ÷²ÎÊýµÈ)
+%   tasks        - ÈÎÎñ½á¹¹ÌåÊý×é (°üº¬Î»ÖÃ¡¢ÕæÊµ¼ÛÖµ¡¢×ÊÔ´ÐèÇóµÈ)
+%   AddPara      - ¸½¼Ó²ÎÊý (±£Áô½Ó¿Ú£¬ÓÃÓÚÀ©Õ¹)
+%   Value_Params - È«¾Ö²ÎÊý (°üº¬ÈÎÎñÊýM, ÖÇÄÜÌåÊýN, ×ÊÔ´Î¬ÊýK, ×ÜÂÖÊýµÈ)
 %
-% è¾“å‡ºï¼?
-%   Value_data   - æœ€ç»ˆæ—¶åˆ»çš„ç³»ç»ŸçŠ¶æ€?(è”ç›Ÿç»“æž„ã€èµ„æºåˆ†é…ã€æ€»æ•ˆç”?
-%   history_data - åŽ†å²è®°å½• (æ¯è½®çš„æ”¶ç›Šã€æˆæœ¬æ›²çº¿ï¼Œç”¨äºŽç”»å›¾)
+% Êä³ö:
+%   Value_data   - ×îÖÕÊ±¿ÌµÄÏµÍ³×´Ì¬ (ÁªÃË½á¹¹¡¢×ÊÔ´·ÖÅä¡¢ÐÅÄî×´Ì¬)
+%   history_data - ÀúÊ·¼ÇÂ¼ (ÓÃÓÚ»­Í¼£ºÃ¿ÂÖµÄÊÕÒæ¡¢³É±¾¡¢ÊÕÁ²ÇúÏßµÈ)
 
-%% ==================== 0. éšæœºæ•°ç§å­è®¾ç½®ï¼ˆç¡®ä¿å¯å¤çŽ°æ€§ï¼‰====================
-% ä¿®å¤ï¼šåœ¨ç®—æ³•å¼€å§‹æ—¶è®¾ç½®éšæœºæ•°ç§å­ï¼Œç¡®ä¿ç»“æžœå¯å¤çŽ?
+%% ==================== 0. Ëæ»úÊýÖÖ×ÓÉèÖÃ (È·±£¿É¸´ÏÖÐÔ) ====================
+% ÐÞ¸´£ºÔÚËã·¨¿ªÊ¼Ê±ÉèÖÃËæ»úÊýÖÖ×Ó£¬È·±£Ã¿´ÎÔËÐÐ½á¹ûÒ»ÖÂ£¬·½±ãµ÷ÊÔ¡£
 if isfield(Value_Params, 'seed')
     rng(Value_Params.seed);
 end
 
-%% ==================== 1. åˆå§‹åŒ–é˜¶æ®?====================
+%% ==================== 1. ³õÊ¼»¯½×¶Î ====================
 
-% ç”Ÿæˆå…¨è¿žé€šçš„é€šä¿¡å›¾ï¼ˆé»˜è®¤æ‰€æœ‰æ™ºèƒ½ä½“å¯ä»¥ç›¸äº’é€šä¿¡ï¼?
+% Éú³ÉÈ«Á¬Í¨µÄÍ¨ÐÅÍ¼ (Ä¬ÈÏËùÓÐÖÇÄÜÌå¿ÉÒÔÏà»¥Í¨ÐÅ£¬1´ú±íÁ¬Í¨)
 Graph = ones(Value_Params.N, Value_Params.N);
 history_data = struct();
 
-% èŽ·å–ä»»åŠ¡ç±»åž‹æ•°é‡ (ç”¨äºŽä¿¡å¿µå‘é‡çš„ç»´åº?
+% »ñÈ¡ÈÎÎñÀàÐÍµÄÊýÁ¿ (ÓÃÓÚÈ·¶¨ÐÅÄîÏòÁ¿µÄÎ¬¶È£¬ÀýÈçÈÎÎñ¿ÉÄÜÓÐ3ÖÖÇ±ÔÚµÄ¼ÛÖµ·Ö²¼)
 task_types = Value_Params.task_type;
 if isempty(task_types)
+    % Èç¹ûÎ´Ö¸¶¨£¬Ôò¸ù¾ÝÈÎÎñ¶¨ÒåµÄÎ¬¶È×Ô¶¯»ñÈ¡
     task_types = numel(tasks(1).WORLD.value);
 end
 
-% åˆå§‹åŒ–æ¯ä¸ªæ™ºèƒ½ä½“çš„å†…éƒ¨çŠ¶æ€?
+% --- ³õÊ¼»¯Ã¿¸öÖÇÄÜÌåµÄÄÚ²¿×´Ì¬ ---
 for i = 1:Value_Params.N
     Value_data(i).agentID = agents(i).id;
     Value_data(i).agentIndex = i;
-    Value_data(i).iteration = 0;      % è®°å½•è”ç›Ÿå˜æ›´æ¬¡æ•°
-    Value_data(i).unif = 0;           % éšæœºå˜é‡ (ç”¨äºŽéšæœºç­–ç•¥æˆ–æ‰“ç ´å¹³å±€)
-
-    % è”ç›Ÿç»“æž„çŸ©é˜µ (M+1) x Nï¼šè®°å½•æ¯ä¸ªä»»åŠ¡æœ‰å“ªäº›æ™ºèƒ½ä½?
+    Value_data(i).iteration = 0;      % ¼ÇÂ¼ÁªÃË±ä¸ü/Ð­ÉÌµÄ´ÎÊý
+    Value_data(i).unif = 0;           % Ëæ»ú±äÁ¿ (ÓÃÓÚËæ»ú²ßÂÔ»ò´òÆÆ½©¾Ö)
+    
+    % ÁªÃË½á¹¹¾ØÕó (M+1) x N
+    % ÐÐ´ú±íÈÎÎñ(M¸öÈÎÎñ + 1¸ö¿ÕÏÐ×´Ì¬)£¬ÁÐ´ú±íÖÇÄÜÌå¡£
+    % ÕâÊÇÒ»¸öÖ¸Ê¾¾ØÕó£¬¼ÇÂ¼ÄÄ¸öÖÇÄÜÌåÑ¡ÔñÁËÄÄ¸öÈÎÎñ¡£
     Value_data(i).coalitionstru = zeros(Value_Params.M+1, Value_Params.N);
-
-    % ä¿¡å¿µçŸ©é˜µ (M x Types)ï¼šè®°å½•å¯¹æ¯ä¸ªä»»åŠ¡ç±»åž‹çš„æ¦‚çŽ‡ä¼°è®?
+    
+    % ÐÅÄî¾ØÕó (M x Types)
+    % ÖÇÄÜÌå i ¶ÔÈÎÎñ m ÊôÓÚÀàÐÍ k µÄ¸ÅÂÊ¹À¼Æ¡£
     Value_data(i).initbelief = zeros(Value_Params.M+1, task_types);
-
-    % è§‚æµ‹è®¡æ•°çŸ©é˜µï¼šè®°å½•åŽ†å²è§‚æµ‹åˆ°çš„æ¬¡æ•?(ç”¨äºŽ Dirichlet æ›´æ–°)
+    
+    % ¹Û²â¼ÆÊý¾ØÕó£º¼ÇÂ¼ÀúÊ·¹Û²âµ½µÄ´ÎÊý (ÓÃÓÚ Dirichlet ·Ö²¼¸üÐÂ)
     Value_data(i).observe = zeros(Value_Params.M, task_types);
     Value_data(i).preobserve = zeros(Value_Params.M, task_types);
-
-    % --- èµ„æºåˆ†é…åˆå§‹åŒ?(ä¸?SA ç®—æ³•å¯¹é½) ---
-    % resources_matrix (M x K): æˆ‘å¯¹æ¯ä¸ªä»»åŠ¡æŠ•å…¥çš„èµ„æº?
+    
+    % --- ×ÊÔ´·ÖÅä³õÊ¼»¯ ---
+    % resources_matrix (M x K): ÎÒ(ÖÇÄÜÌåi)¶ÔÃ¿¸öÈÎÎñÍ¶ÈëµÄ×ÊÔ´Á¿
     Value_data(i).resources_matrix = zeros(Value_Params.M, Value_Params.K);
-
-    % SC (Cell Array): å…¨å±€èµ„æºåˆ†é…è§†å›¾
+    
+    % SC (Cell Array): È«¾Ö×ÊÔ´·ÖÅäÊÓÍ¼
+    % ÖÇÄÜÌå i ÈÏÎªµÄÈ«¾Ö×ÊÔ´·ÖÅäÇé¿ö¡£SC{m} ÊÇÒ»¸ö N x K ¾ØÕó£¬±íÊ¾ËùÓÐÖÇÄÜÌå¶ÔÈÎÎñ m µÄÍ¶Èë¡£
     Value_data(i).SC = cell(Value_Params.M, 1);
     for m = 1:Value_Params.M
         Value_data(i).SC{m} = zeros(Value_Params.N, Value_Params.K);
-        % åˆå§‹èµ„æºåˆ†é…ä¸?0
+        % ³õÊ¼»¯£º½«×Ô¼ºµÄ×ÊÔ´Í¶Èë¼ÇÂ¼ÔÚÊÓÍ¼ÖÐ
         Value_data(i).SC{m}(i, :) = Value_data(i).resources_matrix(m, :);
     end
 end
 
-% å…¨å±€ç»Ÿè®¡å˜é‡åˆå§‹åŒ?
-summatrix = zeros(Value_Params.M, task_types);            % å…¨å±€ç´¯ç§¯è§‚æµ‹çŸ©é˜µ
-total_value_history = zeros(1, Value_Params.num_rounds);  % è®°å½•æ¯è½®å®Œæˆçš„æ€»ä»»åŠ¡ä»·å€?
-total_value_possible = sum(arrayfun(@(t) t.value, tasks));% ä»»åŠ¡æ€»æ½œåœ¨ä»·å€?(ä¸Šé™)
+% È«¾ÖÍ³¼Æ±äÁ¿³õÊ¼»¯
+summatrix = zeros(Value_Params.M, task_types);            % È«¾ÖÀÛ¼Æ¹Û²â¾ØÕó
+total_value_history = zeros(1, Value_Params.num_rounds);  % ¼ÇÂ¼Ã¿ÂÖÍê³ÉµÄ×ÜÈÎÎñ¼ÛÖµ
+total_value_possible = sum(arrayfun(@(t) t.value, tasks));% ÈÎÎñ×ÜÇ±ÔÚ¼ÛÖµ (ÀíÂÛÉÏÏÞ)
 
-% åˆå§‹çŠ¶æ€ï¼šæ‰€æœ‰æ™ºèƒ½ä½“éƒ½åœ¨ Void ä»»åŠ¡ (ç¬?M+1 ä¸ªä»»åŠ? ä¸­å¾…å‘?
+% --- ÉèÖÃ³õÊ¼×´Ì¬£ºËùÓÐÖÇÄÜÌå¶¼ÔÚ Void ÈÎÎñ ---
+% Void ÈÎÎñ (µÚ M+1 ¸öÈÎÎñ) Í¨³£´ú±í"¿ÕÏÐ"»ò"ËÑË÷ÖÐ"¡£
 for k = 1:Value_Params.N
     for j = 1:Value_Params.M+1
         if j == Value_Params.M+1
             for i = 1:Value_Params.N
+                % ½«ËùÓÐÖÇÄÜÌå±ê¼ÇÔÚµÚ M+1 ÐÐ (¿ÕÏÐÈÎÎñ)
                 Value_data(k).coalitionstru(j,i) = agents(i).id;
             end
         end
     end
 end
 
-% åˆå§‹åŒ–ä¿¡å¿µï¼šå‡åŒ€åˆ†å¸ƒ (è¡¨ç¤ºä¸€æ— æ‰€çŸ?
+% --- ³õÊ¼»¯ÐÅÄî£º¾ùÔÈ·Ö²¼ ---
+% ³õÊ¼Ê±¿Ì£¬ÖÇÄÜÌåÒ»ÎÞËùÖª£¬ÈÏÎªÈÎÎñÊôÓÚÈÎºÎÀàÐÍµÄ¸ÅÂÊÏàµÈ¡£
 for i = 1:Value_Params.N
     for j = 1:Value_Params.M
         Value_data(i).initbelief(j, 1:end) = ones(1, task_types) / task_types;
     end
 end
 
-
-%% ==================== 2. ä¸»å¾ªçŽ¯ï¼šå¤šè½®åšå¼ˆä¸Žæ¼”åŒ?====================
-% æ¯ä¸€è½®ä»£è¡¨ä¸€æ¬¡â€œå†³ç­?è¡ŒåŠ¨-è§‚æµ‹-å­¦ä¹ â€çš„å®Œæ•´å‘¨æœŸ
+%% ==================== 2. Ö÷Ñ­»·£º¶àÂÖ²©ÞÄÓëÑÝ»¯ ====================
+% Ã¿Ò»ÂÖ (Round) ´ú±íÒ»´ÎÍêÕûµÄ "¾ö²ß-ÐÐ¶¯-¹Û²â-Ñ§Ï°" ÖÜÆÚ
+%
 for counter = 1:Value_Params.num_rounds
-
-    % è®°å½•æ¯ä¸€è½®å¼€å§‹æ—¶çš„ä¿¡å¿?(ç”¨äºŽè°ƒè¯•æˆ–ç”»å›?
+    
+    % ¼ÇÂ¼Ã¿Ò»ÂÖ¿ªÊ¼Ê±µÄÐÅÄî (ÓÃÓÚµ÷ÊÔ»ò»­Í¼£¬¹Û²ìÐÅÄîÈçºÎÊÕÁ²)
     for i = 1:Value_Params.N
         for j = 1:Value_Params.M
             Value_data(i).tasks(j).prob(counter, :) = Value_data(i).initbelief(j, 1:end);
         end
     end
-
-    % --- å­å¾ªçŽ¯ï¼šè”ç›Ÿå½¢æˆåå•† (Coalition Formation) ---
-    % æ™ºèƒ½ä½“ä¹‹é—´é€šè¿‡å¤šæ¬¡è¿­ä»£åå•†ï¼Œè¾¾æˆç¨³å®šçš„è”ç›Ÿç»“æž„
-    T = 1;         % åå•†è¿­ä»£æ­¥æ•°
+    
+    % --- ×ÓÑ­»·£ºÁªÃËÐÎ³ÉÐ­ÉÌ (Coalition Formation Negotiation) ---
+    % ÖÇÄÜÌåÖ®¼äÍ¨¹ý¶à´Îµü´úÐ­ÉÌ£¬´ï³ÉÎÈ¶¨µÄÁªÃË½á¹¹
+    T = 1;         % Ð­ÉÌµü´ú²½Êý
     lastTime = T-1;
-    doneflag = 0;  % æ”¶æ•›æ ‡å¿—
-
+    doneflag = 0;  % ÊÕÁ²±êÖ¾ (0:Î´ÊÕÁ², 1:ÒÑÊÕÁ²)
+    
     while(doneflag == 0)
-
-        % 1. ä»»åŠ¡é€‰æ‹© (Task Selection)
-        % æ¯ä¸ªæ™ºèƒ½ä½“åŸºäºŽå½“å‰æ”¶ç›Šè®¡ç®—ï¼Œè´ªå©ªåœ°é€‰æ‹©æœ€ä½³ä»»åŠ?
+        
+        % === ²½Öè 2.1: ÈÎÎñÑ¡Ôñ (Task Selection / Greedy) ===
+        % Ã¿¸öÖÇÄÜÌå»ùÓÚµ±Ç°ÊÕÒæ¼ÆËã£¬Ì°À·µØÑ¡Ôñ×î¼ÑÈÎÎñ
         for ii = 1:Value_Params.N
-            % è°ƒç”¨ Value_orderï¼šè®¡ç®—å¦‚æžœåŠ å…¥å…¶ä»–ä»»åŠ¡èƒ½å¦æé«˜æ•ˆç”?
+            % Value_order º¯ÊýºËÐÄÂß¼­£º
+            % ÖÇÄÜÌå ii ¼ÙÉè×Ô¼º¼ÓÈëÆäËûÈÎÎñ£¬¼ÆËã±ß¼Ê¹±Ï×£¬Ñ¡Ôñ¹±Ï××î´óµÄÈÎÎñ¡£
+            % ·µ»ØÖµ£º
+            % incremental(ii): Ð§ÓÃÔöÁ¿ (ÊÇ·ñ±ä¸üÁËÑ¡Ôñ)
+            % curnumberrow(ii): µ±Ç°Ñ¡ÔñµÄÈÎÎñ±àºÅ
             [incremental(ii), curnumberrow(ii), Value_data(ii)] = Value_order(agents, tasks, Value_data(ii), Value_Params);
         end
-
-        % æ£€æŸ¥æ˜¯å¦æœ‰æ™ºèƒ½ä½“æ”¹å˜äº†ä¸»æ„
+        
+        % === ²½Öè 2.2: ÎÈ¶¨ÐÔ¼ì²é ===
+        % ¼ì²éÊÇ·ñÓÐÖÇÄÜÌå¸Ä±äÁËÖ÷Òâ (incremental ¼ÇÂ¼ÁË±ä¸üÇé¿ö)
         if (length(find(incremental == 0)) == Value_Params.N)
-            lastTime = lastTime; % æ— äººæ”¹å˜
+            lastTime = lastTime; % ÎÞÈË¸Ä±ä£¬×îºó±ä¶¯Ê±¼ä±£³Ö²»±ä
         else
-            lastTime = T;        % æœ‰äººæ”¹å˜ï¼Œæ›´æ–°æœ€åŽå˜åŠ¨æ—¶é—?
+            lastTime = T;        % ÓÐÈË¸Ä±ä£¬¸üÐÂ×îºó±ä¶¯Ê±¼äÎªµ±Ç° T
         end
+        
+        % === ²½Öè 2.3: Í¨ÐÅ (Communication) ===
+        % ÖÇÄÜÌå½»»»ÐÅÄîºÍÁªÃË½á¹¹ÐÅÏ¢£¬´ï³É¹²Ê¶¡£
+        % ÔÚÕâÀï£¬Value_data(i) »á±»¸üÐÂ£¬°üº¬ÁÚ¾ÓµÄ×îÐÂÑ¡Ôñ¡£
 
-        % 2. é€šä¿¡ (Communication)
-        % æ™ºèƒ½ä½“äº¤æ¢ä¿¡å¿µå’Œè”ç›Ÿç»“æž„ä¿¡æ¯ï¼Œè¾¾æˆå…±è¯?
-        Value_data = Value_communication(agents, tasks, Value_data, Value_Params, Graph);
-
-        % 3. æ”¶æ•›æ£€æµ?(Convergence Check)
-        % å¦‚æžœè¿žç»­ 2 æ¬¡è¿­ä»£æ²¡æœ‰äººæ”¹å˜é€‰æ‹©ï¼Œè®¤ä¸ºè”ç›Ÿç»“æž„å·²ç¨³å®š
+        
+        for k=1:Value_Params.N
+            for n=1:Value_Params.N
+                if Graph(k,n)==1
+                    if (Value_data(k).iteration>Value_data(n).iteration)...
+                            ||((Value_data(k).iteration==Value_data(n).iteration)&&(Value_data(k).unif>Value_data(n).unif))
+                        %                if GAME_data(k).unif>GAME_data(n).unif
+                        Value_data(n).coalitionstru=Value_data(k).coalitionstru;
+                        Value_data(n).SC=Value_data(k).SC;
+                        Value_data(n).iteration=Value_data(k).iteration;
+                        Value_data(n).unif=Value_data(k).unif;
+                    end
+                end
+            end
+        end
+        
+        % === ²½Öè 2.4: ÊÕÁ²ÅÐ¾Ý (Convergence Check) ===
+        % ²ßÂÔ1£ºÈç¹ûÁ¬Ðø 2 ´Îµü´úÃ»ÓÐÈÎºÎÈË¸Ä±äÑ¡Ôñ£¬ÈÏÎªÁªÃË½á¹¹ÒÑÎÈ¶¨ (Nash Stable)¡£
         if (T - lastTime > 2)
             doneflag = 1;
         else
             T = T + 1;
         end
-
-        % ×î´óµü´ú´ÎÊýÏÞÖÆ£¬±ÜÃâ²»ÊÕÁ²
+        
+        % ²ßÂÔ2£º×î´óµü´ú´ÎÊýÏÞÖÆ (·ÀÖ¹ËÀÑ­»·)
         if isfield(Value_Params, 'max_stable_iterations') && T >= Value_Params.max_stable_iterations
             doneflag = 1;
         end
-
-    end
-
-    % è®°å½•ç¬¬ä¸€è½®å½¢æˆçš„åˆå§‹è”ç›Ÿ (ç”¨äºŽå¯¹æ¯”åˆ†æž)
+        
+    end % End of While (Negotiation)
+    
+    % (¿ÉÑ¡) ¼ÇÂ¼µÚÒ»ÂÖÐÎ³ÉµÄ³õÊ¼ÁªÃË£¬ÓÃÓÚ¶Ô±È·ÖÎö
     if counter == 1
         for j = 1:Value_Params.M
             initial_coalition(j).member = find(Value_data(1).coalitionstru(j,:) ~= 0);
         end
     end
-
-    % --- è§‚æµ‹ä¸Žä¿¡å¿µæ›´æ–?(Observation & Belief Update) ---
-    % è”ç›Ÿç¨³å®šåŽï¼Œæ™ºèƒ½ä½“æ‰§è¡Œä»»åŠ¡å¹¶èŽ·å¾—è§‚æµ‹å€?
-
-    % æ”¶é›†è§‚æµ‹å€?(æ¨¡æ‹Ÿä¼ æ„Ÿå™¨æ•°æ?
-
-
-
-
-     Final_SC = Value_data(1).SC;
-    final_coalitionstru =  Value_data(1).coalitionstru;
-
-
-    [Value_data, summatrix] = OCFUtils.collect_observations(Value_data, agents, tasks, Value_Params, summatrix,Final_SC);
-
-    % åˆ©ç”¨ Dirichlet åˆ†å¸ƒæ›´æ–°åŽéªŒä¿¡å¿µ
+    
+    % --- ²½Öè 2.5: ¹Û²âÓëÐÅÄî¸üÐÂ (Observation & Belief Update) ---
+    % ÁªÃËÎÈ¶¨ºó£¬ÖÇÄÜÌåÖ´ÐÐÈÎÎñ²¢»ñµÃ¹Û²âÖµ¡£
+    
+    % ÌáÈ¡×îÖÕ´ï³É¹²Ê¶µÄ×ÊÔ´·ÖÅäºÍÁªÃË½á¹¹ (ÒÔÖÇÄÜÌå1µÄÊÓÍ¼Îª×¼£¬¼ÙÉèÒÑ´ï³É¹²Ê¶)
+    Final_SC = Value_data(1).SC;
+    final_coalitionstru = Value_data(1).coalitionstru;
+    
+    % 1. ÊÕ¼¯¹Û²âÖµ (Collect Observations)
+    % Ä£Äâ´«¸ÐÆ÷Êý¾Ý£¬¸ù¾ÝÈÎÎñÕæÊµÀàÐÍÉú³É´øÔëÉùµÄ¹Û²â¡£
+    % summatrix ÀÛ»ýÁËËùÓÐÀúÊ·¹Û²â£¬ÓÃÓÚ Bayesian ¸üÐÂ¡£
+    [Value_data, summatrix] = OCFUtils.collect_observations(Value_data, agents, tasks, Value_Params, summatrix, Final_SC);
+    
+    % 2. ¸üÐÂºóÑéÐÅÄî (Update Belief)
+    % ÀûÓÃ Dirichlet ·Ö²¼ (Beta·Ö²¼µÄ¶àÎ¬ÍÆ¹ã) ¸üÐÂ¶ÔÈÎÎñ¼ÛÖµµÄ¸ÅÂÊ¹À¼Æ¡£
     Value_data = OCFUtils.update_belief_from_observations(Value_data, Value_Params);
-
-
-    %% ==================== 3. ç»©æ•ˆè¯„ä¼° (Evaluation) ====================
-    % æ ¹æ®æœ¬è½®çš„è”ç›Ÿå½¢æˆç»“æžœçš„æˆæœ¬ã€æ”¶ç›Šå’Œå‡€æ•ˆç”¨
-    % K = Value_Params.K;
-    eps_val = 1e-9;
-    % total_completed_value = 0;
-
-    % éåŽ†æ¯ä¸ªæ™ºèƒ½ä½?æ ¹æ®å®žé™…çš„éœ€æ±?è®¡ç®—è”ç›Ÿæ•ˆç”¨ ç”¨æ¥å­˜å‚¨ è·Ÿä¸Šé¢ç”¨ä¿¡å¿µå†³ç­–ä¸åŒ
-
-    [coalition_utility, Rcost, total_completed_value,task_completion_degrees] = evaluate_coalition_metrics(Final_SC, agents, tasks, Value_Params, eps_val);
-    % è®°å½•æœ¬è½®ç»Ÿè®¡æ•°æ®
+    
+    
+    %% ==================== 3. ¼¨Ð§ÆÀ¹À (Evaluation) ====================
+    % ¸ù¾Ý±¾ÂÖµÄÁªÃËÐÎ³É½á¹û£¬¼ÆËã³É±¾¡¢ÊÕÒæºÍ¾»Ð§ÓÃ¡£
+    eps_val = 1e-9; % ·ÀÖ¹³ýÁã´íÎó
+    
+    % evaluate_coalition_metrics ¼ÆËã£º
+    % - coalition_utility: ÁªÃË²úÉúµÄ×Ü¼ÛÖµ
+    % - Rcost: ×ÊÔ´ÏûºÄ³É±¾
+    % - total_completed_value: Êµ¼ÊÍê³ÉµÄÈÎÎñ¼ÛÖµ
+    % - task_completion_degrees: ÈÎÎñÍê³É¶È
+    [coalition_utility, Rcost, total_completed_value, task_completion_degrees] = evaluate_coalition_metrics(Final_SC, agents, tasks, Value_Params, eps_val);
+    
+    % ¼ÇÂ¼±¾ÂÖÍ³¼ÆÊý¾Ýµ½ history_data ½á¹¹Ìå
     history_data = record_history_data(history_data, counter, Value_data, Value_Params, ...
         Final_SC, final_coalitionstru, ...
         coalition_utility, Rcost, ...
         total_completed_value, task_completion_degrees, ...
         summatrix);
+    
+    % counter ÔÚ for Ñ­»·ÖÐ»á×Ô¶¯Ôö¼Ó£¬ÕâÐÐ´úÂëÔÚ MATLAB ÖÐÆäÊµÊÇ¶àÓàµÄ£¬µ«±£ÁôÔ­Âß¼­
+    % counter = counter + 1;
+    
+end % End of For (Rounds)
 
-    counter = counter + 1; % ä¼¼ä¹Žå¤šä½™ï¼Œfor å¾ªçŽ¯ä¼šè‡ªåŠ¨å¢žåŠ?
-
-end
-
-%% ==================== 4. è¾“å‡ºé€‚é… (Formatting) ====================
-% å°†ç®—æ³•å†…éƒ¨æ•°æ®è½¬æ¢ä¸ºç»Ÿä¸€çš„å¯¹æ¯”æ¡†æž¶æ ¼å¼?
+%% ==================== 4. Êä³öÊÊÅä (Formatting) ====================
+% (¿ÉÑ¡) Êý¾ÝÒ»ÖÂÐÔ¼ì²é
 % [is_consistent, logs] = check_data_consistency(Value_data, Value_Params);
-
 % if ~is_consistent
-%     disp('æ•°æ®æœ‰ä¸¥é‡é—®é¢˜ï¼Œåœæ­¢åŽç»­åˆ†æžï¼?);
-%     % å¯ä»¥æ‰“å° logs æŸ¥çœ‹è¯¦æƒ…
+%     disp('¾¯¸æ£ºÊý¾Ý´æÔÚÑÏÖØ²»Ò»ÖÂÐÔ£¬Çë¼ì²éÍ¨ÐÅÄ£¿é¡£');
 % end
-
-
 
 end
