@@ -34,9 +34,9 @@ function deltaU = overlap_coalition_utility(tasks, agents, SC_P, SC_Q, agentID, 
     %% 2. 计算智能体自身的总效用 (Self Utility)
     % u_n_Q: 智能体 n 在新结构 Q 下，从它参与的所有任务中获得的总效用
     % 对于输入给定的联盟SC 求得输出
-    u_n_Q = calc_agent_total_utility(SC_Q, agents, tasks, Value_Params, Value_data);
+    u_n_Q = compute_vality(SC_Q, agents, tasks, Value_Params, Value_data);
     % u_n_P: 智能体 n 在旧结构 P 下，从它参与的所有任务中获得的总效用
-    u_n_P = calc_agent_total_utility(SC_P, agents, tasks, Value_Params, Value_data);
+    u_n_P = sum_utility(agentID, rows_n_P, SC_P, agents, tasks, Value_Params, Value_data.initbelief);
     
     %% 3. 计算 LHS 第二项：对"新加入"任务中其他成员的影响
     % 找出智能体 n 新加入的任务 (在 Q 中有，在 P 中没有)

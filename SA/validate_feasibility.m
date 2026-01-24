@@ -1,4 +1,4 @@
-﻿function [isFeasible, info, cost_data] = validate_feasibility(Value_data, agents, tasks, Value_Params, agentID, SC_P, SC_Q, R_agent_P, R_agent_Q, target, r)
+function [isFeasible, info, cost_data] = validate_feasibility(Value_data, agents, tasks, Value_Params, agentID, SC_P, SC_Q, R_agent_P, R_agent_Q, target, r)
 % join/leave 可行性检测：非负分配、携带量、能量可达性
 
     info = struct('reason', '');
@@ -52,7 +52,7 @@
 
     % 新接口返回7个值: [t_fly, T_exec, dist, energy, ordered, arrivals, t_wait]
     [t_fly_total, T_exec_total, totalDistance, requiredEnergy, orderedTasks, task_arrival_times, t_wait_total] = ...
-        energy_cost(agentIdx, assignedTasks, agents, tasks, Value_Params, R_agent_Q, SC_Q);
+        energy_cost(agentIdx, assignedTasks, agents, tasks, Value_Params, SC_Q);
 
     if requiredEnergy > energyCap + tol
         isFeasible = false;

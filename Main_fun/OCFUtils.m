@@ -328,5 +328,18 @@ classdef OCFUtils
                 end
             end
         end
+
+
+        function task_list = get_agent_participated_tasks(SC, agentID, tol)
+            % GET_AGENT_PARTICIPATED_TASKS 获取指定智能体参与的任务
+            if nargin < 3, tol = 1e-6; end
+            
+            % 核心查询逻辑
+            is_involved = cellfun(@(x) ~isempty(x) && ...
+                                       size(x, 1) >= agentID && ...
+                                       any(x(agentID, :) > tol), SC);
+            task_list = find(is_involved);
+            if iscolumn(task_list), task_list = task_list'; end
+        end
     end
 end

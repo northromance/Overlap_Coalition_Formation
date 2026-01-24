@@ -107,9 +107,9 @@ classdef WorldSim
         
         
         function [t_fly_total, t_wait_total, t_exec_total, start_times, execution_times, completion_times] = calc_with_global_sync(...
-                agentIdx, myOrderedTasks, agents, tasks, Value_Params, SC, R_agent, tol)
+                agentIdx, myOrderedTasks, agents, tasks, Value_Params, SC, tol)
             % CALC_WITH_GLOBAL_SYNC 计算基于全局同步机制的时间与能耗，并返回详细时间表
-            %
+            % myOrderedTasks 需要对之前的任务进行优先级排序好
             % 输入：
             %   agentIdx       - 当前计算的智能体ID
             %   myOrderedTasks - 该智能体的任务序列（已按优先级排序）
@@ -126,6 +126,7 @@ classdef WorldSim
             %% ========== 参数提取 ==========
             N = Value_Params.N;
             M = Value_Params.M;
+            R_agent = OCFUtils.get_agent_resource_matrix(SC, agentIdx, Value_Params);
             
             %% ========== 阶段一：全局状态模拟 (God View) ==========
             % 目的：推演全世界的运行时间表，确定每个任务的“法定开始时间”和“法定结束时间”。
