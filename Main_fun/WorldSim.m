@@ -294,20 +294,6 @@ classdef WorldSim
             demand = ceil(demand); % 向上取整确保资源为整数
         end
 
-        function task_list = get_agent_tasks_fast(SC, agent_idx)
-            % 设定容差
-            tol = 1e-6;
-
-            % cellfun 遍历每个 cell：
-            % x 代表 SC{m}
-            % any(x(agent_idx, :) > tol) 判断该行是否有非零元素
-            % 结果是一个逻辑向量 (Logical Vector)
-            is_involved = cellfun(@(x) ~isempty(x) && any(x(agent_idx, :) > tol), SC);
-
-            % find 将逻辑向量转换为索引列表
-            task_list = find(is_involved)';
-        end
-
         
     end
     

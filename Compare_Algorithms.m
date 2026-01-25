@@ -29,7 +29,7 @@ num_task_types = length(task_values);
 
 % 核心开关：选择要运行的算法 ID
 % 1=SA_Value, 2=Greedy, 3=Huo2025, 4=Qi2023, 5=PSO
-algorithms_to_run_ids = [1, 3];  
+algorithms_to_run_ids = [1,3];  
 
 %%
 % Display/save options (显示与保存选项)
@@ -46,7 +46,7 @@ WORLD_ZMIN = 0; WORLD_ZMAX = 0;
 agent_velocity = 2;             % 移动速度
 agent_detprob_min = 0.9;        % 探测概率下限
 agent_detprob_max = 1.0;        % 探测概率上限
-agent_Emax_min = 1000;          % 最大能量下限
+agent_Emax_min = 100;          % 最大能量下限
 agent_Emax_range = 50;          % 最大能量随机范围
 agent_fuel = 1;                 % 飞行油耗率 (单位距离消耗)
 agent_wait_fuel = 0.5;          % 等待油耗率 (悬停/等待时的消耗，独立于飞行)
@@ -150,7 +150,7 @@ for i = 1:N
 end
 
 % Algorithm shared params (打包所有算法通用的参数)
-Value_Params = init_value_params(N, M, K, num_task_types, task_type_demands, ...
+Value_Params = OCFUtils.init_value_params(N, M, K, num_task_types, task_type_demands, ...
     SA_Temperature, SA_alpha, SA_Tmin, max_stable_iterations, ...
     obs_times, num_rounds, resource_confidence); 
 

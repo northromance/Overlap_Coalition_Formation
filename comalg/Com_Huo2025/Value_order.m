@@ -12,7 +12,7 @@ function [incremental, current_task_idx, Value_data] = Value_order(agents, tasks
     % 计算当前效用 (Base Utility)
     cur_teammates = find(Value_data.coalitionstru(current_task_idx, :) ~= 0);
     curagentutility = Value_utility(agents, tasks, current_task_idx, agent_col_idx, ...
-        cur_teammates, Value_data, Value_Params, Value_data.SC, Value_data.resources_matrix);
+        cur_teammates, Value_data, Value_Params, Value_data.SC);
     
     %% 3. 试探所有可能的任务 (What-If Analysis)
     candidateagentutility = zeros(1, M + 1); 
@@ -40,7 +40,7 @@ function [incremental, current_task_idx, Value_data] = Value_order(agents, tasks
         sim_teammates = find(Value_data.coalitionstru(j, :) ~= 0); % 当前小组成员
         candidateagentutility(j) = Value_utility(...
             agents, tasks, j, agent_col_idx, sim_teammates, ...
-            Value_data, Value_Params, SC_Q, R_agent_Q);
+            Value_data, Value_Params, SC_Q);
     end
     
     %% 4. 决策逻辑 (Unified Decision Making)

@@ -37,6 +37,7 @@ for i=1:Value_Params.N
     Value_data(i).unif=0;            % 用于随机决策的变量
     Value_data(i).coalitionstru=zeros(Value_Params.M+1,Value_Params.N); % 成员矩阵 (任务x智能体)
     Value_data(i).initbelief=zeros(Value_Params.M+1,Value_Params.task_type); % 信念矩阵
+    Value_data(i).cost_data = [];
 
     % 初始化资源分配矩阵 (M×K): 记录该智能体对每个任务投入的具体资源量
     Value_data(i).resources_matrix = zeros(Value_Params.M, Value_Params.K);
@@ -61,6 +62,7 @@ for i=1:Value_Params.N
     Value_data(i).task_schedule.total_flight_time = 0;
     Value_data(i).task_schedule.total_execution_time = 0;
     Value_data(i).task_schedule.total_energy = 0;
+    Value_data(i).selectProb= zeros(Value_Params.K, Value_Params.M);
 end
 
 %% 初始化void任务（第 M+1 个任务）
@@ -132,6 +134,34 @@ for counter=1:Value_Params.num_rounds
             % 智能体 ii 根据当前状态，尝试加入新任务或离开旧任务以提升效用
             [Value_data_ii] = Overlap_Coalition_Formation(agents, tasks, Value_data(ii), Value_Params);
 
+
+
+            % --- 调试代码开始 ---
+            current_fields = fieldnames(Value_data);
+            new_fields = fieldnames(Value_data_ii);
+            if ~isequal(current_fields, new_fields)
+                disp('【结构体字段不匹配！】');
+                disp('Value_data 原有字段:');
+                disp(current_fields');
+                disp('Value_data_ii 返回字段:');
+                disp(new_fields');
+
+                % 找出多出来的字段
+                diff_fields = setdiff(new_fields, current_fields);
+                if ~isempty(diff_fields)
+                    disp(['多出来的字段: ', strjoin(diff_fields, ', ')]);
+                end
+
+                % 找出缺少的字段
+                miss_fields = setdiff(current_fields, new_fields);
+                if ~isempty(miss_fields)
+                    disp(['丢失的字段: ', strjoin(miss_fields, ', ')]);
+                end
+                error('请在初始化阶段补齐上述字段，或在函数返回前删除多余字段！');
+            end
+            % --- 调试代码结束 ---
+            Value_data(ii) = Value_data_ii; % 原有出错行
+            Value_data(ii) = Value_data_ii;
             % --- 3.2 状态传递 ---
             % 将智能体 ii 更新后的全局联盟结构传递给下一个智能体 (ii+1)
             % 这样 ii+1 决策时看到的是包含 ii 最新变动的环境

@@ -15,15 +15,15 @@ function [Value_data, incremental_leave] = leave_operation(Value_data, agents, t
 %   6. 更新：更新数据结构 (SC, resources, coalitionstru)。
 %
 % 输入：
-%   Value_data   - 智能体状态结构体
-%   agents       - 智能体物理属性
-%   tasks        - 任务属性
-%   Value_Params - 全局参数 (温度, 维度等)
+%   Value_data   - 智能体状态结构体 (包含当前资源分配、信念等)
+%   agents       - 智能体物理属性 (结构体数组)
+%   tasks        - 任务属性 (结构体数组)
+%   Value_Params - 全局参数 (温度, 维度, 惩罚因子等)
 %   probs        - (此处未使用，保留接口兼容性)
 %
 % 输出：
-%   Value_data        - 更新后的状态
-%   incremental_leave - 成功标志 (1=成功执行, 0=未执行)
+%   Value_data        - 更新后的状态结构体
+%   incremental_leave - 成功标志 (1=成功执行并接受, 0=未执行或被拒绝)
 
     incremental_leave = 0;  % 初始化：默认操作未执行
     agentID = Value_data.agentID;
@@ -31,9 +31,10 @@ function [Value_data, incremental_leave] = leave_operation(Value_data, agents, t
     % 获取维度信息
     M = Value_Params.M;  % 任务数
     K = Value_Params.K;  % 资源类型数
-    tol = 1e-9;          % 浮点数容差
+    tol = 1e-9;          % 浮点数容差 (判断是否为0)
     
     % 智能体索引转换 (ID -> Index)
+    % 确保能够正确索引 agents 数组
     agentIdx = agentID;
     if agentIdx < 1 || agentIdx > numel(agents) || ~isstruct(agents(agentIdx))
         agentIdx = find([agents.id] == agentID, 1, 'first');
@@ -48,7 +49,7 @@ function [Value_data, incremental_leave] = leave_operation(Value_data, agents, t
         verbose = logical(Value_Params.verbose);
     end
     
-    % 备份原始资源矩阵 (用于最后的全局回滚)
+    % 备份原始资源矩阵 (用于最后的全局回滚，以防万一)
     original_resources_matrix = Value_data.resources_matrix;
     
     % --- 0. 快速剪枝 ---
@@ -61,21 +62,21 @@ function [Value_data, incremental_leave] = leave_operation(Value_data, agents, t
     for r = 1:K
         
         % --- 1. 寻找候选任务 ---
-        % 获取该智能体在资源类型 r 上的所有分配情况
+        % 获取该智能体在资源类型 r 上的所有分配情况 (M x 1 向量)
         currentAllocColumn = Value_data.resources_matrix(:, r);
         
         % 找出分配量 > 0 的任务索引
         candidateTasks = find(currentAllocColumn > tol);
         
         if isempty(candidateTasks)
-            continue; % 该资源类型没分配给任何人，跳过
+            continue; % 该资源类型没分配给任何人，尝试下一类资源
         end
         
         % --- 2. 遍历候选任务，逐个尝试撤出 ---
         for taskIdx = 1:numel(candidateTasks)
-            sourceTask = candidateTasks(taskIdx);  % 目标任务 ID
+            sourceTask = candidateTasks(taskIdx);  % 目标任务 ID (计划从中撤退)
             
-            % 获取当前分配量
+            % 获取当前分配量 (Double Check)
             currentAmount = currentAllocColumn(sourceTask);
             if currentAmount <= tol
                 continue;
@@ -83,7 +84,8 @@ function [Value_data, incremental_leave] = leave_operation(Value_data, agents, t
             
             % --- 3. 定义撤出行为 ---
             % 策略：完全撤出 (Full Withdrawal)
-            % 将该任务上的该资源分配量直接置为 0
+            % 将该任务上的该资源分配量直接置为 0。
+            % (注：也可以设计为部分撤出，但全撤出在组合优化中更利于跳跃)
             remainingAmount = 0; 
             
             % --- 4. 构造新旧状态 (State Construction) ---
@@ -94,60 +96,68 @@ function [Value_data, incremental_leave] = leave_operation(Value_data, agents, t
             
             % 4.2 构造操作后状态 (Q = Query)
             R_agent_Q = R_agent_P;
-            R_agent_Q(sourceTask, r) = remainingAmount; % 修改：置零
+            R_agent_Q(sourceTask, r) = remainingAmount; % 核心操作：置零
             
-            % 4.3 同步更新联盟结构 SC_Q
+            % 4.3 同步更新联盟结构 SC_Q (结构体数组形式)
+            % SC 是个 Cell 数组，每个 cell 存一个 (N x K) 的矩阵
             SC_Q = SC_P;
             for m = 1:M
-                % 获取任务 m 的当前分配矩阵 (N x K)
+                % 获取任务 m 的当前分配矩阵
                 taskMatrix = SC_Q{m};
-                % 更新当前智能体 (agentIdx) 的行
+                % 用新的 R_agent_Q 覆盖当前智能体的那一行
                 taskMatrix(agentIdx, :) = R_agent_Q(m, :);
+                % 写回
                 SC_Q{m} = taskMatrix;
             end
             
             % --- 5. 可行性验证 (Feasibility Check) ---
-            % 撤出操作看似简单，但也可能导致不可行。
-            % 例如：如果任务之间有某种依赖，或者撤出导致路径改变后的能量计算出现问题
-            % (虽然通常撤出只会省能量，但逻辑上必须验证一致性)
+            % 撤出操作看似简单(只是省资源)，但也可能导致不可行。
+            % 原因：
+            % 1. 任务路径改变：撤出任务可能改变访问顺序，进而改变飞行距离和能耗。
+            % 2. 约束耦合：某些约束可能要求必须同时提供多种资源(虽少见，但通用性需考虑)。
             [feasible, info, cost_data] = validate_feasibility(Value_data, agents, tasks, Value_Params, agentID, SC_P, SC_Q, R_agent_P, R_agent_Q, sourceTask, r);
             
             if ~feasible
                 if verbose
-                    % 打印拒绝原因
+                    % 打印拒绝原因 (调试用)
                     reason_str = 'unknown';
                     if isfield(info, 'reason'), reason_str = info.reason; end
-                    % (此处省略详细的 switch-case 打印逻辑以保持简洁，参考 join_operation)
                     % fprintf('智能体%d: 撤出任务%d不可行 (%s)\n', agentID, sourceTask, reason_str);
                 end
-                continue; % 尝试下一个任务
+                continue; % 不可行，尝试下一个任务
             end
             
             % --- 6. 计算效用变化 ΔU ---
-            % 临时将资源矩阵设为 Q 状态以供计算函数使用
+            % 临时将 Value_data 中的资源矩阵设为 Q 状态，以便效用函数读取
+            % 注意：这只是临时的，如果拒绝会回滚
             Value_data.resources_matrix = R_agent_Q;
             
+            % 调用 BMBT 偏好计算函数
             % Delta U = Utility(New) - Utility(Old)
-            % 注意：撤出通常会导致任务完成度下降，从而导致效用下降 (ΔU < 0)。
-            % 但这正是 SA 的精髓：允许暂时变差，以寻找全局更优。
-            delta_U = overlap_coalition_utility(tasks, agents, SC_P, SC_Q, agentID, Value_Params, Value_data);
+            % 预期：撤出通常会导致任务资源不足，效用下降 (ΔU < 0)。
+            delta_U = overlap_coalition_u_new(tasks, agents, SC_P, SC_Q, agentID, Value_Params, Value_data);
             
             % --- 7. 决策 (Decision Making) ---
             accept_leave = false;
             
             if delta_U > 0
-                % 情况 A: 撤出反而让效用增加了？
-                % (例如：减少了过度拥挤导致的惩罚，或者省下的能量带来的收益 > 任务损失)
+                % 情况 A: 撤出反而让效用增加了？(Delta > 0)
+                % 解释：
+                % 1. 可能是之前的分配造成了巨大的路径绕行惩罚，撤出后路径变优，省下的成本 > 任务收益损失。
+                % 2. 或者是减少了某个拥挤任务的过度分配惩罚。
                 accept_leave = true;
             else
-                % 情况 B: 效用下降，按概率接受 (模拟退火)
-                T = 1;
+                % 情况 B: 效用下降 (Delta < 0) -> SA 核心逻辑
+                % 我们以一定概率接受"变差"的操作，防止算法卡在局部最优解。
+                
+                T = 1; % 默认温度
                 if isfield(Value_Params, 'Temperature') && ~isempty(Value_Params.Temperature)
                     T = Value_Params.Temperature;
                 end
-                if abs(T) < tol, T = 1; end % 防止除零
+                if abs(T) < tol, T = 1; end % 保护：防止除零错误
                 
-                % Metropolis 准则
+                % Metropolis 准则: P = exp(Delta / T)
+                % Delta是负数，T是正数，所以 P < 1
                 acceptProb = exp(delta_U / T);
                 
                 if rand() < acceptProb
@@ -155,69 +165,83 @@ function [Value_data, incremental_leave] = leave_operation(Value_data, agents, t
                 end
             end
             
-            % --- 8. 执行更新 (Execute) ---
+            % --- 8. 执行更新 (Execute Update) ---
             if accept_leave
-                % 确认接受：更新核心数据结构
+                % === 确认接受：正式更新核心数据结构 ===
+                
+                % A. 更新联盟结构 (SC)
                 Value_data.SC = SC_Q;
                 
-                % [优化] 复用可行性验证中计算好的时间表
-                if exist('cost_data', 'var')
-                    Value_data.cost_data = cost_data;
-                    % 注意：这里通常还需要更新 Value_data.task_schedule
+                % B. 更新资源矩阵 (resources_matrix)
+                % (实际上在 Step 6 已经赋值了，这里确认保留)
+                Value_data.resources_matrix = R_agent_Q;
+                
+                % C. 更新时间表和成本数据 (Optimization)
+                % 直接复用可行性验证中计算好的 task_schedule，避免 energy_cost 重复计算
+                if exist('cost_data', 'var') && ~isempty(cost_data)
+                    Value_data.cost_data = cost_data; % 缓存成本数据
                     if isstruct(cost_data)
-                        Value_data.task_schedule = cost_data;
+                        Value_data.task_schedule = cost_data; % 更新时间表
                     end
                 end
                 
-                % --- 更新成员矩阵 coalitionstru ---
-                % 重新扫描资源矩阵，确定智能体当前到底参与了哪些任务
-                assignedTasksPost = find(any(R_agent_Q > tol, 2)); % 只要有资源投入就算参与
+                % D. 更新联盟成员矩阵 (coalitionstru)
+                % 这是一个 (M+1) x N 的矩阵，用于快速索引“谁在哪个任务里”
+                
+                % 1) 重新扫描资源矩阵，找出所有分配量 > 0 的任务索引
+                assignedTasksPost = find(any(R_agent_Q > tol, 2)); 
                 
                 coalition_after = Value_data.coalitionstru;
-                % 1. 清空所有真实任务行的标记
+                
+                % 2) 先假设该智能体退出了所有真实任务（1~M行置0）
                 coalition_after(1:M, agentIdx) = 0;
                 
-                % 2. 重新标记参与的任务
+                % 3) 根据扫描结果，重新填入 ID
                 for mIdx = assignedTasksPost'
                     coalition_after(mIdx, agentIdx) = agents(agentIdx).id;
                 end
                 
-                % 3. 维护 Void 任务 (第 M+1 行)
+                % 4) 维护 Void 任务 (第 M+1 行) - 也就是空闲池
                 if isempty(assignedTasksPost)
-                    % 如果什么都没做，标记为闲置
+                    % 如果什么都没做，标记为闲置 (填入ID)
                     coalition_after(M + 1, agentIdx) = agents(agentIdx).id;
                 else
-                    % 如果有活干，移出闲置列表
+                    % 如果有活干，移出闲置列表 (置0)
                     coalition_after(M + 1, agentIdx) = 0;
                 end
                 
                 Value_data.coalitionstru = coalition_after;
                 
-                % 设置成功标志并退出
+                % 设置成功标志
                 incremental_leave = 1;
+                
+                % 打印日志
                 if verbose
                     fprintf('[Leave Accept] Agent %d <- Task %d | ResType: %d | dU: %.4f\n', ...
                         agentID, sourceTask, r, delta_U);
                 end
-                break; % 贪婪策略：找到一个动作就执行并退出，进入下一轮同步
+                
+                % 贪婪策略：一旦找到一个可行的优化步骤，立即执行并退出循环，
+                % 进入下一轮状态同步或下一个智能体的决策。
+                break; 
                 
             else
-                % 拒绝：回滚资源矩阵
-                % 注意：SC 和 coalitionstru 此时还没改，只需回滚 resources_matrix 即可
+                % === 拒绝：回滚 ===
+                % 只需回滚 resources_matrix 即可，因为 SC 和 coalitionstru 还没改
                 Value_data.resources_matrix = R_agent_P;
             end
             
-        end % end for tasks
+        end % end for tasks (遍历候选任务)
         
         if incremental_leave == 1
-            break; % 已执行操作，跳出外层循环
+            break; % 已执行操作，跳出资源类型循环
         end
-    end % end for resource types
+    end % end for resource types (遍历资源类型)
     
     % --- 9. 全局安全回滚 ---
-    % 如果遍历了所有可能都没能成功执行撤出，确保数据一致性
+    % 如果遍历了所有可能都没能成功执行撤出 (或者都被拒绝了)，
+    % 确保数据完全恢复到函数入口时的状态
     if incremental_leave == 0
         Value_data.resources_matrix = original_resources_matrix;
     end
-
 end

@@ -18,7 +18,7 @@ classdef AgentOps
             % --- 阶段1：各智能体独立观测 ---
             for i = 1:Value_Params.N
                 % [修正] 在新架构中，任务查询逻辑已移至 WorldSim 类
-                taskIds = WorldSim.get_agent_tasks_fast(SC_global, i);
+                taskIds = OCFUtils.get_agent_tasks_fast(SC_global, i);
                 
                 if isempty(taskIds), continue; end
 

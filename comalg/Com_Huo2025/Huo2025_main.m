@@ -193,7 +193,7 @@ for counter = 1:Value_Params.num_rounds
     
     % 2. 更新后验信念 (Update Belief)
     % 利用 Dirichlet 分布 (Beta分布的多维推广) 更新对任务价值的概率估计。
-    Value_data = OCFUtils.update_belief_from_observations(Value_data, Value_Params);
+    Value_data = AgentOps.update_belief_from_observations(Value_data, Value_Params);
     
     
     %% ==================== 3. 绩效评估 (Evaluation) ====================

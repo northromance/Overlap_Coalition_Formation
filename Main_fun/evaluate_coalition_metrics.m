@@ -80,7 +80,6 @@ function [global_net_utility, total_global_cost, total_completed_value, task_com
         
         % 2. 准备计算路径成本所需的数据
         % 获取该智能体的资源分配矩阵 (N x K) -> 提取第 i 行
-        R_agent = OCFUtils.get_agent_resource_matrix(SC_global, i, Value_Params);
         
         % 对任务按优先级排序 (构建路径)
         my_tasks = OCFUtils.sort_tasks_by_priority(my_raw_tasks, tasks);
@@ -93,7 +92,7 @@ function [global_net_utility, total_global_cost, total_completed_value, task_com
         % 4. 计算路径时间 (核心耗时步骤)
         % 计算飞行时间、等待时间、执行时间
         [t_fly_total, t_wait_total, t_exec_total] = WorldSim.calc_with_global_sync( ...
-            i, my_tasks, agents, tasks, Value_Params, SC_global, R_agent, eps_val);
+            i, my_tasks, agents, tasks, Value_Params, SC_global, eps_val);
         
         % 5. 计算并存储该智能体的总成本
         cost_i = t_fly_total * alpha_fly + t_wait_total * alpha_wait + t_exec_total * beta;

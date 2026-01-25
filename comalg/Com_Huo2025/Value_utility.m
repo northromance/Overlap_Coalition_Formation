@@ -1,4 +1,4 @@
-function agentutility = Value_utility(agents, tasks, numberrow, numbercolumn, ~, Value_data, Value_Params, SC, R_agent)
+function agentutility = Value_utility(agents, tasks, numberrow, numbercolumn, ~, Value_data, Value_Params, SC)
 % VALUE_UTILITY 计算智能体在特定资源分配状态下的预期净效用
 %
 % 核心逻辑：Utility = max(0, Revenue - Cost)
@@ -73,19 +73,14 @@ function agentutility = Value_utility(agents, tasks, numberrow, numbercolumn, ~,
     beta = agents(agent_id).beta;
     
     % A. 构建任务序列 (基于 R_agent 提议状态)
-    myOrderedTasks = find(any(R_agent > tol, 2))';
-    
-    % 确保当前考察的任务包含在序列中
-    if isempty(myOrderedTasks), myOrderedTasks = numberrow;
-    elseif ~ismember(numberrow, myOrderedTasks), myOrderedTasks = [numberrow, myOrderedTasks];
-    end
+    myOrderedTasks = OCFUtils.get_agent_tasks_fast(SC,agent_id,tol);
     
     % 按优先级排序任务 (物理引擎需要有序输入)
     orderedTasks = OCFUtils.sort_tasks_by_priority(myOrderedTasks, tasks);
     
     % B. 调用物理引擎 (计算时间消耗)
     [t_fly, t_wait, t_exec] = WorldSim.calc_with_global_sync( ...
-        agent_id, orderedTasks, agents, tasks, Value_Params, SC, R_agent, tol);
+        agent_id, orderedTasks, agents, tasks, Value_Params, SC, tol);
     
     % C. 聚合总成本
     cost = t_fly * alpha_fly + t_wait * alpha_wait + t_exec * beta;

@@ -5,14 +5,13 @@ function Value_data = update_task_schedule(Value_data, agents, tasks, Value_Para
     M = Value_Params.M;
     for i = 1:N
         SC = Value_data(i).SC;
-        R_agent = OCFUtils.get_agent_resource_matrix(SC, i, Value_Params);
-        assigned_tasks = find(cellfun(@(x) any(x(i, :) > tol), SC))';
+        assigned_tasks = OCFUtils.get_agent_tasks_fast(SC,Value_data(i).agentID,tol);
         if isempty(assigned_tasks)
             Value_data(i).task_schedule = empty_schedule();
             continue;
         end
         % 直接使用 energy_cost 返回的详细时间信息
-        [t_flight, T_exec, ~, energy, ordered_tasks, task_arrival_times, t_wait, start_times, execution_times, completion_times] = energy_cost(i, assigned_tasks, agents, tasks, Value_Params, R_agent, SC);
+        [t_flight, T_exec, ~, energy, ordered_tasks, task_arrival_times, t_wait, start_times, execution_times, completion_times] = energy_cost(i, assigned_tasks, agents, tasks, Value_Params, SC);
         % 存储详细数据到 Value_data
         Value_data(i).task_schedule.task_sequence = ordered_tasks;
         Value_data(i).task_schedule.arrival_times = task_arrival_times;
