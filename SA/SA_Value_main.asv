@@ -57,7 +57,6 @@ for i=1:Value_Params.N
     Value_data(i).task_schedule.task_sequence = [];           % 任务执行顺序
     Value_data(i).task_schedule.arrival_times = [];           % 到达时刻
     Value_data(i).task_schedule.start_times = [];             % 同步后的开始时刻
-     Value_data(i).task_schedule.mission_end_time  = [];
     Value_data(i).task_schedule.execution_times = [];         % 个人执行时长
     Value_data(i).task_schedule.completion_times = [];        % 完工时刻
     Value_data(i).task_schedule.total_flight_time = 0;

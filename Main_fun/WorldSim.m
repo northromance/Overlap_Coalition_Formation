@@ -106,7 +106,7 @@ classdef WorldSim
         end
         
         
-        function [t_fly_total, t_wait_total, t_exec_total, start_times, execution_times, completion_times] = calc_with_global_sync(...
+        function [t_fly_total, t_wait_total, t_exec_total, start_times, execution_times, completion_times,mission_end_time] = calc_with_global_sync(...
                 agentIdx, myOrderedTasks, agents, tasks, Value_Params, SC, tol)
             % CALC_WITH_GLOBAL_SYNC 计算基于全局同步机制的时间与能耗，并返回详细时间表
             % myOrderedTasks 需要对之前的任务进行优先级排序好
@@ -242,10 +242,15 @@ classdef WorldSim
                 execution_times(ii) = my_exec_time;     % 我实际干活的时间
                 completion_times(ii) = curr_clock;      % 我离开任务的时间 (含完工等待)
             end
-            
+
             % --- 8. 返回基地的飞行 ---
-            return_dist = norm([agents(agentIdx).x, agents(agentIdx).y] - curr_pos);
-            t_fly_total = t_fly_total + return_dist / max(v, tol);
+    return_dist = norm([agents(agentIdx).x, agents(agentIdx).y] - curr_pos);
+    return_time = return_dist / max(v, tol); % 计算返航耗时
+    
+    t_fly_total = t_fly_total + return_time; % 计入总成本
+    
+    % [新增] 计算最终落地时间
+    mission_end_time = curr_clock + return_time;
         end
 
         

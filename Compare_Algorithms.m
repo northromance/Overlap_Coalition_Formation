@@ -46,7 +46,7 @@ WORLD_ZMIN = 0; WORLD_ZMAX = 0;
 agent_velocity = 2;             % 移动速度
 agent_detprob_min = 0.9;        % 探测概率下限
 agent_detprob_max = 1.0;        % 探测概率上限
-agent_Emax_min = 100;          % 最大能量下限
+agent_Emax_min = 300;          % 最大能量下限
 agent_Emax_range = 50;          % 最大能量随机范围
 agent_fuel = 1;                 % 飞行油耗率 (单位距离消耗)
 agent_wait_fuel = 0.5;          % 等待油耗率 (悬停/等待时的消耗，独立于飞行)
@@ -334,3 +334,46 @@ end
 fprintf('========================================================================\n');
 fprintf('                    Comparison done (对比结束)\n');
 fprintf('========================================================================\n\n');
+
+%% ========================================================================
+%  Custom Visualization: SA_Value Resource Allocation
+%  新增可视化：SA算法资源分配详情 & 打印智能体能力
+%  调用 plots/ResourcePlotter 类
+%% ========================================================================
+
+% 检查是否运行了 SA_Value (ID = 1) 且结果存在
+if isfield(results, 'alg1') && strcmp(results.alg1.name, 'SA_Value')
+    fprintf('\nVisualizing SA_Value resource details...\n');
+    
+    % 1. [新增] 首先打印智能体的资源能力上限，方便对照
+    PlotClass.print_agent_capabilities(agents);
+    
+    % 2. 获取 SA 算法的最终输出数据并绘图
+    sa_value_data = results.alg1.Value_data;
+    PlotClass.plot_SA_allocation(sa_value_data, tasks, Value_Params);
+    
+    fprintf('Resource allocation plot generated.\n');
+else
+    fprintf('\nSkipping SA_Value visualization (Algorithm not run or not result 1).\n');
+end
+
+
+% 选择要进行动画展示的算法结果 (例如这里选择 SA_Value，即 alg1)
+target_alg_idx = 1; % 修改这里可以选择其他算法，如 2, 3 等
+target_alg_field = sprintf('alg%d', target_alg_idx);
+
+if isfield(results, target_alg_field) && isfield(results.(target_alg_field), 'Value_data')
+    alg_name = results.(target_alg_field).name;
+    fprintf('\nGenerating dynamic animation for algorithm: %s ...\n', alg_name);
+    fprintf('Please wait for the animation window to appear.\n');
+    
+    % 获取目标算法的输出数据
+    anim_data = results.(target_alg_field).Value_data;
+    
+    % 调用 PlotClass 中的静态动画函数
+    % 注意：确保 plots 文件夹在路径中
+    PlotClass.plot_execution_animation(anim_data, agents, tasks, Value_Params);
+    
+else
+    fprintf('\nSkipping animation: Algorithm result %d not found.\n', target_alg_idx);
+end
