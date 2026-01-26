@@ -651,62 +651,7 @@ classdef PlotClass
                     grid on; legend('Location', 'best'); hold off;
                 end
             end
-            
-            %% --- 5. 绘制信念演化曲线 (按任务划分，显示各机器人最大信念概率)
-            for alg_idx = 1:num_algorithms
-                alg_name = alg_names{alg_idx};
-                res = results.(alg_name);
-
-                % 确认存在信念历史
-                if ~(isfield(res, 'history_data') && isfield(res.history_data, 'rounds') && ~isempty(res.history_data.rounds))
-                    continue;
-                end
-                rounds = res.history_data.rounds;
-                if ~isfield(rounds, 'beliefs') || isempty(rounds(1).beliefs)
-                    continue;
-                end
-
-                [num_agents, num_tasks, ~] = size(rounds(1).beliefs);
-                num_rounds = length(rounds);
-
-                % 预分配最大信念概率：维度为 机器人 x 轮次 x 任务
-                max_belief_history = zeros(num_agents, num_rounds, num_tasks);
-                for r = 1:num_rounds
-                    if ~isfield(rounds(r), 'beliefs') || isempty(rounds(r).beliefs)
-                        continue;
-                    end
-                    beliefs_r = rounds(r).beliefs;              % N x M x task_type
-                    max_belief_r = max(beliefs_r, [], 3);       % 取每个任务的最大类型概率
-                    for t = 1:num_tasks
-                        max_belief_history(:, r, t) = max_belief_r(:, t);
-                    end
-                end
-
-                rows = ceil(sqrt(num_tasks));
-                cols = ceil(num_tasks / rows);
-                figure('Name', ['信念演化 - ', res.name], 'Position', [150, 150, 1200, 800]);
-                tiledlayout(rows, cols, 'Padding', 'compact', 'TileSpacing', 'compact');
-                agent_colors = lines(num_agents);
-
-                for t = 1:num_tasks
-                    nexttile;
-                    hold on;
-                    for a = 1:num_agents
-                        plot(1:num_rounds, squeeze(max_belief_history(a, :, t)), ...
-                            'LineWidth', 1.5, 'Color', agent_colors(a, :), ...
-                            'DisplayName', sprintf('机器人 %d', a));
-                    end
-                    xlabel('博弈轮次');
-                    ylabel('最大信念概率');
-                    title(sprintf('任务 %d', t));
-                    ylim([0, 1]);
-                    grid on;
-                    if t == 1
-                        legend('Location', 'southoutside', 'Orientation', 'horizontal');
-                    end
-                    hold off;
-                end
-            end
+          
 
             %% --- 6. 信念期望价值收敛曲线 (期望 = 价值 × 信念概率)
             if has_tasks && ~isempty(type_values)

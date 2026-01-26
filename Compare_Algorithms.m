@@ -1,4 +1,4 @@
-﻿clear; clc; close all;
+clear; clc; close all;
 
 fprintf('\n');
 fprintf('========================================================================\n');
@@ -43,14 +43,14 @@ WORLD_ZMIN = 0; WORLD_ZMAX = 0;
 
 % Agent parameters（智能体参数）
 agent_velocity = 2;             % 移动速度
-agent_detprob_min = 1.0;        % 探测概率下限
+agent_detprob_min = 0.95;        % 探测概率下限
 agent_detprob_max = 1.0;        % 探测概率上限
-agent_Emax_min = 200;           % 最大能量下限
+agent_Emax_min = 300;           % 最大能量下限
 agent_Emax_range = 50;          % 最大能量随机范围
 agent_fuel = 1;                 % 运动油耗（单位距离消耗）
 agent_wait_fuel = 0.5;          % 等待油耗（停留/等待时消耗，通常小于运动）
 agent_beta = 1;                 % 执行动作油耗系数（执行任务时的动作消耗）
-min_resource_value = 2;         % 智能体拥有的资源能力最小值
+min_resource_value = 0;         % 智能体拥有的资源能力最小值
 max_resource_value = 4;         % 智能体拥有的资源能力最大值
 
 % Task resource demand ranges (per task type)
@@ -65,14 +65,14 @@ resource_exec_time = [50 65 50 60 35 45];
 
 % SA params（SA_Value 算法参数，其他算法可忽略）
 SA_Temperature = 100.0;      % 初始温度
-SA_alpha = 0.9;              % 降温系数
+SA_alpha = 0.95;              % 降温系数
 SA_Tmin = 0.01;              % 终止温度
 max_stable_iterations = 20;  % 最大稳定迭代次数（用于判断收敛）
 
 %% AddPara (kept for interface parity)
 % 为接口统一保留：部分算法需要该结构体
 AddPara.control = 1;
-AddPara.resource_confidence = 0.9;  % 资源分位/置信度（风险规避）
+AddPara.resource_confidence = 0.95;  % 资源分位/置信度（风险规避）
 
 % Observation/game params（观测/博弈参数）
 obs_times = 50;              % 观测次数（贝叶斯更新等）
