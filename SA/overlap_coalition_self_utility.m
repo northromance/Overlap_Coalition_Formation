@@ -46,18 +46,17 @@ function individual_utility = overlap_coalition_self_utility(n, task_m, SC, agen
         % 获取智能体对该任务类型的概率分布信念
         b = agent_belief(task_m, :);
         num_types = size(Value_Params.task_type_demands, 1);
-        use_b = b(1:num_types); % 截取有效部分
-        
-        % 策略分歧：风险规避 vs 数学期望
-        if isfield(Value_Params, 'resource_confidence') && Value_Params.resource_confidence > 0
-            % [策略A] 分位数法 (Quantile): 
-            % 计算一个需求值，使得任务真实需求小于该值的概率达到 resource_confidence (例如 95%)
-            % 这是一种风险规避策略，宁可多估算需求以免任务失败
-            expected_demand = WorldSim.calculate_demand_quantile(use_b, Value_Params.task_type_demands, Value_Params.resource_confidence);
+        use_b = b(1:num_types); % 截取有效部
+        task_type_demands = Value_Params.task_type_demands;
+
+        if AddPara.resource_confidence > 0
+            % 使用分位数法
+            expected_demand = WorldSim.calculate_demand_quantile(use_b(1:num_types), ...
+                                                                     task_type_demands, ...
+                                                                     AddPara.resource_confidence);
         else
-            % [策略B] 期望值法 (Expectation):
-            % 简单的加权平均：Prob * Demand
-            expected_demand = use_b * Value_Params.task_type_demands;
+            % 回退到期望值法（向后兼容）
+            expected_demand = use_b(1:num_types) * task_type_demands;
         end
     else
         % [兜底] 如果没有定义类型需求，使用任务结构体中的默认需求（通常是上帝视角值，仿真中应尽量避免直接使用）

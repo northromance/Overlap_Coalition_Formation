@@ -242,63 +242,113 @@ classdef WorldSim
                 execution_times(ii) = my_exec_time;     % 我实际干活的时间
                 completion_times(ii) = curr_clock;      % 我离开任务的时间 (含完工等待)
             end
-
+            
             % --- 8. 返回基地的飞行 ---
-    return_dist = norm([agents(agentIdx).x, agents(agentIdx).y] - curr_pos);
-    return_time = return_dist / max(v, tol); % 计算返航耗时
-    
-    t_fly_total = t_fly_total + return_time; % 计入总成本
-    
-    % [新增] 计算最终落地时间
-    mission_end_time = curr_clock + return_time;
+            return_dist = norm([agents(agentIdx).x, agents(agentIdx).y] - curr_pos);
+            return_time = return_dist / max(v, tol); % 计算返航耗时
+            
+            t_fly_total = t_fly_total + return_time; % 计入总成本
+            
+            % [新增] 计算最终落地时间
+            mission_end_time = curr_clock + return_time;
         end
-
+        
         
         function demand = calculate_demand_quantile(belief, task_type_demands, confidence)
-            % calculate_demand_quantile 基于智能体的不确定性信念估算资源需求。
-            % 策略：
-            %   1. 高确定性：若对某类型的信念极高，直接按该类型准备资源。
-            %   2. 低确定性：按置信度 (confidence) 计算分位数，确保有 confidence% 的概率资源够用（风险规避）。
+            % CALCULATE_DEMAND_QUANTILE 基于信念分布估算所需的资源量
+            %
+            % 核心逻辑：
+            %   智能体不知道任务的确切类型，只知道属于各类型的概率 (belief)。
+            %   为了保证任务成功率，智能体需要准备足够的资源，使得资源“够用”的概率至少达到 confidence。
+            %
+            % 策略逻辑：
+            %   1. 【高确定性捷径】：如果智能体非常确定任务是某一种类型（概率 > confidence），
+            %      则直接按照该类型的标准需求携带资源，避免复杂的计算。
+            %   2. 【低确定性兜底】：如果智能体犹豫不决（概率分散），则构建需求的累积分布函数 (CDF)，
+            %      找到覆盖 confidence 概率所需的最小资源量（即分位数概念）。
+            %
             % 输入：
-            %   belief: (Vector) 智能体对任务类型的概率分布 [p1, p2, ...]。
-            %   task_type_demands: (Matrix) 各任务类型对应的资源需求表。
-            %   confidence: (Float) 置信度阈值 (0~1)，例如 0.95。
-
+            %   belief            : (1xN double) 任务属于各类型的概率分布向量 [p1, p2, ..., pN]。和应为1。
+            %   task_type_demands : (NxK double) N种任务类型对K种资源的需求矩阵。第i行是第i类任务的需求。
+            %   confidence        : (double)     置信度阈值 (0~1)，例如 0.95 表示要有95%的把握资源够用。
+            %
+            % 输出：
+            %   demand            : (1xK double) 最终决定的各类资源携带量。
+            
+            % --- 1. 输入校验 ---
             if nargin < 3
-                error('calculate_demand_quantile:NotEnoughInputs', '需要3个输入参数');
+                error('calculate_demand_quantile:NotEnoughInputs', '错误：必须提供 belief, task_type_demands 和 confidence 三个参数');
             end
-
+            
+            % --- 2. 数据预处理 ---
+            % num_types: 潜在的任务类型数量 (N)
+            % K: 资源种类的数量 (例如：燃油、弹药、算力等)
             [num_types, K] = size(task_type_demands);
-            belief = belief(:).'; % 转为行向量
+            
+            % 确保 belief 是行向量 (1xN)，方便后续矩阵操作
+            belief = belief(:).';
+            
+            % 初始化输出需求向量
             demand = zeros(1, K);
-
-            % --- 策略 1：确定性主导 (High Confidence) ---
+            
+            % --- 3. 策略一：确定性主导 (High Confidence Strategy) ---
+            % 目的：计算加速。如果已经“几乎确定”是某种任务，就没必要做复杂的统计学计算。
+            % 逻辑：如果某类型的概率 >= 置信度，那只准备该类型的资源就足以满足置信度要求。
             if max(belief) >= confidence
-                [~, most_likely_type] = max(belief); % 找到概率最大的类型
-                demand = ceil(task_type_demands(most_likely_type, :)); % 直接取该类型的需求
-                return;
+                % 找到概率最大的那个类型索引
+                [~, most_likely_type] = max(belief);
+                
+                % 直接读取该类型的需求作为最终需求
+                % ceil: 向上取整，防止物理资源出现小数（如0.5个机器人）
+                demand = ceil(task_type_demands(most_likely_type, :));
+                return; % 直接结束函数
             end
-
-            % --- 策略 2：风险规避 (Quantile based) ---
-            % 对 K 种资源分别计算满足置信度所需的量
+            
+            % --- 4. 策略二：风险规避 (Quantile/CDF Strategy) ---
+            % 目的：当不确定性较高时（例如觉得是A类任务概率0.4，B类0.6），需要综合考虑所有可能。
+            % 逻辑：对于每一种资源 k，我们要找到一个数值 d，使得 P(实际需求 <= d) >= confidence。
+            
+            % 遍历每一种资源类型 (列)
             for r = 1:K
-                demands_r = task_type_demands(:, r); % 提取第 r 种资源在所有类型下的需求
-                [sorted_demands, idx] = sort(demands_r); % 按需求量从小到大排序
-                sorted_belief = belief(idx);             % 对应的概率值重排
-
-                cumulative_prob = cumsum(sorted_belief); % 计算累积概率 CDF
-
-                % 找到累积概率首次达到 confidence 的位置，该位置的需求量即为覆盖风险所需的量
+                % 4.1 获取当前资源 r 在所有可能任务类型下的需求量
+                demands_r = task_type_demands(:, r);
+                
+                % 4.2 排序：将需求从小到大排列
+                % sorted_demands: 排序后的需求值
+                % idx: 排序后的索引，用于同步重排对应的概率
+                [sorted_demands, idx] = sort(demands_r);
+                
+                % 4.3 重排概率：让概率与排序后的需求对应
+                % 例如：需求为 [10, 5, 20]，概率为 [0.2, 0.3, 0.5]
+                % 排序后需求: [5, 10, 20]，对应概率: [0.3, 0.2, 0.5]
+                sorted_belief = belief(idx);
+                
+                % 4.4 计算累积概率 (CDF - Cumulative Distribution Function)
+                % 继续上例：cumulative_prob = [0.3, 0.5, 1.0]
+                % 含义：需求 <= 5 的概率是 0.3；需求 <= 10 的概率是 0.5；需求 <= 20 的概率是 1.0
+                cumulative_prob = cumsum(sorted_belief);
+                
+                % 4.5 寻找阈值截断点
+                % 找到第一个累积概率超过 confidence 的位置
+                % 假设 confidence = 0.4，则在 index=2 (对应需求10) 处，累积概率达到 0.5 >= 0.4
+                % 这意味着带 10 个单位资源，有 50% 的概率够用（满足 >40% 的要求）
                 threshold_idx = find(cumulative_prob >= confidence, 1);
+                
+                % 4.6 异常处理
+                % 如果 confidence 设置为 1.0 或者浮点数误差导致没找到，默认取最大需求（最保守策略）
                 if isempty(threshold_idx)
                     threshold_idx = num_types;
                 end
-
+                
+                % 4.7 赋值
                 demand(r) = sorted_demands(threshold_idx);
             end
-            demand = ceil(demand); % 向上取整确保资源为整数
+            
+            % --- 5. 最终取整 ---
+            % 确保所有资源量为整数（如无人机数量、电池包数量等通常为离散值）
+            demand = ceil(demand);
         end
-
+        
         
     end
     

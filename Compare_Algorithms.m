@@ -70,10 +70,17 @@ SA_alpha = 0.95;            % 降温系数
 SA_Tmin = 0.01;             % 终止温度
 max_stable_iterations = 5;  % 最大稳定迭代次数 (用于判定收敛)
 
+
+
+%% AddPara (kept for interface parity)
+% 保留接口，部分旧算法可能需要这个结构体
+AddPara.control = 1;
+AddPara.resource_confidence = 0.9;  % 资源分位数置信度
+
 % Observation/game params (博弈与观测参数)
-obs_times = 50;             % 观测次数 (贝叶斯更新用)
+obs_times = 20;             % 观测次数 (贝叶斯更新用)
 num_rounds = 50;            % 博弈总轮数
-resource_confidence = 0.7;  % 资源分位数置信度
+
 
 % Qi2023 utility params (对比算法 Qi2023 的特定参数)
 Qi_beta_m = 1.0;   % 任务完成率权重
@@ -152,7 +159,7 @@ end
 % Algorithm shared params (打包所有算法通用的参数)
 Value_Params = OCFUtils.init_value_params(N, M, K, num_task_types, task_type_demands, ...
     SA_Temperature, SA_alpha, SA_Tmin, max_stable_iterations, ...
-    obs_times, num_rounds, resource_confidence); 
+    obs_times, num_rounds); 
 
 % Random seed for reproducibility (重要：将种子也传入参数中)
 Value_Params.seed = SEED;
@@ -199,9 +206,6 @@ for i = 1:length(all_algorithms)
 end
 fprintf('\nRunning IDs: [%s]\n\n', num2str(algorithms_to_run_ids));
 
-%% AddPara (kept for interface parity)
-% 保留接口，部分旧算法可能需要这个结构体
-AddPara.control = 1;
 
 %% Run selected algorithms
 % 逐个运行已选算法，记录结果与运行时间

@@ -358,7 +358,7 @@ classdef OCFUtils
         end
         
         
-        function Value_Params = init_value_params(N, M, K, num_task_types, task_type_demands, SA_Temperature, SA_alpha, SA_Tmin, max_stable_iterations, obs_times, num_rounds, resource_confidence)
+        function Value_Params = init_value_params(N, M, K, num_task_types, task_type_demands, SA_Temperature, SA_alpha, SA_Tmin, max_stable_iterations, obs_times, num_rounds)
             % INIT_VALUE_PARAMS 初始化算法参数结构
             %
             % 输入参数:
@@ -399,9 +399,6 @@ classdef OCFUtils
             
             % 游戏参数
             Value_Params.num_rounds = num_rounds;
-            
-            % 资源需求计算参数
-            Value_Params.resource_confidence = resource_confidence;
             
         end
     end
