@@ -482,7 +482,7 @@ classdef PlotClass
             
             % 辅助绘图函数 (内部使用)
             plot_bar = @(idx, data, title_str, y_label, fmt) ...
-                local_plot_bar(idx, data, title_str, y_label, fmt, names_list, colors, valid_count);
+                PlotClass.local_plot_bar(idx, data, title_str, y_label, fmt, names_list, colors, valid_count);
             
             % 子图1: 总效用 (Utility)
             plot_bar(1, utilities, '总效用对比 (Utility)', '效用值', '%.1f');
@@ -555,6 +555,7 @@ classdef PlotClass
             % 检查是否有历史数据
             value_histories = {};
             utility_histories = {};
+            completion_rate_histories = {};
             hist_names = {};
             hist_colors = [];
             
@@ -578,6 +579,19 @@ classdef PlotClass
                             utils = [rounds.coalition_utility];
                             utility_histories{end+1} = utils;
                         end
+
+                        if isfield(rounds, 'task_completion_degrees')
+                            comp_rates = zeros(1, length(rounds));
+                            for rr = 1:length(rounds)
+                                deg = rounds(rr).task_completion_degrees;
+                                if isempty(deg)
+                                    comp_rates(rr) = NaN;
+                                else
+                                    comp_rates(rr) = mean(deg) * 100; % 转为百分比
+                                end
+                            end
+                            completion_rate_histories{end+1} = comp_rates;
+                        end
                         
                         hist_names{end+1} = res.name;
                         if isfield(res, 'color'), hist_colors(end+1, :) = res.color;
@@ -586,28 +600,48 @@ classdef PlotClass
                 end
             end
             
-            % 绘制 完成价值 演化图
-            if ~isempty(value_histories)
-                figure('Name', '收敛曲线', 'Position', [200, 200, 1200, 500]);
+            % 绘制 历史演化曲线 (价值 / 效用 / 完成度)
+            if ~isempty(value_histories) || ~isempty(utility_histories) || ~isempty(completion_rate_histories)
+                total_plots = (~isempty(value_histories)) + (~isempty(utility_histories)) + (~isempty(completion_rate_histories));
+                fig_width = 500 * total_plots;
+                figure('Name', '收敛曲线', 'Position', [200, 200, fig_width, 500]);
                 
-                subplot(1, 2, 1);
-                hold on;
-                for k = 1:length(value_histories)
-                    plot(value_histories{k}, 'LineWidth', 2, 'Color', hist_colors(k,:), 'DisplayName', hist_names{k});
-                end
-                xlabel('迭代轮次 (Round)'); ylabel('总完成价值');
-                title('总完成价值收敛曲线');
-                grid on; legend('Location', 'best'); hold off;
+                plot_idx = 1;
                 
-                % 绘制 总效用 演化图
-                subplot(1, 2, 2);
-                hold on;
-                for k = 1:length(utility_histories)
-                    plot(utility_histories{k}, 'LineWidth', 2, 'Color', hist_colors(k,:), 'DisplayName', hist_names{k});
+                if ~isempty(value_histories)
+                    subplot(1, total_plots, plot_idx);
+                    hold on;
+                    for k = 1:length(value_histories)
+                        plot(value_histories{k}, 'LineWidth', 2, 'Color', hist_colors(k,:), 'DisplayName', hist_names{k});
+                    end
+                    xlabel('迭代轮次 (Round)'); ylabel('总完成价值');
+                    title('总完成价值收敛曲线');
+                    grid on; legend('Location', 'best'); hold off;
+                    plot_idx = plot_idx + 1;
                 end
-                xlabel('迭代轮次 (Round)'); ylabel('全局净效用');
-                title('全局净效用收敛曲线');
-                grid on; legend('Location', 'best'); hold off;
+                
+                if ~isempty(utility_histories)
+                    subplot(1, total_plots, plot_idx);
+                    hold on;
+                    for k = 1:length(utility_histories)
+                        plot(utility_histories{k}, 'LineWidth', 2, 'Color', hist_colors(k,:), 'DisplayName', hist_names{k});
+                    end
+                    xlabel('迭代轮次 (Round)'); ylabel('全局净效用');
+                    title('全局净效用收敛曲线');
+                    grid on; legend('Location', 'best'); hold off;
+                    plot_idx = plot_idx + 1;
+                end
+                
+                if ~isempty(completion_rate_histories)
+                    subplot(1, total_plots, plot_idx);
+                    hold on;
+                    for k = 1:length(completion_rate_histories)
+                        plot(completion_rate_histories{k}, 'LineWidth', 2, 'Color', hist_colors(k,:), 'DisplayName', hist_names{k});
+                    end
+                    xlabel('迭代轮次 (Round)'); ylabel('平均任务完成度 (%)');
+                    title('任务完成度收敛曲线');
+                    grid on; legend('Location', 'best'); hold off;
+                end
             end
             
             fprintf('? 对比图表绘制完成\n');
@@ -635,3 +669,6 @@ classdef PlotClass
         end
     end
 end
+
+
+

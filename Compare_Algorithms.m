@@ -20,7 +20,7 @@ addpath("comalg/Com_PSO/");        % PSO algorithm (粒子群优化算法)
 %  场景参数配置（需要调试时可在此调整）
 %% ========================================================================
 SEED = 2456;                    % 随机种子 (所有算法共享，确保实验可复现性)
-N = 5;                          % number of agents (智能体数量)
+N = 6;                          % number of agents (智能体数量)
 M = 10;                         % number of tasks (任务数量)
 K = 6;                          % number of resource types (资源类型数量)
 task_values = [800, 1000, 1500];  % three task types (三种不同类型的任务价值)
@@ -45,7 +45,7 @@ WORLD_ZMIN = 0; WORLD_ZMAX = 0;
 agent_velocity = 2;             % 移动速度
 agent_detprob_min = 0.9;        % 探测概率下限
 agent_detprob_max = 1.0;        % 探测概率上限
-agent_Emax_min = 300;          % 最大能量下限
+agent_Emax_min = 200;          % 最大能量下限
 agent_Emax_range = 50;          % 最大能量随机范围
 agent_fuel = 1;                 % 飞行油耗率 (单位距离消耗)
 agent_wait_fuel = 0.5;          % 等待油耗率 (悬停/等待时的消耗，独立于飞行)
@@ -65,9 +65,9 @@ resource_exec_time = [50 65 50 60 35 45];
 
 % SA params (用于 SA_Value 算法，其他算法可忽略)
 SA_Temperature = 100.0;     % 初始温度
-SA_alpha = 0.95;            % 降温系数
+SA_alpha = 0.9;            % 降温系数
 SA_Tmin = 0.01;             % 终止温度
-max_stable_iterations = 5;  % 最大稳定迭代次数 (用于判定收敛)
+max_stable_iterations = 20;  % 最大稳定迭代次数 (用于判定收敛)
 
 
 
@@ -77,8 +77,8 @@ AddPara.control = 1;
 AddPara.resource_confidence = 0.9;  % 资源分位数置信度
 
 % Observation/game params (博弈与观测参数)
-obs_times = 20;             % 观测次数 (贝叶斯更新用)
-num_rounds = 50;            % 博弈总轮数
+obs_times = 50;             % 观测次数 (贝叶斯更新用)
+num_rounds = 100;            % 博弈总轮数
 
 
 % Qi2023 utility params (对比算法 Qi2023 的特定参数)
