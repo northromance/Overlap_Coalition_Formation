@@ -1,4 +1,4 @@
-function [Value_data, incremental_join] = join_operation(Value_data, agents, tasks, Value_Params, probs)
+function [Value_data, incremental_join] = join_operation(Value_data, agents, tasks, Value_Params, probs,AddPara)
 % JOIN_OPERATION 执行智能体加入任务的操作 (SA内核)
 %
 % 核心流程：
@@ -39,7 +39,7 @@ for r = 1:Value_Params.K
     if Value_data.agentID == 5
         fprintf('当前id为%d',5)
     end
-    [SC_P, SC_Q, R_agent_P, R_agent_Q] = join_changes(Value_data, agents, Value_Params, target, agentID, r);
+    [SC_P, SC_Q, R_agent_P, R_agent_Q] = StateTran.join_changes(Value_data, agents, Value_Params, target, agentID, r);
 
     %% 3. 可行性检测 (Feasibility Check)
     % 检查：非负约束、最大携带量、能量/路径可达性
@@ -72,7 +72,7 @@ for r = 1:Value_Params.K
 
     %% 4. 计算效用增量 (Delta U)
     % 计算系统整体效用的变化：Utility(New) - Utility(Old)
-    delta_U = overlap_coalition_u_new(tasks, agents, SC_P, SC_Q, agentID, Value_Params, Value_data);
+    delta_U = Preference_gain(tasks, agents, SC_P, SC_Q, agentID, Value_Params, Value_data);
 
     %% 5. 决策模块 (Decision Making)
     % 模拟退火 (SA) 准则：

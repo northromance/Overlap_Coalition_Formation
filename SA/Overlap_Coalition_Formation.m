@@ -1,4 +1,4 @@
-function [Value_data] = Overlap_Coalition_Formation(agents, tasks, Value_data, Value_Params)
+function [Value_data] = Overlap_Coalition_Formation(agents, tasks, Value_data, Value_Params,AddPara)
 % OVERLAP_COALITION_FORMATION 单个智能体的联盟更新函数（允许重叠联盟）
 %
 % 核心逻辑：
@@ -36,14 +36,14 @@ function [Value_data] = Overlap_Coalition_Formation(agents, tasks, Value_data, V
     % resource_gap 通常包含两部分信息：
     %   1. 任务的剩余需求 (Task Demand - Current Allocation)
     %   2. 智能体的剩余能力 (Agent Capacity - Current Usage)
-    [~, resource_gap] = calc_gaps(Value_data, Value_Params);
+    [~, resource_gap] = calc_gaps(Value_data, Value_Params,AddPara);
     % 注：calc_gaps 的第一个返回值可能是 gap_cost 或其他指标，此处被忽略
 
     %% ==================== 3. 计算任务选择概率 (Task Selection Probabilities) ====================
     % 基于资源缺口、任务优先级、距离成本等因素，计算智能体对每个任务及其每种资源的倾向程度。
     % probs 维度通常为 (K x M) 或 (1 x M)，取决于 select_probs 的具体实现。
     % 高概率意味着该任务更值得投入资源。
-    probs = select_probs(Value_data, agents, tasks, Value_Params, resource_gap);
+    probs = Select_probs(Value_data, agents, tasks, Value_Params, resource_gap);
     
     % 将计算出的概率存入状态结构体，供后续 Join/Leave 操作使用
     Value_data.selectProb = probs;
@@ -54,12 +54,12 @@ function [Value_data] = Overlap_Coalition_Formation(agents, tasks, Value_data, V
     %   如果做不了加法，尝试“做减法” (Leave)：释放低效占用的资源，打破局部最优，让资源流动起来。
     
     % --- Step 4.1: 尝试加入 (Join Operation) ---
-    [Value_data, incremental_join] = join_operation(Value_data, agents, tasks, Value_Params, probs);
+    [Value_data, incremental_join] = join_operation(Value_data, agents, tasks, Value_Params, probs,AddPara);
     
     % --- Step 4.2: 尝试离开 (Leave Operation) ---
     % 只有在 Join 操作没有产生任何改变 (incremental_join == 0) 时，才考虑 Leave。
     if ~incremental_join
-        [Value_data, ~] = leave_operation(Value_data, agents, tasks, Value_Params, probs);
+        [Value_data, ~] = leave_operation(Value_data, agents, tasks, Value_Params, probs,AddPara);
     end
 
     %% ==================== 5. 变化检测 (Detect Changes in SC) ====================

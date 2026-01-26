@@ -1,4 +1,4 @@
-function deltaU = overlap_coalition_u_new(tasks, agents, SC_P, SC_Q, agentID, Value_Params, Value_data)
+function deltaU = Preference_gain(tasks, agents, SC_P, SC_Q, agentID, Value_Params, Value_data)
 % OVERLAP_COALITION_UTILITY [BMBT偏好计算核心]
 % 计算智能体在两个联盟结构(SC_P vs SC_Q)间的效用差值。
 % 
@@ -35,8 +35,8 @@ function deltaU = overlap_coalition_u_new(tasks, agents, SC_P, SC_Q, agentID, Va
     %% ==================== 2. 计算自身效用差 (Self Utility) ====================
     % u_n(SC_Q) - u_n(SC_P)
     
-    u_n_Q = calc_agent_total_utility(SC_Q, agents, tasks, Value_Params, Value_data);
-    u_n_P = calc_agent_total_utility(SC_P, agents, tasks, Value_Params, Value_data);
+    u_n_Q = UtilityEvaluator.calc_agent_total_utility(SC_Q, agents, tasks, Value_Params, Value_data);
+    u_n_P = UtilityEvaluator.calc_agent_total_utility(SC_P, agents, tasks, Value_Params, Value_data);
     
     delta_self = u_n_Q - u_n_P;
     
@@ -149,5 +149,5 @@ function u = get_agent_util_proxy(target_id, target_belief, SC, agents, tasks, p
     
     % 这里假设 calc_agent_total_utility 是你已有的核心计算函数
     % 它应该能处理 SC 结构，计算 target_id 在该结构下的收益-成本
-    u = calc_agent_total_utility(SC, agents, tasks, params, temp_data);
+    u = UtilityEvaluator.calc_agent_total_utility(SC, agents, tasks, params, temp_data);
 end

@@ -1,4 +1,4 @@
-function [allocated_resources, resource_gap] = calc_gaps(Value_data, Value_Params)
+function [allocated_resources, resource_gap] = calc_gaps(Value_data, Value_Params,AddPara)
     % 初始化变量
     N = Value_Params.N; % 智能体数量
     M = Value_Params.M; % 任务数量
@@ -40,11 +40,11 @@ function [allocated_resources, resource_gap] = calc_gaps(Value_data, Value_Param
         
         % 使用分位数法计算期望需求
         % 相比期望值法 (belief × demands)，分位数法更保守
-        if isfield(Value_Params, 'resource_confidence') && Value_Params.resource_confidence > 0
+        if AddPara.resource_confidence > 0
             % 使用分位数法
             expected_demand_vec = WorldSim.calculate_demand_quantile(belief_j(1:num_types), ...
                                                                      task_type_demands, ...
-                                                                     Value_Params.resource_confidence);
+                                                                     AddPara.resource_confidence);
         else
             % 回退到期望值法（向后兼容）
             expected_demand_vec = belief_j(1:num_types) * task_type_demands;

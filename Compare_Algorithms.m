@@ -10,7 +10,6 @@ fprintf('=======================================================================
 % 添加项目所需的子目录路径，确保 MATLAB 能找到所有算法函数
 addpath("Main_fun\");              % core scenario/init functions (核心初始化与场景函数)
 addpath("SA\");                    % SA algorithm (模拟退火算法)
-addpath("plots\");                 % visualization helpers (绘图辅助工具)
 addpath("comalg/Com_Baseline/");   % Greedy baseline (贪心基线算法)
 addpath("comalg/Com_Huo2025/");    % Huo2025 algorithm (本文提出的算法)
 addpath("comalg/Com_Qi2023/");     % Qi2023 algorithm (对比文献算法)
@@ -266,7 +265,7 @@ fprintf('=======================================================================
 if enabled_count > 0
     fprintf('Analyzing results...\n');
     % [修改] 传入 Value_Params，因为 compare_results 内部需要用到 M (任务数) 等参数
-    comparison_stats = compare_results(results, Value_Params); 
+    comparison_stats = ResultProcessor.compare_results(results, Value_Params); 
 
     fprintf('\n========================================================================\n');
     fprintf('                    Performance summary (性能总结)\n');
@@ -316,7 +315,7 @@ if enabled_count > 0
     % 绘图
     if show_plots && enabled_count > 1
         fprintf('Plotting comparison charts...\n');
-        plot_algorithm_comparison(results, comparison_stats, enabled_count);
+        PlotClass.plot_algorithm_comparison(results, comparison_stats, enabled_count);
     end
 
     % 保存数据

@@ -133,7 +133,7 @@ for counter=1:Value_Params.num_rounds
         for ii = 1:Value_Params.N
             % 调用核心函数：重叠联盟形成
             % 智能体 ii 根据当前状态，尝试加入新任务或离开旧任务以提升效用
-            [Value_data_ii] = Overlap_Coalition_Formation(agents, tasks, Value_data(ii), Value_Params);
+            [Value_data_ii] = Overlap_Coalition_Formation(agents, tasks, Value_data(ii), Value_Params,AddPara);
 
 
 
@@ -227,7 +227,7 @@ for counter=1:Value_Params.num_rounds
     %   task_completion_degrees - (Mx1 向量) 每个任务的完成度 D_C (0.0 ~ 1.0)
 
     % 通过当前联盟以真实任务需求和任务价值计算所有联盟产生的总价值
-    [coalition_utility, total_global_cost, total_completed_value, task_completion_degrees] = evaluate_coalition_metrics(final_SC, agents, tasks, Value_Params, eps_val);
+    [coalition_utility, total_global_cost, total_completed_value, task_completion_degrees] = UtilityEvaluator.evaluate_coalition_metrics(final_SC, agents, tasks, Value_Params, eps_val);
 
     %% 4.8 信念广播 (Consensus)
     % 简单的全连接通信：每个智能体将自己的最新信念同步给其他智能体
@@ -238,7 +238,7 @@ for counter=1:Value_Params.num_rounds
     end
 
     % 记录
-    history_data = record_history_data(history_data, counter, Value_data, Value_Params, ...
+    history_data = ResultProcessor.record_history_data(history_data, counter, Value_data, Value_Params, ...
         final_SC, final_coalitionstru, ...
         coalition_utility, total_global_cost, ...
         total_completed_value, task_completion_degrees, ...

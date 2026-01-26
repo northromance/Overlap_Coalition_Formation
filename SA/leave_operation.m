@@ -1,4 +1,4 @@
-function [Value_data, incremental_leave] = leave_operation(Value_data, agents, tasks, Value_Params, probs)
+function [Value_data, incremental_leave] = leave_operation(Value_data, agents, tasks, Value_Params, probs,AddPara)
 % LEAVE_OPERATION 执行智能体退出任务的操作 (SA算子)
 %
 % 功能描述：
@@ -75,40 +75,8 @@ function [Value_data, incremental_leave] = leave_operation(Value_data, agents, t
         % --- 2. 遍历候选任务，逐个尝试撤出 ---
         for taskIdx = 1:numel(candidateTasks)
             sourceTask = candidateTasks(taskIdx);  % 目标任务 ID (计划从中撤退)
-            
-            % 获取当前分配量 (Double Check)
-            currentAmount = currentAllocColumn(sourceTask);
-            if currentAmount <= tol
-                continue;
-            end
-            
-            % --- 3. 定义撤出行为 ---
-            % 策略：完全撤出 (Full Withdrawal)
-            % 将该任务上的该资源分配量直接置为 0。
-            % (注：也可以设计为部分撤出，但全撤出在组合优化中更利于跳跃)
-            remainingAmount = 0; 
-            
-            % --- 4. 构造新旧状态 (State Construction) ---
-            
-            % 4.1 记录操作前状态 (P = Previous)
-            SC_P = Value_data.SC;                     % 原始联盟结构
-            R_agent_P = Value_data.resources_matrix;  % 原始资源分配
-            
-            % 4.2 构造操作后状态 (Q = Query)
-            R_agent_Q = R_agent_P;
-            R_agent_Q(sourceTask, r) = remainingAmount; % 核心操作：置零
-            
-            % 4.3 同步更新联盟结构 SC_Q (结构体数组形式)
-            % SC 是个 Cell 数组，每个 cell 存一个 (N x K) 的矩阵
-            SC_Q = SC_P;
-            for m = 1:M
-                % 获取任务 m 的当前分配矩阵
-                taskMatrix = SC_Q{m};
-                % 用新的 R_agent_Q 覆盖当前智能体的那一行
-                taskMatrix(agentIdx, :) = R_agent_Q(m, :);
-                % 写回
-                SC_Q{m} = taskMatrix;
-            end
+        
+             [SC_P, SC_Q, R_agent_P, R_agent_Q] = StateTran.leave_changes(Value_data, agents, Value_Params, sourceTask, agentID, r);
             
             % --- 5. 可行性验证 (Feasibility Check) ---
             % 撤出操作看似简单(只是省资源)，但也可能导致不可行。
@@ -135,7 +103,7 @@ function [Value_data, incremental_leave] = leave_operation(Value_data, agents, t
             % 调用 BMBT 偏好计算函数
             % Delta U = Utility(New) - Utility(Old)
             % 预期：撤出通常会导致任务资源不足，效用下降 (ΔU < 0)。
-            delta_U = overlap_coalition_u_new(tasks, agents, SC_P, SC_Q, agentID, Value_Params, Value_data);
+            delta_U = Preference_gain(tasks, agents, SC_P, SC_Q, agentID, Value_Params, Value_data);
             
             % --- 7. 决策 (Decision Making) ---
             accept_leave = false;

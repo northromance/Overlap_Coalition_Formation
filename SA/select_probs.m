@@ -1,4 +1,4 @@
-function probs = select_probs(Value_data, agents, tasks, Value_Params, resource_gap)
+function probs = Select_probs(Value_data, agents, tasks, Value_Params, resource_gap)
 % SELECT_PROBS 计算当前智能体的任务选择概率矩阵 (启发式引导)
 %
 % 功能描述:

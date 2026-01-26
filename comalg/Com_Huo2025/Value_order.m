@@ -29,7 +29,7 @@ function [incremental, current_task_idx, Value_data] = Value_order(agents, tasks
         Value_data.coalitionstru(j, agent_col_idx) = agentID; 
         
         % 更新资源结构
-        [~, SC_Q, ~, R_agent_Q] = OCFUtils.calc_move_changes(...
+        [~, SC_Q, ~, R_agent_Q] = StateTran.calc_move_changes(...
             Value_data, agents, Value_Params, current_task_idx, j, agent_col_idx);
         
         % 同步资源数据
@@ -74,7 +74,7 @@ function [incremental, current_task_idx, Value_data] = Value_order(agents, tasks
     
     % --- 统一执行移动操作 ---
     % 1. 计算资源变化
-    [~, SC_Q, ~, R_agent_Q] = OCFUtils.calc_move_changes(...
+    [~, SC_Q, ~, R_agent_Q] = StateTran.calc_move_changes(...
         Value_data, agents, Value_Params, current_task_idx, target_task_idx, agent_col_idx);
     
     % 2. 应用资源变化
