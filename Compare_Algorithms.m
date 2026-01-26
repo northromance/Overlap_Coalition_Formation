@@ -1,4 +1,4 @@
-clear; clc; close all;
+﻿clear; clc; close all;
 
 fprintf('\n');
 fprintf('========================================================================\n');
@@ -342,13 +342,15 @@ fprintf('=======================================================================
 %% ========================================================================
 
 % 检查是否运行了 SA_Value (ID = 1) 且结果存在
+
+% 妫€鏌ユ槸鍚﹁繍琛屼簡 SA_Value (ID = 1) 涓旂粨鏋滃瓨鍦?
 if isfield(results, 'alg1') && strcmp(results.alg1.name, 'SA_Value')
     fprintf('\nVisualizing SA_Value resource details...\n');
     
-    % 1. [新增] 首先打印智能体的资源能力上限，方便对照
+    % 1. [鏂板] 棣栧厛鎵撳嵃鏅鸿兘浣撶殑璧勬簮鑳藉姏涓婇檺锛屾柟渚垮鐓?
     PlotClass.print_agent_capabilities(agents);
     
-    % 2. 获取 SA 算法的最终输出数据并绘图
+    % 2. 鑾峰彇 SA 绠楁硶鐨勬渶缁堣緭鍑烘暟鎹苟缁樺浘
     sa_value_data = results.alg1.Value_data;
     PlotClass.plot_SA_allocation(sa_value_data, tasks, Value_Params);
     
@@ -358,22 +360,48 @@ else
 end
 
 
-% 选择要进行动画展示的算法结果 (例如这里选择 SA_Value，即 alg1)
-target_alg_idx = 1; % 修改这里可以选择其他算法，如 2, 3 等
-target_alg_field = sprintf('alg%d', target_alg_idx);
+% % Huo2025 visualization (plots)
+% if show_plots
+%     huo_idx = [];
+%     for i = 1:enabled_count
+%         entry = results.(sprintf('alg%d', i));
+%         if isfield(entry, 'name') && strcmp(entry.name, 'Huo2025')
+%             huo_idx = i; break;
+%         end
+%     end
 
-if isfield(results, target_alg_field) && isfield(results.(target_alg_field), 'Value_data')
-    alg_name = results.(target_alg_field).name;
-    fprintf('\nGenerating dynamic animation for algorithm: %s ...\n', alg_name);
-    fprintf('Please wait for the animation window to appear.\n');
+%     if isempty(huo_idx)
+%         fprintf('\nSkipping Huo2025 visualization (Algorithm not run).\n');
+%     else
+%         fprintf('\nVisualizing Huo2025 allocation and animation...\n');
+%         huo_res = results.(sprintf('alg%d', huo_idx));
+%         if isfield(huo_res, 'Value_data')
+%             PlotClass.plot_SA_allocation(huo_res.Value_data, tasks, Value_Params);
+%             PlotClass.plot_execution_animation(huo_res.Value_data, agents, tasks, Value_Params);
+%         else
+%             fprintf('Skip Huo2025 visualization: missing Value_data.\n');
+%         end
+%     end
+% end
+
+% % 閫夋嫨瑕佽繘琛屽姩鐢诲睍绀虹殑绠楁硶缁撴灉 (渚嬪杩欓噷閫夋嫨 SA_Value锛屽嵆 alg1)
+% target_alg_idx = 1; % 淇敼杩欓噷鍙互閫夋嫨鍏朵粬绠楁硶锛屽 2, 3 绛?
+% target_alg_field = sprintf('alg%d', target_alg_idx);
+
+% if isfield(results, target_alg_field) && isfield(results.(target_alg_field), 'Value_data')
+%     alg_name = results.(target_alg_field).name;
+%     fprintf('\nGenerating dynamic animation for algorithm: %s ...\n', alg_name);
+%     fprintf('Please wait for the animation window to appear.\n');
     
-    % 获取目标算法的输出数据
-    anim_data = results.(target_alg_field).Value_data;
+%     % 鑾峰彇鐩爣绠楁硶鐨勮緭鍑烘暟鎹?
+%     anim_data = results.(target_alg_field).Value_data;
     
-    % 调用 PlotClass 中的静态动画函数
-    % 注意：确保 plots 文件夹在路径中
-    PlotClass.plot_execution_animation(anim_data, agents, tasks, Value_Params);
+%     % 璋冪敤 PlotClass 涓殑闈欐€佸姩鐢诲嚱鏁?
+%     % 娉ㄦ剰锛氱‘淇?plots 鏂囦欢澶瑰湪璺緞涓?
+%     PlotClass.plot_execution_animation(anim_data, agents, tasks, Value_Params);
     
-else
-    fprintf('\nSkipping animation: Algorithm result %d not found.\n', target_alg_idx);
-end
+% else
+%     fprintf('\nSkipping animation: Algorithm result %d not found.\n', target_alg_idx);
+% end
+
+
