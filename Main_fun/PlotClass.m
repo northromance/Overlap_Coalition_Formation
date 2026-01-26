@@ -5,12 +5,11 @@ classdef PlotClass
     methods(Static)
         function plot_SA_allocation(Value_data, tasks, Value_Params)
             % plot_SA_allocation 绘制SA算法的资源分配堆叠柱状图
-            % (此处保持不变，为节省篇幅省略，请保留您原有的代码)
-            % ... [保留原有的 plot_SA_allocation 代码] ...
+            
             fprintf('正在绘制 SA_Value 资源分配详情...\n');
             
             % 1. 提取数据
-            SC = Value_data(1).SC;
+            SC = Value_data(1).SC; 
             
             N = Value_Params.N;
             M = Value_Params.M;
@@ -18,24 +17,24 @@ classdef PlotClass
             
             % 2. 创建画布
             figure('Name', 'SA_Value Resource Allocation Detail', ...
-                'NumberTitle', 'off', 'Color', 'w', ...
-                'Position', [100, 100, 1200, 800]);
+                   'NumberTitle', 'off', 'Color', 'w', ...
+                   'Position', [100, 100, 1200, 800]);
             
             rows = ceil(sqrt(M));
             cols = ceil(M / rows);
-            agent_colors = lines(N);
+            agent_colors = lines(N); 
             
             for m = 1:M
                 subplot(rows, cols, m);
                 hold on;
-                allocation_data = SC{m}';
+                allocation_data = SC{m}'; 
                 b = bar(1:K, allocation_data, 'stacked', 'FaceColor', 'flat');
                 for k = 1:K
                     for n = 1:N
                         b(n).CData = agent_colors(n, :);
                     end
                 end
-                demand = tasks(m).resource_demand;
+                demand = tasks(m).resource_demand; 
                 plot(1:K, demand, 'r-o', 'LineWidth', 1.5, ...
                     'MarkerFaceColor', 'w', 'MarkerSize', 4);
                 title(sprintf('Task %d (Value: %.0f)', m, tasks(m).value), 'FontSize', 10);
@@ -43,22 +42,22 @@ classdef PlotClass
                 if mod(m-1, cols) == 0, ylabel('Amount'); end
                 grid on; box on;
                 max_val = max(max(sum(allocation_data, 2)), max(demand));
-                ylim([0, max_val * 1.2 + 0.1]);
+                ylim([0, max_val * 1.2 + 0.1]); 
                 xticks(1:K);
                 if m == 1
                     legend_str = arrayfun(@(x) sprintf('Agent %d', x), 1:N, 'UniformOutput', false);
                     legend_str{end+1} = 'Demand';
                     legend([b, findobj(gca, 'Type', 'line')], legend_str, ...
-                        'Location', 'bestoutside', 'FontSize', 8, 'NumColumns', 1);
+                           'Location', 'bestoutside', 'FontSize', 8, 'NumColumns', 1);
                 end
                 hold off;
             end
             sgtitle('Resource Allocation Breakdown by Task (SA\_Value Algorithm)');
         end
-        
+
         function print_agent_capabilities(agents)
-            % (此处保持不变)
-            % ... [保留原有的 print_agent_capabilities 代码] ...
+            % print_agent_capabilities 在命令行打印所有智能体的初始资源拥有量
+            
             fprintf('\n=================================================\n');
             fprintf('          Agent Resource Capabilities\n');
             fprintf('          智能体资源能力上限清单\n');
@@ -75,7 +74,8 @@ classdef PlotClass
             fprintf('Agent ID |%s\n', header_str);
             fprintf('%s\n', repmat('-', 1, 10 + 7*K));
             for i = 1:length(agents)
-                res_str = '';
+                % [关键修复] 这里之前少了一个引号
+                res_str = ''; 
                 for k = 1:K
                     res_str = [res_str, sprintf('%6d ', agents(i).resources(k))];
                 end
@@ -83,15 +83,14 @@ classdef PlotClass
             end
             fprintf('=================================================\n\n');
         end
-        
+
         function plot_env(agents, tasks, Value_Params)
-            % (此处保持不变)
-            % ... [保留原有的 plot_env 代码] ...
+            % plot_env 绘制基本的环境地图（智能体初始位置和任务位置）
             figure('Name', 'Environment Map', 'Color', 'w');
             hold on; grid on; box on;
-            task_coords = vertcat(tasks.loc);
+            task_coords = vertcat(tasks.loc); 
             if isempty(task_coords) && isfield(tasks, 'x')
-                task_coords = [[tasks.x]', [tasks.y]'];
+                 task_coords = [[tasks.x]', [tasks.y]'];
             end
             if ~isempty(task_coords)
                 scatter(task_coords(:,1), task_coords(:,2), 50, 'b', 'filled', ...
@@ -105,7 +104,7 @@ classdef PlotClass
                 agent_coords(i, :) = [agents(i).x, agents(i).y];
             end
             scatter(agent_coords(:,1), agent_coords(:,2), 60, 'r', 's', 'filled', ...
-                'MarkerEdgeColor', 'k', 'DisplayName', 'Agents Start');
+                 'MarkerEdgeColor', 'k', 'DisplayName', 'Agents Start');
             xlabel('X Coordinate (km)');
             ylabel('Y Coordinate (km)');
             title('Multi-Agent Environment Map');
@@ -119,10 +118,6 @@ classdef PlotClass
             hold off;
         end
         
-        %% ========================================================================
-        %  New Animation Function
-        %  新增动态执行过程动画函数
-        %% ========================================================================
         function plot_execution_animation(Value_data, agents, tasks, Value_Params)
             % plot_execution_animation 动态展示算法执行结果
             % 左图：机器人路径动画；右图：垂直甘特图时间线动画
@@ -136,11 +131,11 @@ classdef PlotClass
             for i = 1:N
                 agent_start_pos(i, :) = [agents(i).x, agents(i).y];
             end
-            
+
             % --- 1. 数据预处理 ---
             max_time = 0;
-            agent_schedules = cell(N, 1);
-            agent_mission_ends = zeros(N, 1);
+            agent_schedules = cell(N, 1); 
+            agent_mission_ends = zeros(N, 1); 
             
             % 确保任务坐标提取正确
             task_locs = zeros(length(tasks), 2);
@@ -156,7 +151,7 @@ classdef PlotClass
                 if ~isfield(Value_data(i), 'task_schedule') || isempty(Value_data(i).task_schedule)
                     agent_schedules{i} = struct('task_id', {}, 'start_t', {}, 'finish_t', {}, 'loc', {});
                     agent_mission_ends(i) = 0;
-                    continue;
+                    continue; 
                 end
                 
                 ts = Value_data(i).task_schedule;
@@ -165,8 +160,8 @@ classdef PlotClass
                 
                 if n_tasks > 0
                     if isempty(ts.completion_times)
-                        agent_schedules{i} = schedule;
-                        continue;
+                         agent_schedules{i} = schedule;
+                         continue; 
                     end
                     
                     for j = 1:n_tasks
@@ -193,7 +188,7 @@ classdef PlotClass
             
             % --- 2. 初始化图形界面 ---
             fig_anim = figure('Name', 'Dynamic Execution Output', 'Color', 'w', ...
-                'Position', [100, 100, 1400, 700]);
+                'Position', [100, 100, 1400, 700]); 
             
             % 颜色定义
             agent_colors = lines(N);
@@ -220,12 +215,12 @@ classdef PlotClass
             
             h_agents_marker = gobjects(N, 1);
             h_agents_trail = gobjects(N, 1);
-            agent_paths_history = cell(N,1);
+            agent_paths_history = cell(N,1); 
             
             for i = 1:N
                 start_p = agent_start_pos(i, :);
                 h_agents_trail(i) = plot(ax_map, start_p(1), start_p(2), '-', ...
-                    'Color', [agent_colors(i,:) 0.5], 'LineWidth', 1.5);
+                    'Color', [agent_colors(i,:) 0.5], 'LineWidth', 1.5); 
                 h_agents_marker(i) = plot(ax_map, start_p(1), start_p(2), 'o', ...
                     'MarkerSize', 10, 'MarkerFaceColor', agent_colors(i,:), ...
                     'MarkerEdgeColor', 'k', 'LineWidth', 2);
@@ -240,7 +235,7 @@ classdef PlotClass
             
             ylim(ax_timeline, [0, N + 1]);
             xlim(ax_timeline, [0, max_time * 1.1]);
-            set(ax_timeline, 'YTick', 1:N, 'YDir', 'reverse');
+            set(ax_timeline, 'YTick', 1:N, 'YDir', 'reverse'); 
             
             task_patches = cell(N, 1);
             bar_height = 0.6;
@@ -263,7 +258,7 @@ classdef PlotClass
             h_suptitle = sgtitle(fig_anim, sprintf('Simulation Time: 0.0 / %.1f s', max_time), 'FontSize', 14, 'FontWeight', 'bold');
             
             %% --- 3. 动画主循环 ---
-            fps = 30;
+            fps = 30;               
             duration_sec = 30; % 动画时长 30s
             total_frames = fps * duration_sec;
             time_step = max_time / total_frames;
@@ -281,7 +276,7 @@ classdef PlotClass
                     sched = agent_schedules{i};
                     num_tasks_i = length(sched);
                     
-                    current_pos = agent_start_pos(i, :);
+                    current_pos = agent_start_pos(i, :); 
                     agent_state = 'idle';
                     
                     if num_tasks_i > 0
@@ -312,30 +307,30 @@ classdef PlotClass
                                 agent_state = 'waiting';
                             end
                             
-                            % 2. 最后一个任务之后 (返航)
+                        % 2. 最后一个任务之后 (返航)
                         elseif current_sim_time >= sched(end).finish_t
-                            t_return_start = sched(end).finish_t;
-                            t_return_end = agent_mission_ends(i); % 这是已经包含飞行时间的时刻
-                            
-                            if current_sim_time < t_return_end
-                                p_start = sched(end).loc;
-                                p_end = agent_start_pos(i, :);
-                                t_travel_total = t_return_end - t_return_start; % 这就是纯飞行时间
-                                
-                                if t_travel_total > 0
-                                    ratio = (current_sim_time - t_return_start) / t_travel_total;
-                                    ratio = max(0, min(1, ratio));
-                                    current_pos = p_start + ratio * (p_end - p_start);
-                                    agent_state = 'returning';
-                                else
-                                    current_pos = p_end;
-                                end
-                            else
-                                current_pos = agent_start_pos(i, :);
-                                agent_state = 'finished_cycle';
-                            end
-                            
-                            % 3. 任务中间
+                             t_return_start = sched(end).finish_t;
+                             t_return_end = agent_mission_ends(i); % 这是已经包含飞行时间的时刻
+                             
+                             if current_sim_time < t_return_end
+                                 p_start = sched(end).loc;
+                                 p_end = agent_start_pos(i, :);
+                                 t_travel_total = t_return_end - t_return_start; % 这就是纯飞行时间
+                                 
+                                 if t_travel_total > 0
+                                     ratio = (current_sim_time - t_return_start) / t_travel_total;
+                                     ratio = max(0, min(1, ratio));
+                                     current_pos = p_start + ratio * (p_end - p_start);
+                                     agent_state = 'returning';
+                                 else
+                                     current_pos = p_end;
+                                 end
+                             else
+                                 current_pos = agent_start_pos(i, :);
+                                 agent_state = 'finished_cycle';
+                             end
+                             
+                        % 3. 任务中间
                         else
                             for j = 1:num_tasks_i
                                 % A. 正在执行任务
@@ -344,7 +339,7 @@ classdef PlotClass
                                     agent_state = 'executing';
                                     break;
                                     
-                                    % B. 任务间隙 (从 Task j 到 Task j+1)
+                                % B. 任务间隙 (从 Task j 到 Task j+1)
                                 elseif j < num_tasks_i && current_sim_time >= sched(j).finish_t && current_sim_time < sched(j+1).start_t
                                     p_start = sched(j).loc;
                                     p_end = sched(j+1).loc;
@@ -387,20 +382,20 @@ classdef PlotClass
                     
                     % Update Trail
                     if strcmp(agent_state, 'traveling') || strcmp(agent_state, 'returning')
-                        agent_paths_history{i} = [agent_paths_history{i}; current_pos];
-                        set(h_agents_trail(i), 'XData', agent_paths_history{i}(:,1), 'YData', agent_paths_history{i}(:,2));
+                         agent_paths_history{i} = [agent_paths_history{i}; current_pos];
+                         set(h_agents_trail(i), 'XData', agent_paths_history{i}(:,1), 'YData', agent_paths_history{i}(:,2));
                     end
-                    
+
                     % Update Timeline Colors
                     for j = 1:num_tasks_i
                         if current_sim_time < sched(j).start_t
-                            % [优化] 如果当前时间已经超过了该任务的理论到达时间，说明在等待
-                            % 这里简化处理，甘特图只显示执行状态，不显示等待状态，以免太乱
-                            set(task_patches{i}(j), 'FaceColor', color_future);
+                             % [优化] 如果当前时间已经超过了该任务的理论到达时间，说明在等待
+                             % 这里简化处理，甘特图只显示执行状态，不显示等待状态，以免太乱
+                             set(task_patches{i}(j), 'FaceColor', color_future);
                         elseif current_sim_time >= sched(j).start_t && current_sim_time < sched(j).finish_t
-                            set(task_patches{i}(j), 'FaceColor', color_active);
+                            set(task_patches{i}(j), 'FaceColor', color_active); 
                         else
-                            set(task_patches{i}(j), 'FaceColor', agent_colors(i,:));
+                            set(task_patches{i}(j), 'FaceColor', agent_colors(i,:)); 
                         end
                     end
                     
@@ -412,23 +407,36 @@ classdef PlotClass
                 
                 if ~ishandle(fig_anim), break; end
                 
-            end
+            end 
             
             fprintf('动画播放完成。\n');
         end
         
         
-        
-        function plot_algorithm_comparison(results, comparison_stats, num_algorithms)
-            % PLOT_ALGORITHM_COMPARISON 绘制算法对比图表 (适配极简版统计结构)
-            %
-            % 输入:
-            %   results          - 包含所有算法结果的结构体 (含 history_data)
-            %   comparison_stats - compare_results 输出的统计结构体
-            %   num_algorithms   - 算法数量
+        function plot_algorithm_comparison(results, comparison_stats, num_algorithms, tasks, Value_Params, WORLD)
+            % PLOT_ALGORITHM_COMPARISON 绘制算法对比图表
             
             alg_names = fieldnames(results);
-            
+
+            % 推导任务类型价值向量 (用于信念期望价值曲线)
+            has_tasks = (nargin >= 4) && exist('tasks', 'var') && ~isempty(tasks);
+            has_world_values = (nargin >= 6) && exist('WORLD', 'var') && isstruct(WORLD) && isfield(WORLD, 'value');
+            type_values = [];
+            if has_world_values
+                type_values = WORLD.value(:)'; % 1 x T
+            elseif (nargin >= 5) && exist('Value_Params', 'var') && isfield(Value_Params, 'task_value')
+                type_values = Value_Params.task_value(:)';
+            elseif has_tasks && isfield(tasks, 'type') && isfield(tasks, 'value')
+                max_type = max([tasks.type]);
+                type_values = zeros(1, max_type);
+                for tt = 1:max_type
+                    idx = find([tasks.type] == tt, 1, 'first');
+                    if ~isempty(idx)
+                        type_values(tt) = tasks(idx).value;
+                    end
+                end
+            end
+
             % --- 1. 提取数据用于绘图 ---
             names_list = {};
             utilities = [];
@@ -644,7 +652,127 @@ classdef PlotClass
                 end
             end
             
-            fprintf('? 对比图表绘制完成\n');
+            %% --- 5. 绘制信念演化曲线 (按任务划分，显示各机器人最大信念概率)
+            for alg_idx = 1:num_algorithms
+                alg_name = alg_names{alg_idx};
+                res = results.(alg_name);
+
+                % 确认存在信念历史
+                if ~(isfield(res, 'history_data') && isfield(res.history_data, 'rounds') && ~isempty(res.history_data.rounds))
+                    continue;
+                end
+                rounds = res.history_data.rounds;
+                if ~isfield(rounds, 'beliefs') || isempty(rounds(1).beliefs)
+                    continue;
+                end
+
+                [num_agents, num_tasks, ~] = size(rounds(1).beliefs);
+                num_rounds = length(rounds);
+
+                % 预分配最大信念概率：维度为 机器人 x 轮次 x 任务
+                max_belief_history = zeros(num_agents, num_rounds, num_tasks);
+                for r = 1:num_rounds
+                    if ~isfield(rounds(r), 'beliefs') || isempty(rounds(r).beliefs)
+                        continue;
+                    end
+                    beliefs_r = rounds(r).beliefs;              % N x M x task_type
+                    max_belief_r = max(beliefs_r, [], 3);       % 取每个任务的最大类型概率
+                    for t = 1:num_tasks
+                        max_belief_history(:, r, t) = max_belief_r(:, t);
+                    end
+                end
+
+                rows = ceil(sqrt(num_tasks));
+                cols = ceil(num_tasks / rows);
+                figure('Name', ['信念演化 - ', res.name], 'Position', [150, 150, 1200, 800]);
+                tiledlayout(rows, cols, 'Padding', 'compact', 'TileSpacing', 'compact');
+                agent_colors = lines(num_agents);
+
+                for t = 1:num_tasks
+                    nexttile;
+                    hold on;
+                    for a = 1:num_agents
+                        plot(1:num_rounds, squeeze(max_belief_history(a, :, t)), ...
+                            'LineWidth', 1.5, 'Color', agent_colors(a, :), ...
+                            'DisplayName', sprintf('机器人 %d', a));
+                    end
+                    xlabel('博弈轮次');
+                    ylabel('最大信念概率');
+                    title(sprintf('任务 %d', t));
+                    ylim([0, 1]);
+                    grid on;
+                    if t == 1
+                        legend('Location', 'southoutside', 'Orientation', 'horizontal');
+                    end
+                    hold off;
+                end
+            end
+
+            %% --- 6. 信念期望价值收敛曲线 (期望 = 价值 × 信念概率)
+            if has_tasks && ~isempty(type_values)
+                for alg_idx = 1:num_algorithms
+                    alg_name = alg_names{alg_idx};
+                    res = results.(alg_name);
+
+                    % 检查信念历史是否存在
+                    if ~(isfield(res, 'history_data') && isfield(res.history_data, 'rounds') && ~isempty(res.history_data.rounds))
+                        continue;
+                    end
+                    rounds = res.history_data.rounds;
+                    if ~isfield(rounds, 'beliefs') || isempty(rounds(1).beliefs)
+                        continue;
+                    end
+
+                    [num_agents, num_tasks, belief_types] = size(rounds(1).beliefs);
+                    if isempty(type_values)
+                        type_values = 1:belief_types; % 兜底，避免维度不匹配
+                    end
+                    % 若维度不一致，截断或填充到匹配长度
+                    tv = type_values;
+                    if length(tv) > belief_types, tv = tv(1:belief_types); end
+                    if length(tv) < belief_types, tv = [tv, zeros(1, belief_types - length(tv))]; end
+
+                    num_rounds = length(rounds);
+                    exp_value_mean = zeros(num_tasks, num_rounds); % 每任务、每轮的期望价值（按机器人平均）
+
+                    for r = 1:num_rounds
+                        if ~isfield(rounds(r), 'beliefs') || isempty(rounds(r).beliefs)
+                            continue;
+                        end
+                        beliefs_r = rounds(r).beliefs; % N x M x T
+                        for tsk = 1:num_tasks
+                            bmat = squeeze(beliefs_r(:, tsk, :)); % N x T
+                            if isempty(bmat)
+                                continue;
+                            end
+                            exp_agents = bmat * tv(:);           % N x 1
+                            exp_value_mean(tsk, r) = mean(exp_agents);
+                        end
+                    end
+
+                    rows = ceil(sqrt(num_tasks));
+                    cols = ceil(num_tasks / rows);
+                    figure('Name', ['信念期望价值收敛 - ', res.name], 'Position', [180, 180, 1200, 800]);
+                    tiledlayout(rows, cols, 'Padding', 'compact', 'TileSpacing', 'compact');
+
+                    for tsk = 1:num_tasks
+                        nexttile;
+                        hold on;
+                        plot(1:num_rounds, exp_value_mean(tsk, :), 'LineWidth', 2, 'Color', [0.2 0.5 0.9], 'DisplayName', '平均期望价值');
+                        if isfield(tasks, 'value') && length(tasks) >= tsk
+                            yline(tasks(tsk).value, '--r', 'LineWidth', 1.4, 'DisplayName', '真实价值');
+                        end
+                        xlabel('博弈轮次');
+                        ylabel('期望价值');
+                        title(sprintf('任务 %d', tsk));
+                        grid on;
+                        legend('Location', 'southoutside', 'Orientation', 'horizontal');
+                        hold off;
+                    end
+                end
+            end
+
+            fprintf('对比图表绘制完成\n');
         end
         
         %% 辅助函数：绘制单个柱状子图
@@ -669,6 +797,3 @@ classdef PlotClass
         end
     end
 end
-
-
-
