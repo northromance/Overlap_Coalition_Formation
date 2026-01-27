@@ -1,492 +1,234 @@
-ï»¿function [Value_data, history_data] = Qi2023_main(agents, tasks, AddPara, Value_Params)
-% =========================================================================
-%  Qi2023ç®—æ³•ï¼šPGG-TS (Preference Gravity-Guided Tabu Search)
-%  åŸºäºåå¥½é‡åŠ›å¼•å¯¼çš„ç¦å¿Œæœç´¢åˆ†å¸ƒå¼é‡å è”ç›Ÿå½¢æˆç®—æ³•
-% =========================================================================
+function [Value_data, history_data] = Qi2023_main(agents, tasks, AddPara, Value_Params)
+% Qi2023_OCF_main - »ùÓÚ Qi2023 PGG-TS Ë¼Â·µÄÖØµşÁªÃËĞÎ³ÉËã·¨£¨ÎŞĞÅÄî¸üĞÂ°æ£©
+% ½Ó¿ÚÓë SA_Value_main ±£³ÖÒ»ÖÂ£¬Êä³ö Value_data Óë history_data¡£
 %
-%  ç®—æ³•æ¥æºï¼š
-%  ------------------------------------------------------------------------
-%  Qi et al., "A Task-Driven Sequential Overlapping Coalition Formation 
-%  Game for Resource Allocation in Heterogeneous UAV Networks"
-%  IEEE Transactions on Mobile Computing, 2023
+% ¹Ø¼ü²îÒì£º
+%   1) ²»½øĞĞ±´Ò¶Ë¹ĞÅÄî¸üĞÂ£¬Ê¼ÖÕÊ¹ÓÃ³õÊ¼ĞÅÄî/Ô¤ÉèÆÚÍû¡£
+%   2) ¾ö²ßÁ÷³Ì£ºËæ»ú³·Àë -> Æ«ºÃÖØÁ¦¼ÆËã -> Softmax ¸ÅÂÊ·ÖÅä¡£
+%   3) ÈÔ±£Áô¹Û²âÊÕ¼¯ÒÔÉú³É summatrix£¬±ãÓÚÍ³¼Æ¶ÔÆë¡£
 %
-%  ç®—æ³•ä¸»è¦åŠŸèƒ½ (Algorithm 2: PGG-TS)ï¼š
-%  ------------------------------------------------------------------------
-%  1. è®¡ç®—æ¯ä¸ªUAVå¯¹æ¯ä¸ªä»»åŠ¡çš„åå¥½é‡åŠ› F_n^(z)
-%  2. å°†åå¥½é‡åŠ›è½¬æ¢ä¸ºé€‰æ‹©æ¦‚ç‡ P_n^(z)ï¼ˆSoftmax with Boltzmannï¼‰
-%  3. UAVæ ¹æ®æ¦‚ç‡é€‰æ‹©ä»»åŠ¡è¿›è¡Œèµ„æºåˆ†é…
-%  4. ä½¿ç”¨ç¦å¿Œæœç´¢é¿å…å¾ªç¯
-%  5. åªæ¥å—æ”¹è¿›è§£ï¼ˆè´ªå©ªç­–ç•¥ï¼‰ï¼Œè¿­ä»£ç›´åˆ°è”ç›Ÿç»“æ„ç¨³å®šæˆ–è¾¾åˆ°æœ€å¤§è¿­ä»£æ¬¡æ•°
-%  æ³¨ï¼šBoltzmannç³»æ•°ä»…ç”¨äºè°ƒèŠ‚é€‰æ‹©æ¦‚ç‡çš„æ¢ç´¢/åˆ©ç”¨å¹³è¡¡ï¼Œä¸ç”¨äºæ¥å—åŠ£è§£
-%
-%  è¾“å…¥å‚æ•°ï¼š
-%  ------------------------------------------------------------------------
-%  agents, tasks, AddPara, Value_Paramsï¼ˆæ ‡å‡†æ¥å£ï¼‰
-%
-%  è¾“å‡ºå‚æ•°ï¼š
-%  ------------------------------------------------------------------------
-%  Value_dataï¼šç»“æœç»“æ„ä½“
-%  history_dataï¼šç®—æ³•è¿è¡Œå†å²
-%
-% =========================================================================
+% ÊäÈë£º
+%   agents, tasks, AddPara, Value_Params£¨Í¬ SA_Value_main£©
+% Êä³ö£º
+%   Value_data, history_data
 
-    %% ==================== 0. éšæœºæ•°ç§å­è®¾ç½®ï¼ˆç¡®ä¿å¯å¤ç°æ€§ï¼‰====================
-    % ä¿®å¤ï¼šåœ¨ç®—æ³•å¼€å§‹æ—¶è®¾ç½®éšæœºæ•°ç§å­ï¼Œç¡®ä¿ç»“æœå¯å¤ç°
-    if isfield(Value_Params, 'seed')
-        rng(Value_Params.seed);
-    end
+%% 0. Ëæ»úÖÖ×Ó£¨±£Ö¤¿É¸´ÏÖ£©
+if isfield(Value_Params, 'seed')
+    rng(Value_Params.seed);
+end
 
-    %% å‚æ•°æå–
-    N = Value_Params.N;  % UAVæ•°é‡
-    M = Value_Params.M;  % ä»»åŠ¡æ•°é‡
-    K = Value_Params.K;  % èµ„æºç±»å‹æ•°é‡
-    
-    % PGG-TSç®—æ³•ç‰¹å®šå‚æ•°
-    if isfield(Value_Params, 'num_rounds')
-        Kmax = Value_Params.num_rounds;  % æœ€å¤§è¿­ä»£æ¬¡æ•°
-    else
-        Kmax = 50;
+eps_val = 1e-9;
+N = Value_Params.N;
+M = Value_Params.M;
+K = Value_Params.K;
+
+%% 1. ³õÊ¼»¯ Value_data Óë¹Û²â¾ØÕó
+history_data = struct();
+summatrix = zeros(M, Value_Params.task_type);
+
+for i = 1:N
+    Value_data(i).agentID = agents(i).id;
+    Value_data(i).agentIndex = i;
+    Value_data(i).iteration = 0;
+    Value_data(i).unif = 0;
+    Value_data(i).coalitionstru = zeros(M + 1, N);   % ³ÉÔ±¾ØÕó
+    Value_data(i).initbelief = zeros(M + 1, Value_Params.task_type); % ³õÊ¼ĞÅÄî
+    Value_data(i).cost_data = [];
+    Value_data(i).resources_matrix = zeros(M, K);   % ¾Ö²¿ÊÓÍ¼
+    Value_data(i).SC = cell(M, 1);                  % È«¾ÖÊÓÍ¼
+    for m = 1:M
+        Value_data(i).SC{m} = zeros(N, K);
+        Value_data(i).SC{m}(i, :) = Value_data(i).resources_matrix(m, :);
     end
-    Ltabu = 5;           % ç¦å¿Œè¡¨é•¿åº¦
-    Klen = 10;           % ç¨³å®šè¿­ä»£é˜ˆå€¼ï¼ˆè¿ç»­Klenæ¬¡æ— æ”¹è¿›åˆ™åœæ­¢ï¼‰
-    G0 = 1.0;            % åˆå§‹Boltzmannç³»æ•°
-    alpha_G = 0.95;      % Boltzmannç³»æ•°è¡°å‡ç‡ï¼ˆä»…ç”¨äºé€‰æ‹©æ¦‚ç‡ï¼‰
-    
-    % Qi2023è®ºæ–‡æ•ˆç”¨å‡½æ•°å‚æ•°ï¼ˆä»Value_Paramsè¯»å–ï¼Œè‹¥æ— åˆ™ä½¿ç”¨é»˜è®¤å€¼ï¼‰
-    if isfield(Value_Params, 'Qi_beta_m')
-        beta_m = Value_Params.Qi_beta_m;
-    else
-        beta_m = 1.0;        % Sigmoidå‡½æ•°é™¡å³­åº¦å‚æ•°
-    end
-    if isfield(Value_Params, 'Qi_C_req')
-        C_req = Value_Params.Qi_C_req;
-    else
-        C_req = 0.5;         % éœ€æ±‚é˜ˆå€¼
-    end
-    if isfield(Value_Params, 'Qi_omega')
-        omega = Value_Params.Qi_omega;
-    else
-        omega = 0.1;         % Sigmoidå‡½æ•°åç§»å‚æ•°
-    end
-    if isfield(Value_Params, 'Qi_omega_1')
-        omega_1 = Value_Params.Qi_omega_1;
-    else
-        omega_1 = 1.0;       % èµ„æºå®Œæˆåº¦æƒé‡
-    end
-    if isfield(Value_Params, 'Qi_omega_2')
-        omega_2 = Value_Params.Qi_omega_2;
-    else
-        omega_2 = 0.01;      % è·ç¦»æˆæœ¬æƒé‡
-    end
-    if isfield(Value_Params, 'Qi_omega_3')
-        omega_3 = Value_Params.Qi_omega_3;
-    else
-        omega_3 = 0.001;     % èƒ½é‡æŸè€—æƒé‡
-    end
-    
-    %% åˆå§‹åŒ–
-    % è”ç›Ÿç»“æ„ï¼šSC(m, n, k) = 1 è¡¨ç¤ºUAV nçš„èµ„æºç±»å‹kåˆ†é…ç»™ä»»åŠ¡m
-    SC = zeros(M, N, K);  % å½“å‰è”ç›Ÿç»“æ„
-    
-    % ä»»åŠ¡å‰©ä½™èµ„æºéœ€æ±‚ L_m^(less)
-    L_less = zeros(M, K);
+    Value_data(i).other = cell(N, 1);               % ÆäËûÖÇÄÜÌåµÄĞÅÄî¿ìÕÕ
+
+    % ÈÎÎñÖ´ĞĞÊ±Ğò½á¹¹
+    Value_data(i).task_schedule = struct();
+    Value_data(i).task_schedule.task_sequence = [];
+    Value_data(i).task_schedule.arrival_times = [];
+    Value_data(i).task_schedule.start_times = [];
+    Value_data(i).task_schedule.mission_end_time = [];
+    Value_data(i).task_schedule.execution_times = [];
+    Value_data(i).task_schedule.completion_times = [];
+    Value_data(i).task_schedule.total_flight_time = 0;
+    Value_data(i).task_schedule.total_wait_time = 0;
+    Value_data(i).task_schedule.total_execution_time = 0;
+    Value_data(i).task_schedule.total_energy = 0;
+    Value_data(i).selectProb = zeros(K, M);
+end
+
+% void ÈÎÎñĞĞ£¨M+1£©£º³õÊ¼È«²¿ÔÚ¿ÕÏĞĞĞ
+for k = 1:N
+    Value_data(k).coalitionstru(M+1, :) = 0;
+    Value_data(k).coalitionstru(M+1, k) = agents(k).id;
+end
+
+% ³õÊ¼ĞÅÄî£¨¾ùÔÈ·Ö²¼£©
+for i = 1:N
     for j = 1:M
-        L_less(j, :) = tasks(j).resource_demand(:)';
+        Value_data(i).initbelief(j, :) = ones(1, Value_Params.task_type) / Value_Params.task_type;
     end
-    
-    % ä»»åŠ¡æ”¶ç›Š B_m
-    B = zeros(M, 1);
+end
+% »¥Ïà»º´æĞÅÄî
+for i = 1:N
+    for j = 1:N
+        Value_data(i).other{j}.initbelief = Value_data(j).initbelief;
+    end
+end
+
+% ¹Û²â¼ÆÊı
+for i = 1:N
     for j = 1:M
-        B(j) = tasks(j).value;
+        Value_data(i).observe(j, :) = 0;
+        Value_data(i).preobserve(j, :) = 0;
     end
-    
-    % è·ç¦»çŸ©é˜µ
-    dist_matrix = zeros(N, M);
+end
+
+% ³õÊ¼×ÊÔ´ÉÏÏŞ
+for i = 1:N
+    Value_data(i).resources = agents(i).resources;
+end
+
+%% 2. µü´úÖ÷Ñ­»·
+p_leave = 0.2;            % Ëæ»ú³·Àë¸ÅÂÊ
+softmax_tau = 1.0;        % Softmax ÎÂ¶È
+
+for counter = 1:Value_Params.num_rounds
+
+    % Ê¹ÓÃÍ³Ò»µÄ SC ÊÓÍ¼£¨È¡µÚÒ»¸öÖÇÄÜÌåµÄ SC£©
+    SC_global = Value_data(1).SC;
+
+    % 2.1 ¶ÔÃ¿¸öÖÇÄÜÌå / Ã¿¸ö×ÊÔ´Î¬¶ÈÖ´ĞĞ ¡°Ëæ»ú³·Àë + Æ«ºÃ·ÖÅä¡±
     for i = 1:N
-        for j = 1:M
-            dist_matrix(i, j) = sqrt((agents(i).x - tasks(j).x)^2 + ...
-                                     (agents(i).y - tasks(j).y)^2);
+        agent_pos = [agents(i).x, agents(i).y];
+        for k = 1:K
+            % ---------- Ëæ»ú³·Àë ----------
+            % ÕÒµ½µ±Ç°·ÖÅäµÄÈÎÎñ
+            current_task = 0;
+            for t = 1:M
+                if SC_global{t}(i, k) > eps_val
+                    current_task = t;
+                    break;
+                end
+            end
+            if current_task > 0 && rand < p_leave
+                SC_global{current_task}(i, k) = 0;
+            end
+
+            % ---------- Æ«ºÃÖØÁ¦¼ÆËã ----------
+            F = zeros(1, M + 1); % ×îºóÒ»Î»¶ÔÓ¦¡°±£³Ö¿ÕÏĞ/void¡±
+            for t = 1:M
+                demand_k = tasks(t).resource_demand(k);
+                allocated_k = sum(SC_global{t}(:, k));
+                remaining_k = max(demand_k - allocated_k, 0);
+                if remaining_k < eps_val
+                    F(t) = 0;
+                    continue;
+                end
+
+                % ÆÚÍû¼ÛÖµ£ºÊ¹ÓÃ³õÊ¼ĞÅÄîÓëÈÎÎñÀàĞÍ¼ÛÖµ/ÈÎÎñ¼ÛÖµ
+                if isfield(Value_Params, 'task_value') && ~isempty(Value_Params.task_value)
+                    tv = Value_Params.task_value(:)';
+                    belief = Value_data(i).initbelief(t, :);
+                    expected_value = sum(belief .* tv(1:length(belief)));
+                elseif isfield(tasks(t), 'value')
+                    expected_value = tasks(t).value;
+                else
+                    expected_value = 1;
+                end
+
+                % ¾àÀë
+                if isfield(tasks, 'loc') && ~isempty(tasks(t).loc)
+                    task_pos = tasks(t).loc;
+                else
+                    task_pos = [tasks(t).x, tasks(t).y];
+                end
+                dist_sq = sum((agent_pos - task_pos).^2) + 1e-6;
+
+                % Æ«ºÃÖØÁ¦
+                F(t) = expected_value * remaining_k / dist_sq;
+            end
+            % ¿ÕÏĞÑ¡Ïî£¨±£³Ö×ÊÔ´²»·ÖÅä£©
+            F(M + 1) = 1e-3;
+
+            % ---------- Softmax ¸ÅÂÊ ----------
+            P = softmax_vec(F / softmax_tau);
+
+            % ---------- ÂÖÅÌ¶ÄÑ¡Ôñ ----------
+            r = rand;
+            cumP = cumsum(P);
+            sel = find(r <= cumP, 1, 'first');
+            if isempty(sel), sel = M + 1; end
+
+            % ---------- ¸üĞÂ·ÖÅä ----------
+            % ÏÈÇå¿Õ¸Ã×ÊÔ´ÔÚËùÓĞÈÎÎñÖĞµÄÕ¼ÓÃ
+            for t = 1:M
+                SC_global{t}(i, k) = 0;
+            end
+
+            if sel <= M
+                demand_k = tasks(sel).resource_demand(k);
+                allocated_k = sum(SC_global{sel}(:, k));
+                remaining_k = max(demand_k - allocated_k, 0);
+                assign_amt = min(agents(i).resources(k), remaining_k);
+                SC_global{sel}(i, k) = assign_amt;
+            end
         end
     end
-    
-    % UAVèµ„æº
-    agent_resources = zeros(N, K);
+
+    % 2.2 Í¬²½µ½Ã¿¸öÖÇÄÜÌåµÄÊÓÍ¼Óë coalitionstru
+    coalitionstru = zeros(M + 1, N);
     for i = 1:N
-        res = agents(i).resources(:)';
-        if length(res) >= K
-            agent_resources(i, :) = res(1:K);
+        Value_data(i).SC = SC_global;
+        % ÖØ½¨ resources_matrix
+        Value_data(i).resources_matrix = OCFUtils.get_agent_resource_matrix(SC_global, i, Value_Params);
+
+        % ³ÉÔ±¾ØÕó£ºÈôÔÚÄ³ÈÎÎñÓĞÈÎÒâ×ÊÔ´Í¶Èë£¬Ôò±ê¼Ç£»·ñÔò¹éÈë void
+        assigned_tasks = OCFUtils.get_agent_tasks_fast(SC_global, Value_data(i).agentID, eps_val);
+        if isempty(assigned_tasks)
+            coalitionstru(M + 1, i) = agents(i).id;
         else
-            agent_resources(i, 1:length(res)) = res;
-        end
-    end
-    
-    % ç¦å¿Œè¡¨ï¼ˆå­˜å‚¨æœ€è¿‘çš„è”ç›Ÿç»“æ„å“ˆå¸Œå€¼ï¼‰
-    TabuSC = [];
-    
-    % Boltzmannç³»æ•°
-    G = G0;
-    
-    % è¿­ä»£è®¡æ•°
-    k = 1;
-    kstable = 0;
-    
-    % å†å²è®°å½•
-    utility_history = zeros(Kmax, 1);
-    
-    %% è®¡ç®—åˆå§‹åå¥½é‡åŠ›å’Œé€‰æ‹©æ¦‚ç‡ï¼Œå½¢æˆåˆå§‹è”ç›Ÿ
-    [F, P] = calc_preference_gravity(agent_resources, L_less, B, dist_matrix, G, N, M, K);
-    
-    % æ ¹æ®åˆå§‹æ¦‚ç‡åˆ†é…èµ„æº
-    SC = allocate_by_probability(P, agent_resources, L_less, N, M, K);
-    
-    % æ›´æ–°å‰©ä½™éœ€æ±‚
-    L_less = update_remaining_demand(SC, agent_resources, tasks, M, K);
-    
-    %% ä¸»å¾ªç¯
-    while k <= Kmax && kstable <= Klen
-        
-        % å¯¹æ¯ä¸ªUAVè¿›è¡Œæ“ä½œ
-        for n = 1:N
-            % éšæœºé€‰æ‹©ä¸€ç§èµ„æºç±»å‹è¿›è¡Œé‡åˆ†é…
-            z = randi(K);
-            
-            % å¦‚æœè¯¥UAVæœ‰è¿™ç§èµ„æº
-            if agent_resources(n, z) > 0
-                % æ‰¾åˆ°å½“å‰è¯¥èµ„æºåˆ†é…ç»™çš„ä»»åŠ¡
-                current_task = find(SC(:, n, z) > 0, 1);
-                
-                % ç¦»å¼€å½“å‰è”ç›Ÿï¼ˆå¦‚æœæœ‰ï¼‰
-                if ~isempty(current_task)
-                    SC(current_task, n, z) = 0;
-                    L_less(current_task, z) = L_less(current_task, z) + agent_resources(n, z);
-                end
-                
-                % é‡æ–°è®¡ç®—åå¥½é‡åŠ›å’Œé€‰æ‹©æ¦‚ç‡
-                [F, P] = calc_preference_gravity(agent_resources, L_less, B, dist_matrix, G, N, M, K);
-                
-                % æ ¹æ®æ¦‚ç‡é€‰æ‹©æ–°ä»»åŠ¡
-                prob_vec = P(n, :, z);
-                prob_vec = prob_vec / (sum(prob_vec) + 1e-10);  % å½’ä¸€åŒ–
-                
-                % è½®ç›˜èµŒé€‰æ‹©
-                new_task = roulette_selection(prob_vec);
-                
-                if new_task > 0 && new_task <= M
-                    % åˆ›å»ºæ–°è”ç›Ÿç»“æ„
-                    SC_new = SC;
-                    SC_new(new_task, n, z) = 1;
-                    
-                    % è®¡ç®—æ–°ç»“æ„çš„å“ˆå¸Œå€¼
-                    hash_new = calc_SC_hash(SC_new);
-                    
-                    % æ£€æŸ¥æ˜¯å¦åœ¨ç¦å¿Œè¡¨ä¸­
-                    if ~ismember(hash_new, TabuSC)
-                        % æ¯”è¾ƒUAV nçš„ä¸ªä½“æ•ˆç”¨å˜åŒ–ï¼ˆæŒ‰æ¯”ä¾‹åˆ†é…ï¼‰
-                        individual_utility_new = calc_individual_utility_for_agent(n, SC_new, agent_resources, tasks, dist_matrix, N, M, K, beta_m, C_req, omega, omega_1, omega_2, omega_3);
-                        individual_utility_old = calc_individual_utility_for_agent(n, SC, agent_resources, tasks, dist_matrix, N, M, K, beta_m, C_req, omega, omega_1, omega_2, omega_3);
-                        
-                        if individual_utility_new > individual_utility_old
-                            % åªæ¥å—æ”¹è¿›çš„è§£ï¼ˆè´ªå©ªç­–ç•¥ï¼‰
-                            SC = SC_new;
-                            L_less = update_remaining_demand(SC, agent_resources, tasks, M, K);
-                            kstable = 0;
-                        else
-                            % æ‹’ç»è¾ƒå·®è§£ï¼Œæ¢å¤åŸçŠ¶
-                            if ~isempty(current_task)
-                                SC(current_task, n, z) = 1;
-                                L_less(current_task, z) = L_less(current_task, z) - agent_resources(n, z);
-                            end
-                            kstable = kstable + 1;
-                        end
-                    else
-                        % åœ¨ç¦å¿Œè¡¨ä¸­ï¼Œæ¢å¤åŸçŠ¶
-                        if ~isempty(current_task)
-                            SC(current_task, n, z) = 1;
-                            L_less(current_task, z) = L_less(current_task, z) - agent_resources(n, z);
-                        end
-                        kstable = kstable + 1;
-                    end
-                end
+            for t = assigned_tasks'
+                coalitionstru(t, i) = agents(i).id;
             end
         end
-        
-        % æ›´æ–°Boltzmannç³»æ•° (å…¬å¼28)
-        G = G * alpha_G;
-        
-        % æ›´æ–°ç¦å¿Œè¡¨
-        hash_current = calc_SC_hash(SC);
-        TabuSC = [TabuSC, hash_current];
-        if length(TabuSC) > Ltabu
-            TabuSC = TabuSC(end-Ltabu+1:end);
-        end
-        
-        % è®°å½•å½“å‰æ•ˆç”¨
-        utility_history(k) = calc_coalition_utility(SC, agent_resources, tasks, dist_matrix, N, M, K, beta_m, C_req, omega, omega_1, omega_2, omega_3);
-        
-        k = k + 1;
+        Value_data(i).coalitionstru = coalitionstru;
     end
-    
-    %% æ„é€ è¾“å‡ºç»“æ„
-    % å°†SCè½¬æ¢ä¸ºæ ‡å‡†æ ¼å¼
-    coalitionstru = zeros(M, N);
-    agentresources = zeros(N, M, K);
-    
-    for j = 1:M
-        for i = 1:N
-            if any(SC(j, i, :) > 0)
-                coalitionstru(j, i) = 1;
-                for z = 1:K
-                    if SC(j, i, z) > 0
-                        agentresources(i, j, z) = agent_resources(i, z);
-                    end
-                end
-            end
-        end
-    end
-    
-    % è®¡ç®—æ€»æ•ˆç”¨
-    totalvalue = calc_coalition_utility(SC, agent_resources, tasks, dist_matrix, N, M, K, beta_m, C_req, omega, omega_1, omega_2, omega_3);
-    
-    %% è¾“å‡º
-    Value_data = struct();
-    Value_data.totalvalue = totalvalue;
-    Value_data.coalitionstru = coalitionstru;
-    Value_data.agentresources = agentresources;
-    Value_data.num_coalitions = sum(sum(coalitionstru, 2) > 0);
-    Value_data.avg_coalition_size = mean(sum(coalitionstru, 2));
-    
-    history_data = struct();
-    history_data.algorithm = 'Qi2023_PGG_TS';
-    history_data.final_utility = totalvalue;
-    history_data.iterations = k - 1;
-    history_data.utility_history = utility_history(1:k-1);
-    
+
+    % 2.3 ¸üĞÂÈÎÎñÈÕ³Ì£¨Â·¾¶/ÄÜºÄ£©
+    Value_data = update_task_schedule(Value_data, agents, tasks, Value_Params);
+
+    % 2.4 ¹Û²âÊÕ¼¯£¨±£³Ö¸ñÊ½Ò»ÖÂ£¬µ«²»¸üĞÂĞÅÄî£©
+    [Value_data, summatrix] = AgentOps.collect_observations(Value_data, agents, tasks, Value_Params, summatrix, SC_global);
+    % ²»µ÷ÓÃ AgentOps.update_belief_from_observations£¬ÒÔ±£³Ö¹Ì¶¨ĞÅÄî
+
+    %% 3. ÆÀ¹ÀÓë¼ÇÂ¼
+    [coalition_utility, total_global_cost, total_completed_value, task_completion_degrees] = ...
+        UtilityEvaluator.evaluate_coalition_metrics(SC_global, agents, tasks, Value_Params, eps_val);
+
+    history_data = ResultProcessor.record_history_data(history_data, counter, Value_data, Value_Params, ...
+        SC_global, coalitionstru, ...
+        coalition_utility, total_global_cost, ...
+        total_completed_value, task_completion_degrees, ...
+        summatrix);
+
+    % ¼òµ¥ÈÕÖ¾
+    fprintf('[Qi2023_OCF] round %d: utility=%.2f, cost=%.2f, value=%.2f, avg_comp=%.2f%%\n', ...
+        counter, coalition_utility, total_global_cost, total_completed_value, mean(task_completion_degrees) * 100);
 end
 
-%% ========================================================================
-%  è¾…åŠ©å‡½æ•°
-%% ========================================================================
-
-function [F, P] = calc_preference_gravity(agent_resources, L_less, B, dist_matrix, G, N, M, K)
-% è®¡ç®—åå¥½é‡åŠ› F_n^(z) å’Œé€‰æ‹©æ¦‚ç‡ P_n^(z)
-% å…¬å¼(26): F_n^(z)(m) = B_m * L_m^(less,z) / (d_nm^2 + epsilon)
-% å…¬å¼(27): P_n^(z)(m) = exp(G * F_n^(z)(m)) / sum(exp(G * F_n^(z)))
-
-    epsilon = 1e-6;  % é¿å…é™¤é›¶
-    F = zeros(N, M, K);
-    P = zeros(N, M, K);
-    
-    for n = 1:N
-        for z = 1:K
-            if agent_resources(n, z) > 0
-                for m = 1:M
-                    % åå¥½é‡åŠ›ï¼šä»»åŠ¡æ”¶ç›Š Ã— å‰©ä½™éœ€æ±‚ / è·ç¦»^2
-                    F(n, m, z) = B(m) * max(L_less(m, z), 0) / (dist_matrix(n, m)^2 + epsilon);
-                end
-                
-                % Softmaxè½¬æ¢ä¸ºæ¦‚ç‡
-                F_vec = squeeze(F(n, :, z));
-                F_max = max(F_vec);
-                exp_F = exp(G * (F_vec - F_max));  % æ•°å€¼ç¨³å®š
-                P(n, :, z) = exp_F / (sum(exp_F) + epsilon);
-            end
-        end
-    end
+% Êı¾İÒ»ÖÂĞÔ×Ô¼ì
+[is_valid, ~] = check_OCF_consistency(Value_data, agents, Value_Params);
+if ~is_valid
+    warning('Qi2023_OCF_main: Êı¾İÒ»ÖÂĞÔ¼ì²éÎ´Í¨¹ı£¬Çë¼ì²éÊäÈë»òËã·¨ÊµÏÖ¡£');
 end
 
-function SC = allocate_by_probability(P, agent_resources, L_less, N, M, K)
-% æ ¹æ®é€‰æ‹©æ¦‚ç‡åˆ†é…èµ„æºå½¢æˆåˆå§‹è”ç›Ÿ
-
-    SC = zeros(M, N, K);
-    remaining = L_less;
-    
-    for n = 1:N
-        for z = 1:K
-            if agent_resources(n, z) > 0
-                % æ ¹æ®æ¦‚ç‡é€‰æ‹©ä»»åŠ¡
-                prob_vec = P(n, :, z);
-                prob_vec = prob_vec / (sum(prob_vec) + 1e-10);
-                
-                % ä¼˜å…ˆé€‰æ‹©æœ‰éœ€æ±‚çš„ä»»åŠ¡
-                for m = 1:M
-                    if remaining(m, z) <= 0
-                        prob_vec(m) = 0;
-                    end
-                end
-                
-                if sum(prob_vec) > 0
-                    prob_vec = prob_vec / sum(prob_vec);
-                    selected_task = roulette_selection(prob_vec);
-                    
-                    if selected_task > 0
-                        SC(selected_task, n, z) = 1;
-                        remaining(selected_task, z) = remaining(selected_task, z) - agent_resources(n, z);
-                    end
-                end
-            end
-        end
-    end
 end
 
-function task_idx = roulette_selection(prob_vec)
-% è½®ç›˜èµŒé€‰æ‹©
-
-    if sum(prob_vec) < 1e-10
-        task_idx = 0;
-        return;
-    end
-    
-    cumsum_prob = cumsum(prob_vec);
-    r = rand();
-    task_idx = find(cumsum_prob >= r, 1);
-    
-    if isempty(task_idx)
-        task_idx = length(prob_vec);
-    end
+%% Softmax ¸¨Öúº¯Êı
+function p = softmax_vec(x)
+    x = x - max(x);             % ÊıÖµÎÈ¶¨
+    ex = exp(x);
+    p = ex / sum(ex);
 end
 
-function L_less = update_remaining_demand(SC, agent_resources, tasks, M, K)
-% æ›´æ–°ä»»åŠ¡å‰©ä½™èµ„æºéœ€æ±‚
-
-    L_less = zeros(M, K);
-    for m = 1:M
-        demand = tasks(m).resource_demand(:)';
-        if length(demand) < K
-            demand = [demand, zeros(1, K - length(demand))];
-        end
-        
-        allocated = zeros(1, K);
-        for n = 1:size(SC, 2)
-            for z = 1:K
-                if SC(m, n, z) > 0
-                    allocated(z) = allocated(z) + agent_resources(n, z);
-                end
-            end
-        end
-        
-        L_less(m, :) = max(demand - allocated, 0);
-    end
-end
-
-function hash = calc_SC_hash(SC)
-% è®¡ç®—è”ç›Ÿç»“æ„çš„å“ˆå¸Œå€¼ï¼ˆç”¨äºç¦å¿Œè¡¨ï¼‰
-
-    hash = sum(SC(:) .* (1:numel(SC))');
-end
-
-function utility = calc_coalition_utility(SC, agent_resources, tasks, dist_matrix, N, M, K, beta_m, C_req, omega, omega_1, omega_2, omega_3)
-% è®¡ç®—è”ç›Ÿç»“æ„çš„æ€»æ•ˆç”¨
-% ä½¿ç”¨Qi2023è®ºæ–‡å…¬å¼ï¼šU_m(A_m) = 1 / (1 + exp(-beta_m * (C_m - C_req + omega/beta_m)))
-% å…¶ä¸­ C_m(A_m) = D + omega_1*r(A_m) - omega_2*t_wait - omega_3*sum(e_n)
-    
-    utility = 0;
-    
-    for m = 1:M
-        % æ‰¾åˆ°å‚ä¸ä»»åŠ¡mçš„UAV
-        members = [];
-        allocated = zeros(1, K);
-        
-        for n = 1:N
-            if any(SC(m, n, :) > 0)
-                members = [members, n];
-                for z = 1:K
-                    if SC(m, n, z) > 0
-                        allocated(z) = allocated(z) + agent_resources(n, z);
-                    end
-                end
-            end
-        end
-        
-        if ~isempty(members)
-            % è·å–ä»»åŠ¡éœ€æ±‚
-            demand = tasks(m).resource_demand(:)';
-            if length(demand) < K
-                demand = [demand, zeros(1, K - length(demand))];
-            end
-            
-            % è®¡ç®—èµ„æºå®Œæˆåº¦ r(A_m)
-            r_A_m = WorldSim.calc_task_completion_degree(allocated, demand, K);
-            
-            % è®¡ç®—è·ç¦»æˆæœ¬ï¼ˆä½œä¸ºç­‰å¾…æ—¶é—´çš„è¿‘ä¼¼ï¼‰
-            total_dist = 0;
-            for n = members
-                total_dist = total_dist + dist_matrix(n, m);
-            end
-            t_wait = total_dist;  % è·ç¦»ä½œä¸ºç­‰å¾…æ—¶é—´çš„ä»£ç†
-            
-            % è®¡ç®—èƒ½é‡æŸè€—ï¼ˆè·ç¦» Ã— è”ç›Ÿè§„æ¨¡çš„ç®€åŒ–æ¨¡å‹ï¼‰
-            energy_cost = total_dist * length(members);
-            
-            % è®¡ç®—è”ç›Ÿèƒ½åŠ› C_m(A_m)
-            D = tasks(m).value / 1000;  % å½’ä¸€åŒ–ä»»åŠ¡ä»·å€¼ä½œä¸ºåŸºç¡€èƒ½åŠ›
-            C_m = D + omega_1 * r_A_m - omega_2 * t_wait - omega_3 * energy_cost;
-            
-            % è®¡ç®—è”ç›Ÿæ•ˆç”¨ï¼ˆSigmoidå‡½æ•°ï¼‰
-            U_m = 1.0 / (1.0 + exp(-beta_m * (C_m - C_req + omega / beta_m)));
-            
-            % å°†æ•ˆç”¨è½¬æ¢å›ä»»åŠ¡ä»·å€¼å°ºåº¦
-            task_utility = tasks(m).value * U_m;
-            utility = utility + task_utility;
-        end
-    end
-end
-
-function individual_utility = calc_individual_utility_for_agent(agent_id, SC, agent_resources, tasks, dist_matrix, N, M, K, beta_m, C_req, omega, omega_1, omega_2, omega_3)
-% è®¡ç®—å•ä¸ªUAVçš„ä¸ªä½“æ•ˆç”¨ï¼ˆæŒ‰èµ„æºè´¡çŒ®æ¯”ä¾‹ä»æ‰€æœ‰å‚ä¸çš„ä»»åŠ¡ä¸­è·å¾—ï¼‰
-% å…¬å¼: u_n = sum_m [ (|A_m^(n)| / sum_{n'âˆˆMem(A_m)} |A_m^(n')|) * U_m(A_m) ]
-
-    individual_utility = 0;
-    
-    for m = 1:M
-        % æ£€æŸ¥è¯¥UAVæ˜¯å¦å‚ä¸ä»»åŠ¡m
-        if ~any(SC(m, agent_id, :) > 0)
-            continue;
-        end
-        
-        % æ‰¾åˆ°å‚ä¸ä»»åŠ¡mçš„æ‰€æœ‰UAV
-        members = [];
-        allocated = zeros(1, K);
-        contributions = zeros(N, 1);  % æ¯ä¸ªUAVçš„è´¡çŒ®é‡
-        
-        for n = 1:N
-            if any(SC(m, n, :) > 0)
-                members = [members, n];
-                agent_alloc = zeros(1, K);
-                for z = 1:K
-                    if SC(m, n, z) > 0
-                        agent_alloc(z) = agent_resources(n, z);
-                        allocated(z) = allocated(z) + agent_resources(n, z);
-                    end
-                end
-                % è®¡ç®—è¯¥UAVçš„è´¡çŒ®é‡ |A_m^(n)|
-                contributions(n) = norm(agent_alloc);
-            end
-        end
-        
-        % è®¡ç®—ä»»åŠ¡mçš„æ€»æ•ˆç”¨ï¼ˆä½¿ç”¨Qi2023è®ºæ–‡çš„Sigmoidå‡½æ•°ï¼‰
-        demand = tasks(m).resource_demand(:)';
-        if length(demand) < K
-            demand = [demand, zeros(1, K - length(demand))];
-        end
-        r_A_m = WorldSim.calc_task_completion_degree(allocated, demand, K);
-        
-        total_dist = 0;
-        for n = members
-            total_dist = total_dist + dist_matrix(n, m);
-        end
-        
-        % è®¡ç®—è”ç›Ÿèƒ½åŠ›å’Œæ•ˆç”¨
-        t_wait = total_dist;
-        energy_cost = total_dist * length(members);
-        D = tasks(m).value / 1000;
-        C_m = D + omega_1 * r_A_m - omega_2 * t_wait - omega_3 * energy_cost;
-        sigmoid_U = 1.0 / (1.0 + exp(-beta_m * (C_m - C_req + omega / beta_m)));
-        U_m = tasks(m).value * sigmoid_U;
-        
-        % æŒ‰æ¯”ä¾‹åˆ†é…ï¼šè¯¥UAVä»ä»»åŠ¡mè·å¾—çš„æ•ˆç”¨
-        total_contribution = sum(contributions);
-        if total_contribution > 1e-10
-            individual_utility = individual_utility + (contributions(agent_id) / total_contribution) * U_m;
-        end
-    end
-end
