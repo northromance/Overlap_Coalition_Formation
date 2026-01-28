@@ -1,0 +1,37 @@
+% Preamble:
+% \usepackage[ruled,vlined]{algorithm2e}
+
+\begin{algorithm}[t]
+\caption{A Preference Gravity-Guided Tabu Search (PGG-TS) Algorithm for Distributed Overlapping Coalition Formation}
+
+\KwIn{$\mathcal{N},\,\mathcal{M},\,L_m(t),\,B_m(t),\,L_{\mathrm{tabu}},\,K_{\mathrm{len}},\,K_{\max}$}
+
+\textbf{Initialization:} $k\gets 1$, $L_m^{(\mathrm{less})}(1)\gets L_m(t)$, $k_{\mathrm{stable}}\gets 0$\;
+Initialize $\mathrm{Tabu}_{SC}=\{SC^{(k-L_{\mathrm{tabu}})},\ldots,SC^{(k)}\}$ to empty\;
+Calculate $F_n^{(z)}(1)$ and $P_n^{(z)}(1)$ by (26) and (27)\;
+To get the initial coalition structure $SC^{(1)}$, all initial resources carried by UAVs are allocated to the tasks by $P_n^{(z)}(1)$\;
+
+\textbf{Loop} $\forall n\in\mathcal{N}$\;
+UAV $n$ randomly selects partial consumable resource $\delta_n^{(z_b)}$ or non-consumable resource $\mu_n^{(z_c)}$ to leave the current coalition\;
+Calculate $F_n^{(z)}(k)$ and $P_n^{(z)}(k)$ by (26) and (27)\;
+UAV $n$ make an exchange operation based on selection probability vector $P_n^{(z)}(k)$\;
+Calculate the new coalition structure $SC_{\mathrm{new}}^{(k)}$\;
+
+\If{$SC_{\mathrm{new}}^{(k)} \notin \mathrm{Tabu}_{SC}$}{
+    \If{$SC_{\mathrm{new}}^{(k)} \succ_n SC^{(k)}$}{
+        $SC^{(k+1)} \gets SC_{\mathrm{new}}^{(k)}$\;
+        $k_{\mathrm{stable}} \gets 0$\;
+    }\Else{
+        $SC^{(k+1)} \gets SC^{(k)}$\;
+        $k_{\mathrm{stable}} \gets k_{\mathrm{stable}} + 1$\;
+    }
+}
+
+Update Boltzmann coefficient $\Gamma(k+1)$ by (28)\;
+Update $L_m^{(\mathrm{less})}(k+1)$ and $\mathrm{Tabu}_{SC}$ based on $SC^{(k+1)}$\;
+$k \gets k+1$\;
+
+\textbf{End loop if} $k_{\mathrm{stable}} > K_{\mathrm{len}}$ \textbf{or} $k > K_{\max}$\;
+
+\KwOut{Stable coalition structure $SC^{(\ast)}$}
+\end{algorithm}
