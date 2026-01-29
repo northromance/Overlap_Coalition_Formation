@@ -29,7 +29,7 @@ num_task_types = length(task_values);
 
 % 算法开关：选择要运行的算法 ID
 % 1=SA_Value, 2=Greedy, 3=Huo2025, 4=Qi2023, 5=PSO
-algorithms_to_run_ids = [4];
+algorithms_to_run_ids = [1,3,4];
 
 %% Display/save options（显示与保存选项）
 save_results = true;    % 是否保存结果到 MAT 文件
@@ -73,6 +73,7 @@ max_stable_iterations = 20;  % 最大稳定迭代次数（用于判断收敛）
 % 为接口统一保留：部分算法需要该结构体
 AddPara.control = 1;
 AddPara.resource_confidence = 0.95;  % 资源分位/置信度（风险规避）
+AddPara.enable_belief_update = false; % Qi2023信念更新开关：true=启用信念更新，false=仅使用初始信念
 
 % Observation/game params（观测/博弈参数）
 obs_times = 50;              % 观测次数（贝叶斯更新等）

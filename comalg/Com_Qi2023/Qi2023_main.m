@@ -1,12 +1,27 @@
 function [Value_data, history_data] = Qi2023_main(agents, tasks, AddPara, Value_Params)
-% Qi2023_main - 基于偏好引力的禁忌搜索算法 (PGG-TS)
+% Qi2023_main - 基于偏好引力的禁忌搜索算法 (PGG-TS) v1.1
 % 参考文献: Qi et al. 2023
 %
 % 核心思想：
 %   - 任务信息未知，智能体只能根据信念（belief）估计期望需求
 %   - 使用期望需求计算效用和资源分配
-%   - 每轮结束后进行观测，更新信念
+%   - 每轮结束后进行观测，更新信念（可通过开关控制）
 %   - 基于新信念进行下一轮的重叠联盟形成
+%
+% 输入参数：
+%   agents       - 智能体数据结构
+%   tasks        - 任务数据结构
+%   AddPara      - 附加参数结构体
+%                  .enable_belief_update - 信念更新开关（true=启用，false=仅用初始信念）
+%   Value_Params - 系统参数结构体
+%
+% 输出参数：
+%   Value_data   - 更新后的智能体数据
+%   history_data - 历史数据记录
+%
+% 版本历史：
+%   v1.0 - 初始版本
+%   v1.1 - 添加信念更新开关，支持仅使用初始信念运行
 
 %% 0. 参数设置与初始化
 if isfield(Value_Params, 'seed'), rng(Value_Params.seed); end
@@ -24,6 +39,14 @@ K_max_inner = 100;          % 每轮最大迭代次数
 Gamma_init = 1;             % 初始Boltzmann系数
 Gamma_max = 100;            % 最大Boltzmann系数
 Gamma = Gamma_init;         % 当前Boltzmann系数
+
+% 读取信念更新开关（默认启用）
+if isfield(AddPara, 'enable_belief_update')
+    enable_belief_update = AddPara.enable_belief_update;
+else
+    enable_belief_update = true;  % 默认启用信念更新
+end
+fprintf('[Qi2023] 信念更新开关: %s\n', mat2str(enable_belief_update));
 
 % 使用标准初始化
 history_data = struct();
@@ -200,8 +223,13 @@ for round = 1:Value_Params.num_rounds
     [Value_data, summatrix] = AgentOps.collect_observations(Value_data, agents, tasks, Value_Params, summatrix, SC_global);
 
     %% 4. 信念更新阶段：基于观测结果更新信念（贝叶斯更新）
-    fprintf('[Qi2023] 第 %d 轮：更新信念...\n', round);
-    Value_data = AgentOps.update_belief_from_observations(Value_data, Value_Params);
+    % 根据开关决定是否更新信念
+    if enable_belief_update
+        fprintf('[Qi2023] 第 %d 轮：更新信念...\n', round);
+        Value_data = AgentOps.update_belief_from_observations(Value_data, Value_Params);
+    else
+        fprintf('[Qi2023] 第 %d 轮：跳过信念更新（使用初始信念）\n', round);
+    end
 
     %% 5. 同步联盟结构：保存当前联盟结构到所有智能体
     % 关键：下一轮将基于这个保存的联盟结构继续优化，而不是从头开始
@@ -211,9 +239,12 @@ for round = 1:Value_Params.num_rounds
     end
 
     %% 6. 信念广播：智能体之间共享信念
-    for i = 1:N
-        for j = 1:N
-            Value_data(i).other{j}.initbelief = Value_data(j).initbelief;
+    % 根据开关决定是否广播更新后的信念
+    if enable_belief_update
+        for i = 1:N
+            for j = 1:N
+                Value_data(i).other{j}.initbelief = Value_data(j).initbelief;
+            end
         end
     end
 
