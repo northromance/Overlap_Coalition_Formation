@@ -13,6 +13,7 @@ addpath("SA\");                    % SA algorithm（模拟退火算法）
 addpath("comalg/Com_Baseline/");   % Greedy baseline（贪心基线算法）
 addpath("comalg/Com_Huo2025/");    % Huo2025 algorithm（Huo2025 算法）
 addpath("comalg/Com_Qi2023/");     % Qi2023 algorithm（Qi2023 算法）
+addpath("comalg/Com_Shi2024/");    % Shi2024 OCF algorithm（Shi2024 重叠联盟形成算法）
 addpath("comalg/Com_PSO/");        % PSO algorithm（粒子群优化算法）
 
 %% ========================================================================
@@ -28,8 +29,8 @@ task_values = [800, 1000, 1500];  % three task types（三种不同类型任务�
 num_task_types = length(task_values);
 
 % 算法开关：选择要运行的算法 ID
-% 1=SA_Value, 2=Greedy, 3=Huo2025, 4=Qi2023, 5=PSO
-algorithms_to_run_ids = [1,3,4];
+% 1=SA_Value, 3=Huo2025, 4=Qi2023, 5=Shi2024
+algorithms_to_run_ids = [1,3,4,5];  % 运行所有算法
 
 %% Display/save options（显示与保存选项）
 save_results = true;    % 是否保存结果到 MAT 文件
@@ -191,7 +192,8 @@ all_algorithms = {
     struct('id', 2, 'name', 'Greedy baseline', 'func', @Greedy_Baseline_main, 'folder', 'comalg/Com_Baseline', 'color', [0.5, 0.5, 0.5]); % 贪心基线
     struct('id', 3, 'name', 'Huo2025',         'func', @Huo2025_main,         'folder', 'comalg/Com_Huo2025',  'color', [0.8, 0.2, 0.2]); % Huo2025
     struct('id', 4, 'name', 'Qi2023',          'func', @Qi2023_main,          'folder', 'comalg/Com_Qi2023',   'color', [0.2, 0.8, 0.2]); % Qi2023
-    struct('id', 5, 'name', 'PSO',             'func', @PSO_main,             'folder', 'comalg/Com_PSO',      'color', [0.8, 0.8, 0.2]); % 粒子群
+    struct('id', 5, 'name', 'Shi2024',         'func', @Shi2024_main,         'folder', 'comalg/Com_Shi2024',  'color', [0.8, 0.4, 0.2]); % Shi2024 OCF
+    struct('id', 6, 'name', 'PSO',             'func', @PSO_main,             'folder', 'comalg/Com_PSO',      'color', [0.8, 0.8, 0.2]); % 粒子群
     };
 
 fprintf('Available algorithms (可用算法):\n');

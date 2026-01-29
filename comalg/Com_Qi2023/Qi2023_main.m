@@ -236,6 +236,14 @@ for round = 1:Value_Params.num_rounds
     final_SC = SC_global;
     for ii = 1:N
         Value_data(ii).SC = final_SC;
+
+        % 更新 resources_matrix（与 Shi2024 保持一致）
+        for j = 1:M
+            Value_data(ii).resources_matrix(j, :) = final_SC{j}(ii, :);
+        end
+
+        % 更新 coalitionstru（使用统一的构建函数）
+        Value_data(ii).coalitionstru = OCFUtils.build_coalitionstru_from_SC(final_SC, agents, N, M, eps_val);
     end
 
     %% 6. 信念广播：智能体之间共享信念
@@ -264,6 +272,79 @@ for round = 1:Value_Params.num_rounds
 end
 
 fprintf('[Qi2023] 算法完成 %d 轮。\n', Value_Params.num_rounds);
+
+%% 最终数据同步：确保所有智能体的数据结构完全一致
+fprintf('\n[Qi2023] 执行最终数据同步...\n');
+for ii = 1:N
+    Value_data(ii).SC = SC_global;
+
+    % 更新 resources_matrix
+    for j = 1:M
+        Value_data(ii).resources_matrix(j, :) = SC_global{j}(ii, :);
+    end
+
+    % 更新 coalitionstru（使用统一的构建函数）
+    Value_data(ii).coalitionstru = OCFUtils.build_coalitionstru_from_SC(SC_global, agents, N, M, eps_val);
+end
+
+% 调试输出：显示最终的 coalitionstru
+fprintf('[Qi2023] 最终 coalitionstru (Agent 1 视图):\n');
+for j = 1:M
+    participants = find(Value_data(1).coalitionstru(j, :) > 0);
+    if ~isempty(participants)
+        fprintf('  任务 %d: 智能体 %s, 值: %s\n', j, mat2str(participants), mat2str(Value_data(1).coalitionstru(j, participants)));
+    end
+end
+void_agents = find(Value_data(1).coalitionstru(M+1, :) > 0);
+if ~isempty(void_agents)
+    fprintf('  Void任务: 智能体 %s\n', mat2str(void_agents));
+end
+
+%% 最终数据一致性检查
+fprintf('\n[Qi2023] 执行最终数据一致性检查...\n');
+[is_valid_data, error_log_data] = check_data_consistency(Value_data, Value_Params);
+[is_valid_ocf, error_log_ocf] = check_OCF_consistency(Value_data, agents, Value_Params);
+
+if ~is_valid_data || ~is_valid_ocf
+    warning('[Qi2023] 数据一致性检查发现问题，请查看上方日志！');
+end
+
+%% 最终可行性验证
+fprintf('\n[Qi2023] 执行最终可行性验证...\n');
+fprintf('==============================================\n');
+all_feasible = true;
+eps_val = 1e-9;
+
+for i = 1:N
+    % 获取资源分配矩阵
+    R_agent_Q = zeros(M, K);
+    task_list = OCFUtils.get_agent_tasks_fast(SC_global, i, eps_val);
+    for t_idx = 1:length(task_list)
+        t = task_list(t_idx);
+        if t <= M
+            R_agent_Q(t, :) = SC_global{t}(i, :);
+        end
+    end
+
+    % 验证可行性
+    [isFeasible, info, cost_data] = validate_feasibility(Value_data(i), agents, tasks, Value_Params, i, SC_global, R_agent_Q);
+
+    if ~isFeasible
+        fprintf('❌ Agent %d 不可行: %s\n', i, info.reason);
+        all_feasible = false;
+    else
+        fprintf('✅ Agent %d 可行: 能量 %.2f/%.2f, 任务数 %d\n', ...
+            i, cost_data.requiredEnergy, agents(i).Emax, length(cost_data.assignedTasks));
+    end
+end
+
+if all_feasible
+    fprintf('✅ [可行性验证] 所有智能体的分配方案均可行！\n');
+else
+    fprintf('🚫 [可行性验证] 发现不可行的分配方案！\n');
+    warning('[Qi2023] 可行性验证失败，请检查算法逻辑！');
+end
+fprintf('==============================================\n');
 
 end
 

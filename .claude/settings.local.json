@@ -4,7 +4,8 @@
       "Bash(matlab -batch:*)",
       "Bash(/c/ProgramData/matlab/R2023b/bin/matlab.exe:*)",
       "Bash(where:*)",
-      "Bash(/d/Matlab/bin/matlab.exe:*)"
+      "Bash(/d/Matlab/bin/matlab.exe:*)",
+      "Bash(wc:*)"
     ]
   }
 }
