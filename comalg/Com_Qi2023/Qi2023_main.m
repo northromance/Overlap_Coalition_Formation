@@ -79,7 +79,8 @@ for round = 1:Value_Params.num_rounds
         fprintf('[Qi2023] 第1轮：根据概率生成初始联盟结构...\n');
         % 第一轮：根据概率为每个智能体分配初始联盟
         % 参考论文：To get the initial coalition structure SC(1),
-        % all initial resources carried by UAVs are allocated to the tasks by Pn(z)(1)
+        % all initial resources carried by UAVs are allocated to the tasks
+        % by Pn(z)(1)dsafdfsaf
 
         for i = 1:N
             Value_data(i).SC = SC_global;
@@ -238,12 +239,12 @@ end
 %% 辅助函数
 
 function SC_new = execute_exchange_operation(agent_idx, agents, SC_current, probs, Value_Params, Value_data, AddPara)
-% EXECUTE_EXCHANGE_OPERATION 执行资源交换操作：全额分配每一类资源
+% EXECUTE_EXCHANGE_OPERATION 执行资源交换操作：不可拆分但可复用的资源分配
 %
-% 核心逻辑：
-%   - 任务信息未知，使用期望需求（基于信念）而不是真实需求
-%   - 基于概率矩阵，智能体决定将资源全额投入到选中的任务
-%   - 体现了资源的原子性（不可分割）
+% 修改后的核心逻辑：
+%   - 资源是原子化的（全额投入），但具有“可复用性”（Non-consumable） [cite: 188, 189]
+%   - 智能体决定参与一个新任务时，不再撤回已在其他任务中投入的该类资源
+%   - 最终形成重叠联盟结构 (Overlapping Coalition Structure) [cite: 120, 155]
 
 SC_new = SC_current;
 M = Value_Params.M;
@@ -257,49 +258,54 @@ end
 
 % 遍历该智能体持有的 K 种资源类型
 for k = 1:K
-    % 获取当前智能体在类型 k 上的总资源量
     resource_amt = agents(agent_idx).resources(k);
     if resource_amt <= 0, continue; end
-
-    %% 1. 轮盘赌采样 (Roulette Wheel Selection)
-    prob_vec = probs(k, :);      % 获取该类资源在各个任务上的概率分布
-    cum_prob = cumsum(prob_vec); % 计算累计概率
-
+    
+    %% 1. 采样选择目标任务
+    prob_vec = probs(k, :);
+    cum_prob = cumsum(prob_vec);
     if cum_prob(end) > 0
-        % 标准轮盘赌逻辑
         r = rand * cum_prob(end);
         selected_task = find(cum_prob >= r, 1, 'first');
     else
-        % 如果计算出的概率全为0，则随机选择一个任务
         selected_task = randi(M);
     end
-
     if isempty(selected_task), selected_task = randi(M); end
 
-    %% 2. 清空旧分配
-    % 在执行新分配前，必须先清空该智能体在全局任务中关于资源 k 的旧分配
-    for m = 1:M
-        SC_new{m}(agent_idx, k) = 0;
+    %% 2. 【关键修改】不再清空旧分配
+    % 文献中不可消耗资源的交换定义为“加入”或“离开” 
+    % 这里我们保留该智能体在其他任务 m (m ~= selected_task) 上的资源 k 投入
+    % 这体现了资源的“复用性”：同一个设备同时在多个任务联盟中发挥作用 [cite: 267]
+    
+    %% 3. 投入逻辑
+    % 检查该智能体是否已经参与了此任务
+    if SC_new{selected_task}(agent_idx, k) > 0
+        fprintf('  [状态保持] 智能体 #%-2d 资源 k=%-2d 已在任务 M=%-2d 中复用\n', agent_idx, k, selected_task);
+        continue;
     end
 
-    %% 3. 全额投入逻辑（使用期望需求）
-    % 计算目标任务 selected_task 在资源 k 上的当前已获分配总量
+    % 计算目标任务的期望需求缺口
     curr_alloc = sum(SC_new{selected_task}(:, k));
-
-    % 使用期望需求而不是真实需求（因为任务信息未知）
     belief = Value_data.initbelief(selected_task, :);
     task_type_demands = Value_Params.task_type_demands;
     expected_demand = WorldSim.calculate_demand_quantile(belief, task_type_demands, confidence);
     demand_k = expected_demand(k);
-
-    % 计算剩余缺口（Gap）
+    
     can_add = max(0, demand_k - curr_alloc);
+    
+    % 如果有缺口，则将资源“复用”到该任务中
+    if can_add > 0
+        % 不可拆分资源，按 all-in 模式投入 [cite: 409]
+        act_add = resource_amt; 
+        SC_new{selected_task}(agent_idx, k) = act_add;
 
-    % 执行全额投入：在不超过期望需求上限的前提下，投入智能体持有的所有该类资源
-    act_add = min(resource_amt, can_add);
-
-    % 更新联盟结构：将资源原子化地分配给目标任务
-    SC_new{selected_task}(agent_idx, k) = act_add;
+        %% --- 增强版打印信息 ---
+        % fprintf('  [资源复用] 智能体 #%-2d | 资源类型 k=%-2d | 全额投入: %-6.2f -> 任务 M=%-2d \n', ...
+        %     agent_idx, k, act_add, selected_task);
+    else
+        % fprintf('  [复用跳过] 智能体 #%-2d | 资源类型 k=%-2d | 任务 M=%-2d 需求已饱和，无需复用投入\n', ...
+        %     agent_idx, k, selected_task);
+    end
 end
 end
 
