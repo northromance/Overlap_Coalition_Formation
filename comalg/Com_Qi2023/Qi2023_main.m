@@ -1,272 +1,332 @@
-function [Value_data, history_data] = PGG_TS_main(agents, tasks, AddPara, Value_Params)
-% PGG_TS_main - »ùÓÚ Algorithm 2: Preference Gravity-Guided Tabu Search
-% ÑÏ¸ñ¶ÔÓ¦Í¼Æ¬Á÷³Ì£ºInitial -> Loop(Leave -> Gravity -> Exch -> Tabu -> Utility)
+function [Value_data, history_data] = Qi2023_main(agents, tasks, AddPara, Value_Params)
+% Qi2023_main - åŸºäºåå¥½å¼•åŠ›çš„ç¦å¿Œæœç´¢ç®—æ³• (PGG-TS)
+% å‚è€ƒæ–‡çŒ®: Qi et al. 2023
+%
+% æ ¸å¿ƒæ€æƒ³ï¼š
+%   - ä»»åŠ¡ä¿¡æ¯æœªçŸ¥ï¼Œæ™ºèƒ½ä½“åªèƒ½æ ¹æ®ä¿¡å¿µï¼ˆbeliefï¼‰ä¼°è®¡æœŸæœ›éœ€æ±‚
+%   - ä½¿ç”¨æœŸæœ›éœ€æ±‚è®¡ç®—æ•ˆç”¨å’Œèµ„æºåˆ†é…
+%   - æ¯è½®ç»“æŸåè¿›è¡Œè§‚æµ‹ï¼Œæ›´æ–°ä¿¡å¿µ
+%   - åŸºäºæ–°ä¿¡å¿µè¿›è¡Œä¸‹ä¸€è½®çš„é‡å è”ç›Ÿå½¢æˆ
 
-%% 0. ²ÎÊı½âÎöÓë³õÊ¼»¯
+%% 0. å‚æ•°è®¾ç½®ä¸åˆå§‹åŒ–
 if isfield(Value_Params, 'seed'), rng(Value_Params.seed); end
 eps_val = 1e-9;
 N = Value_Params.N;
 M = Value_Params.M;
 K = Value_Params.K;
 
-% --- Tabu Search ÌØ¶¨²ÎÊı ---
-L_tabu = 10;                % Tabu ÁĞ±í³¤¶È
-K_len = 20;                 % ÎÈ¶¨ĞÔãĞÖµ (k_stable ãĞÖµ)
-K_max = Value_Params.num_rounds; % ×î´óµü´ú´ÎÊı
-TabuList = {};              % ³õÊ¼»¯½û¼É±íÎª¿Õ
-Gamma = 100;                % ³õÊ¼ÎÂ¶È (Boltzmann coefficient)
-alpha = 0.98;               % ½µÎÂÏµÊı
+% ç¦å¿Œæœç´¢å‚æ•°
+L_tabu = 10;                % ç¦å¿Œè¡¨é•¿åº¦
+K_len = 20;                 % ç¨³å®šæ€§é˜ˆå€¼ï¼ˆæ— æ”¹è¿›è¿­ä»£æ¬¡æ•°ï¼‰
+K_max_inner = 100;          % æ¯è½®æœ€å¤§è¿­ä»£æ¬¡æ•°
 
+% Boltzmannç³»æ•°å‚æ•°ï¼ˆç”¨äºåå¥½é‡åŠ›æ¦‚ç‡è®¡ç®—ï¼‰
+Gamma_init = 1;             % åˆå§‹Boltzmannç³»æ•°
+Gamma_max = 100;            % æœ€å¤§Boltzmannç³»æ•°
+Gamma = Gamma_init;         % å½“å‰Boltzmannç³»æ•°
 
-% ³õÊ¼»¯Êä³ö½á¹¹
+% ä½¿ç”¨æ ‡å‡†åˆå§‹åŒ–
 history_data = struct();
-Value_data = init_value_data(agents, tasks, Value_Params); % ·â×°³õÊ¼»¯º¯Êı
+Value_data = WorldSim.init_value_data(agents, tasks, Value_Params);
+
+% åˆå§‹åŒ–è§‚æµ‹çŸ©é˜µï¼ˆä¸SAç®—æ³•ä¿æŒä¸€è‡´ï¼‰
+for i = 1:N
+    for j = 1:M
+        for k = 1:Value_Params.task_type
+            Value_data(i).observe(j, k) = 0;        % å½“å‰è½®çš„è§‚æµ‹è®¡æ•°
+            Value_data(i).preobserve(j, k) = 0;     % ç´¯è®¡çš„å†å²è§‚æµ‹è®¡æ•°
+        end
+    end
+end
+
+% åˆå§‹åŒ–å…¨å±€è§‚æµ‹æ±‡æ€»çŸ©é˜µ
 summatrix = zeros(M, Value_Params.task_type);
 
-% È«¾ÖÁªÃË½á¹¹ SC (M x N x K Âß¼­£¬´Ë´¦¼ò»¯Îª Cell ½á¹¹ÒÔÊÊÅäÄãµÄ´úÂë)
+% åˆå§‹åŒ–ä¿¡å¿µåˆ†å¸ƒï¼ˆå‡åŒ€å…ˆéªŒï¼‰
+for i = 1:N
+    for j = 1:M
+        Value_data(i).initbelief(j, 1:end) = ones(Value_Params.task_type, 1) / Value_Params.task_type;
+    end
+end
+
+% åˆå§‹åŒ–é‚»å±…ä¿¡å¿µï¼ˆç”¨äºä¿¡æ¯å…±äº«ï¼‰
+for i = 1:N
+    for j = 1:N
+        Value_data(i).other{j}.initbelief = Value_data(j).initbelief;
+    end
+end
+
+% å…¨å±€è”ç›Ÿç»“æ„ SC
 SC_global = cell(M, 1);
 for m = 1:M, SC_global{m} = zeros(N, K); end
 
-k_iter = 1;
-k_stable = 0;
+fprintf('[Qi2023] å¼€å§‹PGG-TSç®—æ³•ï¼Œå…±%dè½®...\n', Value_Params.num_rounds);
 
-%% 1. ³õÊ¼ÁªÃË½á¹¹Éú³É (Initialization)
-% "To get the initial coalition structure SC(1), all initial resources... allocated by P(1)"
+%% ä¸»å¾ªç¯ï¼šå¤šè½®è¿­ä»£ï¼ˆæ¯è½®åŒ…æ‹¬ï¼šè”ç›Ÿå½¢æˆ â†’ è§‚æµ‹ â†’ ä¿¡å¿µæ›´æ–°ï¼‰
+for round = 1:Value_Params.num_rounds
 
-fprintf('Generating Initial Coalition Structure based on P(1)...\n');
-for i = 1:N
-    % 1.1 ¼ÆËã³õÊ¼Æ«ºÃÖØÁ¦ F ºÍ ¸ÅÂÊ P
-    [F_vec, P_vec] = calculate_gravity_and_prob(i, agents, tasks, SC_global, Gamma, Value_Params);
-    
-    % 1.2 ¸ù¾İ P ½øĞĞ³õÊ¼·ÖÅä (Initial Allocation)
-    SC_global = execute_exchange_operation(i, agents, SC_global, P_vec, tasks);
-end
+    fprintf('[Qi2023] === ç¬¬ %d/%d è½® ===\n', round, Value_Params.num_rounds);
 
-% ¼ÇÂ¼³õÊ¼×´Ì¬
-current_utility = UtilityEvaluator.evaluate_coalition_metrics(SC_global, agents, tasks, Value_Params, eps_val);
+    % æ¯è½®é‡ç½®ç¦å¿Œæœç´¢å‚æ•°å’ŒBoltzmannç³»æ•°
+    k_iter = 1;
+    k_stable = 0;
+    TabuList = {};
+    Gamma = Gamma_init;  % é‡ç½®ä¸ºåˆå§‹å€¼
 
-%% 2. Ö÷Ñ­»· (Loop until Stable or Max Iteration)
-while k_iter <= K_max && k_stable <= K_len
-    
-    % ±£´æ±¾ÂÖÔ­±¾µÄ SC£¬ÓÃÓÚ»Ø¹ö
-    SC_old_global = SC_global;
-    
-    % Loop \forall n \in N (±éÀúÃ¿¸öÎŞÈË»ú)
+    %% 1. è”ç›Ÿå½¢æˆé˜¶æ®µï¼ˆåŸºäºå½“å‰ä¿¡å¿µå’Œä¸Šä¸€è½®çš„è”ç›Ÿç»“æ„ï¼‰
+
+    if round == 1
+        fprintf('[Qi2023] ç¬¬1è½®ï¼šæ ¹æ®æ¦‚ç‡ç”Ÿæˆåˆå§‹è”ç›Ÿç»“æ„...\n');
+        % ç¬¬ä¸€è½®ï¼šæ ¹æ®æ¦‚ç‡ä¸ºæ¯ä¸ªæ™ºèƒ½ä½“åˆ†é…åˆå§‹è”ç›Ÿ
+        % å‚è€ƒè®ºæ–‡ï¼šTo get the initial coalition structure SC(1),
+        % all initial resources carried by UAVs are allocated to the tasks by Pn(z)(1)
+
+        for i = 1:N
+            Value_data(i).SC = SC_global;
+
+            % è®¡ç®—èµ„æºç¼ºå£å’Œé€‰æ‹©æ¦‚ç‡ï¼ˆä½¿ç”¨Qi2023çš„åå¥½é‡åŠ›å…¬å¼ï¼‰
+            [~, resource_gap] = calc_gaps(Value_data(i), Value_Params, AddPara);
+            probs = Qi2023_Select_probs(Value_data(i), agents, tasks, Value_Params, resource_gap, Gamma);
+
+            % æ ¹æ®æ¦‚ç‡åˆ†é…æ‰€æœ‰èµ„æº
+            SC_global = execute_exchange_operation(i, agents, SC_global, probs, Value_Params, Value_data(i), AddPara);
+
+            % æ›´æ–°æ‰€æœ‰æ™ºèƒ½ä½“çš„SCï¼ˆé¡ºåºä¼ é€’ï¼‰
+            for j = 1:N
+                Value_data(j).SC = SC_global;
+            end
+        end
+    else
+        fprintf('[Qi2023] ç¬¬%dè½®ï¼šåŸºäºæ›´æ–°åçš„ä¿¡å¿µå’Œä¸Šä¸€è½®è”ç›Ÿç»“æ„ç»§ç»­ä¼˜åŒ–...\n', round);
+    end
+
+    % è®°å½•åˆå§‹çŠ¶æ€ï¼ˆä½¿ç”¨æœŸæœ›æ•ˆç”¨ï¼‰
+    current_utility = 0;
     for i = 1:N
-        % -----------------------------------------------------------
-        % A. Ëæ»ú³·Àë (Randomly select partial resource to leave)
-        % -----------------------------------------------------------
-        SC_temp = SC_global; % ÁÙÊ±²Ù×÷¸±±¾
-        
-        % ¼òµ¥µÄ³·ÀëÂß¼­£ºÃ¿¸öÒÑ²ÎÓëµÄÈÎÎñÓĞÒ»¶¨¸ÅÂÊ³·³ö²¿·Ö×ÊÔ´
-        p_leave = 0.3; % Ëæ»ú³·Àë¸ÅÂÊ
-        for m = 1:M
-            for k = 1:K
-                if SC_temp{m}(i, k) > eps_val && rand < p_leave
-                    % ³·Àë×ÊÔ´ (ÉèÎª0£¬¼´Àë¿ªµ±Ç°ÁªÃË)
-                    SC_temp{m}(i, k) = 0;
+        Value_data(i).SC = SC_global;
+        current_utility = current_utility + UtilityEvaluator.calc_agent_total_utility(SC_global, agents, tasks, Value_Params, Value_data(i), AddPara);
+    end
+    fprintf('[Qi2023] ç¬¬ %d è½®åˆå§‹æ•ˆç”¨ï¼ˆæœŸæœ›ï¼‰: %.4f\n', round, current_utility);
+
+    %% 2. ç¦å¿Œæœç´¢å†…å¾ªç¯ï¼šä¼˜åŒ–å½“å‰è”ç›Ÿç»“æ„
+    while k_iter <= K_max_inner && k_stable <= K_len
+
+        improved_this_iter = false;
+
+        % éå†æ‰€æœ‰æ™ºèƒ½ä½“
+        for i = 1:N
+            % A. ç¦»å¼€æ“ä½œï¼šéšæœºç§»é™¤éƒ¨åˆ†èµ„æº
+            SC_temp = SC_global;
+            p_leave = 0.3;
+            for m = 1:M
+                for k = 1:K
+                    if SC_temp{m}(i, k) > eps_val && rand < p_leave
+                        SC_temp{m}(i, k) = 0;
+                    end
+                end
+            end
+
+            % B. å¼•åŠ›è®¡ç®—ï¼šè®¡ç®—é€‰æ‹©æ¦‚ç‡ï¼ˆä½¿ç”¨Qi2023çš„åå¥½é‡åŠ›å…¬å¼ï¼‰
+            Value_data(i).SC = SC_temp;
+            [~, resource_gap] = calc_gaps(Value_data(i), Value_Params, AddPara);
+            probs = Qi2023_Select_probs(Value_data(i), agents, tasks, Value_Params, resource_gap, Gamma);
+
+            % C. äº¤æ¢æ“ä½œï¼šé‡æ–°åˆ†é…èµ„æºï¼ˆä½¿ç”¨æœŸæœ›éœ€æ±‚ï¼‰
+            SC_new_candidate = execute_exchange_operation(i, agents, SC_temp, probs, Value_Params, Value_data(i), AddPara);
+
+            % D. ç¦å¿Œæ£€æŸ¥
+            SC_hash = get_SC_hash(SC_new_candidate);
+            is_tabu = is_in_tabu(SC_hash, TabuList);
+
+            if ~is_tabu
+                % E. æ•ˆç”¨æ£€æŸ¥ï¼ˆä½¿ç”¨ Preference_gain è®¡ç®—æ•ˆç”¨å·®ï¼‰
+                % ä¸æ˜¯ç®€å•çš„æ–°æ—§æ•ˆç”¨å·®ï¼Œè€Œæ˜¯è€ƒè™‘æ™ºèƒ½ä½“è‡ªèº«å’Œé˜Ÿå‹çš„æ•ˆç”¨å˜åŒ–
+                % Delta U = (Self_Q - Self_P) + Sum(Gain_g) - Sum(Loss_h) + Sum(Diff_o)
+
+                % æ›´æ–°æ™ºèƒ½ä½“ i çš„ Value_dataï¼Œç”¨äº Preference_gain è®¡ç®—
+                Value_data(i).SC = SC_new_candidate;
+
+                % ä½¿ç”¨ Preference_gain è®¡ç®—æ•ˆç”¨å·®å€¼
+                delta_u = Preference_gain(tasks, agents, SC_global, SC_new_candidate, i, Value_Params, Value_data(i));
+
+                if delta_u > 0
+                    % æ¥å—æ–°çš„è”ç›Ÿç»“æ„
+                    SC_global = SC_new_candidate;
+
+                    % é‡æ–°è®¡ç®—æ€»æ•ˆç”¨
+                    current_utility = 0;
+                    for j = 1:N
+                        Value_data(j).SC = SC_global;
+                        current_utility = current_utility + UtilityEvaluator.calc_agent_total_utility(SC_global, agents, tasks, Value_Params, Value_data(j), AddPara);
+                    end
+
+                    k_stable = 0;
+                    improved_this_iter = true;
+                    TabuList = update_tabu_list(TabuList, SC_hash, L_tabu);
+                else
+                    % æ¢å¤æ™ºèƒ½ä½“ i çš„ SC
+                    Value_data(i).SC = SC_global;
                 end
             end
         end
-        
-        % -----------------------------------------------------------
-        % B. ¼ÆËãÆ«ºÃÖØÁ¦ F ºÍ ¸ÅÂÊÏòÁ¿ P
-        % Calculate F_n(k) and P_n(k) by (26) and (27)
-        % -----------------------------------------------------------
-        % ×¢Òâ£ºF µÄ¼ÆËãÍ¨³£ÒÀÀµÓÚµ±Ç°µÄÊ£ÓàĞèÇóºÍ¾àÀë
-        [F_vec, P_vec] = calculate_gravity_and_prob(i, agents, tasks, SC_temp, Gamma, Value_Params);
-        
-        % -----------------------------------------------------------
-        % C. Ö´ĞĞ½»»»²Ù×÷ (Make an exchange operation)
-        % UAV n make an exchange operation based on selection probability vector P
-        % -----------------------------------------------------------
-        SC_new_candidate = execute_exchange_operation(i, agents, SC_temp, P_vec, tasks);
-        
-        % -----------------------------------------------------------
-        % D. ½û¼É±í¼ì²é (Check Tabu List)
-        % If SC_new not in Tabu_SC
-        % -----------------------------------------------------------
-        SC_hash = get_SC_hash(SC_new_candidate); % ½«¾ØÕó×ªÎª×Ö·û´®hashÒÔ±ã±È½Ï
-        is_tabu = is_in_tabu(SC_hash, TabuList);
-        
-        accepted = false;
-        
-        if ~is_tabu
-            % -------------------------------------------------------
-            % E. Ğ§ÓÃÅĞ¶Ï (Utility Check)
-            % If SC_new >_n SC_old (Better utility)
-            % -------------------------------------------------------
-            % ¼ÆËãĞÂ½á¹¹µÄĞ§ÓÃ
-            new_utility = UtilityEvaluator.evaluate_coalition_metrics(SC_new_candidate, agents, tasks, Value_Params, eps_val);
-            
-            % ¼ÆËãĞ§ÓÃ²î (Delta U)
-            delta_u = new_utility - current_utility;
-            
-            % Èç¹ûĞ§ÓÃÌáÉı (ÕâÀïÊ¹ÓÃÈ«¾ÖĞ§ÓÃ×÷Îª >_n µÄ´úÀí£¬Ò²¿É¸ÄÎª¸öÌåĞ§ÓÃ)
-            if delta_u > 0 % »òÕß > small_threshold
-                % Accept: Update Global SC
-                SC_global = SC_new_candidate;
-                current_utility = new_utility;
-                k_stable = 0; % Reset stability
-                accepted = true;
-            else
-                % Else: Keep old (reject change)
-                % SC_global ±£³Ö²»±ä (¼´µÈÓÚ SC_old_global µÄµ±Ç°×´Ì¬)
-                % ×¢Òâ£ºÍ¼Æ¬Âß¼­Èç¹ûÊÇ else£¬Ôò SC(k+1) = SC(k)£¬ÇÒ k_stable + 1
-                % µ«ÕâÊÇÕë¶Ô agent Ñ­»·ÄÚ²¿»¹ÊÇÍâ²¿£¿
-                % Í¼Æ¬Ëõ½øÏÔÊ¾ k_stable = k_stable + 1 ÊÇÔÚ Else ·ÖÖ§
-                % ÕâÒâÎ¶×ÅÈç¹ûµ¥¸ö agent µÄÒÆ¶¯Ã»ÓĞ¸ÄÉÆ£¬ÎÈ¶¨ĞÔ¼ÆÊı¾ÍÔö¼Ó
-                 k_stable = k_stable + 1;
-            end
-        else
-             % Èç¹ûÔÚ½û¼É±íÖĞ£¬Í¨³£Ö±½Ó¾Ü¾ø (»òÕßÓĞÌØÉâ×¼Ôò Aspiration Criterion£¬Í¼Æ¬Î´ÏÔÊ¾)
-             % ±£³Ö²»±ä
-             k_stable = k_stable + 1;
+
+        if ~improved_this_iter
+            k_stable = k_stable + 1;
         end
-        
-        % Èç¹û½ÓÊÜÁËĞÂ×´Ì¬£¬Á¢¼´¸üĞÂ Tabu ±í
-        if accepted
-            TabuList = update_tabu_list(TabuList, SC_hash, L_tabu);
+
+        % F. æ›´æ–°Boltzmannç³»æ•°ï¼ˆæ¢ç´¢ä¸å¼€å‘çš„æƒè¡¡ï¼‰
+        % Gamma(k+1) = Gamma(k) + k * (Gamma_max - Gamma(k)) / K_max
+        Gamma = Gamma + k_iter * (Gamma_max - Gamma) / K_max_inner;
+
+        if mod(k_iter, 10) == 0
+            fprintf('[Qi2023] ç¬¬ %d è½®, è¿­ä»£ %d: æ•ˆç”¨ï¼ˆæœŸæœ›ï¼‰= %.4f, ç¨³å®šæ€§ = %d, Gamma = %.2f\n', ...
+                round, k_iter, current_utility, k_stable, Gamma);
         end
-        
-    end % End Agent Loop
-    
-    % -----------------------------------------------------------
-    % F. ¸üĞÂÎÂ¶ÈºÍ Tabu (Update Boltzmann & Tabu logic)
-    % Update Boltzmann coefficient Gamma(k+1)
-    % -----------------------------------------------------------
-    Gamma = Gamma * alpha; % ½µÎÂ
-    
-    % Update Tabu List based on SC^(k+1) (ÒÑ¾­ÔÚÉÏÃæÊµÊ±¸üĞÂ£¬»òÔÚ´Ë´¦Í³³ï¸üĞÂ)
-    
-    % ¼ÇÂ¼ÀúÊ·Êı¾İ
-    history_data = record_history(history_data, k_iter, SC_global, current_utility);
-    
-    fprintf('Round %d: Utility = %.4f, Stability = %d, Temp = %.4f\n', k_iter, current_utility, k_stable, Gamma);
-    
-    k_iter = k_iter + 1;
-end
 
-% Output Stable Structure
-Value_data(1).SC = SC_global; % ½«½á¹û´æ»Ø Value_data
+        k_iter = k_iter + 1;
+    end
 
-end
+    fprintf('[Qi2023] ç¬¬ %d è½®åœ¨ %d æ¬¡è¿­ä»£åæ”¶æ•›, æ•ˆç”¨ï¼ˆæœŸæœ›ï¼‰= %.4f, æœ€ç»ˆGamma = %.2f\n', ...
+        round, k_iter-1, current_utility, Gamma);
 
-%% ================= ¸¨Öúº¯Êı =================
+    % æ›´æ–°æ‰€æœ‰æ™ºèƒ½ä½“çš„ SC
+    for i = 1:N
+        Value_data(i).SC = SC_global;
+    end
 
-function [F, P] = calculate_gravity_and_prob(agent_idx, agents, tasks, SC, Gamma, Value_Params)
-    % ÊµÏÖÍ¼Æ¬ÖĞµÄ F_n(z) ºÍ P_n(z) ¼ÆËã
-    M = Value_Params.M;
-    K = Value_Params.K;
-    F = zeros(M, K); % M¸öÈÎÎñ£¬KÖÖ×ÊÔ´
-    
-    agent_pos = [agents(agent_idx).x, agents(agent_idx).y];
-    
-    % 1. ¼ÆËãÆ«ºÃÖØÁ¦ F (Gravity)
-    % F ~ (Expected Value * Remaining Demand) / Distance^2
+    %% 3. è§‚æµ‹é˜¶æ®µï¼šæ™ºèƒ½ä½“å¯¹å‚ä¸çš„ä»»åŠ¡è¿›è¡Œè§‚æµ‹
+    fprintf('[Qi2023] ç¬¬ %d è½®ï¼šè¿›è¡Œè§‚æµ‹...\n', round);
+    [Value_data, summatrix] = AgentOps.collect_observations(Value_data, agents, tasks, Value_Params, summatrix, SC_global);
+
+    %% 4. ä¿¡å¿µæ›´æ–°é˜¶æ®µï¼šåŸºäºè§‚æµ‹ç»“æœæ›´æ–°ä¿¡å¿µï¼ˆè´å¶æ–¯æ›´æ–°ï¼‰
+    fprintf('[Qi2023] ç¬¬ %d è½®ï¼šæ›´æ–°ä¿¡å¿µ...\n', round);
+    Value_data = AgentOps.update_belief_from_observations(Value_data, Value_Params);
+
+    %% 5. åŒæ­¥è”ç›Ÿç»“æ„ï¼šä¿å­˜å½“å‰è”ç›Ÿç»“æ„åˆ°æ‰€æœ‰æ™ºèƒ½ä½“
+    % å…³é”®ï¼šä¸‹ä¸€è½®å°†åŸºäºè¿™ä¸ªä¿å­˜çš„è”ç›Ÿç»“æ„ç»§ç»­ä¼˜åŒ–ï¼Œè€Œä¸æ˜¯ä»å¤´å¼€å§‹
+    final_SC = SC_global;
+    for ii = 1:N
+        Value_data(ii).SC = final_SC;
+    end
+
+    %% 6. ä¿¡å¿µå¹¿æ’­ï¼šæ™ºèƒ½ä½“ä¹‹é—´å…±äº«ä¿¡å¿µ
+    for i = 1:N
+        for j = 1:N
+            Value_data(i).other{j}.initbelief = Value_data(j).initbelief;
+        end
+    end
+
+    %% 7. è®°å½•å†å²æ•°æ®ï¼ˆä½¿ç”¨çœŸå®éœ€æ±‚è¿›è¡Œæœ€ç»ˆè¯„ä¼°ï¼‰
+    [coalition_utility, total_cost, total_completed_value, task_completion_degrees] = ...
+        UtilityEvaluator.evaluate_coalition_metrics(SC_global, agents, tasks, Value_Params, eps_val);
+
+    coalitionstru = cell(M, 1);
     for m = 1:M
-        task_pos = [tasks(m).x, tasks(m).y];
-        dist_sq = sum((agent_pos - task_pos).^2) + 1e-6;
-        
-        for k = 1:K
-            % ¼ÆËãÊ£ÓàĞèÇó (Remaining Demand)
-            current_allocated = sum(SC{m}(:, k));
-            demand = tasks(m).resource_demand(k);
-            rem_demand = max(0, demand - current_allocated);
-            
-            % ÕâÀïµÄ Value ¿ÉÒÔÊÇÈÎÎñ¼ÛÖµ£¬Ò²¿ÉÒÔÊÇ agent µÄĞÅÄî¼ÛÖµ
-            task_val = tasks(m).value; 
-            
-            % ¹«Ê½: F = V * Rem / Dist^2
-            F(m, k) = (task_val * rem_demand) / dist_sq;
-        end
+        participants = find(any(SC_global{m} > eps_val, 2));
+        coalitionstru{m} = participants';
     end
-    
-    % 2. ¼ÆËã¸ÅÂÊ P (Softmax)
-    % P ~ exp(F / Gamma)
-    P = zeros(M, K);
-    for k = 1:K
-        vec = F(:, k);
-        % Softmax ÎÈ¶¨ĞÔ´¦Àí
-        vec = vec - max(vec); 
-        exp_vec = exp(vec / Gamma);
-        P(:, k) = exp_vec / sum(exp_vec);
-    end
+
+    history_data = ResultProcessor.record_history_data(history_data, round, Value_data, Value_Params, ...
+        SC_global, coalitionstru, coalition_utility, total_cost, ...
+        total_completed_value, task_completion_degrees, summatrix);
 end
 
-function SC_new = execute_exchange_operation(agent_idx, agents, SC_current, P_prob, tasks)
-    % ÂÖÅÌ¶ÄÑ¡ÔñĞÂÈÎÎñ²¢·ÖÅä×ÊÔ´
-    SC_new = SC_current;
-    M = length(SC_current);
-    K = size(SC_current{1}, 2);
-    
-    for k = 1:K
-        resource_amt = agents(agent_idx).resources(k);
-        if resource_amt <= 0, continue; end
-        
-        % ÂÖÅÌ¶Ä (Roulette Wheel Selection)
-        cum_prob = cumsum(P_prob(:, k));
-        r = rand;
+fprintf('[Qi2023] ç®—æ³•å®Œæˆ %d è½®ã€‚\n', Value_Params.num_rounds);
+
+end
+
+%% è¾…åŠ©å‡½æ•°
+
+function SC_new = execute_exchange_operation(agent_idx, agents, SC_current, probs, Value_Params, Value_data, AddPara)
+% EXECUTE_EXCHANGE_OPERATION æ‰§è¡Œèµ„æºäº¤æ¢æ“ä½œï¼šå…¨é¢åˆ†é…æ¯ä¸€ç±»èµ„æº
+%
+% æ ¸å¿ƒé€»è¾‘ï¼š
+%   - ä»»åŠ¡ä¿¡æ¯æœªçŸ¥ï¼Œä½¿ç”¨æœŸæœ›éœ€æ±‚ï¼ˆåŸºäºä¿¡å¿µï¼‰è€Œä¸æ˜¯çœŸå®éœ€æ±‚
+%   - åŸºäºæ¦‚ç‡çŸ©é˜µï¼Œæ™ºèƒ½ä½“å†³å®šå°†èµ„æºå…¨é¢æŠ•å…¥åˆ°é€‰ä¸­çš„ä»»åŠ¡
+%   - ä½“ç°äº†èµ„æºçš„åŸå­æ€§ï¼ˆä¸å¯åˆ†å‰²ï¼‰
+
+SC_new = SC_current;
+M = Value_Params.M;
+K = Value_Params.K;
+
+% è·å–ç½®ä¿¡åº¦å‚æ•°
+confidence = 0.9;
+if nargin >= 7 && isfield(AddPara, 'resource_confidence')
+    confidence = AddPara.resource_confidence;
+end
+
+% éå†è¯¥æ™ºèƒ½ä½“æŒæœ‰çš„ K ç§èµ„æºç±»å‹
+for k = 1:K
+    % è·å–å½“å‰æ™ºèƒ½ä½“åœ¨ç±»å‹ k ä¸Šçš„æ€»èµ„æºé‡
+    resource_amt = agents(agent_idx).resources(k);
+    if resource_amt <= 0, continue; end
+
+    %% 1. è½®ç›˜èµŒé‡‡æ · (Roulette Wheel Selection)
+    prob_vec = probs(k, :);      % è·å–è¯¥ç±»èµ„æºåœ¨å„ä¸ªä»»åŠ¡ä¸Šçš„æ¦‚ç‡åˆ†å¸ƒ
+    cum_prob = cumsum(prob_vec); % è®¡ç®—ç´¯è®¡æ¦‚ç‡
+
+    if cum_prob(end) > 0
+        % æ ‡å‡†è½®ç›˜èµŒé€»è¾‘
+        r = rand * cum_prob(end);
         selected_task = find(cum_prob >= r, 1, 'first');
-        
-        if isempty(selected_task), selected_task = randi(M); end
-        
-        % ·ÖÅä×ÊÔ´µ½Ñ¡¶¨ÈÎÎñ
-        % ×¢Òâ£ºÕâÀïÊÇÒ»¸ö¼ò»¯µÄ "Exchange"£¬Êµ¼Ê¿ÉÄÜĞèÒª¿¼ÂÇ×ÊÔ´Ô¼Êø
-        % ÏÈÇå¿Õ¸Ã agent ÔÚ¸Ã×ÊÔ´ÉÏµÄËùÓĞ·ÖÅä (ÒòÎªÇ°ÃæÒÑ¾­ Leave ÁËÒ»²¿·Ö£¬ÕâÀïÖØĞÂ·ÖÅäÊ£ÓàµÄ)
-        for m = 1:M
-            SC_new{m}(agent_idx, k) = 0;
-        end
-        
-        % ·ÖÅäµ½ĞÂÈÎÎñ (²»³¬¹ıĞèÇóÉÏÏŞ)
-        curr_alloc = sum(SC_new{selected_task}(:, k));
-        demand = tasks(selected_task).resource_demand(k);
-        can_add = max(0, demand - curr_alloc);
-        
-        act_add = min(resource_amt, can_add);
-        SC_new{selected_task}(agent_idx, k) = act_add;
+    else
+        % å¦‚æœè®¡ç®—å‡ºçš„æ¦‚ç‡å…¨ä¸º0ï¼Œåˆ™éšæœºé€‰æ‹©ä¸€ä¸ªä»»åŠ¡
+        selected_task = randi(M);
     end
+
+    if isempty(selected_task), selected_task = randi(M); end
+
+    %% 2. æ¸…ç©ºæ—§åˆ†é…
+    % åœ¨æ‰§è¡Œæ–°åˆ†é…å‰ï¼Œå¿…é¡»å…ˆæ¸…ç©ºè¯¥æ™ºèƒ½ä½“åœ¨å…¨å±€ä»»åŠ¡ä¸­å…³äºèµ„æº k çš„æ—§åˆ†é…
+    for m = 1:M
+        SC_new{m}(agent_idx, k) = 0;
+    end
+
+    %% 3. å…¨é¢æŠ•å…¥é€»è¾‘ï¼ˆä½¿ç”¨æœŸæœ›éœ€æ±‚ï¼‰
+    % è®¡ç®—ç›®æ ‡ä»»åŠ¡ selected_task åœ¨èµ„æº k ä¸Šçš„å½“å‰å·²è·åˆ†é…æ€»é‡
+    curr_alloc = sum(SC_new{selected_task}(:, k));
+
+    % ä½¿ç”¨æœŸæœ›éœ€æ±‚è€Œä¸æ˜¯çœŸå®éœ€æ±‚ï¼ˆå› ä¸ºä»»åŠ¡ä¿¡æ¯æœªçŸ¥ï¼‰
+    belief = Value_data.initbelief(selected_task, :);
+    task_type_demands = Value_Params.task_type_demands;
+    expected_demand = WorldSim.calculate_demand_quantile(belief, task_type_demands, confidence);
+    demand_k = expected_demand(k);
+
+    % è®¡ç®—å‰©ä½™ç¼ºå£ï¼ˆGapï¼‰
+    can_add = max(0, demand_k - curr_alloc);
+
+    % æ‰§è¡Œå…¨é¢æŠ•å…¥ï¼šåœ¨ä¸è¶…è¿‡æœŸæœ›éœ€æ±‚ä¸Šé™çš„å‰æä¸‹ï¼ŒæŠ•å…¥æ™ºèƒ½ä½“æŒæœ‰çš„æ‰€æœ‰è¯¥ç±»èµ„æº
+    act_add = min(resource_amt, can_add);
+
+    % æ›´æ–°è”ç›Ÿç»“æ„ï¼šå°†èµ„æºåŸå­åŒ–åœ°åˆ†é…ç»™ç›®æ ‡ä»»åŠ¡
+    SC_new{selected_task}(agent_idx, k) = act_add;
+end
 end
 
 function hash_str = get_SC_hash(SC)
-    % ¼òµ¥µÄ Hash Éú³É£¬ÓÃÓÚ Tabu ±È½Ï
-    % ½« Cell Êı×é×ª»»Îª³¤ÏòÁ¿²¢×ª×Ö·û´®
-    % ×¢Òâ£º¶ÔÓÚ´ó¾ØÕó£¬½¨ÒéÊ¹ÓÃ¸ü¸ßĞ§µÄ Hash Ëã·¨ (Èç DataHash)
-    temp_vec = [];
-    for m = 1:length(SC)
-        temp_vec = [temp_vec; SC{m}(:)];
-    end
-    hash_str = mat2str(temp_vec); % »òÊ¹ÓÃ num2hex µÈ
+% GET_SC_HASH è®¡ç®—è”ç›Ÿç»“æ„çš„å“ˆå¸Œå€¼ç”¨äºç¦å¿Œæ£€æŸ¥
+temp_vec = [];
+for m = 1:length(SC)
+    temp_vec = [temp_vec; SC{m}(:)];
+end
+hash_str = mat2str(temp_vec);
 end
 
 function is_in = is_in_tabu(sc_hash, tabu_list)
-    is_in = false;
-    for i = 1:length(tabu_list)
-        if strcmp(sc_hash, tabu_list{i})
-            is_in = true;
-            return;
-        end
+% IS_IN_TABU æ£€æŸ¥å½“å‰ç»“æ„æ˜¯å¦åœ¨ç¦å¿Œè¡¨ä¸­
+is_in = false;
+for i = 1:length(tabu_list)
+    if strcmp(sc_hash, tabu_list{i})
+        is_in = true;
+        return;
     end
+end
 end
 
 function tabu_list = update_tabu_list(tabu_list, sc_hash, L_tabu)
-    tabu_list{end+1} = sc_hash;
-    if length(tabu_list) > L_tabu
-        tabu_list(1) = []; % ÒÆ³ı×î¾ÉµÄ (FIFO)
-    end
+% UPDATE_TABU_LIST æ›´æ–°ç¦å¿Œè¡¨ï¼ˆFIFOé˜Ÿåˆ—ï¼‰
+tabu_list{end+1} = sc_hash;
+if length(tabu_list) > L_tabu
+    tabu_list(1) = [];
 end
-
-% ... (init_value_data, record_history µÈ¸¨Öúº¯Êı±£³ÖÔ­´úÂë·ç¸ñ)
-function Value_data = init_value_data(agents, tasks, Value_Params)
-   % ¸´ÖÆÄãÔ­´úÂëÖĞµÄ³õÊ¼»¯²¿·Ö
-   N = Value_Params.N;
-   for i=1:N
-       Value_data(i).agentID = agents(i).id;
-       % ... ÆäËû³õÊ¼»¯ ...
-   end
-end
-
-function history_data = record_history(hist, k, SC, util)
-    hist(k).SC = SC;
-    hist(k).utility = util;
 end

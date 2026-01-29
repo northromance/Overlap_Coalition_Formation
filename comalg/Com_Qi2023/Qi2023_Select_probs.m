@@ -1,0 +1,108 @@
+function probs = Qi2023_Select_probs(Value_data, agents, tasks, Value_Params, resource_gap, Gamma)
+% QI2023_SELECT_PROBS 基于偏好重力的概率计算（Qi2023算法专用）
+%
+% 功能描述:
+%   使用论文中的偏好重力公式计算任务选择概率
+%   P_n^(z)(k) = [p_{n,1}^(z)(k), ..., p_{n,m}^(z)(k), ..., p_{n,M}^(z)(k)]
+%
+%   p_{m,n}^(z)(k) = exp[f_{m,n}^(z)(k) * Gamma(k)] / sum_m exp[f_{m,n}^(z)(k) * Gamma(k)]
+%
+%   其中 f_{m,n}^(z)(k) 是偏好重力函数：
+%   - 对于基本资源(z_b): f = (beta_m)^2 * L * c_m^(z_b)(k) * delta_n^(z_b) / d_{m,n}
+%   - 对于消耗资源(z_c): f = (beta_m)^2 * R * c_m^(z_c)(k) * mu_n^(z_c) / d_{m,n}
+%
+% 输入:
+%   Value_data   - 当前智能体的状态结构体
+%   agents       - 智能体列表
+%   tasks        - 任务列表
+%   Value_Params - 全局参数
+%   resource_gap - (MxK 矩阵) 每个任务在每种资源上的剩余需求量
+%   Gamma        - Boltzmann系数（控制探索与开发的权衡）
+%
+% 输出:
+%   probs        - (KxM 矩阵) 概率分布矩阵
+%                  probs(z, m) 表示资源类型z选择任务m的概率
+
+    agentID = Value_data.agentID;
+    K = Value_Params.K;
+    M = Value_Params.M;
+
+    % 初始化概率矩阵
+    probs = zeros(K, M);
+
+    % 小常数，防止除零
+    eps_val = 1e-9;
+
+    %% 计算偏好重力 f_{m,n}^(z)(k)
+    for z = 1:K  % 遍历每种资源类型
+
+        f_values = zeros(1, M);  % 存储每个任务的偏好重力值
+
+        for m = 1:M  % 遍历每个任务
+
+            % 1. 任务优先级 beta_m（归一化到[0,1]）
+            beta_m = tasks(m).priority;
+            max_priority = max([tasks.priority]);
+            if max_priority > 0
+                beta_m = beta_m / max_priority;
+            end
+
+            % 2. 资源缺口 c_m^(z)(k)
+            % L: 对于基本资源，使用剩余需求
+            % R: 对于消耗资源，使用剩余需求
+            c_m_z = max(resource_gap(m, z), 0);
+
+            % 归一化资源缺口
+            max_gap = max(resource_gap(:, z));
+            if max_gap > eps_val
+                c_m_z = c_m_z / max_gap;
+            end
+
+            % 3. 智能体资源容量 delta_n^(z_b) 或 mu_n^(z_c)
+            % 使用智能体拥有的资源量
+            agent_capacity = Value_data.resources(z);
+            max_capacity = max(Value_data.resources);
+            if max_capacity > eps_val
+                agent_capacity = agent_capacity / max_capacity;
+            end
+
+            % 4. 距离 d_{m,n}
+            d_mn = sqrt((tasks(m).x - agents(agentID).x)^2 + ...
+                        (tasks(m).y - agents(agentID).y)^2);
+            d_mn = max(d_mn, eps_val);  % 防止除零
+
+            % 归一化距离
+            max_dist = 0;
+            for j = 1:M
+                dist_j = sqrt((tasks(j).x - agents(agentID).x)^2 + ...
+                             (tasks(j).y - agents(agentID).y)^2);
+                max_dist = max(max_dist, dist_j);
+            end
+            if max_dist > eps_val
+                d_mn = d_mn / max_dist;
+            end
+
+            % 5. 计算偏好重力 f_{m,n}^(z)(k)
+            % 公式: f = (beta_m)^2 * c_m^(z) * agent_capacity / d_{m,n}
+            f_mn_z = (beta_m^2) * c_m_z * agent_capacity / d_mn;
+
+            f_values(m) = f_mn_z;
+        end
+
+        %% 使用Boltzmann分布计算概率
+        % p_{m,n}^(z)(k) = exp[f_{m,n}^(z)(k) * Gamma(k)] / sum_m exp[f_{m,n}^(z)(k) * Gamma(k)]
+
+        % 计算指数项
+        exp_values = exp(f_values * Gamma);
+
+        % 归一化得到概率
+        sum_exp = sum(exp_values);
+        if sum_exp > eps_val
+            probs(z, :) = exp_values / sum_exp;
+        else
+            % 如果所有值都太小，使用均匀分布
+            probs(z, :) = ones(1, M) / M;
+        end
+    end
+
+end

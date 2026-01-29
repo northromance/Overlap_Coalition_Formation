@@ -1,7 +1,10 @@
 {
   "permissions": {
     "allow": [
-      "Bash(matlab -batch:*)"
+      "Bash(matlab -batch:*)",
+      "Bash(/c/ProgramData/matlab/R2023b/bin/matlab.exe:*)",
+      "Bash(where:*)",
+      "Bash(/d/Matlab/bin/matlab.exe:*)"
     ]
   }
 }
