@@ -22,7 +22,7 @@ addpath("comalg/Com_PSO/");        % PSO algorithm（粒子群优化算法）
 %% ========================================================================
 
 SEED = 2456;                    % 随机种子（确保实验可复现）
-N = 6;                          % number of agents（智能体数量）
+N = 5;                          % number of agents（智能体数量）
 M = 10;                         % number of tasks（任务数量）
 K = 6;                          % number of resource types（资源类型数）
 task_values = [800, 1000, 1500];  % three task types（三种不同类型任务的价值）
@@ -30,7 +30,7 @@ num_task_types = length(task_values);
 
 % 算法开关：选择要运行的算法 ID
 % 1=SA_Value, 3=Huo2025, 4=Qi2023, 5=Shi2024
-algorithms_to_run_ids = [1,3,4,5];  % 运行所有算法
+algorithms_to_run_ids = [1];  % 运行所有算法
 
 %% Display/save options（显示与保存选项）
 save_results = true;    % 是否保存结果到 MAT 文件

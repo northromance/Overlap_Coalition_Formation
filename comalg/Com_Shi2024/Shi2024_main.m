@@ -144,49 +144,17 @@ total_utility = calc_global_utility(SC, agents, tasks, Value_Params, Value_data,
 fprintf('\nGlobal Total Utility: %.2f\n', total_utility);
 fprintf('Total Rounds: %d\n', num_rounds);
 
-%% 最终数据一致性检查
-fprintf('\n[Shi2024] 执行最终数据一致性检查...\n');
-[is_valid_data, error_log_data] = check_data_consistency(Value_data, Value_Params);
-[is_valid_ocf, error_log_ocf] = check_OCF_consistency(Value_data, agents, Value_Params);
+%% 最终一致性检查（使用统一的检查函数）
+fprintf('\n[Shi2024] 执行最终一致性检查...\n');
+[is_valid, error_log] = check_coalition_consistency(Value_data, agents, tasks, Value_Params, 'OCF');
 
-if ~is_valid_data || ~is_valid_ocf
-    warning('[Shi2024] 数据一致性检查发现问题，请查看上方日志！');
-end
-
-%% 最终可行性验证
-fprintf('\n[Shi2024] 执行最终可行性验证...\n');
-fprintf('==============================================\n');
-all_feasible = true;
-for i = 1:N
-    % 获取资源分配矩阵
-    R_agent_Q = zeros(M, K);
-    task_list = OCFUtils.get_agent_tasks_fast(SC, i, tol);
-    for t_idx = 1:length(task_list)
-        t = task_list(t_idx);
-        if t <= M
-            R_agent_Q(t, :) = SC{t}(i, :);
-        end
-    end
-
-    % 验证可行性
-    [isFeasible, info, cost_data] = validate_feasibility(Value_data(i), agents, tasks, Value_Params, i, SC, R_agent_Q);
-
-    if ~isFeasible
-        fprintf('❌ Agent %d 不可行: %s\n', i, info.reason);
-        all_feasible = false;
-    else
-        fprintf('✅ Agent %d 可行: 能量 %.2f/%.2f, 任务数 %d\n', ...
-            i, cost_data.requiredEnergy, agents(i).Emax, length(cost_data.assignedTasks));
-    end
-end
-
-if all_feasible
-    fprintf('✅ [可行性验证] 所有智能体的分配方案均可行！\n');
+if ~is_valid
+    warning('[Shi2024] 联盟一致性检查发现 %d 处问题，请查看上方日志！', length(error_log));
+    % 将错误日志保存到历史数据中以便后续分析
+    history_data.consistency_errors = error_log;
 else
-    fprintf('🚫 [可行性验证] 发现不可行的分配方案！\n');
-    warning('[Shi2024] 可行性验证失败，请检查算法逻辑！');
+    fprintf('✅ [Shi2024] 所有一致性检查通过！\n');
 end
-fprintf('==============================================\n');
 
 fprintf('\n=== Shi2024 OCF Algorithm End ===\n\n');
 

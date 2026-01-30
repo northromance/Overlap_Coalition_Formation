@@ -83,7 +83,7 @@ function [Value_data, incremental_leave] = leave_operation(Value_data, agents, t
             % 原因：
             % 1. 任务路径改变：撤出任务可能改变访问顺序，进而改变飞行距离和能耗。
             % 2. 约束耦合：某些约束可能要求必须同时提供多种资源(虽少见，但通用性需考虑)。
-            [feasible, info, cost_data] = validate_feasibility(Value_data, agents, tasks, Value_Params, agentID, SC_P, SC_Q, R_agent_P, R_agent_Q, sourceTask, r);
+            [feasible, info, cost_data] = validate_feasibility(Value_data, agents, tasks, Value_Params, agentID, SC_Q);
             
             if ~feasible
                 if verbose

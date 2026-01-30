@@ -247,14 +247,17 @@ for counter=1:Value_Params.num_rounds
 
 end
 
-% 假设 Value_data 是 1xN 的结构体数组
-[is_valid, error_log] = check_OCF_consistency(Value_data, agents, Value_Params);
+%% 最终一致性检查（使用统一的检查函数）
+fprintf('\n[SA_Value] 执行最终一致性检查...\n');
+[is_valid, error_log] = check_coalition_consistency(Value_data, agents, tasks, Value_Params, 'OCF');
 
 if ~is_valid
-    disp('数据有严重问题，停止后续分析！');
-    % 可以打印 logs 查看详情
+    warning('[SA_Value] 联盟一致性检查发现 %d 处问题，请查看上方日志！', length(error_log));
+    % 将错误日志保存到历史数据中以便后续分析
+    history_data.consistency_errors = error_log;
+else
+    fprintf('✅ [SA_Value] 所有一致性检查通过！\n');
 end
-
 
 
 end

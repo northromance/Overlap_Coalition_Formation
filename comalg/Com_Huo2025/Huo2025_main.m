@@ -232,12 +232,17 @@ end % End of For (Rounds)
 % 统一补全任务时序信息，便于 PlotClass 动画与后续可视化
 Value_data = update_task_schedule(Value_data, agents, tasks, Value_Params);
 
-%% ==================== 4. 输出适配 (Formatting) ====================
-% (可选) 数据一致性检查
-% [is_consistent, logs] = check_data_consistency(Value_data, Value_Params);
-% if ~is_consistent
-%     disp('警告：数据存在严重不一致性，请检查通信模块。');
-% end
+%% ==================== 4. 最终一致性检查 ====================
+fprintf('\n[Huo2025] 执行最终一致性检查...\n');
+[is_valid, error_log] = check_coalition_consistency(Value_data, agents, tasks, Value_Params, 'Non-OCF');
+
+if ~is_valid
+    warning('[Huo2025] 联盟一致性检查发现 %d 处问题，请查看上方日志！', length(error_log));
+    % 将错误日志保存到历史数据中以便后续分析
+    history_data.consistency_errors = error_log;
+else
+    fprintf('✅ [Huo2025] 所有一致性检查通过！\n');
+end
 
 end
 
