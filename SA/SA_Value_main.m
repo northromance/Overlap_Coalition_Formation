@@ -117,13 +117,18 @@ end
 for counter=1:Value_Params.num_rounds
 
     %% 2.2 SA (模拟退火) 迭代初始化
-    T=1;                                  % 迭代步数
-    lastTime=T-1;
-    previous_SC = Value_data(1).SC;       % 记录上一次的联盟结构用于检测收敛
-    k_stable = 0;                         % 稳定计数器 (连续多少次结构没变)
-    doneflag = 0;                         % 收敛标志位
+    k_iter = 1;                               % 迭代计数器（统一命名，与Qi2023一致）
+    previous_SC = Value_data(1).SC;           % 记录上一次的联盟结构用于检测收敛
+    k_stable = 0;                             % 稳定计数器 (连续多少次结构没变)
+    doneflag = 0;                             % 收敛标志位
 
+    % 每轮重置温度为初始值，保证每轮都有充分的探索能力
+    Value_Params.Temperature = 100;
 
+    % 初始化本轮最优解记录
+    best_SC = Value_data(1).SC;
+    best_coalitionstru = Value_data(1).coalitionstru;
+    best_utility = -inf;  % 初始化为负无穷，确保第一次计算会更新
     %% ==================== 3. SA 内循环：联盟形成 ====================
     % 在当前信念下，寻找最优的联盟结构
     while(doneflag == 0)
@@ -149,30 +154,41 @@ for counter=1:Value_Params.num_rounds
 
         % --- 3.3 SA 温度衰减 ---
         % 降低温度，减少接受劣解的概率 (Exploration -> Exploitation)
+        % 在内循环中降温，实现单轮内从探索到开发的平滑过渡
         Value_Params.Temperature = Value_Params.alpha * Value_Params.Temperature;
 
         % 获取本轮迭代结束后的最终结构
         final_SC = Value_data(Value_Params.N).SC;
         final_coalitionstru = Value_data(Value_Params.N).coalitionstru;
-        T = T + 1;
 
         % --- 3.4 收敛性检测 ---
-        % 如果联盟结构 (SC) 与上一次迭代完全一致，则稳定计数 +1
-        % if isequal(previous_SC, final_SC)
-            k_stable = k_stable + 1;
-        % else
-        %     k_stable = 0;             % 结构发生变化，重置计数
-        % end
+        % 检查联盟结构 (SC) 是否与上一次迭代完全一致
+        if isequal(previous_SC, final_SC)
+            k_stable = k_stable + 1;      % 结构未变，稳定计数 +1
+        else
+            k_stable = 0;                 % 结构发生变化，重置计数
+        end
 
-        % 判断是否收敛：
-        % 条件1: 结构连续稳定 max_stable_iterations 次
-        % 条件2: 温度降到了最低阈值 Tmin
-        if k_stable >= Value_Params.max_stable_iterations && Value_Params.Temperature < Value_Params.Tmin
-            disp('Convergence detected: Coalition structure has stabilized for multiple iterations.');
+        % 判断是否收敛（三个条件，任一满足即退出）：
+        % 条件1: 结构连续稳定 K_len_SA 次（长期无改进，提前结束）
+        % 条件2: 温度降到了最低阈值 Tmin（温度很低，自然结束）
+        % 条件3: 达到最大迭代次数 K_max_inner_SA（防止无限循环）
+        if k_stable >= Value_Params.K_len_SA
+            fprintf('  [SA] Round %d: 收敛（连续%d次无变化）, 迭代次数=%d, 温度=%.4f\n', ...
+                    counter, k_stable, k_iter, Value_Params.Temperature);
             doneflag = 1;  % 退出 SA 循环
+        elseif Value_Params.Temperature < Value_Params.Tmin
+            fprintf('  [SA] Round %d: 收敛（温度过低 T=%.4f）, 迭代次数=%d\n', ...
+                    counter, Value_Params.Temperature, k_iter);
+            doneflag = 1;
+        elseif k_iter >= Value_Params.K_max_inner_SA
+            fprintf('  [SA] Round %d: 达到最大迭代次数（%d次）, 温度=%.4f\n', ...
+                    counter, k_iter, Value_Params.Temperature);
+            doneflag = 1;
         end
 
         previous_SC = final_SC;  % 更新前次结构
+        k_iter = k_iter + 1;     % 迭代计数器递增
 
         % --- 3.5 同步全局状态 ---
         % 确保所有智能体的本地 Value_data 都更新为最新的一致结构
@@ -186,8 +202,40 @@ for counter=1:Value_Params.num_rounds
         % 根据确定下来的 SC，计算具体的路径、等待时间、同步时间等
         % 这是计算 Net Profit (净收益) 的基础
         % 这里更新的是智能体路径的价值
-        Value_data = update_task_schedule(Value_data, agents, tasks, Value_Params);
+        % 这里是查看调度的情况 单独的计算
+        % Value_data = update_task_schedule(Value_data, agents, tasks, Value_Params);
 
+        % --- 3.7 更新本轮最优解 ---
+        % 计算当前迭代的总效用
+        [~, ~, current_utility, ~] = UtilityEvaluator.evaluate_coalition_metrics(final_SC, agents, tasks, Value_Params, eps_val);
+
+        % 如果当前效用优于本轮最优，更新最优解
+        if current_utility > best_utility
+            best_utility = current_utility;
+            best_SC = final_SC;
+            best_coalitionstru = final_coalitionstru;
+        end
+
+    end
+
+    %% 3.8 恢复本轮最优解
+    % 内循环结束后，如果最后状态不如本轮最佳，恢复到本轮最佳状态
+    % 这保证每轮输出的都是本轮内找到的最优解
+    if ~isequal(final_SC, best_SC)
+        fprintf('  [SA] Round %d: 恢复本轮最优解（效用从 %.2f 恢复到 %.2f）\n', ...
+                counter, current_utility, best_utility);
+        final_SC = best_SC;
+        final_coalitionstru = best_coalitionstru;
+
+        % 同步所有智能体到最优状态
+        for ii = 1:Value_Params.N
+            Value_data(ii).coalitionstru = best_coalitionstru;
+            Value_data(ii).SC = best_SC;
+            Value_data(ii).resources_matrix = OCFUtils.get_agent_resource_matrix(Value_data(ii).SC,ii,Value_Params);
+        end
+
+        % 重新计算最优状态的任务调度
+        Value_data = update_task_schedule(Value_data, agents, tasks, Value_Params);
     end
 
     %% 观测
@@ -211,6 +259,9 @@ for counter=1:Value_Params.num_rounds
             Value_data(i).other{j}.initbelief = Value_data(j).initbelief;
         end
     end
+
+    % 注释：不再需要轮间温度衰减，因为每轮开始时都会重置温度为初始值
+    % Value_Params.Temperature = Value_Params.alpha * Value_Params.Temperature;
 
     % 记录
     history_data = ResultProcessor.record_history_data(history_data, counter, Value_data, Value_Params, ...

@@ -33,12 +33,17 @@ num_task_types = length(task_values);
 
 % 算法开关：选择要运行的算法 ID
 % 1=SA_Value, 3=Huo2025, 4=Qi2023, 5=Shi2024
-algorithms_to_run_ids = [1];  % 运行所有算法
+algorithms_to_run_ids = [1,4];  % 运行所有算法
 
 %% Display/save options（显示与保存选项）
 save_results = true;    % 是否保存结果到 MAT 文件
-show_plots = true;      % 是否绘制对比图
 verbose = true;         % 是否打印详细日志
+
+% 画图开关（简洁控制）
+plot_config.comparison = true;   % 算法对比图（效用、成本、完成度等多子图）
+plot_config.allocation = false;  % SA资源分配图
+plot_config.animation = false;   % 执行动画
+plot_config.environment = false; % 环境图（智能体和任务位置）
 
 % World bounds（环境边界）
 WORLD_XMIN = 0; WORLD_XMAX = 100;
@@ -67,12 +72,12 @@ task_type3_demand_max = 8;  % high（高需求）
 % 每种资源的执行时间
 resource_exec_time = [50 65 50 60 35 45];
 
-% SA params（SA_Value 算法参数，其他算法可忽略）
+% SA params（SA_Value 算法参数）
 SA_Temperature = 100.0;      % 初始温度
-SA_alpha = 0.95;              % 降温系数
-SA_Tmin = 0.01;              % 终止温度
-max_stable_iterations = 50;  % 最大稳定迭代次数（用于判断收敛）
-
+SA_alpha = 0.9;              % 降温系数
+SA_Tmin = 0.1;              % 终止温度
+K_len_SA = 20;               % 稳定性阈值（无改进迭代次数）- 统一命名
+K_max_inner_SA = 20;      % 每轮最大迭代次数 - 新增
 %% AddPara (kept for interface parity)
 % 为接口统一保留：部分算法需要该结构体
 AddPara.control = 1;
@@ -161,8 +166,11 @@ end
 
 % Algorithm shared params（各算法通用参数）
 Value_Params = OCFUtils.init_value_params(N, M, K, num_task_types, task_type_demands, ...
-    SA_Temperature, SA_alpha, SA_Tmin, max_stable_iterations, ...
+    SA_Temperature, SA_alpha, SA_Tmin, K_len_SA, ...
     obs_times, num_rounds);
+
+% 添加 SA 专用参数
+Value_Params.K_max_inner_SA = K_max_inner_SA;  % SA 最大迭代次数
 
 % Random seed for reproducibility（用于复现实验）
 Value_Params.seed = SEED;
@@ -319,7 +327,7 @@ if enabled_count > 0
     fprintf('%s\n\n', repmat('-', 1, 65));
 
     % 绘图
-    if show_plots && enabled_count > 1
+    if plot_config.comparison && enabled_count > 1
         fprintf('Plotting comparison charts...\n');
         PlotClass.plot_algorithm_comparison(results, comparison_stats, enabled_count, tasks, Value_Params, WORLD);
     end
@@ -352,7 +360,7 @@ fprintf('=======================================================================
 %% ========================================================================
 
 % 检查是否运行了 SA_Value（ID = 1）且结果存在
-if isfield(results, 'alg1') && strcmp(results.alg1.name, 'SA_Value') && isfield(results.alg1, 'Value_data')
+if plot_config.allocation && isfield(results, 'alg1') && strcmp(results.alg1.name, 'SA_Value') && isfield(results.alg1, 'Value_data')
     fprintf('\nVisualizing SA_Value resource details...\n');
 
     % 1) 打印智能体资源能力上限，方便对照
@@ -363,8 +371,6 @@ if isfield(results, 'alg1') && strcmp(results.alg1.name, 'SA_Value') && isfield(
     PlotClass.plot_SA_allocation(sa_value_data, tasks, Value_Params);
 
     fprintf('Resource allocation plot generated.\n');
-else
-    fprintf('\nSkipping SA_Value visualization (Algorithm not run, failed, or not result 1).\n');
 end
 
 % % Huo2025 visualization (plots)

@@ -358,7 +358,7 @@ classdef OCFUtils
         end
 
 
-        function Value_Params = init_value_params(N, M, K, num_task_types, task_type_demands, SA_Temperature, SA_alpha, SA_Tmin, max_stable_iterations, obs_times, num_rounds)
+        function Value_Params = init_value_params(N, M, K, num_task_types, task_type_demands, SA_Temperature, SA_alpha, SA_Tmin, K_len_SA, obs_times, num_rounds)
             % INIT_VALUE_PARAMS 初始化算法参数结构
             %
             % 输入参数:
@@ -370,16 +370,15 @@ classdef OCFUtils
             %   SA_Temperature             - 模拟退火初始温度
             %   SA_alpha                   - 模拟退火温度衰减率
             %   SA_Tmin                    - 模拟退火最小温度
-            %   max_stable_iterations      - 最大稳定迭代次数
+            %   K_len_SA                   - SA稳定性阈值（无改进迭代次数，统一命名）
             %   obs_times                  - 每个任务的观测次数
             %   num_rounds                 - 游戏总轮数
-            %   resource_confidence        - 资源需求计算的置信水平 (0~1)
             %
             % 输出参数:
             %   Value_Params               - 算法参数结构体
             %
             % 示例:
-            %   Value_Params = init_value_params(8, 5, 6, 3, task_type_demands, 100.0, 0.95, 0.01, 5, 20, 100, 0.85);
+            %   Value_Params = init_value_params(8, 5, 6, 3, task_type_demands, 100.0, 0.95, 0.01, 20, 20, 100);
 
             % 基本参数
             Value_Params.N = N;
@@ -388,11 +387,11 @@ classdef OCFUtils
             Value_Params.task_type = num_task_types;  % 任务价值类型数量（低、中、高）
             Value_Params.task_type_demands = task_type_demands;
 
-            % 模拟退火算法参数
+            % 模拟退火算法参数（统一命名）
             Value_Params.Temperature = SA_Temperature;
             Value_Params.alpha = SA_alpha;
             Value_Params.Tmin = SA_Tmin;
-            Value_Params.max_stable_iterations = max_stable_iterations;
+            Value_Params.K_len_SA = K_len_SA;  % 稳定性阈值（统一命名，与Qi2023的K_len对应）
 
             % 观测参数
             Value_Params.obs_times = obs_times;
