@@ -42,11 +42,11 @@ for r = 1:Value_Params.K
     [SC_P, SC_Q, R_agent_P, R_agent_Q] = StateTran.join_changes(Value_data, agents, Value_Params, target, agentID, r);
 
     %% 3. 可行性检测 (Feasibility Check)
-    % 检查：非负约束、最大携带量、能量/路径可达性
+    % 检查：非负约束、最大携带量、能量/路径可达性、队友可行性
     % 优化：同时返回 cost_data (包含计算好的路径和能量)，供后续复用
-    [feasible, info, cost_data] = validate_feasibility(Value_data, agents, tasks, Value_Params, agentID, SC_Q);
+    [feasible, info, cost_data] = validate_feasibility(Value_data, agents, tasks, Value_Params, agentID, SC_Q, true);
 
-% VALIDATE_FEASIBILITY 可行性检测：非负分配、携带量、能量可达性
+% VALIDATE_FEASIBILITY 可行性检测：非负分配、携带量、能量可达性、队友检查
 
     if ~feasible
         if verbose

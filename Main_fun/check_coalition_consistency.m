@@ -359,7 +359,7 @@ function [is_valid, error_log] = check_energy_feasibility(Value_data, agents, ta
     N = Value_Params.N;
     M = Value_Params.M;
     K = Value_Params.K;
-    SC = Value_data(1).SC;
+    SC = Value_data(1).SC;  % 使用第1个智能体的SC（所有智能体的SC应该一致）
 
     for i = 1:N
         % 提取该智能体的资源分配矩阵

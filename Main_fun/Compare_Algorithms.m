@@ -8,13 +8,16 @@ fprintf('=======================================================================
 
 %% Add paths
 % 添加项目子目录路径，确保 MATLAB 能找到对应算法函数
-addpath("Main_fun\");              % core scenario/init functions（核心初始化与场景函数）
-addpath("SA\");                    % SA algorithm（模拟退火算法）
-addpath("comalg/Com_Baseline/");   % Greedy baseline（贪心基线算法）
-addpath("comalg/Com_Huo2025/");    % Huo2025 algorithm（Huo2025 算法）
-addpath("comalg/Com_Qi2023/");     % Qi2023 algorithm（Qi2023 算法）
-addpath("comalg/Com_Shi2024/");    % Shi2024 OCF algorithm（Shi2024 重叠联盟形成算法）
-addpath("comalg/Com_PSO/");        % PSO algorithm（粒子群优化算法）
+% 获取项目根目录（Compare_Algorithms.m 在 Main_fun 子目录中）
+script_dir = fileparts(mfilename('fullpath'));  % 获取脚本所在目录（Main_fun）
+project_root = fileparts(script_dir);            % 获取项目根目录
+addpath(fullfile(project_root, "Main_fun"));              % core scenario/init functions（核心初始化与场景函数）
+addpath(fullfile(project_root, "SA"));                    % SA algorithm（模拟退火算法）
+addpath(fullfile(project_root, "comalg", "Com_Baseline"));   % Greedy baseline（贪心基线算法）
+addpath(fullfile(project_root, "comalg", "Com_Huo2025"));    % Huo2025 algorithm（Huo2025 算法）
+addpath(fullfile(project_root, "comalg", "Com_Qi2023"));     % Qi2023 algorithm（Qi2023 算法）
+addpath(fullfile(project_root, "comalg", "Com_Shi2024"));    % Shi2024 OCF algorithm（Shi2024 重叠联盟形成算法）
+addpath(fullfile(project_root, "comalg", "Com_PSO"));        % PSO algorithm（粒子群优化算法）
 
 %% ========================================================================
 %  Scenario configuration (adjust for debugging as needed)
@@ -22,7 +25,7 @@ addpath("comalg/Com_PSO/");        % PSO algorithm（粒子群优化算法）
 %% ========================================================================
 
 SEED = 2456;                    % 随机种子（确保实验可复现）
-N = 5;                          % number of agents（智能体数量）
+N = 6;                          % number of agents（智能体数量）
 M = 10;                         % number of tasks（任务数量）
 K = 6;                          % number of resource types（资源类型数）
 task_values = [800, 1000, 1500];  % three task types（三种不同类型任务的价值）
@@ -68,17 +71,17 @@ resource_exec_time = [50 65 50 60 35 45];
 SA_Temperature = 100.0;      % 初始温度
 SA_alpha = 0.95;              % 降温系数
 SA_Tmin = 0.01;              % 终止温度
-max_stable_iterations = 20;  % 最大稳定迭代次数（用于判断收敛）
+max_stable_iterations = 50;  % 最大稳定迭代次数（用于判断收敛）
 
 %% AddPara (kept for interface parity)
 % 为接口统一保留：部分算法需要该结构体
 AddPara.control = 1;
 AddPara.resource_confidence = 0.95;  % 资源分位/置信度（风险规避）
-AddPara.enable_belief_update = false; % Qi2023信念更新开关：true=启用信念更新，false=仅使用初始信念
+AddPara.enable_belief_update = true; % Qi2023信念更新开关：true=启用信念更新，false=仅使用初始信念
 
 % Observation/game params（观测/博弈参数）
 obs_times = 50;              % 观测次数（贝叶斯更新等）
-num_rounds = 100;            % 仿真回合数
+num_rounds = 50;            % 仿真回合数
 
 % Qi2023 utility params（Qi2023 专用参数）
 Qi_beta_m = 1.0;   % 边际效用权重
@@ -349,7 +352,7 @@ fprintf('=======================================================================
 %% ========================================================================
 
 % 检查是否运行了 SA_Value（ID = 1）且结果存在
-if isfield(results, 'alg1') && strcmp(results.alg1.name, 'SA_Value')
+if isfield(results, 'alg1') && strcmp(results.alg1.name, 'SA_Value') && isfield(results.alg1, 'Value_data')
     fprintf('\nVisualizing SA_Value resource details...\n');
 
     % 1) 打印智能体资源能力上限，方便对照
@@ -361,7 +364,7 @@ if isfield(results, 'alg1') && strcmp(results.alg1.name, 'SA_Value')
 
     fprintf('Resource allocation plot generated.\n');
 else
-    fprintf('\nSkipping SA_Value visualization (Algorithm not run or not result 1).\n');
+    fprintf('\nSkipping SA_Value visualization (Algorithm not run, failed, or not result 1).\n');
 end
 
 % % Huo2025 visualization (plots)

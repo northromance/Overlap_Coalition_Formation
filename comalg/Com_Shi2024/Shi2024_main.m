@@ -81,7 +81,7 @@ for round = 1:num_rounds
         end
 
         % 更新 coalitionstru（使用统一的构建函数）
-        Value_data(i).coalitionstru = OCFUtils.build_coalitionstru_from_SC(SC, agents, N, M, tol);
+        Value_data(i).coalitionstru = OCFUtils.build_coalitionstru_from_SC(SC, Value_Params, agents);
     end
 
     %% Step 2: 观测收集
@@ -180,14 +180,15 @@ for j = 1:N
         % 获取资源分配矩阵
         R_agent_Q = zeros(M, Value_Params.K);
         task_list_temp = OCFUtils.get_agent_tasks_fast(SC_temp, j, tol);
-        for t = task_list_temp'
+        for idx = 1:length(task_list_temp)
+            t = task_list_temp(idx);
             if t <= M
                 R_agent_Q(t, :) = SC_temp{t}(j, :);
             end
         end
 
-        % 验证可行性
-        [isFeasible, ~, cost_data] = validate_feasibility(Value_data(j), agents, tasks, Value_Params, j, SC_temp, R_agent_Q);
+        % 验证可行性（启用队友检查）
+        [isFeasible, ~, cost_data] = validate_feasibility(Value_data, agents, tasks, Value_Params, j, SC_temp, true);
 
         if ~isFeasible
             continue;
@@ -286,8 +287,8 @@ while iteration < max_iterations
                 end
             end
 
-            % 验证可行性
-            [isFeasible, ~, cost_data] = validate_feasibility(Value_data(j), agents, tasks, Value_Params, j, SC_join, R_agent_Q);
+            % 验证可行性（启用队友检查）
+            [isFeasible, ~, cost_data] = validate_feasibility(Value_data, agents, tasks, Value_Params, j, SC_join, true);
 
             if ~isFeasible
                 continue;
@@ -334,14 +335,15 @@ for i = 1:M
     % 获取资源分配矩阵
     R_agent_Q = zeros(M, Value_Params.K);
     task_list_temp = OCFUtils.get_agent_tasks_fast(SC_temp, agent_id, tol);
-    for t = task_list_temp'
+    for idx = 1:length(task_list_temp)
+        t = task_list_temp(idx);
         if t <= M
             R_agent_Q(t, :) = SC_temp{t}(agent_id, :);
         end
     end
 
-    % 验证可行性
-    [isFeasible, ~, ~] = validate_feasibility(Value_data(agent_id), agents, tasks, Value_Params, agent_id, SC_temp, R_agent_Q);
+    % 验证可行性（启用队友检查）
+    [isFeasible, ~, ~] = validate_feasibility(Value_data, agents, tasks, Value_Params, agent_id, SC_temp, true);
 
     if ~isFeasible
         continue;
@@ -417,7 +419,7 @@ for j = 1:M
 end
 
 % 构建 coalitionstru（使用统一的构建函数）
-final_coalitionstru = OCFUtils.build_coalitionstru_from_SC(SC, agents, N, M, tol);
+final_coalitionstru = OCFUtils.build_coalitionstru_from_SC(SC, Value_Params, agents);
 
 % 记录信念
 belief_snapshot = zeros(N, M, Value_Params.task_type);

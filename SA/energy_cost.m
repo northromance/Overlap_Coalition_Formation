@@ -1,13 +1,19 @@
-function [t_fly_total, T_exec_total, totalDistance, requiredEnergy, orderedTasks, task_start_times, t_wait_total, start_times, execution_times, completion_times, mission_end_time] = ...
+function [t_fly_total, t_exec_total, totalDistance, requiredEnergy, orderedTasks, task_start_times, t_wait_total, start_times, execution_times, completion_times, mission_end_time] = ...
     energy_cost(agentIdx, assignedTasks, agents, tasks, Value_Params, SC)
+% ENERGY_COST 计算智能体执行任务序列的能量成本
+%
+% 输出：
+%   t_fly_total  - 总飞行时间
+%   t_exec_total - 总执行时间（注意：小写t，与内部变量一致）
+%   totalDistance - 总飞行距离
+%   requiredEnergy - 总能量需求
+%   其他输出 - 详细的时间信息
 
 
 tol = 1e-9;
 
-% 先给输出变量一个初值（避免未赋值导致报错；也便于后面覆盖）
-t_fly_total = 0;
 
-% =========================
+% ========================
 % 1) 按优先级排序当前智能体的任务
 % =========================
 % orderedTasks：将 assignedTasks 按 tasks 中的 priority 字段（或你的排序规则）排序
@@ -33,20 +39,9 @@ alpha_fly  = agents(agentIdx).fuel;
 alpha_wait = agents(agentIdx).wait_fuel;
 beta       = agents(agentIdx).beta;
 
-% =========================
-% 4) 初始化各类时间输出
-% =========================
-num_tasks = numel(orderedTasks);     % 该智能体任务数
+
 
 % 为每个任务建立时间数组（列向量），先全置0
-start_times      = zeros(num_tasks, 1); % 每任务开始时刻
-execution_times  = zeros(num_tasks, 1); % 每任务执行时长（个人执行）
-completion_times = zeros(num_tasks, 1); % 每任务完成/离开时刻
-
-% 初始化累计量
-t_wait_total = 0;  % 总等待时间
-t_fly_total  = 0;  % 总飞行时间（你前面给过0，这里再次置0，功能上重复但不影响）
-T_exec_total = 0;  % 总执行时间
 
 % 下面这几行是你原来可能用于“非同步模式自行累积时间”的草稿（当前被注释掉）
 % curr_pos = startXY;           % 当前坐标
@@ -70,5 +65,5 @@ task_start_times = start_times;
 % 总能耗：飞行能耗 + 等待能耗 + 执行能耗
 requiredEnergy = t_fly_total * alpha_fly + ...
     t_wait_total * alpha_wait + ...
-    T_exec_total * beta;
+    t_exec_total * beta;
 end

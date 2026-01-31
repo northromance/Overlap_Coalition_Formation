@@ -135,31 +135,6 @@ for counter=1:Value_Params.num_rounds
             % 智能体 ii 根据当前状态，尝试加入新任务或离开旧任务以提升效用
             [Value_data_ii] = Overlap_Coalition_Formation(agents, tasks, Value_data(ii), Value_Params,AddPara);
 
-
-
-            % --- 调试代码开始 ---
-            current_fields = fieldnames(Value_data);
-            new_fields = fieldnames(Value_data_ii);
-            if ~isequal(current_fields, new_fields)
-                disp('【结构体字段不匹配！】');
-                disp('Value_data 原有字段:');
-                disp(current_fields');
-                disp('Value_data_ii 返回字段:');
-                disp(new_fields');
-
-                % 找出多出来的字段
-                diff_fields = setdiff(new_fields, current_fields);
-                if ~isempty(diff_fields)
-                    disp(['多出来的字段: ', strjoin(diff_fields, ', ')]);
-                end
-
-                % 找出缺少的字段
-                miss_fields = setdiff(current_fields, new_fields);
-                if ~isempty(miss_fields)
-                    disp(['丢失的字段: ', strjoin(miss_fields, ', ')]);
-                end
-                error('请在初始化阶段补齐上述字段，或在函数返回前删除多余字段！');
-            end
             % --- 调试代码结束 ---
             Value_data(ii) = Value_data_ii; % 原有出错行
             Value_data(ii) = Value_data_ii;
@@ -183,16 +158,16 @@ for counter=1:Value_Params.num_rounds
 
         % --- 3.4 收敛性检测 ---
         % 如果联盟结构 (SC) 与上一次迭代完全一致，则稳定计数 +1
-        if isequal(previous_SC, final_SC)
+        % if isequal(previous_SC, final_SC)
             k_stable = k_stable + 1;
-        else
-            k_stable = 0;             % 结构发生变化，重置计数
-        end
+        % else
+        %     k_stable = 0;             % 结构发生变化，重置计数
+        % end
 
         % 判断是否收敛：
         % 条件1: 结构连续稳定 max_stable_iterations 次
         % 条件2: 温度降到了最低阈值 Tmin
-        if k_stable >= Value_Params.max_stable_iterations || Value_Params.Temperature < Value_Params.Tmin
+        if k_stable >= Value_Params.max_stable_iterations && Value_Params.Temperature < Value_Params.Tmin
             disp('Convergence detected: Coalition structure has stabilized for multiple iterations.');
             doneflag = 1;  % 退出 SA 循环
         end
