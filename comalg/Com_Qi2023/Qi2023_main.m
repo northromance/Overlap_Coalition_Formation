@@ -140,11 +140,21 @@ for round = 1:Value_Params.num_rounds
         % 遍历所有智能体
         for i = 1:N
             % A. 离开操作：随机移除部分资源
+            % A. 离开操作：随机移除部分资源
             SC_temp = SC_global;
             p_leave = 0.3;
             for m = 1:M
                 for k = 1:K
+                    % 只有当资源量大于阈值(eps_val) 且 随机数小于 p_leave 时才执行
                     if SC_temp{m}(i, k) > eps_val && rand < p_leave
+
+                        % --- [新增] 打印日志 ---
+                        % 记录被移走的资源数值
+                        removed_amount = SC_temp{m}(i, k);
+                        fprintf('  [离开操作] 智能体 #%-2d 撤出 -> 任务 M=%-2d | 资源 k=%-2d | 数量: %6.2f\n', ...
+                            i, m, k, removed_amount);
+                        % -----------------------
+
                         SC_temp{m}(i, k) = 0;
                     end
                 end
@@ -359,7 +369,7 @@ for k = 1:K
     %% 3. 投入逻辑
     % 检查该智能体是否已经参与了此任务
     if SC_new{selected_task}(agent_idx, k) > 0
-        % fprintf('  [状态保持] 智能体 #%-2d 资源 k=%-2d 已在任务 M=%-2d 中复用\n', agent_idx, k, selected_task);
+        fprintf('  [状态保持] 智能体 #%-2d 资源 k=%-2d 已在任务 M=%-2d 中复用\n', agent_idx, k, selected_task);
         continue;
     end
 
@@ -408,21 +418,21 @@ for k = 1:K
 
         % 调用 validate_feasibility 检查可行性（启用队友检查）
         [isFeasible, info, ~] = validate_feasibility(Value_data_array, agents, tasks, ...
-                                                      Value_Params, agent_idx, SC_candidate, true);
+            Value_Params, agent_idx, SC_candidate, true);
 
         if isFeasible
             % 可行，接受新的分配
             SC_new = SC_candidate;
-            % fprintf('  [资源复用] Agent #%-2d -> Task M=%-2d | ResType k=%-2d | Amount: %-6.2f | 可行 ✓\n', ...
-            %     agent_idx, selected_task, k, resource_amt);
+            fprintf('  [资源复用] Agent #%-2d -> Task M=%-2d | ResType k=%-2d | Amount: %-6.2f | 可行 ✓\n', ...
+                agent_idx, selected_task, k, resource_amt);
         else
             % 不可行，拒绝投入
-            % fprintf('  [拒绝投入] Agent #%-2d -> Task M=%-2d | ResType k=%-2d | 原因: %s ✗\n', ...
-            %     agent_idx, selected_task, k, info.reason);
+            fprintf('  [拒绝投入] Agent #%-2d -> Task M=%-2d | ResType k=%-2d | 原因: %s ✗\n', ...
+                agent_idx, selected_task, k, info.reason);
         end
     else
-        % fprintf('  [复用跳过] 智能体 #%-2d | 资源类型 k=%-2d | 任务 M=%-2d 需求已饱和，无需复用投入\n', ...
-        %     agent_idx, k, selected_task);
+        fprintf('  [复用跳过] 智能体 #%-2d | 资源类型 k=%-2d | 任务 M=%-2d 需求已饱和，无需复用投入\n', ...
+            agent_idx, k, selected_task);
     end
 end
 end
