@@ -37,10 +37,11 @@ algorithms_to_run_ids = [1,4];  % 运行所有算法
 
 %% Display/save options（显示与保存选项）
 save_results = true;    % 是否保存结果到 MAT 文件
-verbose = true;         % 是否打印详细日志
 
-% 画图开关（简洁控制）
-plot_config.comparison = true;   % 算法对比图（效用、成本、完成度等多子图）
+
+% 画图开关（已废弃，请使用 Plot_Results.m 进行可视化）
+% 保留此配置仅为向后兼容，建议设置为 false
+plot_config.comparison = false;   % 算法对比图（效用、成本、完成度等多子图）
 plot_config.allocation = false;  % SA资源分配图
 plot_config.animation = false;   % 执行动画
 plot_config.environment = false; % 环境图（智能体和任务位置）
@@ -101,12 +102,13 @@ Qi_omega_3 = 0.001;% 权重参数 3
 %  场景初始化：生成智能体、任务以及共享参数
 %% ========================================================================
 
-fprintf('Initializing scenario...\n');
-fprintf('  - seed: %d\n', SEED);
-fprintf('  - agents: %d\n', N);
-fprintf('  - tasks: %d\n', M);
-fprintf('  - resources: %d\n', K);
-fprintf('  - rounds: %d\n\n', num_rounds);
+
+    fprintf('Initializing scenario...\n');
+    fprintf('  - seed: %d\n', SEED);
+    fprintf('  - agents: %d\n', N);
+    fprintf('  - tasks: %d\n', M);
+    fprintf('  - resources: %d\n', K);
+    fprintf('  - rounds: %d\n\n', num_rounds);
 
 tic;
 
@@ -171,6 +173,7 @@ Value_Params = OCFUtils.init_value_params(N, M, K, num_task_types, task_type_dem
 
 % 添加 SA 专用参数
 Value_Params.K_max_inner_SA = K_max_inner_SA;  % SA 最大迭代次数
+
 
 % Random seed for reproducibility（用于复现实验）
 Value_Params.seed = SEED;
@@ -243,6 +246,9 @@ for i = 1:length(all_algorithms)
 
     try
         rng(SEED);  % 关键：重置随机种子，保证每个算法内部随机一致，公平对比
+
+        % 设置当前算法的verbose级别
+
         tic;
         % 统一算法接口：(agents, tasks, AddPara, Value_Params)
         [Value_data, history_data] = alg.func(agents, tasks, AddPara, Value_Params);
@@ -326,17 +332,37 @@ if enabled_count > 0
     end
     fprintf('%s\n\n', repmat('-', 1, 65));
 
-    % 绘图
-    if plot_config.comparison && enabled_count > 1
-        fprintf('Plotting comparison charts...\n');
-        PlotClass.plot_algorithm_comparison(results, comparison_stats, enabled_count, tasks, Value_Params, WORLD);
-    end
-
     % 保存结果
     if save_results
         if ~exist('results', 'dir'); mkdir('results'); end
         timestamp = datestr(now, 'yyyymmdd_HHMMSS');
-        filename = sprintf('results/comparison_results_seed%d_%s.mat', SEED, timestamp);
+
+        % 生成算法名称缩写（用于文件名）
+        alg_names_short = '';
+        for i = 1:enabled_count
+            alg = enabled_algorithms{i};
+            % 提取算法名称的关键部分
+            if contains(alg.name, 'SA')
+                alg_names_short = [alg_names_short 'SA'];
+            elseif contains(alg.name, 'Qi')
+                alg_names_short = [alg_names_short 'Qi'];
+            elseif contains(alg.name, 'Huo')
+                alg_names_short = [alg_names_short 'Huo'];
+            elseif contains(alg.name, 'Shi')
+                alg_names_short = [alg_names_short 'Shi'];
+            elseif contains(alg.name, 'PSO')
+                alg_names_short = [alg_names_short 'PSO'];
+            elseif contains(alg.name, 'Greedy')
+                alg_names_short = [alg_names_short 'Grd'];
+            end
+            if i < enabled_count
+                alg_names_short = [alg_names_short '+'];
+            end
+        end
+
+        % 新文件名格式：comparison_N6_M10_SA+Qi_20260203_164611.mat
+        filename = sprintf('results/comparison_N%d_M%d_%s_%s.mat', ...
+            N, M, alg_names_short, timestamp);
         fprintf('Saving results to: %s\n', filename);
 
         % 保存关键变量，便于复现实验与后续分析
@@ -353,25 +379,8 @@ fprintf('=======================================================================
 fprintf('                    Comparison done (对比结束)\n');
 fprintf('========================================================================\n\n');
 
-%% ========================================================================
-%  Custom Visualization: SA_Value Resource Allocation
-%  自定义可视化：SA 算法资源分配细节 & 打印智能体能力
-%  依赖 plots/ResourcePlotter
-%% ========================================================================
-
-% 检查是否运行了 SA_Value（ID = 1）且结果存在
-if plot_config.allocation && isfield(results, 'alg1') && strcmp(results.alg1.name, 'SA_Value') && isfield(results.alg1, 'Value_data')
-    fprintf('\nVisualizing SA_Value resource details...\n');
-
-    % 1) 打印智能体资源能力上限，方便对照
-    PlotClass.print_agent_capabilities(agents);
-
-    % 2) 获取 SA 算法输出并绘图
-    sa_value_data = results.alg1.Value_data;
-    PlotClass.plot_SA_allocation(sa_value_data, tasks, Value_Params);
-
-    fprintf('Resource allocation plot generated.\n');
-end
+fprintf('提示: 使用 Plot_Results.m 进行可视化分析\n');
+fprintf('Tip: Use Plot_Results.m for visualization\n\n');
 
 % % Huo2025 visualization (plots)
 % if show_plots
