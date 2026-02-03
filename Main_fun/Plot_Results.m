@@ -12,6 +12,10 @@
 
 clear; clc; close all;
 
+% Resolve paths from this script's location (independent of MATLAB current folder)
+script_dir = fileparts(mfilename('fullpath'));
+project_root = fileparts(script_dir);
+
 %% ==================== 配置区 ====================
 
 % 1. 选择要加载的结果文件
@@ -19,7 +23,7 @@ clear; clc; close all;
 auto_load_latest = false;
 
 % 选项 B: 手动指定文件（当 auto_load_latest = false 时使用）
-result_file = '../results/comparison_results_seed2456_20260203_164611.mat';
+result_file = fullfile(project_root, 'results', 'comparison_results_seed2456_20260203_164611.mat');
 
 % 2. 画图配置
 plot_config = struct();
@@ -39,12 +43,16 @@ figure_dpi = 300;                   % 分辨率
 % 如果选择自动加载最新文件
 if auto_load_latest
     % 优先从当前目录的 results 文件夹查找，如果不存在则查找上级目录
-    if exist('results', 'dir')
-        results_dir = 'results';
-    else
-        results_dir = '../results';
+    results_dirs = {
+        fullfile(project_root, 'results');
+        fullfile(script_dir, 'results')
+    };
+    mat_files = [];
+    for d = 1:length(results_dirs)
+        if exist(results_dirs{d}, 'dir')
+            mat_files = [mat_files; dir(fullfile(results_dirs{d}, 'comparison_*.mat'))]; %#ok<AGROW>
+        end
     end
-    mat_files = dir(fullfile(results_dir, 'comparison_*.mat'));
 
     if isempty(mat_files)
         error('未找到任何结果文件，请先运行 Compare_Algorithms.m 生成数据');
@@ -52,7 +60,7 @@ if auto_load_latest
 
     % 按修改时间排序，获取最新文件
     [~, idx] = sort([mat_files.datenum], 'descend');
-    result_file = fullfile(results_dir, mat_files(idx(1)).name);
+    result_file = fullfile(mat_files(idx(1)).folder, mat_files(idx(1)).name);
 
     fprintf('自动加载最新结果文件: %s\n', mat_files(idx(1)).name);
     fprintf('  文件时间: %s\n', mat_files(idx(1)).date);
