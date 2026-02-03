@@ -1,7 +1,0 @@
-# 2026.01.30
-1. think check_data_consistency和check_OCF_consistency和check_validate_feasibility写成一个文件即检查文件 然后
-  check_data_consistency 和check_OCF_consistency是一个是针对重叠联盟的检查一个是针对非重叠联盟的检查能否使之兼容 即根据算法来
-  我可以根据算法的序号来指定哪个开启哪个的检查 凝练代码 然后这个检查是 根据输出的联盟结构检查的 对于分配给单任务的资源不能越界
-  然后检查coalitionstru跟SC的结构是否对应 还有个体资源矩阵是否跟SC对应 还有验证生成的联盟结构在实际上是否可行 有能量不足的情况产生
-  即之前的算法有错误 写好了之后放在所有算法主文件最下面做最后的测试 还要检查最终每个个体的SC 与 coalitionstru是否全局一致
-  这个应该是全局同步的 测试文件写在test文件下 然后注释中文

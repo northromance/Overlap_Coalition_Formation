@@ -48,19 +48,72 @@ function [Value_data] = Overlap_Coalition_Formation(agents, tasks, Value_data, V
     % 将计算出的概率存入状态结构体，供后续 Join/Leave 操作使用
     Value_data.selectProb = probs;
 
-    %% ==================== 4. 联盟操作：尝试加入，否则尝试离开 ====================
-    % 策略逻辑：
-    %   优先尝试“做加法” (Join)：如果能利用现有资源产生价值，就加入。
-    %   如果做不了加法，尝试“做减法” (Leave)：释放低效占用的资源，打破局部最优，让资源流动起来。
-    
+    %% ==================== 4. 联盟操作：先随机离开，再尝试加入 ====================
+    % 新策略逻辑（参考 Qi2023）：
+    %   Step 1: 先随机释放部分资源（破坏当前结构，创造调整空间）
+    %   Step 2: 再尝试加入新任务（基于概率重新分配资源）
+    %   Step 3: 如果加入失败，尝试完全离开某个任务
+
+    % --- Step 4.0: 随机离开操作 (Random Leave Before Join) ---
+    % 参考 Qi2023_main.m: 143-151 行的离开逻辑
+    % 目的：打破局部最优，为后续 Join 创造更多可能性
+
+    agentID = Value_data.agentID;
+    M = Value_Params.M;
+    K = Value_Params.K;
+
+    % 离开概率：可以根据温度动态调整（温度高时多探索，温度低时少破坏）
+    % if isfield(Value_Params, 'Temperature') && Value_Params.Temperature > 0
+    %     % 温度越高，离开概率越大（探索）；温度越低，离开概率越小（开发）
+    %     p_leave = 0.1 + 0.2 * (Value_Params.Temperature / 100);  % 范围: 0.1 ~ 0.3
+    %     p_leave = min(p_leave, 0.3);  % 上限 30%
+    % else
+    p_leave = 0.2;  % 默认 20%
+    % end
+
+% % 遍历所有任务和资源类型，随机释放部分已分配的资源
+%     % 假设 M 和 K 已经定义，或者使用 Value_Params.M 和 Value_Params.K
+%     for m = 1:M   
+%         for k = 1:K
+%             % 如果该智能体在任务 m 上投入了资源 k，则以 p_leave 概率释放
+%             if Value_data.SC{m}(agentID, k) > 0 && rand < p_leave
+% 
+%                 % 执行撤离操作
+%                 Value_data.SC{m}(agentID, k) = 0;
+% 
+%                 % 【新增】打印撤离信息
+%                 % 输出格式：[Random Leave] Agent {ID} withdrew from Task {ID} (Resource {ID})
+%                 fprintf('  [随机撤离] 智能体 %d 已从 任务 %d 中撤离 资源 %d\n', ...
+%                         agentID, m, k);
+%             end
+%         end
+%     end
+
+    % % 同步更新 resources_matrix（从 SC 中提取该智能体的资源分配）
+    % Value_data.resources_matrix = OCFUtils.get_agent_resource_matrix(Value_data.SC, agentID, Value_Params);
+    % tol = 1e-9;
+    % assignedTasks = find(any(Value_data.resources_matrix > tol, 2));
+    % Value_data.coalitionstru(1:M, agentID) = 0;
+    % 
+    % % 重新填入参与的任务
+    % for mIdx = assignedTasks'
+    %     Value_data.coalitionstru(mIdx, agentID) = agents(agentID).id;
+    % end
+    % 
+    % % 更新 Void 任务状态（第 M+1 行）
+    % if isempty(assignedTasks)
+    %     Value_data.coalitionstru(M + 1, agentID) = agents(agentID).id;
+    % else
+    %     % 如果参与了任务，从 Void 池移除
+    %     Value_data.coalitionstru(M + 1, agentID) = 0;
+    % end
+
     % --- Step 4.1: 尝试加入 (Join Operation) ---
     [Value_data, incremental_join] = join_operation(Value_data, agents, tasks, Value_Params, probs,AddPara);
-    
+
     % --- Step 4.2: 尝试离开 (Leave Operation) ---
-    % 只有在 Join 操作没有产生任何改变 (incremental_join == 0) 时，才考虑 Leave。
-    if ~incremental_join
-        [Value_data, ~] = leave_operation(Value_data, agents, tasks, Value_Params, probs,AddPara);
-    end
+    % 只有在 Join 操作没有产生任何改变 (incremental_join == 0) 时，才考虑完全离开某个任务
+    [Value_data, ~] = leave_operation(Value_data, agents, tasks, Value_Params, probs,AddPara);
 
     %% ==================== 5. 变化检测 (Detect Changes in SC) ====================
     % 检查经过 Join/Leave 操作后的全局资源分配表 (SC) 是否与备份的一致。

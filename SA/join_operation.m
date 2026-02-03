@@ -82,7 +82,7 @@ for r = 1:Value_Params.K
     % - 如果变差，以 exp(delta_U / T) 的概率接受，防止陷入局部最优。
     accept_join = false;
 
-    if delta_U > 0
+    if delta_U > tol
         accept_join = true;
     else
         T = Value_Params.Temperature;  % 当前温度

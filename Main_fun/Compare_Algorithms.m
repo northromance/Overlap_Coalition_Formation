@@ -74,10 +74,10 @@ resource_exec_time = [50 65 50 60 35 45];
 
 % SA params（SA_Value 算法参数）
 SA_Temperature = 100.0;      % 初始温度
-SA_alpha = 0.9;              % 降温系数
-SA_Tmin = 0.1;              % 终止温度
+SA_alpha = 0.95;              % 降温系数
+SA_Tmin = 0.01;              % 终止温度
 K_len_SA = 20;               % 稳定性阈值（无改进迭代次数）- 统一命名
-K_max_inner_SA = 20;      % 每轮最大迭代次数 - 新增
+K_max_inner_SA = 200;      % 每轮最大迭代次数 - 新增
 %% AddPara (kept for interface parity)
 % 为接口统一保留：部分算法需要该结构体
 AddPara.control = 1;
