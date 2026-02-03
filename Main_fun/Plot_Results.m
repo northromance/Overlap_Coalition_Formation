@@ -28,9 +28,9 @@ result_file = fullfile(project_root, 'results', 'comparison_results_seed2456_202
 % 2. 画图配置
 plot_config = struct();
 plot_config.comparison = true;      % 算法对比图（多子图）
-plot_config.allocation = true;      % SA算法资源分配图
-plot_config.animation = true;      % 执行动画（耗时）
-plot_config.environment = true;    % 环境图
+plot_config.allocation = true;      % 算法资源分配图
+plot_config.animation = false;      % 执行动画（耗时）
+plot_config.environment = false;    % 环境图
 plot_config.print_stats = true;     % 打印统计信息
 
 % 3. 图形保存配置
@@ -134,38 +134,72 @@ if plot_config.comparison
     fprintf('✓ 算法对比图完成\n');
 end
 
-% 2. SA算法资源分配图
+% 2. 各算法资源分配图
 if plot_config.allocation
     fprintf('正在绘制资源分配图...\n');
 
-    % 查找SA_Value算法的结果
     alg_names = fieldnames(results);
-    sa_found = false;
+    plotted_count = 0;
+
+    % 打印智能体能力（一次即可）
+    PlotClass.print_agent_capabilities(agents);
 
     for i = 1:length(alg_names)
-        alg_name = alg_names{i};
-        if strcmp(results.(alg_name).name, 'SA_Value')
-            sa_found = true;
+        alg_field = alg_names{i};
+        alg_result = results.(alg_field);
 
-            % 打印智能体能力
-            PlotClass.print_agent_capabilities(agents);
-
-            % 绘制分配图
-            PlotClass.plot_SA_allocation(results.(alg_name).Value_data, ...
-                tasks, Value_Params);
-
-            if save_figures
-                saveas(gcf, sprintf('results/allocation_%s', scenario_info.timestamp), figure_format);
-            end
-
-            break;
+        if isfield(alg_result, 'error')
+            fprintf('  - 跳过 %s: 算法执行有错误\n', alg_result.name);
+            continue;
         end
+
+        if ~isfield(alg_result, 'Value_data') || isempty(alg_result.Value_data)
+            if isfield(alg_result, 'name')
+                fprintf('  - 跳过 %s: 缺少 Value_data\n', alg_result.name);
+            end
+            continue;
+        end
+
+        current_value_data = alg_result.Value_data;
+        can_plot = false;
+
+        % 兼容主流算法（SA/Huo/Qi/Shi）：使用 SC
+        if isstruct(current_value_data) && isfield(current_value_data, 'SC')
+            can_plot = true;
+        % 兼容基线格式：agentresources (N x M x K) -> SC{m}(N x K)
+        elseif isstruct(current_value_data) && isfield(current_value_data, 'agentresources')
+            agent_res = current_value_data(1).agentresources;
+            if ndims(agent_res) == 3
+                [n_agents, n_tasks, n_res] = size(agent_res);
+                SC = cell(n_tasks, 1);
+                for t = 1:n_tasks
+                    SC{t} = reshape(agent_res(:, t, :), [n_agents, n_res]);
+                end
+                current_value_data = struct('SC', {SC});
+                can_plot = true;
+            end
+        end
+
+        if ~can_plot
+            fprintf('  - 跳过 %s: 不含可视化所需分配字段(SC/agentresources)\n', alg_result.name);
+            continue;
+        end
+
+        fprintf('  - 绘制 %s 资源分配图...\n', alg_result.name);
+        PlotClass.plot_SA_allocation(current_value_data, tasks, Value_Params, alg_result.name);
+
+        if save_figures
+            safe_alg_name = regexprep(alg_result.name, '[^a-zA-Z0-9_-]', '_');
+            saveas(gcf, sprintf('results/allocation_%s_%s', safe_alg_name, scenario_info.timestamp), figure_format);
+        end
+
+        plotted_count = plotted_count + 1;
     end
 
-    if sa_found
-        fprintf('✓ 资源分配图完成\n');
+    if plotted_count > 0
+        fprintf('✓ 资源分配图完成 (共 %d 个算法)\n', plotted_count);
     else
-        fprintf('⚠ 未找到SA_Value算法结果，跳过资源分配图\n');
+        fprintf('⚠ 未找到可绘制资源分配图的算法结果\n');
     end
 end
 

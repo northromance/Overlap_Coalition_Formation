@@ -3,10 +3,14 @@ classdef PlotClass
     % 包含了环境地图绘制、任务分配结果静态展示以及动态执行过程动画展示
     
     methods(Static)
-        function plot_SA_allocation(Value_data, tasks, Value_Params)
+        function plot_SA_allocation(Value_data, tasks, Value_Params, varargin)
             % plot_SA_allocation 绘制SA算法的资源分配堆叠柱状图
             
-            fprintf('正在绘制 SA_Value 资源分配详情...\n');
+            alg_display_name = 'SA_Value';
+            if ~isempty(varargin) && ~isempty(varargin{1})
+                alg_display_name = char(varargin{1});
+            end
+            fprintf('正在绘制 %s 资源分配详情...\n', alg_display_name);
             
             % 1. 提取数据
             SC = Value_data(1).SC; 
@@ -16,7 +20,7 @@ classdef PlotClass
             K = Value_Params.K;
             
             % 2. 创建画布
-            figure('Name', 'SA_Value Resource Allocation Detail', ...
+            figure('Name', sprintf('%s Resource Allocation Detail', alg_display_name), ...
                    'NumberTitle', 'off', 'Color', 'w', ...
                    'Position', [100, 100, 1200, 800]);
             
@@ -52,7 +56,7 @@ classdef PlotClass
                 end
                 hold off;
             end
-            sgtitle('Resource Allocation Breakdown by Task (SA\_Value Algorithm)');
+            sgtitle(sprintf('Resource Allocation Breakdown by Task (%s Algorithm)', alg_display_name), 'Interpreter', 'none');
         end
 
         function print_agent_capabilities(agents)
