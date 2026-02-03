@@ -13,6 +13,7 @@ script_dir = fileparts(mfilename('fullpath'));  % 获取脚本所在目录（Mai
 project_root = fileparts(script_dir);            % 获取项目根目录
 addpath(fullfile(project_root, "Main_fun"));              % core scenario/init functions（核心初始化与场景函数）
 addpath(fullfile(project_root, "SA"));                    % SA algorithm（模拟退火算法）
+addpath(fullfile(project_root, "SA", "Improvements"));    % SA improvement variants（SA 改进算法）
 addpath(fullfile(project_root, "comalg", "Com_Baseline"));   % Greedy baseline（贪心基线算法）
 addpath(fullfile(project_root, "comalg", "Com_Huo2025"));    % Huo2025 algorithm（Huo2025 算法）
 addpath(fullfile(project_root, "comalg", "Com_Qi2023"));     % Qi2023 algorithm（Qi2023 算法）
@@ -32,8 +33,9 @@ task_values = [800, 1000, 1500];  % three task types（三种不同类型任务�
 num_task_types = length(task_values);
 
 % 算法开关：选择要运行的算法 ID
-% 1=SA_Value, 3=Huo2025, 4=Qi2023, 5=Shi2024
-algorithms_to_run_ids = [1,3,4];  % 运行所有算法
+% 1=SA_Value, 2=Greedy, 3=Huo2025, 4=Qi2023, 5=Shi2024, 6=PSO
+% 7-12=SA改进算法（TabuEnhanced, AdaptiveAlpha, ImprovedTemp, MultiStart, HybridGreedy, EnhancedNeighbor）
+algorithms_to_run_ids = [7,8,9,10,11,12];  % 默认运行 SA_Value, Huo2025, Qi2023
 
 %% Display/save options（显示与保存选项）
 save_results = true;    % 是否保存结果到 MAT 文件
@@ -195,12 +197,21 @@ fprintf('Scenario initialized (%.2f s)\n\n', init_time);
 %% Define algorithms
 % 定义算法：ID、名称、主函数句柄、文件夹、绘图颜色
 all_algorithms = {
+    % 原始算法
     struct('id', 1, 'name', 'SA_Value',        'func', @SA_Value_main,        'folder', 'SA',                  'color', [0.2, 0.6, 0.8]); % 模拟退火
     struct('id', 2, 'name', 'Greedy baseline', 'func', @Greedy_Baseline_main, 'folder', 'comalg/Com_Baseline', 'color', [0.5, 0.5, 0.5]); % 贪心基线
     struct('id', 3, 'name', 'Huo2025',         'func', @Huo2025_main,         'folder', 'comalg/Com_Huo2025',  'color', [0.8, 0.2, 0.2]); % Huo2025
     struct('id', 4, 'name', 'Qi2023',          'func', @Qi2023_main,          'folder', 'comalg/Com_Qi2023',   'color', [0.2, 0.8, 0.2]); % Qi2023
     struct('id', 5, 'name', 'Shi2024',         'func', @Shi2024_main,         'folder', 'comalg/Com_Shi2024',  'color', [0.8, 0.4, 0.2]); % Shi2024 OCF
     struct('id', 6, 'name', 'PSO',             'func', @PSO_main,             'folder', 'comalg/Com_PSO',      'color', [0.8, 0.8, 0.2]); % 粒子群
+
+    % SA 改进算法（ID 7-12）
+    struct('id', 7,  'name', 'SA_TabuEnhanced',    'func', @SA_Value_TabuEnhanced_main,    'folder', 'SA/Improvements', 'color', [0.3, 0.7, 0.9]); % 禁忌搜索增强
+    struct('id', 8,  'name', 'SA_AdaptiveAlpha',   'func', @SA_Value_AdaptiveAlpha_main,   'folder', 'SA/Improvements', 'color', [0.4, 0.5, 0.9]); % 自适应降温
+    struct('id', 9,  'name', 'SA_ImprovedTemp',    'func', @SA_Value_ImprovedTemp_main,    'folder', 'SA/Improvements', 'color', [0.1, 0.5, 0.7]); % 改进温度策略
+    struct('id', 10, 'name', 'SA_MultiStart',      'func', @SA_Value_MultiStart_main,      'folder', 'SA/Improvements', 'color', [0.2, 0.4, 0.6]); % 多起点重启
+    struct('id', 11, 'name', 'SA_HybridGreedy',    'func', @SA_Value_HybridGreedy_main,    'folder', 'SA/Improvements', 'color', [0.3, 0.6, 0.7]); % 混合贪心
+    struct('id', 12, 'name', 'SA_EnhancedNeighbor','func', @SA_Value_EnhancedNeighbor_main,'folder', 'SA/Improvements', 'color', [0.1, 0.7, 0.8]); % 增强邻域
     };
 
 fprintf('Available algorithms (可用算法):\n');
