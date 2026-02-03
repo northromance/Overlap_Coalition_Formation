@@ -20,7 +20,7 @@ project_root = fileparts(script_dir);
 
 % 1. 选择要加载的结果文件
 % 选项 A: 自动加载最新文件（推荐）
-auto_load_latest = false;
+auto_load_latest = true;
 
 % 选项 B: 手动指定文件（当 auto_load_latest = false 时使用）
 result_file = fullfile(project_root, 'results', 'comparison_results_seed2456_20260203_164611.mat');

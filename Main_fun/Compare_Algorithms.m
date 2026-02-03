@@ -33,18 +33,10 @@ num_task_types = length(task_values);
 
 % 算法开关：选择要运行的算法 ID
 % 1=SA_Value, 3=Huo2025, 4=Qi2023, 5=Shi2024
-algorithms_to_run_ids = [1,4];  % 运行所有算法
+algorithms_to_run_ids = [1,3,4];  % 运行所有算法
 
 %% Display/save options（显示与保存选项）
 save_results = true;    % 是否保存结果到 MAT 文件
-
-
-% 画图开关（已废弃，请使用 Plot_Results.m 进行可视化）
-% 保留此配置仅为向后兼容，建议设置为 false
-plot_config.comparison = false;   % 算法对比图（效用、成本、完成度等多子图）
-plot_config.allocation = false;  % SA资源分配图
-plot_config.animation = false;   % 执行动画
-plot_config.environment = false; % 环境图（智能体和任务位置）
 
 % World bounds（环境边界）
 WORLD_XMIN = 0; WORLD_XMAX = 100;
@@ -87,7 +79,7 @@ AddPara.enable_belief_update = true; % Qi2023信念更新开关：true=启用信
 
 % Observation/game params（观测/博弈参数）
 obs_times = 50;              % 观测次数（贝叶斯更新等）
-num_rounds = 50;            % 仿真回合数
+num_rounds = 5;            % 仿真回合数
 
 % Qi2023 utility params（Qi2023 专用参数）
 Qi_beta_m = 1.0;   % 边际效用权重
@@ -338,28 +330,19 @@ if enabled_count > 0
         timestamp = datestr(now, 'yyyymmdd_HHMMSS');
 
         % 生成算法名称缩写（用于文件名）
-        alg_names_short = '';
+        abbr_patterns = {'SA', 'Qi', 'Huo', 'Shi', 'PSO', 'Greedy'};
+        abbr_values = {'SA', 'Qi', 'Huo', 'Shi', 'PSO', 'Grd'};
+        alg_abbr = cell(1, enabled_count);
         for i = 1:enabled_count
-            alg = enabled_algorithms{i};
-            % 提取算法名称的关键部分
-            if contains(alg.name, 'SA')
-                alg_names_short = [alg_names_short 'SA'];
-            elseif contains(alg.name, 'Qi')
-                alg_names_short = [alg_names_short 'Qi'];
-            elseif contains(alg.name, 'Huo')
-                alg_names_short = [alg_names_short 'Huo'];
-            elseif contains(alg.name, 'Shi')
-                alg_names_short = [alg_names_short 'Shi'];
-            elseif contains(alg.name, 'PSO')
-                alg_names_short = [alg_names_short 'PSO'];
-            elseif contains(alg.name, 'Greedy')
-                alg_names_short = [alg_names_short 'Grd'];
-            end
-            if i < enabled_count
-                alg_names_short = [alg_names_short '+'];
+            alg_name = enabled_algorithms{i}.name;
+            idx = find(cellfun(@(p) contains(alg_name, p), abbr_patterns), 1, 'first');
+            if isempty(idx)
+                alg_abbr{i} = regexprep(alg_name, '\s+', '');
+            else
+                alg_abbr{i} = abbr_values{idx};
             end
         end
-
+        alg_names_short = strjoin(alg_abbr, '+');
         % 新文件名格式：comparison_N6_M10_SA+Qi_20260203_164611.mat
         filename = sprintf('results/comparison_N%d_M%d_%s_%s.mat', ...
             N, M, alg_names_short, timestamp);
@@ -371,55 +354,6 @@ if enabled_count > 0
         fprintf('results saved\n\n');
     end
 
-else
-    fprintf('Warning: no algorithms enabled (警告：未选择任何算法)\n\n');
+
 end
 
-fprintf('========================================================================\n');
-fprintf('                    Comparison done (对比结束)\n');
-fprintf('========================================================================\n\n');
-
-fprintf('提示: 使用 Plot_Results.m 进行可视化分析\n');
-fprintf('Tip: Use Plot_Results.m for visualization\n\n');
-
-% % Huo2025 visualization (plots)
-% if show_plots
-%     huo_idx = [];
-%     for i = 1:enabled_count
-%         entry = results.(sprintf('alg%d', i));
-%         if isfield(entry, 'name') && strcmp(entry.name, 'Huo2025')
-%             huo_idx = i; break;
-%         end
-%     end
-%
-%     if isempty(huo_idx)
-%         fprintf('\nSkipping Huo2025 visualization (Algorithm not run).\n');
-%     else
-%         fprintf('\nVisualizing Huo2025 allocation and animation...\n');
-%         huo_res = results.(sprintf('alg%d', huo_idx));
-%         if isfield(huo_res, 'Value_data')
-%             PlotClass.plot_SA_allocation(huo_res.Value_data, tasks, Value_Params);
-%             PlotClass.plot_execution_animation(huo_res.Value_data, agents, tasks, Value_Params);
-%         else
-%             fprintf('Skip Huo2025 visualization: missing Value_data.\n');
-%         end
-%     end
-% end
-%
-% % 选择要进行动画展示的算法结果（例如这里选择 SA_Value，即 alg1）
-% target_alg_idx = 1; % 修改这里可以选择其他算法，如 2, 3 ...
-% target_alg_field = sprintf('alg%d', target_alg_idx);
-%
-% if isfield(results, target_alg_field) && isfield(results.(target_alg_field), 'Value_data')
-%     alg_name = results.(target_alg_field).name;
-%     fprintf('\nGenerating dynamic animation for algorithm: %s ...\n', alg_name);
-%     fprintf('Please wait for the animation window to appear.\n');
-%
-%     % 获取目标算法的输出数据
-%     anim_data = results.(target_alg_field).Value_data;
-%
-%     % 调用 PlotClass 中的动画函数
-%     PlotClass.plot_execution_animation(anim_data, agents, tasks, Value_Params);
-% else
-%     fprintf('\nSkipping animation: Algorithm result %d not found.\n', target_alg_idx);
-% end
