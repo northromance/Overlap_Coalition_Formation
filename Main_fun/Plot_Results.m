@@ -29,8 +29,8 @@ result_file = fullfile(project_root, 'results', 'comparison_results_seed2456_202
 plot_config = struct();
 plot_config.comparison = true;      % 算法对比图（多子图）
 plot_config.allocation = true;      % SA算法资源分配图
-plot_config.animation = false;      % 执行动画（耗时）
-plot_config.environment = false;    % 环境图
+plot_config.animation = true;      % 执行动画（耗时）
+plot_config.environment = true;    % 环境图
 plot_config.print_stats = true;     % 打印统计信息
 
 % 3. 图形保存配置

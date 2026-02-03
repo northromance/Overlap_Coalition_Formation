@@ -88,9 +88,15 @@ classdef PlotClass
             % plot_env 绘制基本的环境地图（智能体初始位置和任务位置）
             figure('Name', 'Environment Map', 'Color', 'w');
             hold on; grid on; box on;
-            task_coords = vertcat(tasks.loc); 
-            if isempty(task_coords) && isfield(tasks, 'x')
-                 task_coords = [[tasks.x]', [tasks.y]'];
+            task_coords = zeros(length(tasks), 2);
+            for t = 1:length(tasks)
+                if isfield(tasks, 'loc') && numel(tasks(t).loc) >= 2
+                    task_coords(t, :) = tasks(t).loc(1:2);
+                elseif isfield(tasks, 'x') && isfield(tasks, 'y')
+                    task_coords(t, :) = [tasks(t).x, tasks(t).y];
+                else
+                    error('tasks 缺少坐标字段 loc 或 x/y，无法绘制环境图');
+                end
             end
             if ~isempty(task_coords)
                 scatter(task_coords(:,1), task_coords(:,2), 50, 'b', 'filled', ...
@@ -118,7 +124,7 @@ classdef PlotClass
             hold off;
         end
         
-        function plot_execution_animation(Value_data, agents, tasks, Value_Params)
+        function plot_execution_animation(Value_data, agents, tasks, Value_Params, varargin)
             % plot_execution_animation 动态展示算法执行结果
             % 左图：机器人路径动画；右图：垂直甘特图时间线动画
             
