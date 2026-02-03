@@ -46,7 +46,9 @@ if isfield(AddPara, 'enable_belief_update')
 else
     enable_belief_update = true;  % 默认启用信念更新
 end
-fprintf('[Qi2023] 信念更新开关: %s\n', mat2str(enable_belief_update));
+if AddPara.verbose
+    fprintf('[Qi2023] 信念更新开关: %s\n', mat2str(enable_belief_update));
+end
 
 % 使用标准初始化
 history_data = struct();
@@ -83,12 +85,16 @@ end
 SC_global = cell(M, 1);
 for m = 1:M, SC_global{m} = zeros(N, K); end
 
-fprintf('[Qi2023] 开始PGG-TS算法，共%d轮...\n', Value_Params.num_rounds);
+if AddPara.verbose
+    fprintf('[Qi2023] 开始PGG-TS算法，共%d轮...\n', Value_Params.num_rounds);
+end
 
 %% 主循环：多轮迭代（每轮包括：联盟形成 → 观测 → 信念更新）
 for round = 1:Value_Params.num_rounds
 
-    fprintf('[Qi2023] === 第 %d/%d 轮 ===\n', round, Value_Params.num_rounds);
+    if AddPara.verbose
+        fprintf('[Qi2023] === 第 %d/%d 轮 ===\n', round, Value_Params.num_rounds);
+    end
 
     % 每轮重置禁忌搜索参数和Boltzmann系数
     k_iter = 1;
@@ -99,7 +105,9 @@ for round = 1:Value_Params.num_rounds
     %% 1. 联盟形成阶段（基于当前信念和上一轮的联盟结构）
 
     if round == 1
-        fprintf('[Qi2023] 第1轮：根据概率生成初始联盟结构...\n');
+        if AddPara.verbose
+            fprintf('[Qi2023] 第1轮：根据概率生成初始联盟结构...\n');
+        end
         % 第一轮：根据概率为每个智能体分配初始联盟
         % 参考论文：To get the initial coalition structure SC(1),
         % all initial resources carried by UAVs are allocated to the tasks
@@ -121,7 +129,9 @@ for round = 1:Value_Params.num_rounds
             end
         end
     else
-        fprintf('[Qi2023] 第%d轮：基于更新后的信念和上一轮联盟结构继续优化...\n', round);
+        if AddPara.verbose
+            fprintf('[Qi2023] 第%d轮：基于更新后的信念和上一轮联盟结构继续优化...\n', round);
+        end
     end
 
     % 记录初始状态（使用期望效用）
@@ -130,7 +140,9 @@ for round = 1:Value_Params.num_rounds
         Value_data(i).SC = SC_global;
         current_utility = current_utility + UtilityEvaluator.calc_agent_total_utility(SC_global, agents, tasks, Value_Params, Value_data(i), AddPara);
     end
-    fprintf('[Qi2023] 第 %d 轮初始效用（期望）: %.4f\n', round, current_utility);
+    if AddPara.verbose
+        fprintf('[Qi2023] 第 %d 轮初始效用（期望）: %.4f\n', round, current_utility);
+    end
 
     %% 2. 禁忌搜索内循环：优化当前联盟结构
     while k_iter <= K_max_inner && k_stable <= K_len
@@ -151,8 +163,10 @@ for round = 1:Value_Params.num_rounds
                         % --- [新增] 打印日志 ---
                         % 记录被移走的资源数值
                         removed_amount = SC_temp{m}(i, k);
-                        fprintf('  [离开操作] 智能体 #%-2d 撤出 -> 任务 M=%-2d | 资源 k=%-2d | 数量: %6.2f\n', ...
-                            i, m, k, removed_amount);
+                        if AddPara.verbose
+                            fprintf('  [离开操作] 智能体 #%-2d 撤出 -> 任务 M=%-2d | 资源 k=%-2d | 数量: %6.2f\n', ...
+                                i, m, k, removed_amount);
+                        end
                         % -----------------------
 
                         SC_temp{m}(i, k) = 0;
@@ -212,7 +226,7 @@ for round = 1:Value_Params.num_rounds
         % Gamma(k+1) = Gamma(k) + k * (Gamma_max - Gamma(k)) / K_max
         Gamma = Gamma + k_iter * (Gamma_max - Gamma) / K_max_inner;
 
-        if mod(k_iter, 10) == 0
+        if mod(k_iter, 10) == 0 && AddPara.verbose
             fprintf('[Qi2023] 第 %d 轮, 迭代 %d: 效用（期望）= %.4f, 稳定性 = %d, Gamma = %.2f\n', ...
                 round, k_iter, current_utility, k_stable, Gamma);
         end
@@ -220,8 +234,10 @@ for round = 1:Value_Params.num_rounds
         k_iter = k_iter + 1;
     end
 
-    fprintf('[Qi2023] 第 %d 轮在 %d 次迭代后收敛, 效用（期望）= %.4f, 最终Gamma = %.2f\n', ...
-        round, k_iter-1, current_utility, Gamma);
+    if AddPara.verbose
+        fprintf('[Qi2023] 第 %d 轮在 %d 次迭代后收敛, 效用（期望）= %.4f, 最终Gamma = %.2f\n', ...
+            round, k_iter-1, current_utility, Gamma);
+    end
 
     % 更新所有智能体的 SC
     for i = 1:N
@@ -229,16 +245,22 @@ for round = 1:Value_Params.num_rounds
     end
 
     %% 3. 观测阶段：智能体对参与的任务进行观测
-    fprintf('[Qi2023] 第 %d 轮：进行观测...\n', round);
+    if AddPara.verbose
+        fprintf('[Qi2023] 第 %d 轮：进行观测...\n', round);
+    end
     [Value_data, summatrix] = AgentOps.collect_observations(Value_data, agents, tasks, Value_Params, summatrix, SC_global);
 
     %% 4. 信念更新阶段：基于观测结果更新信念（贝叶斯更新）
     % 根据开关决定是否更新信念
     if enable_belief_update
-        fprintf('[Qi2023] 第 %d 轮：更新信念...\n', round);
+        if AddPara.verbose
+            fprintf('[Qi2023] 第 %d 轮：更新信念...\n', round);
+        end
         Value_data = AgentOps.update_belief_from_observations(Value_data, Value_Params);
     else
-        fprintf('[Qi2023] 第 %d 轮：跳过信念更新（使用初始信念）\n', round);
+        if AddPara.verbose
+            fprintf('[Qi2023] 第 %d 轮：跳过信念更新（使用初始信念）\n', round);
+        end
     end
 
     %% 5. 同步联盟结构：保存当前联盟结构到所有智能体
@@ -281,10 +303,14 @@ for round = 1:Value_Params.num_rounds
         total_completed_value, task_completion_degrees, summatrix);
 end
 
-fprintf('[Qi2023] 算法完成 %d 轮。\n', Value_Params.num_rounds);
+if AddPara.verbose
+    fprintf('[Qi2023] 算法完成 %d 轮。\n', Value_Params.num_rounds);
+end
 
 %% 最终数据同步：确保所有智能体的数据结构完全一致
-fprintf('\n[Qi2023] 执行最终数据同步...\n');
+if AddPara.verbose
+    fprintf('\n[Qi2023] 执行最终数据同步...\n');
+end
 for ii = 1:N
     Value_data(ii).SC = SC_global;
 
@@ -298,28 +324,34 @@ for ii = 1:N
 end
 
 % 调试输出：显示最终的 coalitionstru
-fprintf('[Qi2023] 最终 coalitionstru (Agent 1 视图):\n');
-for j = 1:M
-    participants = find(Value_data(1).coalitionstru(j, :) > 0);
-    if ~isempty(participants)
-        fprintf('  任务 %d: 智能体 %s, 值: %s\n', j, mat2str(participants), mat2str(Value_data(1).coalitionstru(j, participants)));
+if AddPara.verbose
+    fprintf('[Qi2023] 最终 coalitionstru (Agent 1 视图):\n');
+    for j = 1:M
+        participants = find(Value_data(1).coalitionstru(j, :) > 0);
+        if ~isempty(participants)
+            fprintf('  任务 %d: 智能体 %s, 值: %s\n', j, mat2str(participants), mat2str(Value_data(1).coalitionstru(j, participants)));
+        end
     end
-end
-void_agents = find(Value_data(1).coalitionstru(M+1, :) > 0);
-if ~isempty(void_agents)
-    fprintf('  Void任务: 智能体 %s\n', mat2str(void_agents));
+    void_agents = find(Value_data(1).coalitionstru(M+1, :) > 0);
+    if ~isempty(void_agents)
+        fprintf('  Void任务: 智能体 %s\n', mat2str(void_agents));
+    end
 end
 
 %% 最终一致性检查（使用统一的检查函数）
-fprintf('\n[Qi2023] 执行最终一致性检查...\n');
-[is_valid, error_log] = check_coalition_consistency(Value_data, agents, tasks, Value_Params, 'OCF');
+if AddPara.verbose
+    fprintf('\n[Qi2023] 执行最终一致性检查...\n');
+end
+[is_valid, error_log] = check_coalition_consistency(Value_data, agents, tasks, Value_Params, 'OCF', AddPara.verbose);
 
 if ~is_valid
     warning('[Qi2023] 联盟一致性检查发现 %d 处问题，请查看上方日志！', length(error_log));
     % 将错误日志保存到历史数据中以便后续分析
     history_data.consistency_errors = error_log;
 else
-    fprintf('✅ [Qi2023] 所有一致性检查通过！\n');
+    if AddPara.verbose
+        fprintf('✅ [Qi2023] 所有一致性检查通过！\n');
+    end
 end
 
 end
@@ -369,7 +401,9 @@ for k = 1:K
     %% 3. 投入逻辑
     % 检查该智能体是否已经参与了此任务
     if SC_new{selected_task}(agent_idx, k) > 0
-        fprintf('  [状态保持] 智能体 #%-2d 资源 k=%-2d 已在任务 M=%-2d 中复用\n', agent_idx, k, selected_task);
+        if AddPara.verbose
+            fprintf('  [状态保持] 智能体 #%-2d 资源 k=%-2d 已在任务 M=%-2d 中复用\n', agent_idx, k, selected_task);
+        end
         continue;
     end
 
@@ -418,21 +452,27 @@ for k = 1:K
 
         % 调用 validate_feasibility 检查可行性（启用队友检查）
         [isFeasible, info, ~] = validate_feasibility(Value_data_array, agents, tasks, ...
-            Value_Params, agent_idx, SC_candidate, true);
+            Value_Params, agent_idx, SC_candidate, true, AddPara);
 
         if isFeasible
             % 可行，接受新的分配
             SC_new = SC_candidate;
-            fprintf('  [资源复用] Agent #%-2d -> Task M=%-2d | ResType k=%-2d | Amount: %-6.2f | 可行 ✓\n', ...
-                agent_idx, selected_task, k, resource_amt);
+            if AddPara.verbose
+                fprintf('  [资源复用] Agent #%-2d -> Task M=%-2d | ResType k=%-2d | Amount: %-6.2f | 可行 ✓\n', ...
+                    agent_idx, selected_task, k, resource_amt);
+            end
         else
             % 不可行，拒绝投入
-            fprintf('  [拒绝投入] Agent #%-2d -> Task M=%-2d | ResType k=%-2d | 原因: %s ✗\n', ...
-                agent_idx, selected_task, k, info.reason);
+            if AddPara.verbose
+                fprintf('  [拒绝投入] Agent #%-2d -> Task M=%-2d | ResType k=%-2d | 原因: %s ✗\n', ...
+                    agent_idx, selected_task, k, info.reason);
+            end
         end
     else
-        fprintf('  [复用跳过] 智能体 #%-2d | 资源类型 k=%-2d | 任务 M=%-2d 需求已饱和，无需复用投入\n', ...
-            agent_idx, k, selected_task);
+        if AddPara.verbose
+            fprintf('  [复用跳过] 智能体 #%-2d | 资源类型 k=%-2d | 任务 M=%-2d 需求已饱和，无需复用投入\n', ...
+                agent_idx, k, selected_task);
+        end
     end
 end
 end

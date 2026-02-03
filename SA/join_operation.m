@@ -16,10 +16,10 @@ tol = 1e-9;
 % agentID -> agents 索引
 agentIdx = agentID;
 
-% verbose：打印调试信息（默认开，可在 Value_Params.verbose 关闭）
+% verbose：打印调试信息（默认开，可在 AddPara.verbose 关闭）
 verbose = true;
-if isfield(Value_Params, 'verbose')
-    verbose = logical(Value_Params.verbose);
+if isfield(AddPara, 'verbose')
+    verbose = logical(AddPara.verbose);
 end
 
 % 主流程：对每种资源类型 r 抽一个候选任务 -> 可行性 -> 计算ΔU -> 接受则退出
@@ -36,15 +36,12 @@ for r = 1:Value_Params.K
     % 计算加入操作后的联盟结构 (SC) 和资源分配 (R)
     % SC_P/R_agent_P: 操作前 (Previous)
     % SC_Q/R_agent_Q: 操作后 (Query/Proposal)
-    if Value_data.agentID == 5
-        fprintf('当前id为%d',5)
-    end
     [SC_P, SC_Q, R_agent_P, R_agent_Q] = StateTran.join_changes(Value_data, agents, Value_Params, target, agentID, r);
 
     %% 3. 可行性检测 (Feasibility Check)
     % 检查：非负约束、最大携带量、能量/路径可达性、队友可行性
     % 优化：同时返回 cost_data (包含计算好的路径和能量)，供后续复用
-    [feasible, info, cost_data] = validate_feasibility(Value_data, agents, tasks, Value_Params, agentID, SC_Q, true);
+    [feasible, info, cost_data] = validate_feasibility(Value_data, agents, tasks, Value_Params, agentID, SC_Q, true, AddPara);
 
 % VALIDATE_FEASIBILITY 可行性检测：非负分配、携带量、能量可达性、队友检查
 

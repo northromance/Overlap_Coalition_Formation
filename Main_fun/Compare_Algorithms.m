@@ -76,6 +76,7 @@ K_max_inner_SA = 200;      % 每轮最大迭代次数 - 新增
 AddPara.control = 1;
 AddPara.resource_confidence = 0.95;  % 资源分位/置信度（风险规避）
 AddPara.enable_belief_update = true; % Qi2023信念更新开关：true=启用信念更新，false=仅使用初始信念
+AddPara.verbose = false;              % 打印调试开关：true=开启打印，false=关闭打印
 
 % Observation/game params（观测/博弈参数）
 obs_times = 50;              % 观测次数（贝叶斯更新等）

@@ -1,4 +1,4 @@
-function [is_valid, error_log] = check_coalition_consistency(Value_data, agents, tasks, Value_Params, algorithm_type)
+function [is_valid, error_log] = check_coalition_consistency(Value_data, agents, tasks, Value_Params, algorithm_type, verbose)
 % CHECK_COALITION_CONSISTENCY 统一的联盟一致性检查函数
 %
 % 功能：
@@ -13,6 +13,7 @@ function [is_valid, error_log] = check_coalition_consistency(Value_data, agents,
 %   algorithm_type - 算法类型字符串：
 %                    'OCF'     - 重叠联盟（资源可复用）
 %                    'Non-OCF' - 非重叠联盟（资源不可复用）
+%   verbose        - (可选) 是否打印详细信息，默认true
 %
 % 输出：
 %   is_valid   - 布尔值，true表示所有检查通过
@@ -41,20 +42,29 @@ function [is_valid, error_log] = check_coalition_consistency(Value_data, agents,
     M = Value_Params.M;  % 任务数量
     K = Value_Params.K;  % 资源类型数量
 
+    % 默认参数
+    if nargin < 6
+        verbose = true;
+    end
+
     % 验证算法类型参数
     if ~ismember(algorithm_type, {'OCF', 'Non-OCF'})
         error('算法类型必须是 ''OCF'' 或 ''Non-OCF''');
     end
 
-    fprintf('\n==============================================\n');
-    fprintf('联盟一致性检查 [算法类型: %s]\n', algorithm_type);
-    fprintf('智能体数: %d | 任务数: %d | 资源类型: %d\n', N, M, K);
-    fprintf('==============================================\n');
+    if verbose
+        fprintf('\n==============================================\n');
+        fprintf('联盟一致性检查 [算法类型: %s]\n', algorithm_type);
+        fprintf('智能体数: %d | 任务数: %d | 资源类型: %d\n', N, M, K);
+        fprintf('==============================================\n');
+    end
 
     %% 检查1：全局一致性检查 (Global Consensus Check)
     % 验证所有智能体的SC和coalitionstru是否完全一致
-    fprintf('\n[检查1] 全局一致性检查...\n');
-    [consensus_valid, consensus_errors] = check_global_consensus(Value_data, Value_Params, tol);
+    if verbose
+        fprintf('\n[检查1] 全局一致性检查...\n');
+    end
+    [consensus_valid, consensus_errors] = check_global_consensus(Value_data, Value_Params, tol, verbose);
     if ~consensus_valid
         is_valid = false;
         error_log = [error_log, consensus_errors];
@@ -62,13 +72,15 @@ function [is_valid, error_log] = check_coalition_consistency(Value_data, agents,
 
     %% 检查2：资源约束检查 (Resource Constraints Check)
     % 验证资源分配是否满足约束条件
-    fprintf('\n[检查2] 资源约束检查...\n');
+    if verbose
+        fprintf('\n[检查2] 资源约束检查...\n');
+    end
     if strcmp(algorithm_type, 'OCF')
         % 重叠联盟：检查单任务资源投入是否超过智能体上限（资源可复用）
-        [resource_valid, resource_errors] = check_resource_constraints_OCF(Value_data, agents, Value_Params, tol);
+        [resource_valid, resource_errors] = check_resource_constraints_OCF(Value_data, agents, Value_Params, tol, verbose);
     else
         % 非重叠联盟：检查所有任务的资源总和是否超过智能体上限（资源不可复用）
-        [resource_valid, resource_errors] = check_resource_constraints_NonOCF(Value_data, agents, Value_Params, tol);
+        [resource_valid, resource_errors] = check_resource_constraints_NonOCF(Value_data, agents, Value_Params, tol, verbose);
     end
     if ~resource_valid
         is_valid = false;
@@ -77,8 +89,10 @@ function [is_valid, error_log] = check_coalition_consistency(Value_data, agents,
 
     %% 检查3：结构对应检查 (Structure Mapping Check)
     % 验证coalitionstru与SC的双向映射关系
-    fprintf('\n[检查3] 结构对应检查...\n');
-    [mapping_valid, mapping_errors] = check_structure_mapping(Value_data, Value_Params, tol);
+    if verbose
+        fprintf('\n[检查3] 结构对应检查...\n');
+    end
+    [mapping_valid, mapping_errors] = check_structure_mapping(Value_data, Value_Params, tol, verbose);
     if ~mapping_valid
         is_valid = false;
         error_log = [error_log, mapping_errors];
@@ -86,8 +100,10 @@ function [is_valid, error_log] = check_coalition_consistency(Value_data, agents,
 
     %% 检查4：自洽性检查 (Self-Consistency Check)
     % 验证个体资源矩阵与全局SC的一致性
-    fprintf('\n[检查4] 自洽性检查...\n');
-    [self_valid, self_errors] = check_self_consistency(Value_data, Value_Params, tol);
+    if verbose
+        fprintf('\n[检查4] 自洽性检查...\n');
+    end
+    [self_valid, self_errors] = check_self_consistency(Value_data, Value_Params, tol, verbose);
     if ~self_valid
         is_valid = false;
         error_log = [error_log, self_errors];
@@ -95,31 +111,41 @@ function [is_valid, error_log] = check_coalition_consistency(Value_data, agents,
 
     %% 检查5：可行性检查 (Feasibility Check)
     % 验证能量约束是否满足
-    fprintf('\n[检查5] 可行性检查（能量约束）...\n');
-    [feasibility_valid, feasibility_errors] = check_energy_feasibility(Value_data, agents, tasks, Value_Params, tol);
+    if verbose
+        fprintf('\n[检查5] 可行性检查（能量约束）...\n');
+    end
+    [feasibility_valid, feasibility_errors] = check_energy_feasibility(Value_data, agents, tasks, Value_Params, tol, verbose);
     if ~feasibility_valid
         is_valid = false;
         error_log = [error_log, feasibility_errors];
     end
 
     %% 总结报告
-    fprintf('\n==============================================\n');
+    if verbose
+        fprintf('\n==============================================\n');
+    end
     if is_valid
-        fprintf('✅ 所有检查通过！联盟结构合法且一致。\n');
-    else
-        fprintf('❌ 检查失败！发现 %d 处错误：\n', length(error_log));
-        for i = 1:min(10, length(error_log))  % 最多显示前10个错误
-            fprintf('  %d. %s\n', i, error_log{i});
+        if verbose
+            fprintf('✅ 所有检查通过！联盟结构合法且一致。\n');
         end
-        if length(error_log) > 10
-            fprintf('  ... 还有 %d 个错误未显示\n', length(error_log) - 10);
+    else
+        if verbose
+            fprintf('❌ 检查失败！发现 %d 处错误：\n', length(error_log));
+            for i = 1:min(10, length(error_log))  % 最多显示前10个错误
+                fprintf('  %d. %s\n', i, error_log{i});
+            end
+            if length(error_log) > 10
+                fprintf('  ... 还有 %d 个错误未显示\n', length(error_log) - 10);
+            end
         end
     end
-    fprintf('==============================================\n\n');
+    if verbose
+        fprintf('==============================================\n\n');
+    end
 end
 
 %% ========== 子函数：检查1 - 全局一致性 ==========
-function [is_valid, error_log] = check_global_consensus(Value_data, Value_Params, tol)
+function [is_valid, error_log] = check_global_consensus(Value_data, Value_Params, tol, verbose)
     % 检查所有智能体的SC和coalitionstru是否与Agent 1一致
     is_valid = true;
     error_log = {};
@@ -132,7 +158,9 @@ function [is_valid, error_log] = check_global_consensus(Value_data, Value_Params
         if ~isequal(base_stru, Value_data(i).coalitionstru)
             msg = sprintf('Agent %d 的 coalitionstru 与 Agent 1 不一致', i);
             error_log{end+1} = msg;
-            fprintf('  ❌ %s\n', msg);
+            if verbose
+                fprintf('  ❌ %s\n', msg);
+            end
             is_valid = false;
         end
 
@@ -143,20 +171,22 @@ function [is_valid, error_log] = check_global_consensus(Value_data, Value_Params
                 if diff_sc > tol
                     msg = sprintf('Agent %d 在 Task %d 的 SC 与 Agent 1 不一致 (差异: %.4f)', i, j, diff_sc);
                     error_log{end+1} = msg;
-                    fprintf('  ❌ %s\n', msg);
+                    if verbose
+                        fprintf('  ❌ %s\n', msg);
+                    end
                     is_valid = false;
                 end
             end
         end
     end
 
-    if is_valid
+    if is_valid && verbose
         fprintf('  ✅ 所有智能体达成全局共识\n');
     end
 end
 
 %% ========== 子函数：检查2A - 资源约束（OCF模式）==========
-function [is_valid, error_log] = check_resource_constraints_OCF(Value_data, agents, Value_Params, tol)
+function [is_valid, error_log] = check_resource_constraints_OCF(Value_data, agents, Value_Params, tol, verbose)
     % 重叠联盟模式：检查单任务资源投入是否超过智能体上限
     is_valid = true;
     error_log = {};
@@ -189,20 +219,22 @@ function [is_valid, error_log] = check_resource_constraints_OCF(Value_data, agen
                     msg = sprintf('Agent %d 在 Task %d 资源越界: 投入 %s > 上限 %s', ...
                         i, j, mat2str(current_invested, 2), mat2str(max_cap, 2));
                     error_log{end+1} = msg;
-                    fprintf('  ❌ %s\n', msg);
+                    if verbose
+                        fprintf('  ❌ %s\n', msg);
+                    end
                     is_valid = false;
                 end
             end
         end
     end
 
-    if is_valid
+    if is_valid && verbose
         fprintf('  ✅ 所有资源分配满足OCF约束（单任务不越界）\n');
     end
 end
 
 %% ========== 子函数：检查2B - 资源约束（Non-OCF模式）==========
-function [is_valid, error_log] = check_resource_constraints_NonOCF(Value_data, agents, Value_Params, tol)
+function [is_valid, error_log] = check_resource_constraints_NonOCF(Value_data, agents, Value_Params, tol, verbose)
     % 非重叠联盟模式：检查所有任务的资源总和是否超过智能体上限
     is_valid = true;
     error_log = {};
@@ -239,18 +271,20 @@ function [is_valid, error_log] = check_resource_constraints_NonOCF(Value_data, a
             msg = sprintf('Agent %d 总资源越界: 总投入 %s > 上限 %s', ...
                 i, mat2str(total_invested, 2), mat2str(max_cap, 2));
             error_log{end+1} = msg;
-            fprintf('  ❌ %s\n', msg);
+            if verbose
+                fprintf('  ❌ %s\n', msg);
+            end
             is_valid = false;
         end
     end
 
-    if is_valid
+    if is_valid && verbose
         fprintf('  ✅ 所有资源分配满足Non-OCF约束（总和不越界）\n');
     end
 end
 
 %% ========== 子函数：检查3 - 结构对应关系 ==========
-function [is_valid, error_log] = check_structure_mapping(Value_data, Value_Params, tol)
+function [is_valid, error_log] = check_structure_mapping(Value_data, Value_Params, tol, verbose)
     % 检查coalitionstru与SC的双向映射关系
     is_valid = true;
     error_log = {};
@@ -277,7 +311,9 @@ function [is_valid, error_log] = check_structure_mapping(Value_data, Value_Param
             if ~ismember(aid, members_in_stru)
                 msg = sprintf('Task %d: Agent %d 在 SC 中有资源投入，但不在 coalitionstru 中', j, aid);
                 error_log{end+1} = msg;
-                fprintf('  ❌ %s\n', msg);
+                if verbose
+                    fprintf('  ❌ %s\n', msg);
+                end
                 is_valid = false;
             end
         end
@@ -297,13 +333,13 @@ function [is_valid, error_log] = check_structure_mapping(Value_data, Value_Param
         end
     end
 
-    if is_valid
+    if is_valid && verbose
         fprintf('  ✅ coalitionstru 与 SC 的映射关系正确\n');
     end
 end
 
 %% ========== 子函数：检查4 - 自洽性 ==========
-function [is_valid, error_log] = check_self_consistency(Value_data, Value_Params, tol)
+function [is_valid, error_log] = check_self_consistency(Value_data, Value_Params, tol, verbose)
     % 检查每个智能体的resources_matrix与SC的一致性
     is_valid = true;
     error_log = {};
@@ -339,19 +375,21 @@ function [is_valid, error_log] = check_self_consistency(Value_data, Value_Params
                 msg = sprintf('Agent %d 在 Task %d 的个体矩阵与 SC 不一致: 个体 %s != SC %s', ...
                     i, j, mat2str(res_personal(1:len), 2), mat2str(res_global(1:len), 2));
                 error_log{end+1} = msg;
-                fprintf('  ❌ %s\n', msg);
+                if verbose
+                    fprintf('  ❌ %s\n', msg);
+                end
                 is_valid = false;
             end
         end
     end
 
-    if is_valid
+    if is_valid && verbose
         fprintf('  ✅ 所有智能体的个体矩阵与 SC 保持一致\n');
     end
 end
 
 %% ========== 子函数：检查5 - 能量可行性 ==========
-function [is_valid, error_log] = check_energy_feasibility(Value_data, agents, tasks, Value_Params, tol)
+function [is_valid, error_log] = check_energy_feasibility(Value_data, agents, tasks, Value_Params, tol, verbose)
     % 检查每个智能体的能量约束是否满足
     is_valid = true;
     error_log = {};
@@ -391,18 +429,22 @@ function [is_valid, error_log] = check_energy_feasibility(Value_data, agents, ta
                 msg = sprintf('Agent %d 能量不足: 需要 %.2f > 拥有 %.2f', ...
                     i, total_energy, agents(i).Emax);
                 error_log{end+1} = msg;
-                fprintf('  ❌ %s\n', msg);
+                if verbose
+                    fprintf('  ❌ %s\n', msg);
+                end
                 is_valid = false;
             end
         catch ME
             msg = sprintf('Agent %d 能量计算失败: %s', i, ME.message);
             error_log{end+1} = msg;
-            fprintf('  ❌ %s\n', msg);
+            if verbose
+                fprintf('  ❌ %s\n', msg);
+            end
             is_valid = false;
         end
     end
 
-    if is_valid
+    if is_valid && verbose
         fprintf('  ✅ 所有智能体的能量约束满足\n');
     end
 end

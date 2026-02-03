@@ -18,7 +18,9 @@ function [Value_data, history_data] = Shi2024_main(agents, tasks, AddPara, Value
 %   Value_data   - 最终的智能体数据结构
 %   history_data - 历史数据记录
 
-fprintf('\n=== Shi2024 OCF Algorithm Start ===\n');
+if AddPara.verbose
+    fprintf('\n=== Shi2024 OCF Algorithm Start ===\n');
+end
 if isfield(Value_Params, 'seed'), rng(Value_Params.seed); end
 
 %% 参数初始化
@@ -34,8 +36,10 @@ if isfield(AddPara, 'enable_belief_update')
     enable_belief_update = AddPara.enable_belief_update;
 end
 
-fprintf('Belief update: %s\n', mat2str(enable_belief_update));
-fprintf('Agents: %d, Tasks: %d, Resources: %d, Rounds: %d\n', N, M, K, num_rounds);
+if AddPara.verbose
+    fprintf('Belief update: %s\n', mat2str(enable_belief_update));
+    fprintf('Agents: %d, Tasks: %d, Resources: %d, Rounds: %d\n', N, M, K, num_rounds);
+end
 
 %% 初始化数据结构
 Value_data = WorldSim.init_value_data(agents, tasks, Value_Params);
@@ -58,16 +62,22 @@ summatrix = zeros(M, Value_Params.task_type);
 
 %% 多轮迭代
 for round = 1:num_rounds
-    fprintf('\n========== Round %d/%d ==========\n', round, num_rounds);
+    if AddPara.verbose
+        fprintf('\n========== Round %d/%d ==========\n', round, num_rounds);
+    end
 
     %% Step 1: 联盟形成
     if round == 1
         % 第一轮：初始化策略
-        fprintf('--- Initial Coalition Formation ---\n');
+        if AddPara.verbose
+            fprintf('--- Initial Coalition Formation ---\n');
+        end
         SC = initial_coalition_formation(N, M, SC, agents, tasks, Value_Params, Value_data, AddPara, tol);
     else
         % 后续轮：迭代优化
-        fprintf('--- Coalition Optimization ---\n');
+        if AddPara.verbose
+            fprintf('--- Coalition Optimization ---\n');
+        end
         SC = optimize_coalitions(N, M, SC, agents, tasks, Value_Params, Value_data, AddPara, tol);
     end
 
@@ -95,12 +105,16 @@ for round = 1:num_rounds
     %% Step 4: 信念更新
     if enable_belief_update && round < num_rounds
         Value_data = AgentOps.update_belief_from_observations(Value_data, Value_Params);
-        fprintf('Beliefs updated for next round.\n');
+        if AddPara.verbose
+            fprintf('Beliefs updated for next round.\n');
+        end
     end
 end
 
 %% 最终结果处理
-fprintf('\n=== Final Results ===\n');
+if AddPara.verbose
+    fprintf('\n=== Final Results ===\n');
+end
 
 % 计算每个智能体的最终效用和成本
 for i = 1:N
@@ -132,31 +146,41 @@ for i = 1:N
         E_total = alpha_fly * t_fly + alpha_wait * t_wait + beta * t_exec;
         Value_data(i).task_schedule.total_energy = E_total;
 
-        fprintf('Agent %d: Tasks=%d, Utility=%.2f, Energy=%.2f\n', ...
-            i, length(task_list), ...
-            UtilityEvaluator.calc_agent_total_utility(SC, agents, tasks, Value_Params, Value_data(i), AddPara), ...
-            E_total);
+        if AddPara.verbose
+            fprintf('Agent %d: Tasks=%d, Utility=%.2f, Energy=%.2f\n', ...
+                i, length(task_list), ...
+                UtilityEvaluator.calc_agent_total_utility(SC, agents, tasks, Value_Params, Value_data(i), AddPara), ...
+                E_total);
+        end
     end
 end
 
 % 全局统计
 total_utility = calc_global_utility(SC, agents, tasks, Value_Params, Value_data, AddPara);
-fprintf('\nGlobal Total Utility: %.2f\n', total_utility);
-fprintf('Total Rounds: %d\n', num_rounds);
+if AddPara.verbose
+    fprintf('\nGlobal Total Utility: %.2f\n', total_utility);
+    fprintf('Total Rounds: %d\n', num_rounds);
+end
 
 %% 最终一致性检查（使用统一的检查函数）
-fprintf('\n[Shi2024] 执行最终一致性检查...\n');
-[is_valid, error_log] = check_coalition_consistency(Value_data, agents, tasks, Value_Params, 'OCF');
+if AddPara.verbose
+    fprintf('\n[Shi2024] 执行最终一致性检查...\n');
+end
+[is_valid, error_log] = check_coalition_consistency(Value_data, agents, tasks, Value_Params, 'OCF', AddPara.verbose);
 
 if ~is_valid
     warning('[Shi2024] 联盟一致性检查发现 %d 处问题，请查看上方日志！', length(error_log));
     % 将错误日志保存到历史数据中以便后续分析
     history_data.consistency_errors = error_log;
 else
-    fprintf('✅ [Shi2024] 所有一致性检查通过！\n');
+    if AddPara.verbose
+        fprintf('✅ [Shi2024] 所有一致性检查通过！\n');
+    end
 end
 
-fprintf('\n=== Shi2024 OCF Algorithm End ===\n\n');
+if AddPara.verbose
+    fprintf('\n=== Shi2024 OCF Algorithm End ===\n\n');
+end
 
 end
 
@@ -188,7 +212,7 @@ for j = 1:N
         end
 
         % 验证可行性（启用队友检查）
-        [isFeasible, ~, cost_data] = validate_feasibility(Value_data, agents, tasks, Value_Params, j, SC_temp, true);
+        [isFeasible, ~, cost_data] = validate_feasibility(Value_data, agents, tasks, Value_Params, j, SC_temp, true, AddPara);
 
         if ~isFeasible
             continue;
@@ -207,8 +231,10 @@ for j = 1:N
     % 加入最佳任务
     if best_task > 0 && best_utility > 0
         SC{best_task}(j, :) = agents(j).resources';
-        fprintf('  Agent %d joins Task %d (utility: %.2f, energy: %.2f)\n', ...
-            j, best_task, best_utility, best_cost_data.requiredEnergy);
+        if AddPara.verbose
+            fprintf('  Agent %d joins Task %d (utility: %.2f, energy: %.2f)\n', ...
+                j, best_task, best_utility, best_cost_data.requiredEnergy);
+        end
     end
 end
 
@@ -226,7 +252,9 @@ while iteration < max_iterations
     iteration = iteration + 1;
     SC_prev_iter = SC;
 
-    fprintf('  Iteration %d:\n', iteration);
+    if AddPara.verbose
+        fprintf('  Iteration %d:\n', iteration);
+    end
 
     % Phase 1: Quit/Transfer 负效用任务
     for j = 1:N
@@ -248,12 +276,16 @@ while iteration < max_iterations
                 [best_transfer_task, best_transfer_utility] = find_best_transfer(j, task_p, SC, agents, tasks, Value_Params, Value_data, AddPara, tol);
 
                 if best_transfer_task > 0 && best_transfer_utility > current_total_utility
-                    fprintf('    Agent %d: Transfer Task %d->%d (%.2f->%.2f)\n', j, task_p, best_transfer_task, current_total_utility, best_transfer_utility);
+                    if AddPara.verbose
+                        fprintf('    Agent %d: Transfer Task %d->%d (%.2f->%.2f)\n', j, task_p, best_transfer_task, current_total_utility, best_transfer_utility);
+                    end
                     SC{task_p}(j, :) = 0;
                     SC{best_transfer_task}(j, :) = agents(j).resources';
                     current_total_utility = best_transfer_utility;
                 else
-                    fprintf('    Agent %d: Quit Task %d (%.2f->%.2f)\n', j, task_p, current_total_utility, utility_after_quit);
+                    if AddPara.verbose
+                        fprintf('    Agent %d: Quit Task %d (%.2f->%.2f)\n', j, task_p, current_total_utility, utility_after_quit);
+                    end
                     SC{task_p}(j, :) = 0;
                     current_total_utility = utility_after_quit;
                 end
@@ -288,7 +320,7 @@ while iteration < max_iterations
             end
 
             % 验证可行性（启用队友检查）
-            [isFeasible, ~, cost_data] = validate_feasibility(Value_data, agents, tasks, Value_Params, j, SC_join, true);
+            [isFeasible, ~, cost_data] = validate_feasibility(Value_data, agents, tasks, Value_Params, j, SC_join, true, AddPara);
 
             if ~isFeasible
                 continue;
@@ -297,8 +329,10 @@ while iteration < max_iterations
             utility_after_join = UtilityEvaluator.calc_agent_total_utility(SC_join, agents, tasks, Value_Params, Value_data(j), AddPara);
 
             if utility_after_join > current_total_utility
-                fprintf('    Agent %d: Join Task %d (%.2f->%.2f, energy: %.2f)\n', ...
-                    j, i, current_total_utility, utility_after_join, cost_data.requiredEnergy);
+                if AddPara.verbose
+                    fprintf('    Agent %d: Join Task %d (%.2f->%.2f, energy: %.2f)\n', ...
+                        j, i, current_total_utility, utility_after_join, cost_data.requiredEnergy);
+                end
                 SC{i}(j, :) = agents(j).resources';
                 current_total_utility = utility_after_join;
             end
@@ -307,7 +341,9 @@ while iteration < max_iterations
 
     % 检查收敛
     if isequal_SC(SC, SC_prev_iter)
-        fprintf('  Converged after %d iterations.\n', iteration);
+        if AddPara.verbose
+            fprintf('  Converged after %d iterations.\n', iteration);
+        end
         break;
     end
 end
@@ -343,7 +379,7 @@ for i = 1:M
     end
 
     % 验证可行性（启用队友检查）
-    [isFeasible, ~, ~] = validate_feasibility(Value_data, agents, tasks, Value_Params, agent_id, SC_temp, true);
+    [isFeasible, ~, ~] = validate_feasibility(Value_data, agents, tasks, Value_Params, agent_id, SC_temp, true, AddPara);
 
     if ~isFeasible
         continue;
@@ -432,8 +468,10 @@ history_data = ResultProcessor.record_history_data(history_data, round, Value_da
     SC, final_coalitionstru, total_utility, total_global_cost, ...
     total_completed_value, task_completion_degrees, summatrix);
 
-fprintf('  Round %d: Utility=%.2f, Cost=%.2f, Completed=%.2f\n', ...
-    round, total_utility, total_global_cost, total_completed_value);
+if AddPara.verbose
+    fprintf('  Round %d: Utility=%.2f, Cost=%.2f, Completed=%.2f\n', ...
+        round, total_utility, total_global_cost, total_completed_value);
+end
 
 end
 

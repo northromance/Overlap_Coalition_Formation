@@ -140,7 +140,9 @@ for counter=1:Value_Params.num_rounds
     % 计算当前轮的初始温度
     Value_Params.Temperature = max(T_base, T_0 * beta^(counter-1));
 
-    fprintf('  [SA] Round %d: 初始温度 = %.2f\n', counter, Value_Params.Temperature);
+    if AddPara.verbose
+        fprintf('  [SA] Round %d: 初始温度 = %.2f\n', counter, Value_Params.Temperature);
+    end
 
     % 初始化本轮最优解记录
     best_SC = Value_data(1).SC;
@@ -151,7 +153,9 @@ for counter=1:Value_Params.num_rounds
     % 改进：不再从全0（Void）开始，而是根据概率生成一个初始联盟结构
     % 这给后续优化提供了一个较好的起点
     if counter == 1
-        fprintf('  [SA] 第1轮：根据概率生成初始联盟结构...\n');
+        if AddPara.verbose
+            fprintf('  [SA] 第1轮：根据概率生成初始联盟结构...\n');
+        end
 
         % 获取全局SC（所有智能体共享）
         SC_global = Value_data(1).SC;
@@ -213,7 +217,9 @@ for counter=1:Value_Params.num_rounds
         [~, ~, initial_utility, ~] = UtilityEvaluator.evaluate_coalition_metrics(SC_global, agents, tasks, Value_Params, eps_val);
         best_utility = initial_utility;
 
-        fprintf('  [SA] 第1轮：初始联盟结构生成完成，初始效用（期望）= %.2f\n', initial_utility);
+        if AddPara.verbose
+            fprintf('  [SA] 第1轮：初始联盟结构生成完成，初始效用（期望）= %.2f\n', initial_utility);
+        end
     end
 
     %% ==================== 3. SA 内循环：联盟形成 ====================
@@ -261,16 +267,22 @@ for counter=1:Value_Params.num_rounds
         % 条件2: 温度降到了最低阈值 Tmin（温度很低，自然结束）
         % 条件3: 达到最大迭代次数 K_max_inner_SA（防止无限循环）
         if k_stable >= Value_Params.K_len_SA
-            fprintf('  [SA] Round %d: 收敛（连续%d次无变化）, 迭代次数=%d, 温度=%.4f\n', ...
-                    counter, k_stable, k_iter, Value_Params.Temperature);
+            if AddPara.verbose
+                fprintf('  [SA] Round %d: 收敛（连续%d次无变化）, 迭代次数=%d, 温度=%.4f\n', ...
+                        counter, k_stable, k_iter, Value_Params.Temperature);
+            end
             doneflag = 1;  % 退出 SA 循环
         elseif Value_Params.Temperature < Value_Params.Tmin
-            fprintf('  [SA] Round %d: 收敛（温度过低 T=%.4f）, 迭代次数=%d\n', ...
-                    counter, Value_Params.Temperature, k_iter);
+            if AddPara.verbose
+                fprintf('  [SA] Round %d: 收敛（温度过低 T=%.4f）, 迭代次数=%d\n', ...
+                        counter, Value_Params.Temperature, k_iter);
+            end
             doneflag = 1;
         elseif k_iter >= Value_Params.K_max_inner_SA
-            fprintf('  [SA] Round %d: 达到最大迭代次数（%d次）, 温度=%.4f\n', ...
-                    counter, k_iter, Value_Params.Temperature);
+            if AddPara.verbose
+                fprintf('  [SA] Round %d: 达到最大迭代次数（%d次）, 温度=%.4f\n', ...
+                        counter, k_iter, Value_Params.Temperature);
+            end
             doneflag = 1;
         end
 
@@ -309,13 +321,17 @@ for counter=1:Value_Params.num_rounds
     % 内循环结束后，恢复到本轮最佳状态
     % 这保证每轮输出的都是本轮内找到的最优解
     if ~isequal(final_SC, best_SC)
-        fprintf('  [SA] Round %d: 恢复本轮最优解（效用从 %.2f 恢复到 %.2f）\n', ...
-                counter, current_utility, best_utility);
+        if AddPara.verbose
+            fprintf('  [SA] Round %d: 恢复本轮最优解（效用从 %.2f 恢复到 %.2f）\n', ...
+                    counter, current_utility, best_utility);
+        end
         final_SC = best_SC;
         final_coalitionstru = best_coalitionstru;
     else
-        fprintf('  [SA] Round %d: 最后迭代即为最优（效用 = %.2f）\n', ...
-                counter, best_utility);
+        if AddPara.verbose
+            fprintf('  [SA] Round %d: 最后迭代即为最优（效用 = %.2f）\n', ...
+                    counter, best_utility);
+        end
     end
 
     % 同步所有智能体到最优状态
@@ -335,7 +351,6 @@ for counter=1:Value_Params.num_rounds
     %% ==================== 4. 结果记录与评估 ====================
     % 输出:
     %   coalition_utility     - (Mx1 向量) 每个任务(联盟)的净效用 (总收益 - 总成本)
-    %                           注意：此处的成本计算基于智能体的全路径成本。
     %   Rcost                 - (MxN 矩阵) Rcost(j,i) 表示智能体 i 在参与任务 j 时产生的路径总成本
     %   total_completed_value - (标量) 所有任务的加权完成价值总和 sum(Value * D_C)
     %   task_completion_degrees - (Mx1 向量) 每个任务的完成度 D_C (0.0 ~ 1.0)
@@ -355,11 +370,15 @@ for counter=1:Value_Params.num_rounds
         global_best_Value_data = Value_data;
         global_best_round = counter;
 
-        fprintf('  [SA] Round %d: 更新全局最优解（效用 = %.2f）✓\n', counter, global_best_utility);
+        if AddPara.verbose
+            fprintf('  [SA] Round %d: 更新全局最优解（效用 = %.2f）✓\n', counter, global_best_utility);
+        end
     else
         % 当前轮效用低于全局最优，退回全局最优解
-        fprintf('  [SA] Round %d: 当前效用 = %.2f < 全局最优 = %.2f（第 %d 轮），退回全局最优解\n', ...
-                counter, current_round_utility, global_best_utility, global_best_round);
+        if AddPara.verbose
+            fprintf('  [SA] Round %d: 当前效用 = %.2f < 全局最优 = %.2f（第 %d 轮），退回全局最优解\n', ...
+                    counter, current_round_utility, global_best_utility, global_best_round);
+        end
 
         % 恢复全局最优的联盟结构
         final_SC = global_best_SC;
@@ -406,11 +425,13 @@ end
 % 这确保输出的是所有轮次中效用最高的解，而不是最后一轮的解
 
 if global_best_round > 0
-    fprintf('\n========================================================================\n');
-    fprintf('  [SA] 所有轮次完成，恢复全局最优解\n');
-    fprintf('  - 最优轮次: Round %d\n', global_best_round);
-    fprintf('  - 最优效用: %.2f\n', global_best_utility);
-    fprintf('========================================================================\n\n');
+    if AddPara.verbose
+        fprintf('\n========================================================================\n');
+        fprintf('  [SA] 所有轮次完成，恢复全局最优解\n');
+        fprintf('  - 最优轮次: Round %d\n', global_best_round);
+        fprintf('  - 最优效用: %.2f\n', global_best_utility);
+        fprintf('========================================================================\n\n');
+    end
 
     % 恢复全局最优的联盟结构
     final_SC = global_best_SC;
@@ -427,52 +448,29 @@ if global_best_round > 0
     % 重新计算全局最优状态的任务调度（确保路径是最新的）
     Value_data = update_task_schedule(Value_data, agents, tasks, Value_Params);
 
-    fprintf('  [SA] 全局最优解恢复完成\n\n');
-else
-    fprintf('\n⚠️ [SA] 警告：未找到有效的全局最优解\n\n');
-end
-
-%% ==================== 5. 恢复全局最优解 ====================
-% 所有轮次结束后，恢复全局最优解
-% 这确保输出的是所有轮次中效用最高的解，而不是最后一轮的解
-
-if global_best_round > 0
-    fprintf('\n========================================================================\n');
-    fprintf('  [SA] 所有轮次完成，恢复全局最优解\n');
-    fprintf('  - 最优轮次: Round %d\n', global_best_round);
-    fprintf('  - 最优效用: %.2f\n', global_best_utility);
-    fprintf('========================================================================\n\n');
-
-    % 恢复全局最优的联盟结构
-    final_SC = global_best_SC;
-    final_coalitionstru = global_best_coalitionstru;
-    Value_data = global_best_Value_data;
-
-    % 同步所有智能体到全局最优状态
-    for ii = 1:Value_Params.N
-        Value_data(ii).coalitionstru = global_best_coalitionstru;
-        Value_data(ii).SC = global_best_SC;
-        Value_data(ii).resources_matrix = OCFUtils.get_agent_resource_matrix(global_best_SC, ii, Value_Params);
+    if AddPara.verbose
+        fprintf('  [SA] 全局最优解恢复完成\n\n');
     end
-
-    % 重新计算全局最优状态的任务调度（确保路径是最新的）
-    Value_data = update_task_schedule(Value_data, agents, tasks, Value_Params);
-
-    fprintf('  [SA] 全局最优解恢复完成\n\n');
 else
-    fprintf('\n⚠️ [SA] 警告：未找到有效的全局最优解\n\n');
+    if AddPara.verbose
+        fprintf('\n⚠️ [SA] 警告：未找到有效的全局最优解\n\n');
+    end
 end
 
 %% 最终一致性检查（使用统一的检查函数）
-fprintf('\n[SA_Value] 执行最终一致性检查...\n');
-[is_valid, error_log] = check_coalition_consistency(Value_data, agents, tasks, Value_Params, 'OCF');
+if AddPara.verbose
+    fprintf('\n[SA_Value] 执行最终一致性检查...\n');
+end
+[is_valid, error_log] = check_coalition_consistency(Value_data, agents, tasks, Value_Params, 'OCF', AddPara.verbose);
 
 if ~is_valid
     warning('[SA_Value] 联盟一致性检查发现 %d 处问题，请查看上方日志！', length(error_log));
     % 将错误日志保存到历史数据中以便后续分析
     history_data.consistency_errors = error_log;
 else
-    fprintf('✅ [SA_Value] 所有一致性检查通过！\n');
+    if AddPara.verbose
+        fprintf('✅ [SA_Value] 所有一致性检查通过！\n');
+    end
 end
 
 

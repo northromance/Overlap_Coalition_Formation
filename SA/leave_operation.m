@@ -42,13 +42,13 @@ function [Value_data, incremental_leave] = leave_operation(Value_data, agents, t
             error('leave_operation:AgentNotFound', 'agentID=%d not found in agents.', agentID);
         end
     end
-    
+
     % 调试开关
     verbose = true;
-    if isfield(Value_Params, 'verbose')
-        verbose = logical(Value_Params.verbose);
+    if isfield(AddPara, 'verbose')
+        verbose = logical(AddPara.verbose);
     end
-    
+
     % 备份原始资源矩阵 (用于最后的全局回滚，以防万一)
     original_resources_matrix = Value_data.resources_matrix;
     

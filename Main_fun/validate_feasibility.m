@@ -1,4 +1,4 @@
-function [isFeasible, info, cost_data] = validate_feasibility(Value_data, agents, tasks, Value_Params, agentID, SC, check_teammates)
+function [isFeasible, info, cost_data] = validate_feasibility(Value_data, agents, tasks, Value_Params, agentID, SC, check_teammates, AddPara)
 % VALIDATE_FEASIBILITY 可行性检测：非负分配、携带量、能量可达性、队友检查
 %
 % 输入:
@@ -8,7 +8,8 @@ function [isFeasible, info, cost_data] = validate_feasibility(Value_data, agents
 %   Value_Params    - 全局参数
 %   agentID         - 智能体ID
 %   SC              - 新的联盟结构
-%   check_teammates - (可选) 是否检查队友可行性，默认true
+%   check_teammates - 是否检查队友可行性（默认false）
+%   AddPara         - 附加参数（包含verbose开关）
 %
 % 输出:
 %   isFeasible   - 是否可行
@@ -22,6 +23,9 @@ function [isFeasible, info, cost_data] = validate_feasibility(Value_data, agents
 % 默认参数：启用队友检查
 if nargin < 7
     check_teammates = true;
+end
+if nargin < 8
+    AddPara = struct('verbose', true);
 end
 
 R_agent_Q = OCFUtils.get_agent_resource_matrix(SC, agentID, Value_Params);
@@ -110,7 +114,7 @@ cost_data = struct( ...
 % 检查当前决策是否会导致队友变得不可行
 if check_teammates
     [all_teammates_feasible, affected_agents] = check_teammates_feasibility(...
-        agentID, SC, agents, tasks, Value_Params, tol);
+        agentID, SC, agents, tasks, Value_Params, tol,AddPara);
 
     if ~all_teammates_feasible
         isFeasible = false;
@@ -125,7 +129,7 @@ end
 
 %% ==================== 内部函数：队友检查 ====================
 function [all_feasible, affected_agents] = check_teammates_feasibility(...
-    agentID, SC, agents, tasks, Value_Params, tol)
+    agentID, SC, agents, tasks, Value_Params, tol,AddPara)
 % CHECK_TEAMMATES_FEASIBILITY 检查队友是否仍然可行
 %
 % 功能：
@@ -196,13 +200,15 @@ for idx = 1:length(teammates)
         affected_agents(end+1) = teammate_id;
 
         % 调试信息
-        if isfield(cost_data_teammate, 'requiredEnergy')
-            fprintf('      ⚠️  队友 Agent %d 会变得不可行: %s (能量: %.2f/%.2f)\n', ...
-                teammate_id, info_teammate.reason, ...
-                cost_data_teammate.requiredEnergy, agents(teammate_id).Emax);
-        else
-            fprintf('      ⚠️  队友 Agent %d 会变得不可行: %s\n', ...
-                teammate_id, info_teammate.reason);
+        if AddPara.verbose
+            if isfield(cost_data_teammate, 'requiredEnergy')
+                fprintf('      ⚠️  队友 Agent %d 会变得不可行: %s (能量: %.2f/%.2f)\n', ...
+                    teammate_id, info_teammate.reason, ...
+                    cost_data_teammate.requiredEnergy, agents(teammate_id).Emax);
+            else
+                fprintf('      ⚠️  队友 Agent %d 会变得不可行: %s\n', ...
+                    teammate_id, info_teammate.reason);
+            end
         end
     end
 end

@@ -233,15 +233,19 @@ end % End of For (Rounds)
 Value_data = update_task_schedule(Value_data, agents, tasks, Value_Params);
 
 %% ==================== 4. 最终一致性检查 ====================
-fprintf('\n[Huo2025] 执行最终一致性检查...\n');
-[is_valid, error_log] = check_coalition_consistency(Value_data, agents, tasks, Value_Params, 'Non-OCF');
+if AddPara.verbose
+    fprintf('\n[Huo2025] 执行最终一致性检查...\n');
+end
+[is_valid, error_log] = check_coalition_consistency(Value_data, agents, tasks, Value_Params, 'Non-OCF', AddPara.verbose);
 
 if ~is_valid
     warning('[Huo2025] 联盟一致性检查发现 %d 处问题，请查看上方日志！', length(error_log));
     % 将错误日志保存到历史数据中以便后续分析
     history_data.consistency_errors = error_log;
 else
-    fprintf('✅ [Huo2025] 所有一致性检查通过！\n');
+    if AddPara.verbose
+        fprintf('✅ [Huo2025] 所有一致性检查通过！\n');
+    end
 end
 
 end
