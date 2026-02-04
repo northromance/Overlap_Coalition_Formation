@@ -35,7 +35,7 @@ num_task_types = length(task_values);
 % 算法开关：选择要运行的算法 ID
 % 1=SA_Value, 2=Greedy, 3=Huo2025, 4=Qi2023, 5=Shi2024, 6=PSO
 % 7-12=SA改进算法（TabuEnhanced, AdaptiveAlpha, ImprovedTemp, MultiStart, HybridGreedy, EnhancedNeighbor）
-algorithms_to_run_ids = [1,4,8];  % 默认运行 SA_Value, Huo2025, Qi2023
+algorithms_to_run_ids = [1, 4];  % 快速测试: SA_Value, Qi2023
 
 %% Display/save options（显示与保存选项）
 save_results = true;    % 是否保存结果到 MAT 文件
@@ -83,11 +83,11 @@ SA_T_init_construction = 0.5;      % SA 初始构造阶段温度（低温近贪�
 AddPara.control = 1;
 AddPara.resource_confidence = 0.95;  % 资源分位/置信度（风险规避）
 AddPara.enable_belief_update = true; % Qi2023信念更新开关：true=启用信念更新，false=仅使用初始信念
-AddPara.verbose = true;              % 打印调试开关：true=开启打印，false=关闭打印
+AddPara.verbose = false;              % 打印调试开关：true=开启打印，false=关闭打印
 
 % Observation/game params（观测/博弈参数）
 obs_times = 50;              % 观测次数（贝叶斯更新等）
-num_rounds = 30;            % 仿真回合数
+num_rounds = 3;              % 快速测试: 只运行3轮
 
 % Qi2023 utility params（Qi2023 专用参数）
 Qi_beta_m = 1.0;   % 边际效用权重

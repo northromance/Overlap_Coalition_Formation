@@ -1,51 +1,51 @@
 classdef ResultProcessor
-    % ResultProcessor ÓÃÓÚ´¦Àí¡¢·ÖÎöºÍ¶Ô±È²»Í¬Ëã·¨µÄÔËĞĞ½á¹û
-    % °üº¬ÌáÈ¡¹Ø¼üĞÔÄÜÖ¸±ê¡¢Éú³ÉÍ³¼Æ±¨±íµÈ¾²Ì¬·½·¨¡£
+    % ResultProcessor ï¿½ï¿½ï¿½Ú´ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Í¶Ô±È²ï¿½Í¬ï¿½ã·¨ï¿½ï¿½ï¿½ï¿½ï¿½Ğ½ï¿½ï¿½
+    % ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½È¡ï¿½Ø¼ï¿½ï¿½ï¿½ï¿½ï¿½Ö¸ï¿½ê¡¢ï¿½ï¿½ï¿½ï¿½Í³ï¿½Æ±ï¿½ï¿½ï¿½ï¿½È¾ï¿½Ì¬ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
     
     methods(Static)
         function comparison_stats = compare_results(results, Value_Params)
-            % COMPARE_RESULTS ¼«¼ò°æ£ºÌáÈ¡¹Ø¼üĞÔÄÜÖ¸±ê
+            % COMPARE_RESULTS ï¿½ï¿½ï¿½ï¿½æ£ºï¿½ï¿½È¡ï¿½Ø¼ï¿½ï¿½ï¿½ï¿½ï¿½Ö¸ï¿½ï¿½
             %
-            % ºËĞÄÂß¼­£º
-            %   1. Ö±½Ó¶ÁÈ¡ history_data ×îºóÒ»ÂÖµÄÊı¾İ¡£
-            %   2. ¼ÆËãÆ½¾ùÍê³ÉÂÊ = ËùÓĞÈÎÎñÍê³É¶ÈÖ®ºÍ / ÈÎÎñ×ÜÊı¡£
-            %   3. ¼ÆËãÁªÃËÊı = ÓĞÖÇÄÜÌå²ÎÓëµÄÈÎÎñÊıÁ¿¡£
+            % ï¿½ï¿½ï¿½ï¿½ï¿½ß¼ï¿½ï¿½ï¿½
+            %   1. Ö±ï¿½Ó¶ï¿½È¡ history_data ï¿½ï¿½ï¿½Ò»ï¿½Öµï¿½ï¿½ï¿½ï¿½İ¡ï¿½
+            %   2. ï¿½ï¿½ï¿½ï¿½Æ½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ = ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½É¶ï¿½Ö®ï¿½ï¿½ / ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
+            %   3. ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ = ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
             %
-            % ÊäÈë£º
-            %   results      - Ëã·¨½á¹û½á¹¹Ìå (°üº¬¶à¸öËã·¨µÄ Value_data, history_data)
-            %   Value_Params - È«¾Ö²ÎÊı (±ØĞë°üº¬ M: ÈÎÎñÊıÁ¿)
+            % ï¿½ï¿½ï¿½ë£º
+            %   results      - ï¿½ã·¨ï¿½ï¿½ï¿½ï¿½á¹¹ï¿½ï¿½ (ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ã·¨ï¿½ï¿½ Value_data, history_data)
+            %   Value_Params - È«ï¿½Ö²ï¿½ï¿½ï¿½ (ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ M: ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½)
             %
-            % Êä³ö£º
-            %   comparison_stats - ¾«¼òºóµÄÍ³¼Æ½á¹û½á¹¹Ìå
+            % ï¿½ï¿½ï¿½ï¿½ï¿½
+            %   comparison_stats - ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Í³ï¿½Æ½ï¿½ï¿½ï¿½á¹¹ï¿½ï¿½
             
-            %% 1. ³õÊ¼»¯
+            %% 1. ï¿½ï¿½Ê¼ï¿½ï¿½
             alg_names = fieldnames(results);
             num_algorithms = length(alg_names);
             comparison_stats = struct();
             
-            %% 2. ±éÀúËã·¨ÌáÈ¡Ö¸±ê
+            %% 2. ï¿½ï¿½ï¿½ï¿½ï¿½ã·¨ï¿½ï¿½È¡Ö¸ï¿½ï¿½
             for i = 1:num_algorithms
                 alg_name = alg_names{i};
                 alg_result = results.(alg_name);
                 num_active_coalitions = 0;
                 
-                % ³õÊ¼»¯µ±Ç°Ëã·¨Í³¼Æ
+                % ï¿½ï¿½Ê¼ï¿½ï¿½ï¿½ï¿½Ç°ï¿½ã·¨Í³ï¿½ï¿½
                 stats = struct();
                 stats.name = alg_result.name;
                 
-                % ¼æÈİĞÔ´¦Àí£º¼ì²éÊÇ·ñ´æÔÚ computation_time ×Ö¶Î
+                % ï¿½ï¿½ï¿½ï¿½ï¿½Ô´ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ç·ï¿½ï¿½ï¿½ï¿½ computation_time ï¿½Ö¶ï¿½
                 if isfield(alg_result, 'computation_time')
                     stats.computation_time = alg_result.computation_time;
                 else
                     stats.computation_time = NaN;
                 end
                 
-                % ´íÎó´¦Àí£ºÈç¹ûËã·¨ÔËĞĞÊ§°Ü£¬¼ÇÂ¼´íÎó²¢Ìø¹ı
+                % ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ã·¨ï¿½ï¿½ï¿½ï¿½Ê§ï¿½Ü£ï¿½ï¿½ï¿½Â¼ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
                 if isfield(alg_result, 'error')
                     stats.has_error = true;
                     stats.error_message = alg_result.error.message;
                     
-                    % ÉèÖÃÄ¬ÈÏ¿ÕÖµ·ÀÖ¹ºóĞø±¨´í
+                    % ï¿½ï¿½ï¿½ï¿½Ä¬ï¿½Ï¿ï¿½Öµï¿½ï¿½Ö¹ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
                     stats.total_utility = NaN;
                     stats.total_cost = NaN;
                     stats.total_completion_score = NaN;
@@ -57,46 +57,46 @@ classdef ResultProcessor
                 end
                 stats.has_error = false;
                 
-                % --- ¶¨Î»Êı¾İÔ´£º×îºóÒ»ÂÖÀúÊ·¼ÇÂ¼ ---
-                % È·±£ history_data ºÍ rounds ´æÔÚ
+                % --- ï¿½ï¿½Î»ï¿½ï¿½ï¿½ï¿½Ô´ï¿½ï¿½ï¿½ï¿½ï¿½Ò»ï¿½ï¿½ï¿½ï¿½Ê·ï¿½ï¿½Â¼ ---
+                % È·ï¿½ï¿½ history_data ï¿½ï¿½ rounds ï¿½ï¿½ï¿½ï¿½
                 if isfield(alg_result, 'history_data') && isfield(alg_result.history_data, 'rounds') && ~isempty(alg_result.history_data.rounds)
                     last_round = alg_result.history_data.rounds(end);
                 else
-                    warning('ResultProcessor:NoHistory', 'Ëã·¨ %s È±ÉÙÀúÊ·¼ÇÂ¼Êı¾İ', alg_name);
+                    warning('ResultProcessor:NoHistory', 'ï¿½ã·¨ %s È±ï¿½ï¿½ï¿½ï¿½Ê·ï¿½ï¿½Â¼ï¿½ï¿½ï¿½ï¿½', alg_name);
                     continue;
                 end
                 
-                %% 3. »ù´¡±êÁ¿Ö¸±ê (Utility, Cost, Value)
-                % [×ÜĞ§ÓÃ] È«¾Ö¾»ÊÕÒæ
+                %% 3. ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ö¸ï¿½ï¿½ (Utility, Cost, Value)
+                % [ï¿½ï¿½Ğ§ï¿½ï¿½] È«ï¿½Ö¾ï¿½ï¿½ï¿½ï¿½ï¿½
                 stats.total_utility = last_round.coalition_utility;
                 
-                % [×Ü³É±¾] È«¾ÖÏûºÄ
+                % [ï¿½Ü³É±ï¿½] È«ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
                 stats.total_cost = last_round.total_global_cost;
                 
-                % [×ÜÍê³É¼ÛÖµ] Sum(Value * Degree)
+                % [ï¿½ï¿½ï¿½ï¿½É¼ï¿½Öµ] Sum(Value * Degree)
                 stats.total_completion_score = last_round.total_completed_value;
                 
-                %% 4. ÈÎÎñÍê³ÉÂÊ (Average Completion Rate)
-                % Âß¼­£º¼ÆËãËùÓĞÈÎÎñÍê³É¶ÈµÄÆ½¾ùÖµ (Sum / M)
-                % task_completion_degrees ÊÇ Mx1 ÏòÁ¿£¬°üº¬0Öµ
+                %% 4. ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ (Average Completion Rate)
+                % ï¿½ß¼ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½É¶Èµï¿½Æ½ï¿½ï¿½Öµ (Sum / M)
+                % task_completion_degrees ï¿½ï¿½ Mx1 ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½0Öµ
                 degrees = last_round.task_completion_degrees;
                 
-                stats.task_completion_degrees = degrees; % ±£ÁôÔ­Ê¼ÏòÁ¿
-                stats.avg_task_completion = mean(degrees); % Æ½¾ùÖµ (0~1)
+                stats.task_completion_degrees = degrees; % ï¿½ï¿½ï¿½ï¿½Ô­Ê¼ï¿½ï¿½ï¿½ï¿½
+                stats.avg_task_completion = mean(degrees); % Æ½ï¿½ï¿½Öµ (0~1)
                 
-                %% 5. ÁªÃËÊıÁ¿ (Number of Coalitions Formed)
-                % Âß¼­£ºÍ³¼ÆÓĞ¶àÉÙ¸öÈÎÎñ±»Ö´ĞĞÁË (¼´ÖÁÉÙÓĞÒ»¸öÖÇÄÜÌå²ÎÓë)
-                % coalitionstru ÊÇ MxN ¾ØÕó
-                % ±éÀúÇ° M ¸öÈÎÎñ (·ÀÖ¹ SC ³¤¶È³¬¹ı M)
+                %% 5. ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ (Number of Coalitions Formed)
+                % ï¿½ß¼ï¿½ï¿½ï¿½Í³ï¿½ï¿½ï¿½Ğ¶ï¿½ï¿½Ù¸ï¿½ï¿½ï¿½ï¿½ï¿½Ö´ï¿½ï¿½ï¿½ï¿½ (ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ò»ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½)
+                % coalitionstru ï¿½ï¿½ MxN ï¿½ï¿½ï¿½ï¿½
+                % ï¿½ï¿½ï¿½ï¿½Ç° M ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ (ï¿½ï¿½Ö¹ SC ï¿½ï¿½ï¿½È³ï¿½ï¿½ï¿½ M)
                 SC_global = last_round.SC;
                 check_count = min(Value_Params.M, length(SC_global));
                 
                 for j = 1:check_count
                     SC_task = SC_global{j};
                     
-                    % ÅĞ¶ÏÌõ¼ş£º
-                    % 1. ¾ØÕó²»Îª¿Õ
-                    % 2. ¾ØÕóÔªËØÖ®ºÍ > 1e-6 (±íÊ¾È·ÊµÓĞ×ÊÔ´Í¶Èë£¬ºöÂÔ¸¡µãÎó²î)
+                    % ï¿½Ğ¶ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
+                    % 1. ï¿½ï¿½ï¿½ï¿½Îªï¿½ï¿½
+                    % 2. ï¿½ï¿½ï¿½ï¿½Ôªï¿½ï¿½Ö®ï¿½ï¿½ > 1e-6 (ï¿½ï¿½Ê¾È·Êµï¿½ï¿½ï¿½ï¿½Ô´Í¶ï¿½ë£¬ï¿½ï¿½ï¿½Ô¸ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½)
                     if ~isempty(SC_task) && sum(SC_task(:)) > 1e-6
                         num_active_coalitions = num_active_coalitions + 1;
                     end
@@ -104,7 +104,7 @@ classdef ResultProcessor
                 
                 stats.num_coalitions = num_active_coalitions;
                 
-                %% 6. ´æÈë×Ü±í
+                %% 6. ï¿½ï¿½ï¿½ï¿½ï¿½Ü±ï¿½
                 comparison_stats.(alg_name) = stats;
             end
         end
@@ -115,53 +115,112 @@ classdef ResultProcessor
                 coalition_utility, total_global_cost, ...
                 total_completed_value, task_completion_degrees, ...
                 summatrix)
-            % RECORD_HISTORY_DATA ¼ÇÂ¼Ã¿Ò»ÂÖËã·¨µÄÏêÏ¸×´Ì¬
+            % RECORD_HISTORY_DATA ï¿½ï¿½Â¼Ã¿Ò»ï¿½ï¿½ï¿½ã·¨ï¿½ï¿½ï¿½ï¿½Ï¸×´Ì¬
             %
-            % ÊäÈë:
-            %   history_data            - ÀúÊ·½á¹¹Ìå
-            %   round_idx               - µ±Ç°ÂÖÊı (¶ÔÓ¦Ö÷³ÌĞòµÄ counter)
-            %   Value_data              - ÖÇÄÜÌå×´Ì¬ (ÓÃÓÚ¼ÇÂ¼ĞÅÄî)
-            %   Value_Params            - È«¾Ö²ÎÊı
-            %   final_SC                - ×îÖÕ×ÊÔ´·ÖÅä (Cell)
-            %   final_coalitionstru     - ×îÖÕ³ÉÔ±¾ØÕó
-            %   coalition_utility       - È«¾Ö¾»Ğ§ÓÃ (±êÁ¿)
-            %   total_global_cost       - È«¾Ö×Ü³É±¾ (±êÁ¿£¬ËùÓĞÖÇÄÜÌåÏûºÄÖ®ºÍ)
-            %   total_completed_value   - ÈÎÎñ×ÜÍê³É¼ÛÖµ (±êÁ¿)
-            %   task_completion_degrees - ÈÎÎñÍê³É¶È (Mx1)
-            %   summatrix               - È«¾Ö¹Û²â¾ØÕó
+            % ï¿½ï¿½ï¿½ï¿½:
+            %   history_data            - ï¿½ï¿½Ê·ï¿½á¹¹ï¿½ï¿½
+            %   round_idx               - ï¿½ï¿½Ç°ï¿½ï¿½ï¿½ï¿½ (ï¿½ï¿½Ó¦ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ counter)
+            %   Value_data              - ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½×´Ì¬ (ï¿½ï¿½ï¿½Ú¼ï¿½Â¼ï¿½ï¿½ï¿½ï¿½)
+            %   Value_Params            - È«ï¿½Ö²ï¿½ï¿½ï¿½
+            %   final_SC                - ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ô´ï¿½ï¿½ï¿½ï¿½ (Cell)
+            %   final_coalitionstru     - ï¿½ï¿½ï¿½Õ³ï¿½Ô±ï¿½ï¿½ï¿½ï¿½
+            %   coalition_utility       - È«ï¿½Ö¾ï¿½Ğ§ï¿½ï¿½ (ï¿½ï¿½ï¿½ï¿½)
+            %   total_global_cost       - È«ï¿½ï¿½ï¿½Ü³É±ï¿½ (ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ö®ï¿½ï¿½)
+            %   total_completed_value   - ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½É¼ï¿½Öµ (ï¿½ï¿½ï¿½ï¿½)
+            %   task_completion_degrees - ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½É¶ï¿½ (Mx1)
+            %   summatrix               - È«ï¿½Ö¹Û²ï¿½ï¿½ï¿½ï¿½
             %
-            % Êä³ö:
-            %   history_data            - ¸üĞÂºóµÄÀúÊ·½á¹¹Ìå
+            % ï¿½ï¿½ï¿½:
+            %   history_data            - ï¿½ï¿½ï¿½Âºï¿½ï¿½ï¿½ï¿½Ê·ï¿½á¹¹ï¿½ï¿½
             
-            %% 1. »ù´¡ĞÅÏ¢
+            %% 1. ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ï¢
             history_data.rounds(round_idx).round_num = round_idx;
             
-            %% 2. ½á¹¹¿ìÕÕ
+            %% 2. ï¿½á¹¹ï¿½ï¿½ï¿½ï¿½
             history_data.rounds(round_idx).coalitionstru = final_coalitionstru;
             history_data.rounds(round_idx).SC = final_SC;
             
-            %% 3. ĞÔÄÜÖ¸±ê (±âÆ½»¯´æ´¢)
-            % ¼ÇÂ¼È«¾Ö¾»Ğ§ÓÃ (±êÁ¿)
+            %% 3. ï¿½ï¿½ï¿½ï¿½Ö¸ï¿½ï¿½ (ï¿½ï¿½Æ½ï¿½ï¿½ï¿½æ´¢)
+            % ï¿½ï¿½Â¼È«ï¿½Ö¾ï¿½Ğ§ï¿½ï¿½ (ï¿½ï¿½ï¿½ï¿½)
             history_data.rounds(round_idx).coalition_utility = coalition_utility;
             
-            % ¼ÇÂ¼È«¾Ö×Ü³É±¾ (±êÁ¿)
+            % ï¿½ï¿½Â¼È«ï¿½ï¿½ï¿½Ü³É±ï¿½ (ï¿½ï¿½ï¿½ï¿½)
             history_data.rounds(round_idx).total_global_cost = total_global_cost;
             
-            % ¼ÇÂ¼Íê³É¼ÛÖµÓëÍê³É¶È
+            % ï¿½ï¿½Â¼ï¿½ï¿½É¼ï¿½Öµï¿½ï¿½ï¿½ï¿½É¶ï¿½
             history_data.rounds(round_idx).total_completed_value = total_completed_value;
             history_data.rounds(round_idx).task_completion_degrees = task_completion_degrees;
             
-            %% 4. ĞÅÄîÓë¹Û²â
+            %% 4. ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Û²ï¿½
             history_data.rounds(round_idx).summatrix = summatrix;
             
-            % ¼ÇÂ¼ĞÅÄî¿ìÕÕ (N x M x TaskTypes)
-            % ÌáÈ¡Ç° M ¸öÈÎÎñµÄĞÅÄî
+            % ï¿½ï¿½Â¼ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ (N x M x TaskTypes)
+            % ï¿½ï¿½È¡Ç° M ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
             belief_snapshot = zeros(Value_Params.N, Value_Params.M, Value_Params.task_type);
             for i = 1:Value_Params.N
                 belief_snapshot(i, :, :) = Value_data(i).initbelief(1:Value_Params.M, :);
             end
             history_data.rounds(round_idx).beliefs = belief_snapshot;
-            
+
+        end
+
+        function inner_loop_history = record_inner_loop_iteration(inner_loop_history, iteration, temperature, current_utility, best_utility, SC_current, Value_Params)
+            % RECORD_INNER_LOOP_ITERATION è®°å½•å†…å¾ªç¯æ¯æ¬¡è¿­ä»£çš„è¯¦ç»†æ•°æ®
+            %
+            % åŠŸèƒ½ï¼š
+            %   è®°å½•SA/Qiç­‰ç®—æ³•åœ¨å†…å¾ªç¯ä¸­æ¯æ¬¡è¿­ä»£çš„çŠ¶æ€ï¼Œç”¨äºåç»­å¯è§†åŒ–åˆ†æ
+            %
+            % è¾“å…¥ï¼š
+            %   inner_loop_history  - å†…å¾ªç¯å†å²ç»“æ„ä½“
+            %   iteration           - å½“å‰è¿­ä»£æ¬¡æ•°ï¼ˆä»0å¼€å§‹ï¼‰
+            %   temperature         - å½“å‰æ¸©åº¦ï¼ˆSAç®—æ³•ï¼‰æˆ–Gammaç³»æ•°ï¼ˆQiç®—æ³•ï¼‰
+            %   current_utility     - å½“å‰è§£çš„æ•ˆç”¨
+            %   best_utility        - æœ¬è½®æœ€ä¼˜æ•ˆç”¨
+            %   SC_current          - å½“å‰è”ç›Ÿç»“æ„ï¼ˆCellæ•°ç»„ï¼‰
+            %   Value_Params        - å…¨å±€å‚æ•°
+            %
+            % è¾“å‡ºï¼š
+            %   inner_loop_history  - æ›´æ–°åçš„å†…å¾ªç¯å†å²ç»“æ„ä½“
+            %
+            % ç¤ºä¾‹ï¼š
+            %   inner_loop_history = ResultProcessor.record_inner_loop_iteration(...
+            %       inner_loop_history, k_iter, Temperature, current_utility, best_utility, SC, Value_Params);
+
+            %% è®°å½•åŸºæœ¬æ•°æ®
+            inner_loop_history.iteration(end+1) = iteration;
+            inner_loop_history.temperature(end+1) = temperature;
+            inner_loop_history.current_utility(end+1) = current_utility;
+            inner_loop_history.best_utility(end+1) = best_utility;
+
+            %% è®¡ç®—å¹¶è®°å½•è”ç›Ÿæ•°é‡
+            num_coalitions = 0;
+            for m = 1:Value_Params.M
+                if any(SC_current{m}(:) > 1e-9)
+                    num_coalitions = num_coalitions + 1;
+                end
+            end
+            inner_loop_history.num_coalitions(end+1) = num_coalitions;
+
+        end
+
+        function inner_loop_history = init_inner_loop_history()
+            % INIT_INNER_LOOP_HISTORY åˆå§‹åŒ–å†…å¾ªç¯å†å²è®°å½•ç»“æ„ä½“
+            %
+            % åŠŸèƒ½ï¼š
+            %   åˆ›å»ºä¸€ä¸ªç©ºçš„å†…å¾ªç¯å†å²è®°å½•ç»“æ„ä½“ï¼Œç”¨äºå­˜å‚¨è¿­ä»£è¿‡ç¨‹æ•°æ®
+            %
+            % è¾“å‡ºï¼š
+            %   inner_loop_history - åˆå§‹åŒ–çš„å†…å¾ªç¯å†å²ç»“æ„ä½“
+            %
+            % ç¤ºä¾‹ï¼š
+            %   inner_loop_history = ResultProcessor.init_inner_loop_history();
+
+            inner_loop_history = struct();
+            inner_loop_history.iteration = [];
+            inner_loop_history.temperature = [];
+            inner_loop_history.current_utility = [];
+            inner_loop_history.best_utility = [];
+            inner_loop_history.num_coalitions = [];
         end
     end
 end

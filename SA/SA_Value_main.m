@@ -139,18 +139,21 @@ for counter = 1:Value_Params.num_rounds
     end
     
     %% ==================== 3. SA 内循环 (核心博弈过程) ====================
+    % 初始化内循环历史记录
+    inner_loop_history = ResultProcessor.init_inner_loop_history();
+
     while(doneflag == 0)
-        
+
         % --- 3.1 顺序博弈 (Sequential Game) ---
         % 智能体按照 1 到 N 的顺序依次决策
         for ii = 1:Value_Params.N
             % 核心函数：Overlapping Coalition Formation
             % 内部包含 Join/Leave/Switch 操作及 Metropolis 准则判断
             [Value_data_ii] = Overlap_Coalition_Formation(agents, tasks, Value_data(ii), Value_Params, AddPara);
-            
+
             % 更新当前智能体状态
             Value_data(ii) = Value_data_ii;
-            
+
             % [关键] 信息传递：将最新的 SC 传递给下一个智能体
             % 模拟共享黑板 (Shared Blackboard) 机制
             if ii < Value_Params.N
@@ -158,21 +161,21 @@ for counter = 1:Value_Params.num_rounds
                 Value_data(ii + 1).SC = Value_data_ii.SC;
             end
         end
-        
+
         % --- 3.3 降温 (Cooling) ---
         Value_Params.Temperature = Value_Params.alpha * Value_Params.Temperature;
-        
+
         % 获取本轮迭代结束后的最终状态
         final_SC = Value_data(Value_Params.N).SC;
         final_coalitionstru = Value_data(Value_Params.N).coalitionstru;
-        
+
         % --- 3.4 收敛检测 (Convergence Check) ---
         if isequal(previous_SC, final_SC)
             k_stable = k_stable + 1; % 状态未变，稳定计数器+1
         else
             k_stable = 0;            % 状态改变，重置计数器
         end
-        
+
         % 判断是否退出内循环
         if k_stable >= Value_Params.K_len_SA        % 连续多次未变
             doneflag = 1;
@@ -181,10 +184,10 @@ for counter = 1:Value_Params.num_rounds
         elseif k_iter >= Value_Params.K_max_inner_SA % 达到最大迭代次数
             doneflag = 1;
         end
-        
+
         previous_SC = final_SC;
         k_iter = k_iter + 1;
-        
+
         % --- 3.5 全网状态同步 ---
         % 确保下一轮迭代开始前，所有智能体对 SC 达成共识
         for ii = 1:Value_Params.N
@@ -192,20 +195,25 @@ for counter = 1:Value_Params.num_rounds
             Value_data(ii).SC = final_SC;
             Value_data(ii).resources_matrix = OCFUtils.get_agent_resource_matrix(Value_data(ii).SC, ii, Value_Params);
         end
-        
+
         % --- 3.7 更新本轮最优解 (基于主观效用) ---
-        % 注意：SA 过程中可能会接受差解，因此需要记录过程中出现过的“主观最好”状态
+        % 注意：SA 过程中可能会接受差解，因此需要记录过程中出现过的"主观最好"状态
         current_utility = 0;
         for j = 1:Value_Params.N
             % 计算全系统的主观效用总和
             current_utility = current_utility + UtilityEvaluator.calc_agent_total_utility(final_SC, agents, tasks, Value_Params, Value_data(j), AddPara);
         end
-        
+
         if current_utility > best_utility
             best_utility = current_utility;
             best_SC = final_SC;
             best_coalitionstru = final_coalitionstru;
         end
+
+        % --- 3.8 记录内循环历史数据 ---
+        inner_loop_history = ResultProcessor.record_inner_loop_iteration(...
+            inner_loop_history, k_iter - 1, Value_Params.Temperature, ...
+            current_utility, best_utility, final_SC, Value_Params);
     end
     
     %% 3.8 恢复本轮最优解
@@ -261,6 +269,9 @@ for counter = 1:Value_Params.num_rounds
         coalition_utility, total_global_cost, ...
         total_completed_value, task_completion_degrees, ...
         summatrix);
+
+    % --- 记录内循环历史数据 ---
+    history_data.inner_loop{counter} = inner_loop_history;
 end
 
 %% ==================== 6. 结束与最终检查 ====================

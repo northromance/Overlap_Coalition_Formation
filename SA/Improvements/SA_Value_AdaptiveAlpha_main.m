@@ -169,6 +169,9 @@ for counter=1:Value_Params.num_rounds
         end
     end
     %% ==================== 3. SA 内循环：联盟形成 ====================
+    % 初始化内循环历史记录
+    inner_loop_history = ResultProcessor.init_inner_loop_history();
+
     while(doneflag == 0)
 
         % --- 3.1 顺序博弈 ---
@@ -227,6 +230,11 @@ for counter=1:Value_Params.num_rounds
             best_SC = final_SC;
             best_coalitionstru = final_coalitionstru;
         end
+
+        % --- 3.8 记录内循环历史数据 ---
+        inner_loop_history = ResultProcessor.record_inner_loop_iteration(...
+            inner_loop_history, k_iter - 1, Value_Params.Temperature, ...
+            current_utility, best_utility, final_SC, Value_Params);
     end
 
     %% 3.8 恢复本轮最优
@@ -283,6 +291,9 @@ for counter=1:Value_Params.num_rounds
         history_data.belief_diff(counter) = NaN;
     end
     history_data.initial_temperature(counter) = Value_Params.Temperature;
+
+    % --- 记录内循环历史数据 ---
+    history_data.inner_loop{counter} = inner_loop_history;
 end
 
 %% ==================== 5. 结束 ====================

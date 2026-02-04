@@ -120,6 +120,9 @@ for round = 1:Value_Params.num_rounds
     end
 
     %% 2. 禁忌搜索内循环：优化当前联盟结构
+    % 初始化内循环历史记录
+    inner_loop_history = ResultProcessor.init_inner_loop_history();
+
     while k_iter <= K_max_inner && k_stable <= K_len
 
         improved_this_iter = false;
@@ -201,6 +204,12 @@ for round = 1:Value_Params.num_rounds
         % Gamma(k+1) = Gamma(k) + k * (Gamma_max - Gamma(k)) / K_max
         Gamma = Gamma + k_iter * (Gamma_max - Gamma) / K_max_inner;
 
+        % --- 记录内循环历史数据 ---
+        % 计算最优效用（Qi算法没有显式的best_utility，使用current_utility）
+        inner_loop_history = ResultProcessor.record_inner_loop_iteration(...
+            inner_loop_history, k_iter - 1, Gamma, ...
+            current_utility, current_utility, SC_global, Value_Params);
+
         if mod(k_iter, 10) == 0 && AddPara.verbose
             fprintf('[Qi2023] 第 %d 轮, 迭代 %d: 效用（期望）= %.4f, 稳定性 = %d, Gamma = %.2f\n', ...
                 round, k_iter, current_utility, k_stable, Gamma);
@@ -276,6 +285,9 @@ for round = 1:Value_Params.num_rounds
     history_data = ResultProcessor.record_history_data(history_data, round, Value_data, Value_Params, ...
         SC_global, coalitionstru, coalition_utility, total_cost, ...
         total_completed_value, task_completion_degrees, summatrix);
+
+    % --- 记录内循环历史数据 ---
+    history_data.inner_loop{round} = inner_loop_history;
 end
 
 if AddPara.verbose
