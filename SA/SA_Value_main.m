@@ -31,7 +31,8 @@ for counter = 1:Value_Params.num_rounds
     % --- 温度调度策略 ---
     % 采用指数衰减策略，随着轮数 (counter) 增加，初始温度 T 逐轮降低
     % 意味着后期的博弈探索性降低，更倾向于利用 (Exploitation)
-    Value_Params.Temperature = max(Value_Params.SA_T_base_round, Value_Params.SA_T0_round * Value_Params.SA_beta_round^(counter-1));
+    Value_Params.Temperature = 200;
+    % Value_Params.Temperature = max(Value_Params.SA_T_base_round, Value_Params.SA_T0_round * Value_Params.SA_beta_round^(counter-1));
     
     if AddPara.verbose
         fprintf('  [SA] Round %d: 初始温度 = %.2f\n', counter, Value_Params.Temperature);
@@ -174,6 +175,21 @@ for counter = 1:Value_Params.num_rounds
             k_stable = k_stable + 1; % 状态未变，稳定计数器+1
         else
             k_stable = 0;            % 状态改变，重置计数器
+        end
+
+
+        reheat_trigger = floor(Value_Params.K_len_SA / 2); 
+        if k_stable >= reheat_trigger && k_stable < Value_Params.K_len_SA
+            % 只有当温度还没低到极致时才升温，或者根据需要强行拉升
+            Value_Params.Temperature = Value_Params.Temperature * 1.5; % 升温系数 1.5
+            
+            if AddPara.verbose
+                fprintf('    [SA-Reheat] 连续 %d 次无变化，温度回升至 %.2f 以跳出局部最优\n', ...
+                        k_stable, Value_Params.Temperature);
+            end
+            
+            % 可选：重置一部分 k_stable，给升温后的探索留出空间
+            % k_stable = floor(reheat_trigger / 2); 
         end
 
         % 判断是否退出内循环
