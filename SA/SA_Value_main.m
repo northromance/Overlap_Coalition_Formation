@@ -57,8 +57,8 @@ for counter = 1:Value_Params.num_rounds
         
         SC_global = Value_data(1).SC;
         task_type_demands = Value_Params.task_type_demands;
-        resource_confidence = SA_resource_confidence; % 初始置信度
-        T_init_construction = SA_T_init_construction; % 构造阶段使用极低温度，接近贪婪选择
+        resource_confidence = Value_Params.SA_resource_confidence; % 初始置信度
+        T_init_construction = Value_Params.SA_T_init_construction; % 构造阶段使用极低温度，接近贪婪选择
         
         for i = 1:Value_Params.N
             Value_data(i).SC = SC_global;

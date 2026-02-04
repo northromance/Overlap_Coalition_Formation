@@ -20,82 +20,16 @@ end
 eps_val = 1e-6;
 history_data = struct();
 
-% --- 初始化智能体数据结构 ---
-for i=1:Value_Params.N
-    Value_data(i).agentID=agents(i).id;
-    Value_data(i).agentIndex=i;
-    Value_data(i).iteration=0;
-    Value_data(i).unif=0;
-    Value_data(i).coalitionstru=zeros(Value_Params.M+1,Value_Params.N);
-    Value_data(i).initbelief=zeros(Value_Params.M+1,Value_Params.task_type);
-    Value_data(i).cost_data = [];
-    Value_data(i).resources_matrix = zeros(Value_Params.M, Value_Params.K);
+% --- 初始化智能体核心数据结构 (Value_data) ---
+% 包含 SC (联盟结构矩阵), resources (资源状态), position (位置) 等
+Value_data = WorldSim.init_value_data(agents, tasks, Value_Params);
 
-    Value_data(i).SC = cell(Value_Params.M, 1);
-    for m = 1:Value_Params.M
-        Value_data(i).SC{m} = zeros(Value_Params.N, Value_Params.K);
-        Value_data(i).SC{m}(i, :) = Value_data(i).resources_matrix(m, :);
-    end
-
-    Value_data(i).other = cell(Value_Params.N, 1);
-
-    % 任务执行序列与时间跟踪结构
-    Value_data(i).task_schedule = struct();
-    Value_data(i).task_schedule.task_sequence = [];
-    Value_data(i).task_schedule.arrival_times = [];
-    Value_data(i).task_schedule.start_times = [];
-    Value_data(i).task_schedule.mission_end_time  = [];
-    Value_data(i).task_schedule.execution_times = [];
-    Value_data(i).task_schedule.completion_times = [];
-    Value_data(i).task_schedule.total_flight_time = 0;
-    Value_data(i).task_schedule.total_execution_time = 0;
-    Value_data(i).task_schedule.total_energy = 0;
-    Value_data(i).selectProb= zeros(Value_Params.K, Value_Params.M);
-end
-
-% --- 初始化void任务 ---
-for k=1: Value_Params.N
-    for j=1:Value_Params.M+1
-        if j==Value_Params.M+1
-            for i=1:Value_Params.N
-                Value_data(k).coalitionstru(j,i)=agents(i).id;
-            end
-        end
-    end
-end
-
-% --- 初始化信念分布 ---
-for i=1:Value_Params.N
-    for j=1:Value_Params.M
-        Value_data(i).initbelief(j,1:end)=ones(Value_Params.task_type,1)/Value_Params.task_type;
-    end
-end
-for i=1:Value_Params.N
-    for j = 1:Value_Params.N
-        Value_data(i).other{j}.initbelief = Value_data(j).initbelief;
-    end
-end
-
-% --- 初始化观测矩阵 ---
-for i=1:Value_Params.N
-    for j=1:Value_Params.M
-        for k=1:Value_Params.task_type
-            Value_data(i).observe(j,k)=0;
-            Value_data(i).preobserve(j,k)=0;
-            summatrix(j,k)=0;
-        end
-    end
-end
-
-% --- 赋予初始资源 ---
-for i=1:Value_Params.N
-    Value_data(i).resources = agents(i).resources;
-end
+% --- 初始化观测、信念与邻居信息 ---
+% summatrix 用于记录观测次数，initbelief 初始化为先验分布
+[Value_data, summatrix] = WorldSim.init_observe_belief_neighbor(Value_data, Value_Params.N, Value_Params.M, Value_Params);
 
 %% ==================== 2. 主循环：多轮博弈迭代 ====================
-global_best_SC = [];
-global_best_utility = 0;
-global_best_round = 0;
+% 仅用于记录历史最高真实效用（不做回滚操作）
 
 for counter=1:Value_Params.num_rounds
 
@@ -106,7 +40,7 @@ for counter=1:Value_Params.num_rounds
     doneflag = 0;
 
     % --- 自适应温度策略 ---
-    T_0 = 100;
+    T_0 = Value_Params.Temperature;
     T_base = 10;
 
     if counter == 1
@@ -139,6 +73,10 @@ for counter=1:Value_Params.num_rounds
     best_SC = Value_data(1).SC;
     best_coalitionstru = Value_data(1).coalitionstru;
     best_utility = 0;
+    for j = 1:Value_Params.N
+        best_utility = best_utility + UtilityEvaluator.calc_agent_total_utility(best_SC, agents, tasks, Value_Params, Value_data(j), AddPara);
+    end
+
 
     %% ==================== 2.3 第一轮：生成初始解 ====================
     if counter == 1
@@ -148,12 +86,8 @@ for counter=1:Value_Params.num_rounds
 
         SC_global = Value_data(1).SC;
         task_type_demands = Value_Params.task_type_demands;
-        resource_confidence = 0.9;
-
-        % ⭐ [核心修改] 定义一个极低的构造温度
-        % 正常 SA 温度是 100 (高温随机)，这里设为 0.5 或 1.0 (低温贪婪)
-        % 效果：Score=0.9 的任务概率会是 Score=0.1 的几十倍，而不是几乎相等
-        T_init_construction = 0.5;
+        resource_confidence = Value_Params.SA_resource_confidence;
+        T_init_construction = Value_Params.SA_T_init_construction;
 
         for i = 1:Value_Params.N
             % 1. 更新视图
@@ -182,9 +116,6 @@ for counter=1:Value_Params.num_rounds
                     selected_task = randi(Value_Params.M);
                 end
                 if isempty(selected_task), selected_task = randi(Value_Params.M); end
-
-                % --- [保留 Qi2023 的安检逻辑] ---
-                % 即使是概率选出来的，也要检查能不能放进去，避免产生废解
 
                 % 安检1: 重复检查
                 if SC_global{selected_task}(i, k) > 0, continue; end
@@ -282,12 +213,13 @@ for counter=1:Value_Params.num_rounds
             Value_data(ii).SC = final_SC;
             Value_data(ii).resources_matrix = OCFUtils.get_agent_resource_matrix(Value_data(ii).SC,ii,Value_Params);
         end
-        current_utility = 0; % 初始化累加器
 
-        for ii = 1:Value_Params.N
-            % 计算第 ii 个智能体在当前 final_SC 下，基于 Value_data(ii).initbelief 的效用
-            u_i = UtilityEvaluator.calc_agent_total_utility(final_SC, agents, tasks, Value_Params, Value_data(ii), AddPara);
-            current_utility = current_utility + u_i;
+        % --- 3.7 更新本轮最优解 (主观效用) ---
+        current_utility = 0;
+        for j = 1:Value_Params.N
+            % ⭐ [关键修复] 必须使用 final_SC 来计算当前效用，不能用 SC_global
+            % 之前的代码在这里使用了 SC_global，那是这一轮开始时的旧解，导致 SA 失效
+            current_utility = current_utility + UtilityEvaluator.calc_agent_total_utility(final_SC, agents, tasks, Value_Params, Value_data(j), AddPara);
         end
 
         if current_utility > best_utility
@@ -297,9 +229,11 @@ for counter=1:Value_Params.num_rounds
         end
     end
 
-    %% 3.8 恢复本轮最优解 (基于信念的最优)
-    % 机器人执行它思考过程中认为最好的方案
+    %% 3.8 恢复本轮最优
     if ~isequal(final_SC, best_SC)
+        if AddPara.verbose
+            fprintf('  [SA_AdaptiveAlpha] Round %d: 恢复本轮最优解\n', counter);
+        end
         final_SC = best_SC;
         final_coalitionstru = best_coalitionstru;
     end
@@ -307,58 +241,42 @@ for counter=1:Value_Params.num_rounds
     for ii = 1:Value_Params.N
         Value_data(ii).coalitionstru = best_coalitionstru;
         Value_data(ii).SC = best_SC;
-        Value_data(ii).resources_matrix = OCFUtils.get_agent_resource_matrix(Value_data(ii).SC,ii,Value_Params);
+        Value_data(ii).resources_matrix = OCFUtils.get_agent_resource_matrix(Value_data(ii).SC, ii, Value_Params);
     end
 
-    % 计算任务执行路径 (基于确定的结构)
     Value_data = update_task_schedule(Value_data, agents, tasks, Value_Params);
 
-    %% 观测与信念更新
-    [Value_data, summatrix] = AgentOps.collect_observations(Value_data, agents, tasks, Value_Params, summatrix,final_SC);
+    %% 观测与更新
+    [Value_data, summatrix] = AgentOps.collect_observations(Value_data, agents, tasks, Value_Params, summatrix, final_SC);
 
-    % ⭐ 保存旧信念 (用于下一轮 Diff 计算)
+    % ⭐ 保存旧信念 (用于下一轮自适应温度计算)
     for i = 1:Value_Params.N
         Value_data(i).prev_belief = Value_data(i).initbelief;
     end
 
     Value_data = AgentOps.update_belief_from_observations(Value_data, Value_Params);
 
-    %% ==================== 4. 结果记录与评估 (客观真值) ====================
-    % ⭐ [关键区别]
-    % 此时我们使用 evaluate_coalition_metrics (上帝视角) 来评估这轮实际上做得怎么样
-    % 这里的 coalition_utility 是基于真实 Task Type 计算的
+    %% ==================== 4. 结果记录与评估 (客观视角) ====================
+    % 使用真实参数评估当前联盟结构的性能
     [coalition_utility, total_global_cost, total_completed_value, task_completion_degrees] = ...
         UtilityEvaluator.evaluate_coalition_metrics(final_SC, agents, tasks, Value_Params, eps_val);
 
-    %% 4.7 记录历史最优 (用于画图分析，不回滚状态)
-    current_round_real_utility = sum(coalition_utility);
 
-    if current_round_real_utility > global_best_utility
-        global_best_utility = current_round_real_utility;
-        global_best_round = counter;
-        if AddPara.verbose
-            fprintf('  [SA] Round %d: 真实效用创新高 (%.2f)\n', counter, global_best_utility);
-        end
-    else
-        if AddPara.verbose
-            fprintf('  [SA] Round %d: 真实效用 (%.2f) 未创新高，继续前行...\n', counter, current_round_real_utility);
-        end
-    end
-
-    %% 4.9 信念广播
+    %% 4.8 广播
     for i = 1:Value_Params.N
         for j = 1:Value_Params.N
             Value_data(i).other{j}.initbelief = Value_data(j).initbelief;
         end
     end
 
-    % 记录数据
+    % 记录
     history_data = ResultProcessor.record_history_data(history_data, counter, Value_data, Value_Params, ...
         final_SC, final_coalitionstru, ...
         coalition_utility, total_global_cost, ...
         total_completed_value, task_completion_degrees, ...
         summatrix);
 
+    % 记录自适应温度相关数据
     if counter > 1
         history_data.belief_diff(counter) = belief_diff;
     else
@@ -367,14 +285,15 @@ for counter=1:Value_Params.num_rounds
     history_data.initial_temperature(counter) = Value_Params.Temperature;
 end
 
-%% 最终检查
+%% ==================== 5. 结束 ====================
+
+% 最终一致性检查
 if AddPara.verbose
-    fprintf('\n[SA_Value] 执行最终一致性检查...\n');
+    fprintf('\n[SA_AdaptiveAlpha] 执行最终一致性检查...\n');
 end
 [is_valid, error_log] = check_coalition_consistency(Value_data, agents, tasks, Value_Params, 'OCF', AddPara.verbose);
-
 if ~is_valid
-    warning('[SA_AdaptiveAlpha] 联盟一致性检查发现 %d 处问题', length(error_log));
+    warning('[SA_AdaptiveAlpha] 一致性检查发现 %d 处问题', length(error_log));
     history_data.consistency_errors = error_log;
 else
     if AddPara.verbose
