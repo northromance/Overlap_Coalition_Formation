@@ -35,7 +35,7 @@ num_task_types = length(task_values);
 % 算法开关：选择要运行的算法 ID
 % 1=SA_Value, 2=Greedy, 3=Huo2025, 4=Qi2023, 5=Shi2024, 6=PSO
 % 7-12=SA改进算法（TabuEnhanced, AdaptiveAlpha, ImprovedTemp, MultiStart, HybridGreedy, EnhancedNeighbor）
-algorithms_to_run_ids = [7,8,9,10,11,12];  % 默认运行 SA_Value, Huo2025, Qi2023
+algorithms_to_run_ids = [4];  % 默认运行 SA_Value, Huo2025, Qi2023
 
 %% Display/save options（显示与保存选项）
 save_results = true;    % 是否保存结果到 MAT 文件
@@ -68,21 +68,26 @@ task_type3_demand_max = 8;  % high（高需求）
 resource_exec_time = [50 65 50 60 35 45];
 
 % SA params（SA_Value 算法参数）
-SA_Temperature = 100.0;      % 初始温度
-SA_alpha = 0.95;              % 降温系数
+SA_Temperature = 200.0;      % 初始温度
+SA_alpha = 0.9;              % 降温系数
 SA_Tmin = 0.01;              % 终止温度
-K_len_SA = 20;               % 稳定性阈值（无改进迭代次数）- 统一命名
+K_len_SA = 30;               % 稳定性阈值（无改进迭代次数）- 统一命名
 K_max_inner_SA = 200;      % 每轮最大迭代次数 - 新增
+SA_T0_round = 200;           % SA 回合温度调度：初始温度 T_0
+SA_beta_round = 0.75;        % SA 回合温度调度：衰减系数 beta
+SA_T_base_round = 10;        % SA 回合温度调度：温度下界 T_base
+SA_resource_confidence = 0.9;      % SA 初始构造阶段需求分位置信度
+SA_T_init_construction = 0.5;      % SA 初始构造阶段温度（低温近贪婪）
 %% AddPara (kept for interface parity)
 % 为接口统一保留：部分算法需要该结构体
 AddPara.control = 1;
 AddPara.resource_confidence = 0.95;  % 资源分位/置信度（风险规避）
 AddPara.enable_belief_update = true; % Qi2023信念更新开关：true=启用信念更新，false=仅使用初始信念
-AddPara.verbose = false;              % 打印调试开关：true=开启打印，false=关闭打印
+AddPara.verbose = true;              % 打印调试开关：true=开启打印，false=关闭打印
 
 % Observation/game params（观测/博弈参数）
 obs_times = 50;              % 观测次数（贝叶斯更新等）
-num_rounds = 5;            % 仿真回合数
+num_rounds = 30;            % 仿真回合数
 
 % Qi2023 utility params（Qi2023 专用参数）
 Qi_beta_m = 1.0;   % 边际效用权重
@@ -91,6 +96,13 @@ Qi_omega = 0.1;    % 惩罚/松弛项
 Qi_omega_1 = 1.0;  % 权重参数 1
 Qi_omega_2 = 0.01; % 权重参数 2
 Qi_omega_3 = 0.001;% 权重参数 3
+
+% Qi2023 search params（Qi2023 禁忌搜索与重力系数参数）
+Qi_L_tabu = 10;         % 禁忌表长度
+Qi_K_len = 20;          % 稳定性阈值（无改进迭代次数）
+Qi_K_max_inner = 20;    % 每轮最大迭代次数
+Qi_Gamma_init = 1;      % 初始 Boltzmann 系数
+Qi_Gamma_max = 100;     % 最大 Boltzmann 系数
 
 %% ========================================================================
 %  Scenario initialization
@@ -168,6 +180,11 @@ Value_Params = OCFUtils.init_value_params(N, M, K, num_task_types, task_type_dem
 
 % 添加 SA 专用参数
 Value_Params.K_max_inner_SA = K_max_inner_SA;  % SA 最大迭代次数
+Value_Params.SA_T0_round = SA_T0_round;
+Value_Params.SA_beta_round = SA_beta_round;
+Value_Params.SA_T_base_round = SA_T_base_round;
+Value_Params.SA_resource_confidence = SA_resource_confidence;
+Value_Params.SA_T_init_construction = SA_T_init_construction;
 
 
 % Random seed for reproducibility（用于复现实验）
@@ -180,6 +197,11 @@ Value_Params.Qi_omega = Qi_omega;
 Value_Params.Qi_omega_1 = Qi_omega_1;
 Value_Params.Qi_omega_2 = Qi_omega_2;
 Value_Params.Qi_omega_3 = Qi_omega_3;
+Value_Params.Qi_L_tabu = Qi_L_tabu;
+Value_Params.Qi_K_len = Qi_K_len;
+Value_Params.Qi_K_max_inner = Qi_K_max_inner;
+Value_Params.Qi_Gamma_init = Qi_Gamma_init;
+Value_Params.Qi_Gamma_max = Qi_Gamma_max;
 
 % Scenario info（保存场景元数据，用于复现实验）
 scenario_info.SEED = SEED;

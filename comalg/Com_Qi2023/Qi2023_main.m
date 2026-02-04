@@ -30,15 +30,15 @@ N = Value_Params.N;
 M = Value_Params.M;
 K = Value_Params.K;
 
-% 禁忌搜索参数
-L_tabu = 10;                % 禁忌表长度
-K_len = 20;                 % 稳定性阈值（无改进迭代次数）
-K_max_inner = 20;          % 每轮最大迭代次数
+% 禁忌搜索参数（由 Compare_Algorithms.m 统一注入）
+L_tabu = Value_Params.Qi_L_tabu;               % 禁忌表长度
+K_len = Value_Params.Qi_K_len;                 % 稳定性阈值（无改进迭代次数）
+K_max_inner = Value_Params.Qi_K_max_inner;     % 每轮最大迭代次数
 
-% Boltzmann系数参数（用于偏好重力概率计算）
-Gamma_init = 1;             % 初始Boltzmann系数
-Gamma_max = 100;            % 最大Boltzmann系数
-Gamma = Gamma_init;         % 当前Boltzmann系数
+% Boltzmann 系数参数（由 Compare_Algorithms.m 统一注入）
+Gamma_init = Value_Params.Qi_Gamma_init;       % 初始 Boltzmann 系数
+Gamma_max = Value_Params.Qi_Gamma_max;         % 最大 Boltzmann 系数
+Gamma = Gamma_init;                            % 当前 Boltzmann 系数
 
 % 读取信念更新开关（默认启用）
 if isfield(AddPara, 'enable_belief_update')
@@ -54,32 +54,7 @@ end
 history_data = struct();
 Value_data = WorldSim.init_value_data(agents, tasks, Value_Params);
 
-% 初始化观测矩阵（与SA算法保持一致）
-for i = 1:N
-    for j = 1:M
-        for k = 1:Value_Params.task_type
-            Value_data(i).observe(j, k) = 0;        % 当前轮的观测计数
-            Value_data(i).preobserve(j, k) = 0;     % 累计的历史观测计数
-        end
-    end
-end
-
-% 初始化全局观测汇总矩阵
-summatrix = zeros(M, Value_Params.task_type);
-
-% 初始化信念分布（均匀先验）
-for i = 1:N
-    for j = 1:M
-        Value_data(i).initbelief(j, 1:end) = ones(Value_Params.task_type, 1) / Value_Params.task_type;
-    end
-end
-
-% 初始化邻居信念（用于信息共享）
-for i = 1:N
-    for j = 1:N
-        Value_data(i).other{j}.initbelief = Value_data(j).initbelief;
-    end
-end
+ [Value_data, summatrix] = WorldSim.init_observe_belief_neighbor(Value_data, N, M, Value_Params);
 
 % 全局联盟结构 SC
 SC_global = cell(M, 1);

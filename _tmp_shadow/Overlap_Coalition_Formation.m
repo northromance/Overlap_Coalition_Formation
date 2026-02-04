@@ -1,0 +1,147 @@
+function [Value_data] = Overlap_Coalition_Formation(agents, tasks, Value_data, Value_Params,AddPara)
+% OVERLAP_COALITION_FORMATION 单个智能体的联盟更新函数（允许重叠联盟）
+%
+% 核心逻辑�?
+%   这是一个两阶段的决策过程：
+%   1. 尝试“加入”某个任务：利用空闲资源去贡献新任务或增加对现有任务的投入�?
+%   2. 如果加入失败（没有发生变动），则尝试“离开”某个任务：释放资源，为后续轮次创造机会�?
+%   整个过程包含状态备份与回滚机制，确保状态更新的原子性�?
+%
+% 输入:
+%   agents       - 智能体结构体数组 (只读，用于获取位置、最大资源上限等)
+%   tasks        - 任务结构体数�?(只读，用于获取任务位置、需求等)
+%   Value_data   - 当前智能体的状态结构体 (包含当前的联盟结构、资源分配、信念等)
+%   Value_Params - 全局参数结构�?(包含任务�?M, 资源维数 K �?
+%
+% 输出:
+%   Value_data   - 更新后的智能体状�?
+%   (注：代码内部计算�?incremental 变量，但函数签名未将其作为输出返回，如果外部需要判断是否收敛，建议修改函数签名�?[Value_data, incremental])
+
+    %% ==================== 1. 状态备�?(Backup Current State) ====================
+    % 在进行任何尝试性操作前，先保存当前状态�?
+    % 目的�?
+    %   1. 用于后续检测状态是否发生了实质性变�?(Change Detection)�?
+    %   2. 如果操作无效或需要取消，可以方便地回滚数�?(Rollback)�?
+    
+    backup.coalition = Value_data.coalitionstru;  % 备份联盟成员结构
+    backup.iteration = Value_data.iteration;      % 备份迭代次数
+    backup.unif = Value_data.unif;                % 备份随机变量
+    backup.SC = Value_data.SC;                    % 备份全局资源分配�?(Schedule)
+    
+    % 提取并备份当前智能体的资源矩�?(从全局 SC 视图转换为个体的 M x K 矩阵)
+    backup.resources_matrix = OCFUtils.get_agent_resource_matrix(backup.SC , Value_data.agentID, Value_Params);
+
+    %% ==================== 2. 计算资源缺口 (Compute Resource Gaps) ====================
+    % 动态计算当前状态下，各个任务还缺多少资源，以及智能体还剩多少资源�?
+    % resource_gap 通常包含两部分信息：
+    %   1. 任务的剩余需�?(Task Demand - Current Allocation)
+    %   2. 智能体的剩余能力 (Agent Capacity - Current Usage)
+    [~, resource_gap] = calc_gaps(Value_data, Value_Params,AddPara);
+    % 注：calc_gaps 的第一个返回值可能是 gap_cost 或其他指标，此处被忽�?
+
+    %% ==================== 3. 计算任务选择概率 (Task Selection Probabilities) ====================
+    % 基于资源缺口、任务优先级、距离成本等因素，计算智能体对每个任务及其每种资源的倾向程度�?
+    % probs 维度通常�?(K x M) �?(1 x M)，取决于 select_probs 的具体实现�?
+    % 高概率意味着该任务更值得投入资源�?
+    probs = Select_probs(Value_data, agents, tasks, Value_Params, resource_gap);
+    
+    % 将计算出的概率存入状态结构体，供后续 Join/Leave 操作使用
+    Value_data.selectProb = probs;
+
+    %% ==================== 4. 联盟操作：先随机离开，再尝试加入 ====================
+    % 新策略逻辑（参�?Qi2023）：
+    %   Step 1: 先随机释放部分资源（破坏当前结构，创造调整空间）
+    %   Step 2: 再尝试加入新任务（基于概率重新分配资源）
+    %   Step 3: 如果加入失败，尝试完全离开某个任务
+
+    % --- Step 4.0: 随机离开操作 (Random Leave Before Join) ---
+    % 参�?Qi2023_main.m: 143-151 行的离开逻辑
+    % 目的：打破局部最优，为后�?Join 创造更多可能�?
+
+    agentID = Value_data.agentID;
+    M = Value_Params.M;
+    K = Value_Params.K;
+
+    % 离开概率：可以根据温度动态调整（温度高时多探索，温度低时少破坏）
+    % if isfield(Value_Params, 'Temperature') && Value_Params.Temperature > 0
+    %     % 温度越高，离开概率越大（探索）；温度越低，离开概率越小（开发）
+    %     p_leave = 0.1 + 0.2 * (Value_Params.Temperature / 100);  % 范围: 0.1 ~ 0.3
+    %     p_leave = min(p_leave, 0.3);  % 上限 30%
+    % else
+    p_leave = 0.2;  % 默认 20%
+    % end
+
+% % 遍历所有任务和资源类型，随机释放部分已分配的资�?
+%     % 假设 M �?K 已经定义，或者使�?Value_Params.M �?Value_Params.K
+%     for m = 1:M   
+%         for k = 1:K
+%             % 如果该智能体在任�?m 上投入了资源 k，则�?p_leave 概率释放
+%             if Value_data.SC{m}(agentID, k) > 0 && rand < p_leave
+% 
+%                 % 执行撤离操作
+%                 Value_data.SC{m}(agentID, k) = 0;
+% 
+%                 % 【新增】打印撤离信�?
+%                 % 输出格式：[Random Leave] Agent {ID} withdrew from Task {ID} (Resource {ID})
+%                 fprintf('  [随机撤离] 智能�?%d 已从 任务 %d 中撤�?资源 %d\n', ...
+%                         agentID, m, k);
+%             end
+%         end
+%     end
+
+    % % 同步更新 resources_matrix（从 SC 中提取该智能体的资源分配�?
+    % Value_data.resources_matrix = OCFUtils.get_agent_resource_matrix(Value_data.SC, agentID, Value_Params);
+    % tol = 1e-9;
+    % assignedTasks = find(any(Value_data.resources_matrix > tol, 2));
+    % Value_data.coalitionstru(1:M, agentID) = 0;
+    % 
+    % % 重新填入参与的任�?
+    % for mIdx = assignedTasks'
+    %     Value_data.coalitionstru(mIdx, agentID) = agents(agentID).id;
+    % end
+    % 
+    % % 更新 Void 任务状态（�?M+1 行）
+    % if isempty(assignedTasks)
+    %     Value_data.coalitionstru(M + 1, agentID) = agents(agentID).id;
+    % else
+    %     % 如果参与了任务，�?Void 池移�?
+    %     Value_data.coalitionstru(M + 1, agentID) = 0;
+    % end
+
+    % --- Step 4.1: 尝试加入 (Join Operation) ---
+    [Value_data, incremental_join] = join_operation(Value_data, agents, tasks, Value_Params, probs,AddPara);
+
+    % --- Step 4.2: 尝试离开 (Leave Operation) ---
+    % 只有�?Join 操作没有产生任何改变 (incremental_join == 0) 时，才考虑完全离开某个任务
+    if incremental_join == 0
+        [Value_data, ~] = leave_operation(Value_data, agents, tasks, Value_Params, probs,AddPara);
+    end
+
+    %% ==================== 5. 变化检�?(Detect Changes in SC) ====================
+    % 检查经�?Join/Leave 操作后的全局资源分配�?(SC) 是否与备份的一致�?
+    
+    SC_changed = false;
+    for m = 1:Value_Params.M
+        % 逐个任务检查资源分配矩阵是否发生变�?
+        if ~isequal(backup.SC{m}, Value_data.SC{m})
+            SC_changed = true;
+            break; % 只要有一个任务变了，就标记为已改变并退出循�?
+        end
+    end
+
+    %% ==================== 6. 应用更新或回�?(Apply or Rollback) ====================
+    if SC_changed
+        % 情况 A: 状态发生了改变
+        incremental = 1; % 标记有增量变�?(虽然此变量未被输出，但在调试或逻辑判断中有�?
+        % Value_data 保持更新后的状态，无需操作
+    else
+        % 情况 B: 状态未改变 (Join �?Leave 都没有成功，或者操作被拒绝)
+        incremental = 0;
+        
+        % 执行回滚：将状态恢复到操作前的备份
+        Value_data.coalitionstru = backup.coalition;
+        Value_data.SC = backup.SC;
+        Value_data.resources_matrix = backup.resources_matrix;
+    end
+    
+end

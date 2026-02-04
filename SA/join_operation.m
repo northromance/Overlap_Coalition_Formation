@@ -22,6 +22,9 @@ if isfield(AddPara, 'verbose')
     verbose = logical(AddPara.verbose);
 end
 
+
+
+
 % 主流程：对每种资源类型 r 抽一个候选任务 -> 可行性 -> 计算ΔU -> 接受则退出
 for r = 1:Value_Params.K
 
@@ -36,6 +39,29 @@ for r = 1:Value_Params.K
     % 计算加入操作后的联盟结构 (SC) 和资源分配 (R)
     % SC_P/R_agent_P: 操作前 (Previous)
     % SC_Q/R_agent_Q: 操作后 (Query/Proposal)
+
+    if Value_data.SC{target}(agentID, r) > 0
+        if AddPara.verbose
+            fprintf('  [状态保持] 智能体 #%-2d 资源 k=%-2d 已在任务 M=%-2d 中复用\n', agentID, r, target);
+        end
+        continue;
+    end
+
+    belief = Value_data.initbelief(target, :);
+
+    task_type_demands = Value_Params.task_type_demands;
+    expected_demand = WorldSim.calculate_demand_quantile(belief, task_type_demands, AddPara.resource_confidence);
+    demand_k = expected_demand(r);
+
+    curr_alloc = sum(Value_data.SC{target}(:, r));
+
+    can_add = max(0, demand_k - curr_alloc);
+
+
+ if can_add 
+
+
+
     [SC_P, SC_Q, R_agent_P, R_agent_Q] = StateTran.join_changes(Value_data, agents, Value_Params, target, agentID, r);
 
     %% 3. 可行性检测 (Feasibility Check)
@@ -43,7 +69,7 @@ for r = 1:Value_Params.K
     % 优化：同时返回 cost_data (包含计算好的路径和能量)，供后续复用
     [feasible, info, cost_data] = validate_feasibility(Value_data, agents, tasks, Value_Params, agentID, SC_Q, true, AddPara);
 
-% VALIDATE_FEASIBILITY 可行性检测：非负分配、携带量、能量可达性、队友检查
+    % VALIDATE_FEASIBILITY 可行性检测：非负分配、携带量、能量可达性、队友检查
 
     if ~feasible
         if verbose
@@ -144,5 +170,6 @@ for r = 1:Value_Params.K
         end
         break;
     end
+ end
 end
 end

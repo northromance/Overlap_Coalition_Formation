@@ -1,73 +1,59 @@
 function [Value_data, history_data]= SA_Value_AdaptiveAlpha_main(agents,tasks,AddPara,Value_Params)
-% SA_Value_AdaptiveAlpha_main - 基于模拟退火的重叠联盟形成主函数（自适应降温系数）
+% SA_Value_AdaptiveAlpha_main - 基于信念变化的自适应温度 SA 算法 (信念优化版)
 %
-% 功能描述：
-%   这是算法的顶层入口。它管理整个重叠联盟形成的生命周期，包括：
-%   1. 初始化智能体状态、信念和资源分配。
-%   2. 多轮次迭代（num_rounds）：每一轮代表一次完整的任务分配尝试。
-%   3. 模拟退火（SA）内循环：在每一轮中，通过升温/降温和随机扰动，寻找最优联盟结构。
-%   4. 信念更新：根据分配结果进行观测，更新对任务类型的认知。
-%   5. 历史记录：记录每一轮的详细数据以便分析。
+% 核心逻辑修正：
+%   1. [决策层] 内循环优化时，使用 calc_agent_total_utility (基于信念的主观效用)
+%   2. [物理层] 外循环记录时，使用 UtilityEvaluator (基于真值的客观效用)
 %
 % 输入：
-%   agents       - 智能体结构体数组（物理属性、位置等）
-%   tasks        - 任务结构体数组（位置、真实需求等）
+%   agents       - 智能体结构体数组
+%   tasks        - 任务结构体数组
 %   AddPara      - 附加控制参数
-%   Value_Params - 算法全局参数（N, M, K, 温度, 轮数等）
-%
-% 输出：
-%   Value_data    - 最终时刻的所有智能体状态
-%   history_data  - 包含每轮详细数据的历史记录结构体
+%   Value_Params - 算法全局参数
 
-%% ==================== 0. 随机数种子设置（确保可复现性）====================
-% 修复：在算法开始时设置随机数种子，确保结果可复现
+%% ==================== 0. 随机数种子设置 ====================
 if isfield(Value_Params, 'seed')
     rng(Value_Params.seed);
 end
 
 %% ==================== 1. 初始化阶段 ====================
 eps_val = 1e-6;
-
 history_data = struct();
-%% 初始化智能体数据结构
+
+% --- 初始化智能体数据结构 ---
 for i=1:Value_Params.N
     Value_data(i).agentID=agents(i).id;
     Value_data(i).agentIndex=i;
-    Value_data(i).iteration=0;       % 记录该智能体改变联盟的次数
-    Value_data(i).unif=0;            % 用于随机决策的变量
-    Value_data(i).coalitionstru=zeros(Value_Params.M+1,Value_Params.N); % 成员矩阵 (任务x智能体)
-    Value_data(i).initbelief=zeros(Value_Params.M+1,Value_Params.task_type); % 信念矩阵
+    Value_data(i).iteration=0;
+    Value_data(i).unif=0;
+    Value_data(i).coalitionstru=zeros(Value_Params.M+1,Value_Params.N);
+    Value_data(i).initbelief=zeros(Value_Params.M+1,Value_Params.task_type);
     Value_data(i).cost_data = [];
-
-    % 初始化资源分配矩阵 (M×K): 记录该智能体对每个任务投入的具体资源量
     Value_data(i).resources_matrix = zeros(Value_Params.M, Value_Params.K);
 
-    % 新联盟结构矩阵 (SC): 这是一个 Cell 数组，每个 Cell 存储一个任务的 (N×K) 分配详情
-    % SC{m}(n, k) 表示智能体 n 在任务 m 上投入的第 k 种资源量
     Value_data(i).SC = cell(Value_Params.M, 1);
     for m = 1:Value_Params.M
         Value_data(i).SC{m} = zeros(Value_Params.N, Value_Params.K);
-        % 初始时资源分配为0
         Value_data(i).SC{m}(i, :) = Value_data(i).resources_matrix(m, :);
     end
-    Value_data(i).other = cell(Value_Params.N, 1);   % 用于存储它所认为的“队友的信念”
 
-    % 任务执行序列与时间跟踪结构 (用于后续的同步机制计算)
+    Value_data(i).other = cell(Value_Params.N, 1);
+
+    % 任务执行序列与时间跟踪结构
     Value_data(i).task_schedule = struct();
-    Value_data(i).task_schedule.task_sequence = [];           % 任务执行顺序
-    Value_data(i).task_schedule.arrival_times = [];           % 到达时刻
-    Value_data(i).task_schedule.start_times = [];             % 同步后的开始时刻
-     Value_data(i).task_schedule.mission_end_time  = [];
-    Value_data(i).task_schedule.execution_times = [];         % 个人执行时长
-    Value_data(i).task_schedule.completion_times = [];        % 完工时刻
+    Value_data(i).task_schedule.task_sequence = [];
+    Value_data(i).task_schedule.arrival_times = [];
+    Value_data(i).task_schedule.start_times = [];
+    Value_data(i).task_schedule.mission_end_time  = [];
+    Value_data(i).task_schedule.execution_times = [];
+    Value_data(i).task_schedule.completion_times = [];
     Value_data(i).task_schedule.total_flight_time = 0;
     Value_data(i).task_schedule.total_execution_time = 0;
     Value_data(i).task_schedule.total_energy = 0;
     Value_data(i).selectProb= zeros(Value_Params.K, Value_Params.M);
 end
 
-%% 初始化void任务（第 M+1 个任务）
-% void 任务代表“空闲”或“未分配”。初始状态下，所有智能体都在 void 任务中。
+% --- 初始化void任务 ---
 for k=1: Value_Params.N
     for j=1:Value_Params.M+1
         if j==Value_Params.M+1
@@ -78,109 +64,118 @@ for k=1: Value_Params.N
     end
 end
 
-%% 初始化信念分布（均匀先验）
-% 初始时，智能体不知道任务类型，假设所有类型的概率相等 (1/TypeNum)
+% --- 初始化信念分布 ---
 for i=1:Value_Params.N
     for j=1:Value_Params.M
         Value_data(i).initbelief(j,1:end)=ones(Value_Params.task_type,1)/Value_Params.task_type;
     end
 end
-
-% 初始化邻居信念
-% 每个智能体维护一份它认为其他智能体拥有的信念（用于通信或共识）
 for i=1:Value_Params.N
     for j = 1:Value_Params.N
         Value_data(i).other{j}.initbelief = Value_data(j).initbelief;
     end
 end
 
-%% 初始化观测矩阵
-% 用于贝叶斯更新：记录在任务 j 上观测到属于类型 k 的次数
+% --- 初始化观测矩阵 ---
 for i=1:Value_Params.N
     for j=1:Value_Params.M
         for k=1:Value_Params.task_type
-            Value_data(i).observe(j,k)=0;        % 当前轮的观测计数
-            Value_data(i).preobserve(j,k)=0;     % 累计的历史观测计数
-            summatrix(j,k)=0;                    % 全局观测汇总
+            Value_data(i).observe(j,k)=0;
+            Value_data(i).preobserve(j,k)=0;
+            summatrix(j,k)=0;
         end
     end
 end
 
-% 赋予智能体初始物理资源
+% --- 赋予初始资源 ---
 for i=1:Value_Params.N
     Value_data(i).resources = agents(i).resources;
 end
 
-
 %% ==================== 2. 主循环：多轮博弈迭代 ====================
-% counter 代表"第几轮"。每轮结束后，智能体会更新信念，下一轮基于新信念重新分配。
-
-% 初始化全局最优解记录（跨所有轮次）
 global_best_SC = [];
-global_best_coalitionstru = [];
-global_best_Value_data = [];
-global_best_utility = -inf;
+global_best_utility = 0;
 global_best_round = 0;
 
 for counter=1:Value_Params.num_rounds
 
     %% 2.2 SA (模拟退火) 迭代初始化
-    k_iter = 1;                               % 迭代计数器（统一命名，与Qi2023一致）
-    previous_SC = Value_data(1).SC;           % 记录上一次的联盟结构用于检测收敛
-    k_stable = 0;                             % 稳定计数器 (连续多少次结构没变)
-    doneflag = 0;                             % 收敛标志位
+    k_iter = 1;
+    previous_SC = Value_data(1).SC;
+    k_stable = 0;
+    doneflag = 0;
 
-    % ⭐ 改进：轮间温度递减策略
-    % 随着轮次增加，信念越来越准确，只需要微调整，因此温度应该逐渐降低
-    % 使用指数衰减公式：T_initial(round) = max(T_base, T_0 * beta^(round-1))
-    T_0 = 100;           % 第1轮初始温度（充分探索）
-    beta = 0.75;         % 轮间衰减系数（0.7-0.8 推荐）
-    T_base = 20;         % 底座温度（防止过低，保证最小探索能力）
+    % --- 自适应温度策略 ---
+    T_0 = 100;
+    T_base = 10;
 
-    % 计算当前轮的初始温度
-    Value_Params.Temperature = max(T_base, T_0 * beta^(counter-1));
+    if counter == 1
+        Value_Params.Temperature = T_0;
+        if AddPara.verbose
+            fprintf('  [SA_AdaptiveAlpha] Round %d: 初始温度 = %.2f（第一轮）\n', counter, Value_Params.Temperature);
+        end
+    else
+        belief_diff = 0;
+        for i = 1:Value_Params.N
+            for j = 1:Value_Params.M
+                if isfield(Value_data(i), 'prev_belief') && ~isempty(Value_data(i).prev_belief)
+                    belief_diff = belief_diff + sum(abs(Value_data(i).initbelief(j,:) - Value_data(i).prev_belief(j,:)));
+                end
+            end
+        end
+        belief_diff = belief_diff / (Value_Params.N * Value_Params.M);
 
-    if AddPara.verbose
-        fprintf('  [SA] Round %d: 初始温度 = %.2f\n', counter, Value_Params.Temperature);
+        threshold = 0.5;
+        normalized_diff = min(belief_diff / threshold, 1.0);
+        Value_Params.Temperature = T_base + (T_0 - T_base) * normalized_diff;
+
+        if AddPara.verbose
+            fprintf('  [SA_AdaptiveAlpha] Round %d: 信念变化 = %.4f, 初始温度 = %.2f\n', ...
+                counter, belief_diff, Value_Params.Temperature);
+        end
     end
 
-    % 初始化本轮最优解记录
+    % 初始化本轮最优解
     best_SC = Value_data(1).SC;
     best_coalitionstru = Value_data(1).coalitionstru;
-    best_utility = -inf;  % 初始化为负无穷，确保第一次计算会更新
+    best_utility = 0;
 
-    %% ==================== 2.3 第一轮：生成初始解（参考 Qi2023）====================
-    % 改进：不再从全0（Void）开始，而是根据概率生成一个初始联盟结构
-    % 这给后续优化提供了一个较好的起点
+    %% ==================== 2.3 第一轮：生成初始解 ====================
     if counter == 1
         if AddPara.verbose
-            fprintf('  [SA] 第1轮：根据概率生成初始联盟结构...\n');
+            fprintf('  [SA] 第1轮：基于低温概率与规则生成的初始联盟结构 (Soft Greedy)...\n');
         end
 
-        % 获取全局SC（所有智能体共享）
         SC_global = Value_data(1).SC;
+        task_type_demands = Value_Params.task_type_demands;
+        resource_confidence = 0.9;
 
-        % 顺序为每个智能体分配资源
+        % ⭐ [核心修改] 定义一个极低的构造温度
+        % 正常 SA 温度是 100 (高温随机)，这里设为 0.5 或 1.0 (低温贪婪)
+        % 效果：Score=0.9 的任务概率会是 Score=0.1 的几十倍，而不是几乎相等
+        T_init_construction = 0.5;
+
         for i = 1:Value_Params.N
-            % 更新当前智能体的SC视图
+            % 1. 更新视图
             Value_data(i).SC = SC_global;
 
-            % 计算资源缺口
+            % 2. 计算缺口
             [~, resource_gap] = calc_gaps(Value_data(i), Value_Params, AddPara);
 
-            % 计算任务选择概率（使用SA的概率计算方法）
-            probs = SA_Select_probs(Value_data(i), agents, tasks, Value_Params, resource_gap, Value_Params.Temperature);
+            % ⭐ [核心修改] 调用概率函数时，传入 T_init_construction
+            probs = SA_Select_probs(Value_data(i), agents, tasks, Value_Params, resource_gap, T_init_construction);
 
-            % 根据概率分配该智能体的所有资源
-            % 遍历每种资源类型
+            % 3. 资源分配
             for k = 1:Value_Params.K
                 resource_amt = agents(i).resources(k);
                 if resource_amt <= 0, continue; end
 
-                % 采样选择目标任务
+                % 轮盘赌选择 (基于低温产生的尖锐概率分布)
                 prob_vec = probs(k, :);
                 cum_prob = cumsum(prob_vec);
-                if cum_prob(end) > 0
+
+                % [安全性检查] 如果概率全为0 (无合适任务)，随机选一个防止报错
+                if cum_prob(end) > 1e-9
                     r = rand * cum_prob(end);
                     selected_task = find(cum_prob >= r, 1, 'first');
                 else
@@ -188,57 +183,69 @@ for counter=1:Value_Params.num_rounds
                 end
                 if isempty(selected_task), selected_task = randi(Value_Params.M); end
 
-                % 分配资源到选中的任务
-                SC_global{selected_task}(i, k) = resource_amt;
+                % --- [保留 Qi2023 的安检逻辑] ---
+                % 即使是概率选出来的，也要检查能不能放进去，避免产生废解
+
+                % 安检1: 重复检查
+                if SC_global{selected_task}(i, k) > 0, continue; end
+
+                % 安检2: 饱和度检查
+                curr_alloc = sum(SC_global{selected_task}(:, k));
+                belief = Value_data(i).initbelief(selected_task, :);
+                expected_demand = WorldSim.calculate_demand_quantile(belief, task_type_demands, resource_confidence);
+                can_add = max(0, expected_demand(k) - curr_alloc);
+
+                if can_add > 0
+                    % 安检3: 可行性检查
+                    SC_candidate = SC_global;
+                    SC_candidate{selected_task}(i, k) = resource_amt;
+
+                    Value_data_temp = Value_data;
+                    for j=1:Value_Params.N, Value_data_temp(j).SC = SC_candidate; end
+
+                    [isFeasible, ~, ~] = validate_feasibility(Value_data_temp, agents, tasks, ...
+                        Value_Params, i, SC_candidate, true, AddPara);
+
+                    if isFeasible
+                        SC_global = SC_candidate;
+                    end
+                end
             end
 
-            % 更新所有智能体的SC（顺序传递）
-            for j = 1:Value_Params.N
-                Value_data(j).SC = SC_global;
-            end
+            % 序贯更新
+            for j = 1:Value_Params.N, Value_data(j).SC = SC_global; end
         end
 
-        % 同步所有智能体的数据结构
+        % --- 数据同步与评估 ---
         for i = 1:Value_Params.N
             Value_data(i).SC = SC_global;
-
-            % 更新 resources_matrix
             Value_data(i).resources_matrix = OCFUtils.get_agent_resource_matrix(SC_global, i, Value_Params);
-
-            % 更新 coalitionstru
             Value_data(i).coalitionstru = OCFUtils.build_coalitionstru_from_SC(SC_global, Value_Params, agents);
         end
 
-        % 更新最优解记录
         best_SC = SC_global;
         best_coalitionstru = Value_data(1).coalitionstru;
 
-        % 计算初始效用
-        [~, ~, initial_utility, ~] = UtilityEvaluator.evaluate_coalition_metrics(SC_global, agents, tasks, Value_Params, eps_val);
-        best_utility = initial_utility;
+        % 遍历求和计算初始效用
+        best_utility = 0;
+        for ii = 1:Value_Params.N
+            u_i = UtilityEvaluator.calc_agent_total_utility(SC_global, agents, tasks, Value_Params, Value_data(ii), AddPara);
+            best_utility = best_utility + u_i;
+        end
 
         if AddPara.verbose
-            fprintf('  [SA] 第1轮：初始联盟结构生成完成，初始效用（期望）= %.2f\n', initial_utility);
+            fprintf('  [SA] 第1轮：初始联盟生成完成 (Soft Greedy, T=%.1f)，初始主观效用 = %.2f\n', T_init_construction, best_utility);
         end
     end
-
     %% ==================== 3. SA 内循环：联盟形成 ====================
-    % 在当前信念下，寻找最优的联盟结构
     while(doneflag == 0)
 
-        % --- 3.1 顺序博弈：智能体逐个决策 ---
-        % 这种顺序更新机制避免了同时决策导致的冲突
+        % --- 3.1 顺序博弈 ---
         for ii = 1:Value_Params.N
-            % 调用核心函数：重叠联盟形成
-            % 智能体 ii 根据当前状态，尝试加入新任务或离开旧任务以提升效用
             [Value_data_ii] = Overlap_Coalition_Formation(agents, tasks, Value_data(ii), Value_Params,AddPara);
 
-            % --- 调试代码结束 ---
-            Value_data(ii) = Value_data_ii; % 原有出错行
             Value_data(ii) = Value_data_ii;
-            % --- 3.2 状态传递 ---
-            % 将智能体 ii 更新后的全局联盟结构传递给下一个智能体 (ii+1)
-            % 这样 ii+1 决策时看到的是包含 ii 最新变动的环境
+
             if ii < Value_Params.N
                 Value_data(ii + 1).coalitionstru = Value_data_ii.coalitionstru;
                 Value_data(ii + 1).SC = Value_data_ii.SC;
@@ -246,195 +253,137 @@ for counter=1:Value_Params.num_rounds
         end
 
         % --- 3.3 SA 温度衰减 ---
-        % 降低温度，减少接受劣解的概率 (Exploration -> Exploitation)
-        % 在内循环中降温，实现单轮内从探索到开发的平滑过渡
         Value_Params.Temperature = Value_Params.alpha * Value_Params.Temperature;
 
-        % 获取本轮迭代结束后的最终结构
         final_SC = Value_data(Value_Params.N).SC;
         final_coalitionstru = Value_data(Value_Params.N).coalitionstru;
 
         % --- 3.4 收敛性检测 ---
-        % 检查联盟结构 (SC) 是否与上一次迭代完全一致
         if isequal(previous_SC, final_SC)
-            k_stable = k_stable + 1;      % 结构未变，稳定计数 +1
+            k_stable = k_stable + 1;
         else
-            k_stable = 0;                 % 结构发生变化，重置计数
+            k_stable = 0;
         end
 
-        % 判断是否收敛（三个条件，任一满足即退出）：
-        % 条件1: 结构连续稳定 K_len_SA 次（长期无改进，提前结束）
-        % 条件2: 温度降到了最低阈值 Tmin（温度很低，自然结束）
-        % 条件3: 达到最大迭代次数 K_max_inner_SA（防止无限循环）
         if k_stable >= Value_Params.K_len_SA
-            if AddPara.verbose
-                fprintf('  [SA] Round %d: 收敛（连续%d次无变化）, 迭代次数=%d, 温度=%.4f\n', ...
-                        counter, k_stable, k_iter, Value_Params.Temperature);
-            end
-            doneflag = 1;  % 退出 SA 循环
+            doneflag = 1;
         elseif Value_Params.Temperature < Value_Params.Tmin
-            if AddPara.verbose
-                fprintf('  [SA] Round %d: 收敛（温度过低 T=%.4f）, 迭代次数=%d\n', ...
-                        counter, Value_Params.Temperature, k_iter);
-            end
             doneflag = 1;
         elseif k_iter >= Value_Params.K_max_inner_SA
-            if AddPara.verbose
-                fprintf('  [SA] Round %d: 达到最大迭代次数（%d次）, 温度=%.4f\n', ...
-                        counter, k_iter, Value_Params.Temperature);
-            end
             doneflag = 1;
         end
 
-        previous_SC = final_SC;  % 更新前次结构
-        k_iter = k_iter + 1;     % 迭代计数器递增
+        previous_SC = final_SC;
+        k_iter = k_iter + 1;
 
         % --- 3.5 同步全局状态 ---
-        % 确保所有智能体的本地 Value_data 都更新为最新的一致结构
         for ii = 1:Value_Params.N
             Value_data(ii).coalitionstru = final_coalitionstru;
             Value_data(ii).SC = final_SC;
             Value_data(ii).resources_matrix = OCFUtils.get_agent_resource_matrix(Value_data(ii).SC,ii,Value_Params);
         end
+        current_utility = 0; % 初始化累加器
 
-        % --- 3.6 更新任务调度与能耗 ---
-        % 根据确定下来的 SC，计算具体的路径、等待时间、同步时间等
-        % 这是计算 Net Profit (净收益) 的基础
-        % 这里更新的是智能体路径的价值
-        % 这里是查看调度的情况
-        % Value_data = update_task_schedule(Value_data, agents, tasks, Value_Params);
+        for ii = 1:Value_Params.N
+            % 计算第 ii 个智能体在当前 final_SC 下，基于 Value_data(ii).initbelief 的效用
+            u_i = UtilityEvaluator.calc_agent_total_utility(final_SC, agents, tasks, Value_Params, Value_data(ii), AddPara);
+            current_utility = current_utility + u_i;
+        end
 
-        % --- 3.7 更新本轮最优解 ---
-        % 计算当前迭代的总效用
-        [~, ~, current_utility, ~] = UtilityEvaluator.evaluate_coalition_metrics(final_SC, agents, tasks, Value_Params, eps_val);
-
-        % 如果当前效用优于本轮最优，更新最优解
         if current_utility > best_utility
             best_utility = current_utility;
             best_SC = final_SC;
             best_coalitionstru = final_coalitionstru;
         end
-
     end
 
-    %% 3.8 恢复本轮最优解并计算路径
-    % 内循环结束后，恢复到本轮最佳状态
-    % 这保证每轮输出的都是本轮内找到的最优解
+    %% 3.8 恢复本轮最优解 (基于信念的最优)
+    % 机器人执行它思考过程中认为最好的方案
     if ~isequal(final_SC, best_SC)
-        if AddPara.verbose
-            fprintf('  [SA] Round %d: 恢复本轮最优解（效用从 %.2f 恢复到 %.2f）\n', ...
-                    counter, current_utility, best_utility);
-        end
         final_SC = best_SC;
         final_coalitionstru = best_coalitionstru;
-    else
-        if AddPara.verbose
-            fprintf('  [SA] Round %d: 最后迭代即为最优（效用 = %.2f）\n', ...
-                    counter, best_utility);
-        end
     end
 
-    % 同步所有智能体到最优状态
     for ii = 1:Value_Params.N
         Value_data(ii).coalitionstru = best_coalitionstru;
         Value_data(ii).SC = best_SC;
         Value_data(ii).resources_matrix = OCFUtils.get_agent_resource_matrix(Value_data(ii).SC,ii,Value_Params);
     end
 
-    % ⭐ 关键修复：总是计算路径（无论是否恢复）
-    % 这确保 Value_data.task_schedule 总是最新的
+    % 计算任务执行路径 (基于确定的结构)
     Value_data = update_task_schedule(Value_data, agents, tasks, Value_Params);
 
-    %% 观测
+    %% 观测与信念更新
     [Value_data, summatrix] = AgentOps.collect_observations(Value_data, agents, tasks, Value_Params, summatrix,final_SC);
-    Value_data = AgentOps.update_belief_from_observations(Value_data, Value_Params);
-    %% ==================== 4. 结果记录与评估 ====================
-    % 输出:
-    %   coalition_utility     - (Mx1 向量) 每个任务(联盟)的净效用 (总收益 - 总成本)
-    %   Rcost                 - (MxN 矩阵) Rcost(j,i) 表示智能体 i 在参与任务 j 时产生的路径总成本
-    %   total_completed_value - (标量) 所有任务的加权完成价值总和 sum(Value * D_C)
-    %   task_completion_degrees - (Mx1 向量) 每个任务的完成度 D_C (0.0 ~ 1.0)
 
-    % 通过当前联盟以真实任务需求和任务价值计算所有联盟产生的总价值
-    [coalition_utility, total_global_cost, total_completed_value, task_completion_degrees] = UtilityEvaluator.evaluate_coalition_metrics(final_SC, agents, tasks, Value_Params, eps_val);
-
-    %% 4.7 更新全局最优解（跨所有轮次）
-    % 计算当前轮的总效用
-    current_round_utility = sum(coalition_utility);
-
-    if current_round_utility > global_best_utility
-        % 更新全局最优
-        global_best_utility = current_round_utility;
-        global_best_SC = final_SC;
-        global_best_coalitionstru = final_coalitionstru;
-        global_best_Value_data = Value_data;
-        global_best_round = counter;
-
-        if AddPara.verbose
-            fprintf('  [SA] Round %d: 更新全局最优解（效用 = %.2f）✓\n', counter, global_best_utility);
-        end
-    else
-        % 当前轮效用低于全局最优，退回全局最优解
-        if AddPara.verbose
-            fprintf('  [SA] Round %d: 当前效用 = %.2f < 全局最优 = %.2f（第 %d 轮），退回全局最优解\n', ...
-                    counter, current_round_utility, global_best_utility, global_best_round);
-        end
-
-        % 恢复全局最优的联盟结构
-        final_SC = global_best_SC;
-        final_coalitionstru = global_best_coalitionstru;
-
-        % 同步所有智能体到全局最优状态
-        for ii = 1:Value_Params.N
-            Value_data(ii).coalitionstru = global_best_coalitionstru;
-            Value_data(ii).SC = global_best_SC;
-            Value_data(ii).resources_matrix = OCFUtils.get_agent_resource_matrix(global_best_SC, ii, Value_Params);
-        end
-
-        % 重新计算全局最优状态的任务调度
-        Value_data = update_task_schedule(Value_data, agents, tasks, Value_Params);
-
-        % 重新计算效用（用于记录）
-        [coalition_utility, total_global_cost, total_completed_value, task_completion_degrees] = ...
-            UtilityEvaluator.evaluate_coalition_metrics(final_SC, agents, tasks, Value_Params, eps_val);
+    % ⭐ 保存旧信念 (用于下一轮 Diff 计算)
+    for i = 1:Value_Params.N
+        Value_data(i).prev_belief = Value_data(i).initbelief;
     end
 
-    %% 4.8 信念广播 (Consensus)
-    % 简单的全连接通信：每个智能体将自己的最新信念同步给其他智能体
+    Value_data = AgentOps.update_belief_from_observations(Value_data, Value_Params);
+
+    %% ==================== 4. 结果记录与评估 (客观真值) ====================
+    % ⭐ [关键区别]
+    % 此时我们使用 evaluate_coalition_metrics (上帝视角) 来评估这轮实际上做得怎么样
+    % 这里的 coalition_utility 是基于真实 Task Type 计算的
+    [coalition_utility, total_global_cost, total_completed_value, task_completion_degrees] = ...
+        UtilityEvaluator.evaluate_coalition_metrics(final_SC, agents, tasks, Value_Params, eps_val);
+
+    %% 4.7 记录历史最优 (用于画图分析，不回滚状态)
+    current_round_real_utility = sum(coalition_utility);
+
+    if current_round_real_utility > global_best_utility
+        global_best_utility = current_round_real_utility;
+        global_best_round = counter;
+        if AddPara.verbose
+            fprintf('  [SA] Round %d: 真实效用创新高 (%.2f)\n', counter, global_best_utility);
+        end
+    else
+        if AddPara.verbose
+            fprintf('  [SA] Round %d: 真实效用 (%.2f) 未创新高，继续前行...\n', counter, current_round_real_utility);
+        end
+    end
+
+    %% 4.9 信念广播
     for i = 1:Value_Params.N
         for j = 1:Value_Params.N
             Value_data(i).other{j}.initbelief = Value_data(j).initbelief;
         end
     end
 
-    % 注释：不再需要轮间温度衰减，因为每轮开始时都会重置温度为初始值
-    % Value_Params.Temperature = Value_Params.alpha * Value_Params.Temperature;
-
-    % 记录
+    % 记录数据
     history_data = ResultProcessor.record_history_data(history_data, counter, Value_data, Value_Params, ...
         final_SC, final_coalitionstru, ...
         coalition_utility, total_global_cost, ...
         total_completed_value, task_completion_degrees, ...
         summatrix);
 
-
+    if counter > 1
+        history_data.belief_diff(counter) = belief_diff;
+    else
+        history_data.belief_diff(counter) = NaN;
+    end
+    history_data.initial_temperature(counter) = Value_Params.Temperature;
 end
 
-%% 最终一致性检查（使用统一的检查函数）
+%% 最终检查
 if AddPara.verbose
     fprintf('\n[SA_Value] 执行最终一致性检查...\n');
 end
 [is_valid, error_log] = check_coalition_consistency(Value_data, agents, tasks, Value_Params, 'OCF', AddPara.verbose);
 
 if ~is_valid
-    warning('[SA_Value] 联盟一致性检查发现 %d 处问题，请查看上方日志！', length(error_log));
-    % 将错误日志保存到历史数据中以便后续分析
+    warning('[SA_AdaptiveAlpha] 联盟一致性检查发现 %d 处问题', length(error_log));
     history_data.consistency_errors = error_log;
 else
     if AddPara.verbose
-        fprintf('✅ [SA_Value] 所有一致性检查通过！\n');
+        fprintf('✅ [SA_AdaptiveAlpha] 所有一致性检查通过！\n');
     end
 end
 
+if AddPara.verbose
+    fprintf('\n=== 仿真结束 ===\n');
+end
 
 end
