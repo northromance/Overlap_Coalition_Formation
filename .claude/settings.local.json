@@ -8,7 +8,9 @@
       "Bash(wc:*)",
       "Bash(ls:*)",
       "Bash(tee:*)",
-      "Bash(taskkill:*)"
+      "Bash(taskkill:*)",
+      "Bash(/d/Matlab/bin/matlab:*)",
+      "Bash(iconv:*)"
     ]
   }
 }

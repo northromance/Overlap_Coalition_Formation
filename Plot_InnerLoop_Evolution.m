@@ -40,7 +40,7 @@ if nargin == 0
     algorithm_name = 'SA_Value';
 
     % 3. 选择轮次
-    round_number = 20;
+    round_number = 2;
 
     % --- 自动加载逻辑 ---
     if auto_load_latest
@@ -263,11 +263,11 @@ sgtitle(sprintf('%s - 第%d轮内循环演化 (共%d次迭代)', ...
     strrep(algorithm_name, '_', '\_'), round_number, length(inner_loop.iteration)), ...
     'FontSize', 14, 'FontWeight', 'bold');
 
-% %% 保存图形
-% save_dir = 'figures';
-% if ~exist(save_dir, 'dir')
-%     mkdir(save_dir);
-% end
+%% 保存图形
+save_dir = 'figures';
+if ~exist(save_dir, 'dir')
+    mkdir(save_dir);
+end
 
 timestamp = datestr(now, 'yyyymmdd_HHMMSS');
 save_filename = sprintf('%s/%s_Round%d_InnerLoop_%s.png', save_dir, algorithm_name, round_number, timestamp);

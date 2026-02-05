@@ -61,7 +61,7 @@ function probs = Qi2023_Select_probs(Value_data, agents, tasks, Value_Params, re
             % 3. 智能体资源容量 delta_n^(z_b) 或 mu_n^(z_c)
             % 使用智能体拥有的资源量
             agent_capacity = Value_data.resources(z);
-            max_capacity = max(Value_data.resources);
+            max_capacity = max(Value_data.resources); % 用智能体拥有的某种最大资源归一化
             if max_capacity > eps_val
                 agent_capacity = agent_capacity / max_capacity;
             end
@@ -83,7 +83,7 @@ function probs = Qi2023_Select_probs(Value_data, agents, tasks, Value_Params, re
             end
 
             % 5. 计算偏好重力 f_{m,n}^(z)(k)
-            % 公式: f = (beta_m)^2 * c_m^(z) * agent_capacity / d_{m,n}
+            % 公式: f = (beta_m)^2 * c_m^(z) * agent_capacity / d_{m,n}f
             f_mn_z = (beta_m^2) * c_m_z * agent_capacity / d_mn;
 
             f_values(m) = f_mn_z;
@@ -97,12 +97,108 @@ function probs = Qi2023_Select_probs(Value_data, agents, tasks, Value_Params, re
 
         % 归一化得到概率
         sum_exp = sum(exp_values);
-        if sum_exp > eps_val
-            probs(z, :) = exp_values / sum_exp;
-        else
-            % 如果所有值都太小，使用均匀分布
-            probs(z, :) = ones(1, M) / M;
-        end
+        probs(z, :) = exp_values / sum_exp;
+
     end
 
 end
+
+
+% function probs = Qi2023_Select_probs(Value_data, agents, tasks, Value_Params, resource_gap, Gamma)
+% % QI2023_SELECT_PROBS (修复版：增加掩码处理，杜绝无效任务分流，优化计算速度)
+% %
+% % 核心修复点:
+% %   1. 【硬约束】: 如果智能体没有资源，或者任务不需要资源，概率严格为 0。
+% %   2. 【数值稳定】: 使用 Shifted Softmax 防止 Gamma 很大时 exp 溢出。
+% %   3. 【性能优化】: 将距离计算和最大值归一化移出循环，避免重复计算。
+% 
+%     agentID = Value_data.agentID;
+%     K = Value_Params.K;
+%     M = Value_Params.M;
+% 
+%     probs = zeros(K, M);
+%     eps_val = 1e-9;
+% 
+%     %% --- Step 1: 预计算公共特征 (移出循环以大幅提升速度) ---
+% 
+%     % 1. 距离向量与归一化
+%     % 计算当前智能体到所有任务的距离向量 (1xM)
+%     dists = arrayfun(@(t) sqrt((t.x - agents(agentID).x)^2 + (t.y - agents(agentID).y)^2), tasks);
+%     max_dist = max(dists);
+%     if max_dist <= eps_val, max_dist = 1; end
+%     norm_dists = dists / max_dist;
+%     % 避免距离极小导致除零
+%     norm_dists(norm_dists < eps_val) = eps_val;
+% 
+%     % 2. 优先级向量 (1xM)
+%     prio_vec = [tasks.priority];
+%     max_prio = max(prio_vec);
+%     if max_prio <= eps_val, max_prio = 1; end
+%     norm_prio = prio_vec / max_prio;
+% 
+%     % 3. 智能体自身资源最大值 (用于归一化)
+%     max_agent_res = max(Value_data.resources);
+%     if max_agent_res <= eps_val, max_agent_res = 1; end
+% 
+%     %% --- Step 2: 逐资源计算概率 ---
+%     for z = 1:K
+%         % 【修复 A】: 供给端硬约束
+%         % 如果智能体根本没有第 z 种资源，直接整行概率置 0，continue
+%         agent_res_val = Value_data.resources(z);
+%         if agent_res_val <= eps_val
+%             probs(z, :) = 0; 
+%             continue; 
+%         end
+% 
+%         % 归一化当前资源拥有量
+%         norm_agent_cap = agent_res_val / max_agent_res;
+% 
+%         % 获取当前资源对所有任务的需求缺口 (1xM 向量)
+%         gaps_z = resource_gap(:, z)'; 
+%         gaps_z = max(gaps_z, 0); % 确保非负
+% 
+%         % 归一化缺口
+%         max_gap_z = max(gaps_z);
+%         if max_gap_z <= eps_val
+%             % 【修复 B】: 需求端硬约束 (前期拦截)
+%             % 如果没有任何任务需要此资源，概率全为 0
+%             probs(z, :) = 0;
+%             continue;
+%         end
+%         norm_gaps = gaps_z / max_gap_z;
+% 
+%         % --- 计算偏好重力 f (向量化计算) ---
+%         % 公式: f = (beta^2 * gap * capacity) / dist
+% 
+%         f_values = (norm_prio.^2 .* norm_gaps * norm_agent_cap) ./ norm_dists;
+% 
+%         % 【修复 C】: 掩码过滤 (Masking) - 解决 Softmax e^0=1 问题
+%         % 只有 f > 0 的任务才值得被分配 (即: 有需求 且 有能力)
+%         valid_mask = f_values > eps_val;
+% 
+%         if ~any(valid_mask)
+%             probs(z, :) = 0;
+%             continue;
+%         end
+% 
+%         % --- Boltzmann 分布 (仅针对有效任务) ---
+% 
+%         valid_f = f_values(valid_mask);
+% 
+%         % 【修复 D】: 数值稳定性处理 (Shifted Softmax)
+%         % 防止 Gamma * f 很大导致 exp 溢出为 Inf
+%         weighted_f = valid_f * Gamma;
+%         shifted_f = weighted_f - max(weighted_f); % 减去最大值，保证指数部分 <= 0
+% 
+%         exp_values = exp(shifted_f);
+%         sum_exp = sum(exp_values);
+% 
+%         % 填充概率 (只填充 valid_mask 为 true 的位置)
+%         current_probs = zeros(1, M);
+%         if sum_exp > eps_val
+%             current_probs(valid_mask) = exp_values / sum_exp;
+%         end
+% 
+%         probs(z, :) = current_probs;
+%     end
+% end

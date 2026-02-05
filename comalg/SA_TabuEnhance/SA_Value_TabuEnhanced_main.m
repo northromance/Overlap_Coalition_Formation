@@ -1,5 +1,4 @@
-function [Value_data, history_data] = SA_Value_main(agents, tasks, AddPara, Value_Params)
-
+function [Value_data, history_data] = SA_Value_TabuEnhanced_main(agents, tasks, AddPara, Value_Params)
 %% ==================== 0. 随机数种子设置 ====================
 if isfield(Value_Params, 'seed')
     rng(Value_Params.seed); % 固定种子以复现实验结果
@@ -8,6 +7,7 @@ end
 %% ==================== 1. 初始化阶段 ====================
 eps_val = 1e-6;          % 浮点数比较容差
 history_data = struct(); % 初始化历史记录容器
+tabu_tenure = 20;   % 禁忌期限（根据智能体数量自适应）
 
 % --- 初始化智能体核心数据结构 (Value_data) ---
 % 包含 SC (联盟结构矩阵), resources (资源状态), position (位置) 等
@@ -31,8 +31,7 @@ for counter = 1:Value_Params.num_rounds
     % --- 温度调度策略 ---
     % 采用指数衰减策略，随着轮数 (counter) 增加，初始温度 T 逐轮降低
     % 意味着后期的博弈探索性降低，更倾向于利用 (Exploitation)
-    % Value_Params.Temperature = 200;
-    Value_Params.Temperature = max(Value_Params.SA_T_base_round, Value_Params.SA_T0_round * Value_Params.SA_beta_round^(counter-1));
+    % Value_Params.Temperature = max(Value_Params.SA_T_base_round, Value_Params.SA_T0_round * Value_Params.SA_beta_round^(counter-1));
     
     if AddPara.verbose
         fprintf('  [SA] Round %d: 初始温度 = %.2f\n', counter, Value_Params.Temperature);
@@ -47,6 +46,14 @@ for counter = 1:Value_Params.num_rounds
     best_utility = 0;
     for j = 1:Value_Params.N
         best_utility = best_utility + UtilityEvaluator.calc_agent_total_utility(best_SC, agents, tasks, Value_Params, Value_data(j), AddPara);
+    end
+
+    %% ==================== 2.25 初始化禁忌列表 ====================
+    % 禁忌列表用于存储最近访问过的联盟结构，防止算法陷入循环
+    tabu_list = {};                          % 禁忌列表（存储SC的哈希值）
+
+    if AddPara.verbose
+        fprintf('  [Tabu] 禁忌期限 = %d\\n', tabu_tenure);
     end
 
     %% ==================== 2.3 第一轮特有：生成初始解 (Soft Greedy) ====================
@@ -170,6 +177,45 @@ for counter = 1:Value_Params.num_rounds
         final_SC = Value_data(Value_Params.N).SC;
         final_coalitionstru = Value_data(Value_Params.N).coalitionstru;
 
+        % --- 3.35 禁忌检测 (Tabu Check) ---
+        % 计算当前解的哈希值
+        current_hash = get_SC_hash(final_SC, Value_Params);
+
+        % 检查是否在禁忌列表中
+        is_tabu = is_in_tabu_list(current_hash, tabu_list);
+
+        if is_tabu
+            % 计算当前解的效用（用于特赦准则判断）
+            current_utility_check = 0;
+            for j = 1:Value_Params.N
+                current_utility_check = current_utility_check + UtilityEvaluator.calc_agent_total_utility(final_SC, agents, tasks, Value_Params, Value_data(j), AddPara);
+            end
+
+            % 特赦准则：如果禁忌解优于历史最优，仍然接受
+            if current_utility_check > best_utility
+                if AddPara.verbose
+                    fprintf('    [Tabu-Aspiration] 特赦接受禁忌解 (效用=%.2f > 最优=%.2f)\\n', current_utility_check, best_utility);
+                end
+                % 接受该解，继续执行
+            else
+                % 拒绝禁忌解，回滚到上一个状态
+                if AddPara.verbose
+                    fprintf('    [Tabu-Reject] 拒绝禁忌解 (效用=%.2f)\\n', current_utility_check);
+                end
+                final_SC = previous_SC;
+                final_coalitionstru = Value_data(1).coalitionstru;
+
+                % 回滚所有智能体状态
+                for ii = 1:Value_Params.N
+                    Value_data(ii).SC = previous_SC;
+                    Value_data(ii).coalitionstru = final_coalitionstru;
+                end
+            end
+        else
+            % 不在禁忌列表中，将当前解加入禁忌列表
+            tabu_list = update_tabu_list(tabu_list, current_hash, tabu_tenure);
+        end
+
         % --- 3.4 收敛检测 (Convergence Check) ---
         if isequal(previous_SC, final_SC)
             k_stable = k_stable + 1; % 状态未变，稳定计数器+1
@@ -177,20 +223,19 @@ for counter = 1:Value_Params.num_rounds
             k_stable = 0;            % 状态改变，重置计数器
         end
 
-
-        reheat_trigger = floor(Value_Params.K_len_SA / 2); 
-        if k_stable >= reheat_trigger && k_stable < Value_Params.K_len_SA
-            % 只有当温度还没低到极致时才升温，或者根据需要强行拉升
-            Value_Params.Temperature = Value_Params.Temperature * 1.5; % 升温系数 1.5
+        % reheat_trigger = floor(Value_Params.K_len_SA / 2); 
+        % if k_stable >= reheat_trigger && k_stable < Value_Params.K_len_SA
+        %     % 只有当温度还没低到极致时才升温，或者根据需要强行拉升
+        %     Value_Params.Temperature = Value_Params.Temperature * 1.5; % 升温系数 1.5
             
-            if AddPara.verbose
-                fprintf('    [SA-Reheat] 连续 %d 次无变化，温度回升至 %.2f 以跳出局部最优\n', ...
-                        k_stable, Value_Params.Temperature);
-            end
+        %     if AddPara.verbose
+        %         fprintf('    [SA-Reheat] 连续 %d 次无变化，温度回升至 %.2f 以跳出局部最优\n', ...
+        %                 k_stable, Value_Params.Temperature);
+        %     end
             
-            % 可选：重置一部分 k_stable，给升温后的探索留出空间
-            % k_stable = floor(reheat_trigger / 2); 
-        end
+        %     % 可选：重置一部分 k_stable，给升温后的探索留出空间
+        %     % k_stable = floor(reheat_trigger / 2); 
+        % end
 
         % 判断是否退出内循环
         if k_stable >= Value_Params.K_len_SA        % 连续多次未变
@@ -310,4 +355,112 @@ else
     end
 end
 
+end
+
+%% ==================== 内部辅助函数 (Internal Helper Functions) ====================
+
+function hash_str = get_SC_hash(SC, Value_Params)
+    % GET_SC_HASH 计算联盟结构SC的哈希值
+    %
+    % 输入:
+    %   SC          - 联盟结构 (cell array of matrices)
+    %   Value_Params - 参数结构体
+    %
+    % 输出:
+    %   hash_str    - SC的哈希字符串
+    %
+    % 说明:
+    %   将SC转换为唯一的字符串标识，用于禁忌列表检测
+    %   采用稀疏表示法：只记录非零元素的 (task, agent, resource, amount)
+
+    hash_parts = {};
+    eps_val = 1e-9;
+
+    for m = 1:Value_Params.M
+        SC_m = SC{m};
+        [rows, cols] = find(SC_m > eps_val);
+
+        for idx = 1:length(rows)
+            i = rows(idx);
+            k = cols(idx);
+            amount = SC_m(i, k);
+
+            % 格式: "m-i-k-amount"
+            hash_parts{end+1} = sprintf('%d-%d-%d-%.4f', m, i, k, amount);
+        end
+    end
+
+    % 排序以确保相同SC产生相同哈希
+    hash_parts = sort(hash_parts);
+
+    % 拼接成字符串
+    if isempty(hash_parts)
+        hash_str = 'EMPTY';
+    else
+        hash_str = strjoin_custom(hash_parts, '|');
+    end
+end
+
+function is_tabu = is_in_tabu_list(hash_str, tabu_list)
+    % IS_IN_TABU_LIST 检查哈希值是否在禁忌列表中
+    %
+    % 输入:
+    %   hash_str   - 待检查的哈希字符串
+    %   tabu_list  - 禁忌列表 (cell array of strings)
+    %
+    % 输出:
+    %   is_tabu    - 是否在禁忌列表中 (boolean)
+
+    is_tabu = false;
+
+    for i = 1:length(tabu_list)
+        if strcmp(tabu_list{i}, hash_str)
+            is_tabu = true;
+            return;
+        end
+    end
+end
+
+function tabu_list = update_tabu_list(tabu_list, hash_str, tabu_tenure)
+    % UPDATE_TABU_LIST 更新禁忌列表（FIFO队列）
+    %
+    % 输入:
+    %   tabu_list   - 当前禁忌列表
+    %   hash_str    - 要添加的哈希字符串
+    %   tabu_tenure - 禁忌期限（列表最大长度）
+    %
+    % 输出:
+    %   tabu_list   - 更新后的禁忌列表
+    %
+    % 说明:
+    %   采用FIFO策略：当列表满时，移除最早的元素
+
+    % 添加新元素到列表末尾
+    tabu_list{end+1} = hash_str;
+
+    % 如果超过禁忌期限，移除最早的元素
+    if length(tabu_list) > tabu_tenure
+        tabu_list = tabu_list(2:end);
+    end
+end
+
+function result = strjoin_custom(cell_array, delimiter)
+    % STRJOIN_CUSTOM 自定义字符串拼接函数（兼容旧版MATLAB）
+    %
+    % 输入:
+    %   cell_array - 字符串cell数组
+    %   delimiter  - 分隔符
+    %
+    % 输出:
+    %   result     - 拼接后的字符串
+
+    if isempty(cell_array)
+        result = '';
+        return;
+    end
+
+    result = cell_array{1};
+    for i = 2:length(cell_array)
+        result = [result, delimiter, cell_array{i}];
+    end
 end
