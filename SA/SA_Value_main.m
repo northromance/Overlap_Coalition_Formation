@@ -69,7 +69,7 @@ for counter = 1:Value_Params.num_rounds
             
             % 基于缺口计算选择概率 (Probabilities)
             probs = SA_Select_probs(Value_data(i), agents, tasks, Value_Params, resource_gap, T_init_construction);
-            
+
             for k = 1:Value_Params.K
                 resource_amt = agents(i).resources(k);
                 if resource_amt <= 0, continue; end % 无资源则跳过

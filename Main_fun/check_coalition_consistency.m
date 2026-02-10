@@ -412,14 +412,9 @@ function [is_valid, error_log] = check_zero_demand_allocation(Value_data, tasks,
     
     for j = 1:M
         % 获取任务 j 的资源需求向量
-        if isfield(tasks(j), 'resources')
-            req_res = tasks(j).resources;
-        else
-            % 如果没有 resources 字段，无法判断，跳过或视为全0
-            % 这里假设如果没有定义需求，就不应该分配任何资源
-            req_res = zeros(1, K); 
-        end
-        
+            req_res = tasks(j).resource_demand;
+
+
         % 确保需求向量长度为 K
         if length(req_res) < K
             req_res = [req_res(:)', zeros(1, K - length(req_res))];

@@ -43,7 +43,9 @@ function [Value_data] = Overlap_Coalition_Formation(agents, tasks, Value_data, V
     % 基于资源缺口、任务优先级、距离成本等因素，计算智能体对每个任务及其每种资源的倾向程度。
     % probs 维度通常为 (K x M) 或 (1 x M)，取决于 select_probs 的具体实现。
     % 高概率意味着该任务更值得投入资源。
-    probs = Select_probs(Value_data, agents, tasks, Value_Params, resource_gap);
+    probs = SA_Select_probs(Value_data, agents, tasks, Value_Params, resource_gap,Value_Params.Temperature);
+    % Select_probs(Value_data, agents, tasks, Value_Params, resource_gap)
+     % SA_Select_probs(Value_data, agents, tasks, Value_Params, resource_gap, current_T)
     
     % 将计算出的概率存入状态结构体，供后续 Join/Leave 操作使用
     Value_data.selectProb = probs;
@@ -61,52 +63,6 @@ function [Value_data] = Overlap_Coalition_Formation(agents, tasks, Value_data, V
     agentID = Value_data.agentID;
     M = Value_Params.M;
     K = Value_Params.K;
-
-    % 离开概率：可以根据温度动态调整（温度高时多探索，温度低时少破坏）
-    % if isfield(Value_Params, 'Temperature') && Value_Params.Temperature > 0
-    %     % 温度越高，离开概率越大（探索）；温度越低，离开概率越小（开发）
-    %     p_leave = 0.1 + 0.2 * (Value_Params.Temperature / 100);  % 范围: 0.1 ~ 0.3
-    %     p_leave = min(p_leave, 0.3);  % 上限 30%
-    % else
-    p_leave = 0.2;  % 默认 20%
-    % end
-
-% % 遍历所有任务和资源类型，随机释放部分已分配的资源
-%     % 假设 M 和 K 已经定义，或者使用 Value_Params.M 和 Value_Params.K
-%     for m = 1:M   
-%         for k = 1:K
-%             % 如果该智能体在任务 m 上投入了资源 k，则以 p_leave 概率释放
-%             if Value_data.SC{m}(agentID, k) > 0 && rand < p_leave
-% 
-%                 % 执行撤离操作
-%                 Value_data.SC{m}(agentID, k) = 0;
-% 
-%                 % 【新增】打印撤离信息
-%                 % 输出格式：[Random Leave] Agent {ID} withdrew from Task {ID} (Resource {ID})
-%                 fprintf('  [随机撤离] 智能体 %d 已从 任务 %d 中撤离 资源 %d\n', ...
-%                         agentID, m, k);
-%             end
-%         end
-%     end
-
-    % % 同步更新 resources_matrix（从 SC 中提取该智能体的资源分配）
-    % Value_data.resources_matrix = OCFUtils.get_agent_resource_matrix(Value_data.SC, agentID, Value_Params);
-    % tol = 1e-9;
-    % assignedTasks = find(any(Value_data.resources_matrix > tol, 2));
-    % Value_data.coalitionstru(1:M, agentID) = 0;
-    % 
-    % % 重新填入参与的任务
-    % for mIdx = assignedTasks'
-    %     Value_data.coalitionstru(mIdx, agentID) = agents(agentID).id;
-    % end
-    % 
-    % % 更新 Void 任务状态（第 M+1 行）
-    % if isempty(assignedTasks)
-    %     Value_data.coalitionstru(M + 1, agentID) = agents(agentID).id;
-    % else
-    %     % 如果参与了任务，从 Void 池移除
-    %     Value_data.coalitionstru(M + 1, agentID) = 0;
-    % end
 
     % --- Step 4.1: 尝试加入 (Join Operation) ---
     [Value_data, incremental_join] = join_operation(Value_data, agents, tasks, Value_Params, probs,AddPara);

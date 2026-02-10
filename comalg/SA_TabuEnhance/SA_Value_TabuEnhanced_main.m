@@ -1,4 +1,8 @@
 function [Value_data, history_data] = SA_Value_TabuEnhanced_main(agents, tasks, AddPara, Value_Params)
+
+% SA_VALUE_TABUENHANCED_MAIN 基于模拟退火和禁忌搜索的重叠联盟形成算法主函数
+% 这个是结合了模拟退火（SA）和禁忌搜索（Tabu Search）的增强版本，旨在提升联盟形成过程中的全局搜索能力和跳出局部最优的能力。
+% 按照Osman框架写的
 %% ==================== 0. 随机数种子设置 ====================
 if isfield(Value_Params, 'seed')
     rng(Value_Params.seed); % 固定种子以复现实验结果
@@ -222,20 +226,6 @@ for counter = 1:Value_Params.num_rounds
         else
             k_stable = 0;            % 状态改变，重置计数器
         end
-
-        % reheat_trigger = floor(Value_Params.K_len_SA / 2); 
-        % if k_stable >= reheat_trigger && k_stable < Value_Params.K_len_SA
-        %     % 只有当温度还没低到极致时才升温，或者根据需要强行拉升
-        %     Value_Params.Temperature = Value_Params.Temperature * 1.5; % 升温系数 1.5
-            
-        %     if AddPara.verbose
-        %         fprintf('    [SA-Reheat] 连续 %d 次无变化，温度回升至 %.2f 以跳出局部最优\n', ...
-        %                 k_stable, Value_Params.Temperature);
-        %     end
-            
-        %     % 可选：重置一部分 k_stable，给升温后的探索留出空间
-        %     % k_stable = floor(reheat_trigger / 2); 
-        % end
 
         % 判断是否退出内循环
         if k_stable >= Value_Params.K_len_SA        % 连续多次未变

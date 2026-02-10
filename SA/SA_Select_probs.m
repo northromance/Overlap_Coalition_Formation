@@ -24,6 +24,8 @@ function probs = SA_Select_probs(Value_data, agents, tasks, Value_Params, resour
     K = Value_Params.K;
     M = Value_Params.M;
 
+    scaling_factor = 1;  % 缩放因子
+
     % 初始化
     probs = zeros(K, M);
     eps_val = 1e-9; % 防止除零
@@ -53,6 +55,7 @@ function probs = SA_Select_probs(Value_data, agents, tasks, Value_Params, resour
     % 或者完全依赖 T 的自然衰减。此处保持纯净物理意义，暂不加额外系数。
 
     % 确保温度不为0 (防止除以0)
+
     effective_T = max(current_T, 1e-2); 
 
     for r = 1:K
@@ -93,7 +96,7 @@ function probs = SA_Select_probs(Value_data, agents, tasks, Value_Params, resour
             % 这是一个“好坏”的度量，值越大越好。范围通常在 [0, 1] 左右。
             % Score ~ (优先级^2 * 缺口 * 供给) / 距离
 
-            score_val = (feat_prio^2 * feat_demand * feat_supply) / (feat_dist + eps_val);
+            score_val = scaling_factor * (feat_prio^2 * feat_demand * feat_supply) / (feat_dist + eps_val);
 
             scores(j) = score_val;
         end

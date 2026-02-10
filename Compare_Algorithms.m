@@ -34,7 +34,7 @@ num_task_types = length(task_values);
 % 算法开关：选择要运行的算法 ID
 % 1=SA_Value, 2=Greedy, 3=Huo2025, 4=Qi2023, 5=Shi2024, 6=PSO
 % 7-12=SA改进算法（TabuEnhanced, AdaptiveAlpha
-algorithms_to_run_ids = [1,4];  % 对比: Qi2023 vs TSA_Qi_Combined
+algorithms_to_run_ids = [1];  % 对比: Qi2023 vs TSA_Qi_Combined
 
 %% Display/save options（显示与保存选项）
 save_results = true;    % 是否保存结果到 MAT 文件
