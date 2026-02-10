@@ -246,9 +246,11 @@ function SC = optimize_coalitions(N, M, SC, agents, tasks, Value_Params, Value_d
 
 SC_prev = SC;
 iteration = 0;
-max_iterations = 50;
+k_stable = 0;  % 稳定性计数器（连续无改进次数）
+max_iterations = Value_Params.Shi_K_max_inner;  % 从参数读取最大迭代次数
+K_len = Value_Params.Shi_K_len;                 % 稳定性阈值
 
-while iteration < max_iterations
+while iteration < max_iterations && k_stable < K_len
     iteration = iteration + 1;
     SC_prev_iter = SC;
 
@@ -339,12 +341,21 @@ while iteration < max_iterations
         end
     end
 
-    % 检查收敛
+    % 检查收敛和稳定性
     if isequal_SC(SC, SC_prev_iter)
+        k_stable = k_stable + 1;  % 连续无改进次数+1
         if AddPara.verbose
-            fprintf('  Converged after %d iterations.\n', iteration);
+            fprintf('  No change in iteration %d (stable count: %d/%d).\n', ...
+                iteration, k_stable, K_len);
         end
-        break;
+        if k_stable >= K_len
+            if AddPara.verbose
+                fprintf('  Converged after %d iterations (stability threshold reached).\n', iteration);
+            end
+            break;
+        end
+    else
+        k_stable = 0;  % 有改进，重置计数器
     end
 end
 

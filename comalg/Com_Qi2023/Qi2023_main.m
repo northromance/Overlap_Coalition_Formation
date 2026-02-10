@@ -123,60 +123,61 @@ for round = 1:Value_Params.num_rounds
     % 初始化内循环历史记录
     inner_loop_history = ResultProcessor.init_inner_loop_history();
 
+    % 按照论文 Algorithm 2 的流程：
+    % Loop ∀n ∈ N: 遍历所有智能体
+    %   - UAV n 执行操作（离开、引力计算、交换）
+    %   - 禁忌检查与效用检查
+    %   - Update Boltzmann coefficient Γ(k+1)  <-- 每个智能体操作后立即更新
+    %   - Update TabuSC
+    %   - k = k + 1  <-- 每个智能体操作后立即递增
+    % End loop if k_stable > K_len or k > K_max
+
     while k_iter <= K_max_inner && k_stable <= K_len
 
-        improved_this_iter = false;
-
-        % 遍历所有智能体
+        % 遍历所有智能体（论文中的 Loop ∀n ∈ N）
         for i = 1:N
-            % A. 离开操作：随机移除部分资源
-            % A. 离开操作：随机移除部分资源
+            
+            % ========== A. 离开操作：随机移除部分资源 ==========
             SC_temp = SC_global;
             p_leave = 0.3;
             for m = 1:M
                 for k = 1:K
                     % 只有当资源量大于阈值(eps_val) 且 随机数小于 p_leave 时才执行
                     if SC_temp{m}(i, k) > eps_val && rand < p_leave
-
-                        % --- [新增] 打印日志 ---
                         % 记录被移走的资源数值
                         removed_amount = SC_temp{m}(i, k);
                         if AddPara.verbose
                             fprintf('  [离开操作] 智能体 #%-2d 撤出 -> 任务 M=%-2d | 资源 k=%-2d | 数量: %6.2f\n', ...
                                 i, m, k, removed_amount);
                         end
-                        % -----------------------
-
                         SC_temp{m}(i, k) = 0;
                     end
                 end
             end
 
-            % B. 引力计算：计算选择概率（使用Qi2023的偏好重力公式）
+            % ========== B. 引力计算：计算选择概率（Qi2023偏好重力公式）==========
             Value_data(i).SC = SC_temp;
             [~, resource_gap] = calc_gaps(Value_data(i), Value_Params, AddPara);
             probs = Qi2023_Select_probs(Value_data(i), agents, tasks, Value_Params, resource_gap, Gamma);
 
-            % C. 交换操作：重新分配资源（使用期望需求，添加可行性检查）
+            % ========== C. 交换操作：重新分配资源 ==========
             SC_new_candidate = execute_exchange_operation(i, agents, tasks, SC_temp, probs, Value_Params, Value_data, AddPara);
 
-            % D. 禁忌检查
+            % ========== D. 禁忌检查 ==========
             SC_hash = get_SC_hash(SC_new_candidate);
             is_tabu = is_in_tabu(SC_hash, TabuList);
 
+            % ========== E. 效用检查与 SC 更新 ==========
             if ~is_tabu
-                % E. 效用检查（使用 Preference_gain 计算效用差）
-                % 不是简单的新旧效用差，而是考虑智能体自身和队友的效用变化
-                % Delta U = (Self_Q - Self_P) + Sum(Gain_g) - Sum(Loss_h) + Sum(Diff_o)
-
                 % 更新智能体 i 的 Value_data，用于 Preference_gain 计算
                 Value_data(i).SC = SC_new_candidate;
 
                 % 使用 Preference_gain 计算效用差值
+                % Delta U = (Self_Q - Self_P) + Sum(Gain_g) - Sum(Loss_h) + Sum(Diff_o)
                 delta_u = Preference_gain(tasks, agents, SC_global, SC_new_candidate, i, Value_Params, Value_data(i));
 
                 if delta_u > 0
-                    % 接受新的联盟结构
+                    % 接受新的联盟结构: SC(k+1) = SC_new
                     SC_global = SC_new_candidate;
 
                     % 重新计算总效用
@@ -186,37 +187,51 @@ for round = 1:Value_Params.num_rounds
                         current_utility = current_utility + UtilityEvaluator.calc_agent_total_utility(SC_global, agents, tasks, Value_Params, Value_data(j), AddPara);
                     end
 
+                    % 重置稳定计数器（论文: k_stable = 0）
                     k_stable = 0;
-                    improved_this_iter = true;
+                    
+                    % 更新禁忌列表
                     TabuList = update_tabu_list(TabuList, SC_hash, L_tabu);
                 else
-                    % 恢复智能体 i 的 SC
+                    % 拒绝新解: SC(k+1) = SC(k)
                     Value_data(i).SC = SC_global;
+                    % 论文: k_stable = k_stable + 1
+                    k_stable = k_stable + 1;
                 end
             end
-        end
 
-        if ~improved_this_iter
-            k_stable = k_stable + 1;
-        end
+            % ========== F. 更新 Boltzmann 系数（论文公式28）==========
+            % Γ(k+1) = Γ(k) + k · (Γ_max - Γ(k)) / K_max
+            % 注意：每个智能体操作后立即更新，不是等所有 N 个智能体完成后才更新
+            Gamma = Gamma + k_iter * (Gamma_max - Gamma) / K_max_inner;
 
-        % F. 更新Boltzmann系数（探索与开发的权衡）
-        % Gamma(k+1) = Gamma(k) + k * (Gamma_max - Gamma(k)) / K_max
-        Gamma = Gamma + k_iter * (Gamma_max - Gamma) / K_max_inner;
+            % ========== G. 迭代计数器递增 ==========
+            k_iter = k_iter + 1;
 
-        % --- 记录内循环历史数据 ---
-        % 计算最优效用（Qi算法没有显式的best_utility，使用current_utility）
-        inner_loop_history = ResultProcessor.record_inner_loop_iteration(...
-            inner_loop_history, k_iter - 1, Gamma, ...
-            current_utility, current_utility, SC_global, Value_Params);
+            % ========== H. 记录内循环历史数据 ==========
+            inner_loop_history = ResultProcessor.record_inner_loop_iteration(...
+                inner_loop_history, k_iter - 1, Gamma, ...
+                current_utility, current_utility, SC_global, Value_Params);
 
-        if mod(k_iter, 10) == 0 && AddPara.verbose
-            fprintf('[Qi2023] 第 %d 轮, 迭代 %d: 效用（期望）= %.4f, 稳定性 = %d, Gamma = %.2f\n', ...
-                round, k_iter, current_utility, k_stable, Gamma);
-        end
+            % ========== I. 提前终止检查（论文终止条件）==========
+            if k_iter > K_max_inner || k_stable > K_len
+                if AddPara.verbose
+                    fprintf('[Qi2023] 提前终止: k_iter=%d, k_stable=%d\n', k_iter, k_stable);
+                end
+                break;
+            end
 
-        k_iter = k_iter + 1;
-    end
+            % 定期打印日志
+            if mod(k_iter, 10) == 0 && AddPara.verbose
+                fprintf('[Qi2023] 第 %d 轮, 迭代 %d: 效用（期望）= %.4f, 稳定性 = %d, Gamma = %.2f\n', ...
+                    round, k_iter, current_utility, k_stable, Gamma);
+            end
+
+        end  % end for i (遍历所有智能体)
+
+
+
+    end  % end while (主循环)
 
     if AddPara.verbose
         fprintf('[Qi2023] 第 %d 轮在 %d 次迭代后收敛, 效用（期望）= %.4f, 最终Gamma = %.2f\n', ...

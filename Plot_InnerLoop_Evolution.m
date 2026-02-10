@@ -36,8 +36,8 @@ if nargin == 0
     manual_result_file = 'results/comparison_N6_M10_SA+Qi+SA_20260203_234857.mat';
 
     % 2. 选择算法
-    % 可选值: 'SA_Value', 'SA_AdaptiveAlpha', 'Qi2023'
-    algorithm_name = 'SA_Value';
+    % 可选值: 'SA_Value', 'SA_AdaptiveAlpha', 'SA_TabuEnhanced', 'Qi2023'
+    algorithm_name = 'SA_TabuEnhanced';
 
     % 3. 选择轮次
     round_number = 20;
@@ -154,6 +154,9 @@ xlabel('迭代次数 (Iteration)', 'FontSize', 11);
 if contains(algorithm_name, 'Qi')
     ylabel('Gamma系数 (Boltzmann Coefficient)', 'FontSize', 11);
     title_str = sprintf('Gamma增长曲线 (初始=%.1f)', inner_loop.temperature(1));
+elseif contains(algorithm_name, 'Tabu')
+    ylabel('温度 (Temperature)', 'FontSize', 11);
+    title_str = sprintf('温度衰减曲线 - SA+Tabu (α=%.2f)', data.Value_Params.alpha);
 else
     ylabel('温度 (Temperature)', 'FontSize', 11);
     title_str = sprintf('温度衰减曲线 (α=%.2f)', data.Value_Params.alpha);
@@ -235,6 +238,8 @@ ylabel('效用增量 (ΔUtility)', 'FontSize', 11);
 % 根据算法类型设置标题
 if contains(algorithm_name, 'Qi')
     title('效用变化分析 (禁忌搜索)', 'FontSize', 12, 'FontWeight', 'bold');
+elseif contains(algorithm_name, 'Tabu')
+    title('效用变化分析 (SA+Tabu混合)', 'FontSize', 12, 'FontWeight', 'bold');
 else
     title('效用变化分析 (SA接受劣解)', 'FontSize', 12, 'FontWeight', 'bold');
 end
@@ -247,6 +252,11 @@ num_no_change = sum(abs(utility_delta) <= 1e-6);
 
 if contains(algorithm_name, 'Qi')
     text(0.05, 0.95, sprintf('效用提升: %d次\n效用下降: %d次\n无变化: %d次', ...
+        num_accept_better, num_accept_worse, num_no_change), ...
+        'Units', 'normalized', 'FontSize', 10, 'VerticalAlignment', 'top', ...
+        'BackgroundColor', 'white', 'EdgeColor', 'black');
+elseif contains(algorithm_name, 'Tabu')
+    text(0.05, 0.95, sprintf('效用提升: %d次\n接受劣解: %d次\n禁忌拒绝: 见log\n无变化: %d次', ...
         num_accept_better, num_accept_worse, num_no_change), ...
         'Units', 'normalized', 'FontSize', 10, 'VerticalAlignment', 'top', ...
         'BackgroundColor', 'white', 'EdgeColor', 'black');
@@ -298,6 +308,10 @@ fprintf('----------------------------------------\n');
 if contains(algorithm_name, 'Qi')
     fprintf('效用提升: %d次 (%.1f%%)\n', num_accept_better, 100*num_accept_better/length(utility_delta));
     fprintf('效用下降: %d次 (%.1f%%)\n', num_accept_worse, 100*num_accept_worse/length(utility_delta));
+elseif contains(algorithm_name, 'Tabu')
+    fprintf('效用提升: %d次 (%.1f%%)\n', num_accept_better, 100*num_accept_better/length(utility_delta));
+    fprintf('接受劣解(SA): %d次 (%.1f%%)\n', num_accept_worse, 100*num_accept_worse/length(utility_delta));
+    fprintf('(注: 禁忌拒绝次数需查看详细日志)\n');
 else
     fprintf('接受优解: %d次 (%.1f%%)\n', num_accept_better, 100*num_accept_better/length(utility_delta));
     fprintf('接受劣解: %d次 (%.1f%%)\n', num_accept_worse, 100*num_accept_worse/length(utility_delta));

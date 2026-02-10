@@ -71,14 +71,14 @@ function probs = SA_Select_probs(Value_data, agents, tasks, Value_Params, resour
             end
 
             if rem_demand == 0
-                disp('rem_demand')
+                % disp('rem_demand')
             end
 
 
             feat_demand = rem_demand / max_remaining_demand;
 
              if feat_demand == 0
-                disp('rem_demand')
+                % disp('rem_demand')
             end
 
             % 2. 供给能力
