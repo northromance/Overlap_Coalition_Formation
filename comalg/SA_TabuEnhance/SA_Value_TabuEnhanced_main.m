@@ -2,7 +2,8 @@ function [Value_data, history_data] = SA_Value_TabuEnhanced_main(agents, tasks, 
 
 % SA_VALUE_TABUENHANCED_MAIN 基于模拟退火和禁忌搜索的重叠联盟形成算法主函数
 % 这个是结合了模拟退火（SA）和禁忌搜索（Tabu Search）的增强版本，旨在提升联盟形成过程中的全局搜索能力和跳出局部最优的能力。
-% 按照Osman框架写的
+% 按照Osman框架写的 
+% 采用的是全局效用来计算差值（delta_E），并且在禁忌判断中引入了特赦准则（Aspiration Criterion），允许在特定条件下接受禁忌解。
 %% ==================== 0. 随机数种子设置 ====================
 if isfield(Value_Params, 'seed')
     rng(Value_Params.seed); % 固定种子以复现实验结果
@@ -318,20 +319,20 @@ for counter = 1:Value_Params.num_rounds
 
     %% 3.8 恢复本轮最优解
     % 如果内循环结束时的解不如过程中遇到的最优解，强制回滚到最优解
-    if ~isequal(final_SC, best_SC)
-        if AddPara.verbose
-            fprintf('  [SA] Round %d: 恢复本轮最优解\n', counter);
-        end
-        final_SC = best_SC;
-        final_coalitionstru = best_coalitionstru;
-    end
+    % if ~isequal(final_SC, best_SC)
+    %     if AddPara.verbose
+    %         fprintf('  [SA] Round %d: 恢复本轮最优解\n', counter);
+    %     end
+    %     final_SC = best_SC;
+    %     final_coalitionstru = best_coalitionstru;
+    % end
 
-    % 将最优解应用到所有智能体
-    for ii = 1:Value_Params.N
-        Value_data(ii).coalitionstru = best_coalitionstru;
-        Value_data(ii).SC = best_SC;
-        Value_data(ii).resources_matrix = OCFUtils.get_agent_resource_matrix(Value_data(ii).SC, ii, Value_Params);
-    end
+    % % 将最优解应用到所有智能体
+    % for ii = 1:Value_Params.N
+    %     Value_data(ii).coalitionstru = best_coalitionstru;
+    %     Value_data(ii).SC = best_SC;
+    %     Value_data(ii).resources_matrix = OCFUtils.get_agent_resource_matrix(Value_data(ii).SC, ii, Value_Params);
+    % end
 
     % 重新计算并缓存任务时间表 (Task Schedule) 和路径成本
     Value_data = update_task_schedule(Value_data, agents, tasks, Value_Params);
@@ -547,7 +548,7 @@ end
 % 这有助于跳出局部最优，探索新的联盟组合
 
 SC_temp = SC_current;
-p_leave = 0.3;  % 离开概率（可调参数）
+p_leave = 0.1;  % 离开概率（可调参数）
 
 for m = 1:M
     for k = 1:K

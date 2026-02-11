@@ -36,7 +36,7 @@ num_task_types = length(task_values);
 % 1=SA_Value, 2=Greedy, 3=Huo2025, 4=Qi2023, 5=Shi2024, 6=PSO
 % 7-12=SA改进算法（TabuEnhanced, AdaptiveAlpha
 % 9=Fang2025
-algorithms_to_run_ids = [4,7];  % 对比: Fang2025
+algorithms_to_run_ids = [7,10];  % 对比: Fang2025
 
 %% Display/save options（显示与保存选项）
 save_results = true;    % 是否保存结果到 MAT 文件
@@ -107,9 +107,14 @@ SA_T_init_construction = 0.5;         % 初始构造阶段温度（低温近贪�
 % SA_resource_confidence, SA_T_init_construction
 %
 % TabuEnhanced专属参数：
-SA_Tabu_K_max_outer = 20;             % 外循环最大迭代次数（Osman框架）
-SA_Tabu_K_max_inner = 1;            % 内循环最大迭代次数（每个外循环内的迭代次数）
-SA_Tabu_tenure = 20;                  % 禁忌期限（队列长度）
+% 算法 7: SA_TabuEnhanced（全局效用版本）
+SA_Tabu_K_max_outer = 50;
+SA_Tabu_K_max_inner = 1;
+SA_Tabu_tenure = 20;
+SA_p_leave = 0.1;  % 新增：离开概率
+
+% 算法 10: SA_TabuEnhanced_Altruistic（利他偏好版本）
+% 使用与算法7相同的参数，但决策机制基于 Preference_gain
 
 % ========================================================================
 % 算法 4: Qi2023（基于禁忌搜索的重叠联盟形成算法）
@@ -246,9 +251,10 @@ Value_Params.SA_resource_confidence = SA_resource_confidence; % SA 初始构造�
 Value_Params.SA_T_init_construction = SA_T_init_construction; % SA 初始构造温度
 
 % SA_TabuEnhanced 专属参数
-Value_Params.SA_Tabu_K_max_outer = SA_Tabu_K_max_outer; % Tabu 外循环最大迭代次数
-Value_Params.SA_Tabu_K_max_inner = SA_Tabu_K_max_inner; % Tabu 内循环最大迭代次数
-Value_Params.SA_Tabu_tenure = SA_Tabu_tenure;           % Tabu 禁忌期限
+Value_Params.SA_Tabu_K_max_outer = SA_Tabu_K_max_outer;
+Value_Params.SA_Tabu_K_max_inner = SA_Tabu_K_max_inner;
+Value_Params.SA_Tabu_tenure = SA_Tabu_tenure;
+Value_Params.SA_p_leave = SA_p_leave;  % 新增这一行
 
 % ------------------ Qi2023算法参数 ------------------
 % 效用函数参数
@@ -301,6 +307,7 @@ all_algorithms = {
     struct('id', 8,  'name', 'SA_AdaptiveAlpha',   'func', @SA_Value_AdaptiveAlpha_main,   'folder', 'comalg/SA_Value_Adapt', 'color', [0.4, 0.5, 0.9]); % 自适应
     % 新算法
     struct('id', 9,  'name', 'Fang2025',           'func', @Fang2025_main,                 'folder', 'comalg/Com_Fang2025',  'color', [0.9, 0.3, 0.6]); % Fang2025
+    struct('id', 10, 'name', 'SA_TabuEnhanced_Altruistic', 'func', @SA_Value_TabuEnhanced_Altruistic_main, 'folder', 'comalg/SA_TabuEnhance', 'color', [0.6, 0.3, 0.9]);
     };
 
 fprintf('Available algorithms (可用算法):\n');
