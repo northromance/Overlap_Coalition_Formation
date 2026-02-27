@@ -90,20 +90,20 @@ SA_K_len = 20;                        % 稳定性阈值（连续无改进迭代�
 SA_K_max_inner = 100;                  % 每轮最大迭代次数（快速测试20，完整测试建议200）
 SA_T0_round = 200;                    % 回合温度调度：初始温度 T_0
 SA_beta_round = 0.85;                 % 回合温度调度：衰减系数 beta
-SA_T_base_round = 10;                 % 回合温度调度：温度下界 T_base
+SA_T_base_round = 40;                 % 回合温度调度：温度下界 T_base（经delta_E统计校准：均值|ΔE|≈202，此值约保证5%探索概率）
 SA_resource_confidence = 0.9;         % 初始构造阶段需求分位置信度
 SA_T_init_construction = 0.5;         % 初始构造阶段温度（低温近贪婪）
 
 % TabuEnhanced专属参数：
 % 算法 7: SA_TabuEnhanced（全局效用版本）
-SA_Tabu_K_max_outer = 50;
-SA_Tabu_K_max_inner = 1;
+SA_Tabu_K_max_outer = 100;
+% SA_Tabu_K_max_inner = 1;
 SA_Tabu_tenure = 20;
 SA_p_leave = 0.1;  % 新增：离开概率
 
 % 算法 10: SA_TabuEnhanced_Altruistic（利他偏好版本）
 % 使用与算法7相同的参数，但决策机制基于 Preference_gain
-tabu_tenure = 20;        % 禁忌期限
+
 
 % ========================================================================
 % 算法 4: Qi2023（基于禁忌搜索的重叠联盟形成算法）
@@ -230,7 +230,7 @@ Value_Params.SA_T_init_construction = SA_T_init_construction; % SA 初始构造�
 
 % SA_TabuEnhanced 专属参数
 Value_Params.SA_Tabu_K_max_outer = SA_Tabu_K_max_outer;
-Value_Params.SA_Tabu_K_max_inner = SA_Tabu_K_max_inner;
+% Value_Params.SA_Tabu_K_max_inner = SA_Tabu_K_max_inner;
 Value_Params.SA_Tabu_tenure = SA_Tabu_tenure;
 Value_Params.SA_p_leave = SA_p_leave;  % 新增这一行
 

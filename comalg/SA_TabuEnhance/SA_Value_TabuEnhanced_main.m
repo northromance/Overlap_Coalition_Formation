@@ -12,7 +12,7 @@ end
 %% ==================== 1. 初始化阶段 ====================
 eps_val = 1e-6;          % 浮点数比较容差
 history_data = struct(); % 初始化历史记录容器
-tabu_tenure = 20;   % 禁忌期限（根据智能体数量自适应）
+tabu_tenure = Value_Params.tabu_tenure;   % 禁忌期限（根据智能体数量自适应）
 
 % --- 初始化智能体核心数据结构 (Value_data) ---
 % 包含 SC (联盟结构矩阵), resources (资源状态), position (位置) 等
@@ -45,7 +45,6 @@ for counter = 1:Value_Params.num_rounds
 
     % 初始化本轮“主观最优”记录变量
     best_SC = Value_data(1).SC;
-    best_coalitionstru = Value_data(1).coalitionstru;
     % ⭐⭐⭐ [关键修复开始] ⭐⭐⭐
     % 在每一轮开始时，必须基于“当前的信念”重新计算继承下来的 SC 的效用。
     % 否则 Round 2 的新效用会和 Round 1 的旧效用（基于旧信念）进行错误比较。
@@ -59,7 +58,7 @@ for counter = 1:Value_Params.num_rounds
     tabu_list = {};                          % 禁忌列表（存储SC的哈希值）
 
     if AddPara.verbose
-        fprintf('  [Tabu] 禁忌期限 = %d\\n', tabu_tenure);
+        fprintf('  [Tabu] 禁忌期限 = %d\n', tabu_tenure);
     end
 
     %% ==================== 2.3 第一轮特有：生成初始解 (Soft Greedy) ====================
@@ -96,7 +95,6 @@ for counter = 1:Value_Params.num_rounds
                 else
                     selected_task = randi(Value_Params.M);
                 end
-                if isempty(selected_task), selected_task = randi(Value_Params.M); end
 
                 % --- 查重检测 ---
                 % 如果该资源已经在该任务中，则跳过 (防止重复叠加)
@@ -140,7 +138,6 @@ for counter = 1:Value_Params.num_rounds
         end
 
         best_SC = SC_global;
-        best_coalitionstru = Value_data(1).coalitionstru;
 
         for ii = 1:Value_Params.N
             u_i = UtilityEvaluator.calc_agent_total_utility(SC_global, agents, tasks, Value_Params, Value_data(ii), AddPara);
@@ -167,10 +164,6 @@ for counter = 1:Value_Params.num_rounds
         % --- 3.1 顺序博弈 (Sequential Game) ---
         % 智能体按照 1 到 N 的顺序依次决策，每个智能体生成一个候选解
 
-        % 保存迭代开始时的状态（用于回滚）
-        SC_before_inner = Value_data(1).SC;
-        utility_before_inner = current_utility;
-
         for ii = 1:Value_Params.N
 
             % 步骤1: 生成候选解
@@ -182,8 +175,6 @@ for counter = 1:Value_Params.num_rounds
             Value_data_temp = Value_data;
             for jj = 1:Value_Params.N
                 Value_data_temp(jj).SC = SC_candidate;
-            end
-            for jj = 1:Value_Params.N
                 candidate_utility = candidate_utility + UtilityEvaluator.calc_agent_total_utility(SC_candidate, agents, tasks, Value_Params, Value_data_temp(jj), AddPara);
             end
 
@@ -192,42 +183,30 @@ for counter = 1:Value_Params.num_rounds
             is_tabu = is_in_tabu_list(candidate_hash, tabu_list);
 
             accept = false;
-            accept_reason = '';
 
             if is_tabu
-                % 3.3.1 特赦准则 (Aspiration Criterion)
+                % 特赦准则 (Aspiration Criterion)
                 if candidate_utility > best_utility
                     accept = true;
-                    accept_reason = 'Tabu-Aspiration';
                     if AddPara.verbose
                         fprintf('      [Agent %d] 特赦接受禁忌解 (效用=%.2f > 最优=%.2f)\n', ii, candidate_utility, best_utility);
                     end
-                else
-                    accept = false;
-                    accept_reason = 'Tabu-Reject';
-                    if AddPara.verbose
-                        fprintf('      [Agent %d] 拒绝禁忌解 (效用=%.2f)\n', ii, candidate_utility);
-                    end
+                elseif AddPara.verbose
+                    fprintf('      [Agent %d] 拒绝禁忌解 (效用=%.2f)\n', ii, candidate_utility);
                 end
             else
-                % 步骤4: Metropolis准则 (SA判断)
+                % Metropolis准则 (SA判断)
                 delta_E = candidate_utility - current_utility;
-
-                if delta_E >= 0  % 改进或持平
+                fprintf('  ΔE=%.2f, T=%.2f, P=%.4f\n', delta_E, Value_Params.Temperature, exp(delta_E/Value_Params.Temperature));
+                if delta_E >= 0
                     accept = true;
-                    accept_reason = 'Metropolis-Improve';
-                else  % 恶化
-                    % 以概率接受恶化解
+                else
                     prob = exp(delta_E / Value_Params.Temperature);
                     if rand < prob
                         accept = true;
-                        accept_reason = 'Metropolis-Accept';
                         if AddPara.verbose
                             fprintf('      [Agent %d] 概率接受恶化解 (ΔE=%.2f, prob=%.4f)\n', ii, delta_E, prob);
                         end
-                    else
-                        accept = false;
-                        accept_reason = 'Metropolis-Reject';
                     end
                 end
             end
@@ -251,7 +230,6 @@ for counter = 1:Value_Params.num_rounds
                 if current_utility > best_utility
                     best_utility = current_utility;
                     best_SC = SC_candidate;
-                    best_coalitionstru = Value_data(1).coalitionstru;
                     if AddPara.verbose
                         fprintf('      [Agent %d] 更新最优解 (效用=%.2f)\n', ii, best_utility);
                     end
@@ -316,23 +294,6 @@ for counter = 1:Value_Params.num_rounds
         end
 
     end  % end while (外循环)
-
-    %% 3.8 恢复本轮最优解
-    % 如果内循环结束时的解不如过程中遇到的最优解，强制回滚到最优解
-    % if ~isequal(final_SC, best_SC)
-    %     if AddPara.verbose
-    %         fprintf('  [SA] Round %d: 恢复本轮最优解\n', counter);
-    %     end
-    %     final_SC = best_SC;
-    %     final_coalitionstru = best_coalitionstru;
-    % end
-
-    % % 将最优解应用到所有智能体
-    % for ii = 1:Value_Params.N
-    %     Value_data(ii).coalitionstru = best_coalitionstru;
-    %     Value_data(ii).SC = best_SC;
-    %     Value_data(ii).resources_matrix = OCFUtils.get_agent_resource_matrix(Value_data(ii).SC, ii, Value_Params);
-    % end
 
     % 重新计算并缓存任务时间表 (Task Schedule) 和路径成本
     Value_data = update_task_schedule(Value_data, agents, tasks, Value_Params);
@@ -400,18 +361,7 @@ end
 %% ==================== 内部辅助函数 (Internal Helper Functions) ====================
 
 function hash_str = get_SC_hash(SC, Value_Params)
-% GET_SC_HASH 计算联盟结构SC的哈希值
-%
-% 输入:
-%   SC          - 联盟结构 (cell array of matrices)
-%   Value_Params - 参数结构体
-%
-% 输出:
-%   hash_str    - SC的哈希字符串
-%
-% 说明:
-%   将SC转换为唯一的字符串标识，用于禁忌列表检测
-%   采用稀疏表示法：只记录非零元素的 (task, agent, resource, amount)
+% GET_SC_HASH 计算联盟结构SC的哈希值（稀疏表示，仅记录非零元素）
 
 hash_parts = {};
 eps_val = 1e-9;
@@ -443,62 +393,25 @@ end
 
 function is_tabu = is_in_tabu_list(hash_str, tabu_list)
 % IS_IN_TABU_LIST 检查哈希值是否在禁忌列表中
-%
-% 输入:
-%   hash_str   - 待检查的哈希字符串
-%   tabu_list  - 禁忌列表 (cell array of strings)
-%
-% 输出:
-%   is_tabu    - 是否在禁忌列表中 (boolean)
-
-is_tabu = false;
-
-for i = 1:length(tabu_list)
-    if strcmp(tabu_list{i}, hash_str)
-        is_tabu = true;
-        return;
-    end
-end
+is_tabu = ~isempty(tabu_list) && any(strcmp(tabu_list, hash_str));
 end
 
 function tabu_list = update_tabu_list(tabu_list, hash_str, tabu_tenure)
 % UPDATE_TABU_LIST 更新禁忌列表（FIFO队列）
-%
-% 输入:
-%   tabu_list   - 当前禁忌列表
-%   hash_str    - 要添加的哈希字符串
-%   tabu_tenure - 禁忌期限（列表最大长度）
-%
-% 输出:
-%   tabu_list   - 更新后的禁忌列表
-%
-% 说明:
-%   采用FIFO策略：当列表满时，移除最早的元素
 
-% 添加新元素到列表末尾
+% 添加新元素，超出期限时移除最早元素
 tabu_list{end+1} = hash_str;
-
-% 如果超过禁忌期限，移除最早的元素
 if length(tabu_list) > tabu_tenure
     tabu_list = tabu_list(2:end);
 end
 end
 
 function result = strjoin_custom(cell_array, delimiter)
-% STRJOIN_CUSTOM 自定义字符串拼接函数（兼容旧版MATLAB）
-%
-% 输入:
-%   cell_array - 字符串cell数组
-%   delimiter  - 分隔符
-%
-% 输出:
-%   result     - 拼接后的字符串
-
+% STRJOIN_CUSTOM 字符串拼接（兼容旧版MATLAB）
 if isempty(cell_array)
     result = '';
     return;
 end
-
 result = cell_array{1};
 for i = 2:length(cell_array)
     result = [result, delimiter, cell_array{i}];
@@ -506,24 +419,8 @@ end
 end
 
 function [SC_candidate, move_description] = generate_candidate_solution_tabu(Value_data_i, agents, tasks, Value_Params, AddPara)
-% GENERATE_CANDIDATE_SOLUTION_TABU 为单个智能体生成候选解（结合SA和Tabu的邻域算子）
-%
-% 输入:
-%   Value_data_i    - 当前智能体的数据结构
-%   agents          - 所有智能体信息
-%   tasks           - 所有任务信息
-%   Value_Params    - 参数结构体
-%   AddPara         - 附加参数
-%
-% 输出:
-%   SC_candidate    - 候选联盟结构
-%   move_description - 移动描述（用于调试）
-%
-% 核心逻辑:
-%   1. 离开操作：随机移除部分资源（类似Qi2023）
-%   2. 引力计算：使用SA_Select_probs计算选择概率
-%   3. 交换操作：基于概率重新分配资源（类似execute_exchange_operation）
-%   4. 可行性检查：确保能量和队友约束满足
+% GENERATE_CANDIDATE_SOLUTION_TABU 为单个智能体生成候选解
+% 流程: 1)离开操作（随机移除资源） 2)计算选择概率 3)交换操作（重分配资源） 4)可行性检查
 
 %% ==================== 参数初始化 ====================
 agent_idx = Value_data_i.agentIndex;  % 当前智能体索引
@@ -554,13 +451,11 @@ for m = 1:M
     for k = 1:K
         % 只有当资源量大于阈值且随机数小于p_leave时才移除
         if SC_temp{m}(agent_idx, k) > eps_val && rand < p_leave
-            removed_amount = SC_temp{m}(agent_idx, k);
-            SC_temp{m}(agent_idx, k) = 0;
-
             if AddPara.verbose
                 fprintf('      [离开] Agent #%-2d 撤出任务 M=%-2d | 资源 k=%-2d | 数量: %6.2f\n', ...
-                    agent_idx, m, k, removed_amount);
+                    agent_idx, m, k, SC_temp{m}(agent_idx, k));
             end
+            SC_temp{m}(agent_idx, k) = 0;
         end
     end
 end
@@ -598,10 +493,6 @@ for k = 1:K
         selected_task = randi(M);
     end
 
-    if isempty(selected_task)
-        selected_task = randi(M);
-    end
-
     % --- 3.2 检查是否已参与该任务 ---
     if SC_new{selected_task}(agent_idx, k) > eps_val
         if AddPara.verbose
@@ -615,9 +506,7 @@ for k = 1:K
     curr_alloc = sum(SC_new{selected_task}(:, k));
     belief = Value_data_i.initbelief(selected_task, :);
     expected_demand = WorldSim.calculate_demand_quantile(belief, task_type_demands, confidence);
-    demand_k = expected_demand(k);
-
-    can_add = max(0, demand_k - curr_alloc);
+    can_add = max(0, expected_demand(k) - curr_alloc);
 
     % --- 3.4 尝试投入资源（如果有缺口）---
     if can_add > eps_val

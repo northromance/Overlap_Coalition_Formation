@@ -29,61 +29,47 @@ if isfield(Value_Params, 'seed')
 end
 
 %% ==================== 1. 初始化阶段 ====================
-eps_val = 1e-6;          % 浮点数比较容差，防止因为计算机精度问题导致误判
-history_data = struct(); % 初始化历史记录容器，用于追踪随时间变化的算法指标
-tabu_tenure = Value_Params.tabu_tenure; % 禁忌步长（即一个解被关进“小黑屋”的迭代次数）
+eps_val = 1e-6;          % 浮点数比较容差
+history_data = struct();
+tabu_tenure = Value_Params.tabu_tenure; % 禁忌期限
 
-% --- 初始化智能体核心数据结构 (Value_data) ---
-% 包括各个Agent分配到的任务、自身资源等初始状态
 Value_data = WorldSim.init_value_data(agents, tasks, Value_Params);
-
-% --- 初始化观测、信念与邻居信息 ---
-% 分布式系统的关键：Agent不能直接看到全局真实状态，只能通过观测(observe)形成信念(belief)
 [Value_data, summatrix] = WorldSim.init_observe_belief_neighbor(Value_data, Value_Params.N, Value_Params.M, Value_Params);
 
 %% ==================== 2. 主循环：多轮博弈迭代 ====================
-% 每一轮(round)代表一次完整的环境演进或任务重分配周期
 for counter = 1:Value_Params.num_rounds
 
-    %% 2.2 SA 初始化 (本轮博弈前的准备)
-    k_iter = 1;                     % 当前退火迭代次数
-    previous_SC = Value_data(1).SC; % 记录上一时刻的联盟结构(Service Coalition, SC)
-    k_stable = 0;                   % 记录系统连续保持稳定（未发生状态转移）的步数
-    doneflag = 0;                   % 提前结束退火的标志位
+    %% 2.2 SA 初始化
+    k_iter = 1;                     % 迭代计数器
+    previous_SC = Value_data(1).SC; % 收敛检测基准
+    k_stable = 0;
+    doneflag = 0;
 
-    % --- 温度调度策略 (Temperature Schedule) ---
-    % 退火温度随轮数递减，保证初期探索(Exploration)率高，后期利用(Exploitation)率高
+    % 轮间温度调度：初始温度随轮数指数衰减
     Value_Params.Temperature = max(Value_Params.SA_T_base_round, ...
         Value_Params.SA_T0_round * Value_Params.SA_beta_round^(counter-1));
     if AddPara.verbose
         fprintf('  [SA-Altruistic] Round %d: 初始温度 = %.2f\n', counter, Value_Params.Temperature);
     end
 
-    % === [局部社会效用（LSU）初始化] ===
-    % 初始化每个智能体的最优局部社会效用记录
-    best_SC = Value_data(1).SC;     % 全局最优联盟结构缓存
-    best_coalitionstru = Value_data(1).coalitionstru;
-
-    % 初始化个体LSU最优值（每个智能体独立维护自己的账本）
+    % --- 初始化 LSU 最优账本 ---
+    best_SC = Value_data(1).SC;
     best_LSU = zeros(Value_Params.N, 1);
 
-    % 构造一个空的SC用于基准比较（假设一开始什么任务都没分配）
+    % 构造空SC作为LSU基准（无任务分配状态）
     SC_empty = cell(Value_Params.M, 1);
     for m = 1:Value_Params.M
-        SC_empty{m} = zeros(Value_Params.N, Value_Params.K); % N个Agent, K种资源
+        SC_empty{m} = zeros(Value_Params.N, Value_Params.K);
     end
-
-    % 计算并记录初始状态下，每个Agent的局部社会效用
     for j = 1:Value_Params.N
         best_LSU(j) = calculate_local_social_utility(SC_empty, best_SC, j, agents, tasks, Value_Params, Value_data(j), AddPara);
     end
 
-    % 计算系统当前的全局总效用（上帝视角，仅用于日志和性能评估，不参与Agent的分布式决策）
+    % 全局效用（上帝视角，仅用于日志/评估，不参与分布式决策）
     best_utility_global = 0;
     for j = 1:Value_Params.N
         best_utility_global = best_utility_global + UtilityEvaluator.calc_agent_total_utility(best_SC, agents, tasks, Value_Params, Value_data(j), AddPara);
     end
-    % === [局部社会效用（LSU）初始化结束] ===
 
     %% ==================== 2.25 初始化禁忌列表 ====================
     % 禁忌表用于防止退火搜索在两个相近状态之间反复横跳（局部死循环）
@@ -123,11 +109,10 @@ for counter = 1:Value_Params.num_rounds
                     r = rand * cum_prob(end);
                     selected_task = find(cum_prob >= r, 1, 'first');
                 else
-                    selected_task = randi(Value_Params.M); % 概率全为0时随机挑一个
+                    selected_task = randi(Value_Params.M);
                 end
-                if isempty(selected_task), selected_task = randi(Value_Params.M); end
 
-                % 如果已经在此任务中投入了该资源，跳过
+                % 如果已在此任务中投入了该资源，跳过
                 if SC_global{selected_task}(i, k) > 0, continue; end
 
                 % 计算期望需求量，判断是否还能塞得下资源
@@ -162,11 +147,8 @@ for counter = 1:Value_Params.num_rounds
             Value_data(i).coalitionstru = OCFUtils.build_coalitionstru_from_SC(SC_global, Value_Params, agents);
         end
 
-        % 更新历史最优记录
+        % 根据生成的初始解重新计算 LSU 和全局效用
         best_SC = SC_global;
-        best_coalitionstru = Value_data(1).coalitionstru;
-
-        % 根据生成的初始解重新计算每个Agent的局部社会效用(LSU)
         for ii = 1:Value_Params.N
             best_LSU(ii) = calculate_local_social_utility(SC_empty, SC_global, ii, agents, tasks, Value_Params, Value_data(ii), AddPara);
         end
@@ -190,13 +172,8 @@ for counter = 1:Value_Params.num_rounds
         current_utility_global = current_utility_global + UtilityEvaluator.calc_agent_total_utility(Value_data(j).SC, agents, tasks, Value_Params, Value_data(j), AddPara);
     end
 
-    % doneflag 控制退火是否收敛
     while(doneflag == 0)
-        % --- 3.1 顺序博弈 (Sequential Game) - 利他主义决策 ---
-        % 在每一个降温步中，N个Agent轮流根据自身逻辑更新策略（这模拟了异步/顺序的决策过程）
-        SC_before_inner = Value_data(1).SC;
-        utility_before_inner = current_utility_global;
-
+        % --- 3.1 顺序博弈：N个Agent依次决策 ---
         for ii = 1:Value_Params.N
             % 步骤1: 智能体 ii 根据自身局部信息生成一个变异候选解（撤出某些任务，加入新任务）
             [SC_candidate, ~] = generate_candidate_solution_tabu(Value_data(ii), agents, tasks, Value_Params, AddPara);
@@ -207,32 +184,22 @@ for counter = 1:Value_Params.num_rounds
             is_tabu = is_in_tabu_list(candidate_hash, tabu_list);     % 判断新解是否在禁忌表中
 
             accept = false;
-            accept_reason = '';
 
             if is_tabu
-                % === [局部社会效用（LSU）特赦准则] ===
-                % 如果候选解在禁忌表里，原本应该被拒绝。但是如果它足够好，可以触发“特赦”
+                % === [LSU特赦准则] ===
                 SC_current = Value_data(ii).SC;
-                % 计算采用该候选解后，智能体 ii 及其周边队友的综合利益(LSU)
                 current_LSU = calculate_local_social_utility(SC_current, SC_candidate, ii, agents, tasks, Value_Params, Value_data(ii), AddPara);
-
-                % 特赦条件：当前LSU打破了该智能体的历史最优记录
                 if current_LSU > best_LSU(ii)
                     accept = true;
-                    accept_reason = 'Tabu-Aspiration-LSU';
                     if AddPara.verbose
                         fprintf('      [Agent %d] LSU特赦接受禁忌解 (LSU=%.2f > 最优=%.2f)\n', ...
                             ii, current_LSU, best_LSU(ii));
                     end
                 else
-                    % 未触发特赦，坚决拒绝该禁忌解
-                    accept = false;
-                    accept_reason = 'Tabu-Reject';
                     if AddPara.verbose
                         fprintf('      [Agent %d] 拒绝禁忌解 (LSU=%.2f)\n', ii, current_LSU);
                     end
                 end
-                % === [局部社会效用（LSU）特赦准则结束] ===
             else
                 % === [利他主义 Metropolis 准则] ===
                 % 如果不在禁忌表中，进入标准的模拟退火判定流
@@ -241,25 +208,24 @@ for counter = 1:Value_Params.num_rounds
                 % 计算利他偏好差值（Delta Energy）。
                 % Preference_gain 函数不仅考虑个体自己的利益得失，还考虑被它动作影响到的队友的得失。
                 delta_E_altruistic = Preference_gain(tasks, agents, SC_current, SC_candidate, ii, Value_Params, Value_data(ii));
+                fprintf('  [ΔE] Round=%d Iter=%d Agent=%d  delta_E=%.4f  T=%.4f\n', ...
+                    counter, k_iter, ii, delta_E_altruistic, Value_Params.Temperature);
 
                 % === [利他主义 Metropolis 准则结束] ===
-                if delta_E_altruistic >= 0
+                if delta_E_altruistic > 1e-4
                     % 如果是“好解”（利他偏好提升或不变），无条件接受
                     accept = true;
-                    accept_reason = 'Metropolis-Improve-Altruistic';
                 else
                     % 如果是“劣解”，按照玻尔兹曼概率接受 (概率随温降减小)
                     % 这给予了系统跳出局部最优（Local Optima）的能力
                     prob = exp(delta_E_altruistic / Value_Params.Temperature);
                     if rand < prob
                         accept = true;
-                        accept_reason = 'Metropolis-Accept-Altruistic';
                         if AddPara.verbose
                             fprintf('      [Agent %d] 概率接受恶化解 (利他ΔE=%.2f, prob=%.4f)\n', ii, delta_E_altruistic, prob);
                         end
                     else
-                        accept = false; % 运气不佳，拒绝劣解
-                        accept_reason = 'Metropolis-Reject';
+                        accept = false;
                     end
                 end
             end
@@ -310,18 +276,14 @@ for counter = 1:Value_Params.num_rounds
         final_SC = Value_data(Value_Params.N).SC;
         final_coalitionstru = Value_data(Value_Params.N).coalitionstru;
 
-        % --- 3.2.2 收敛检测 (Stopping Criteria) ---
-        % 判断1：如果全员博弈完一轮后，系统状态与上一轮毫无变化，稳定计数器+1
+        % 收敛检测
         if isequal(previous_SC, final_SC)
             k_stable = k_stable + 1;
         else
-            k_stable = 0; % 一旦有变化，计数器清零
+            k_stable = 0;
         end
 
-        % 满足以下三个条件之一，退出本轮的退火过程：
-        % 1. 系统连续 SA_K_len 步不再发生状态转移（已收敛到均衡点）
-        % 2. 系统温度降至绝对低温 Tmin
-        % 3. 迭代步数达到了设定的上限 SA_Tabu_K_max_outer
+        % 退出条件：连续收敛 / 温度过低 / 达到最大迭代次数
         if k_stable >= Value_Params.SA_K_len
             doneflag = 1;
         elseif Value_Params.Temperature < Value_Params.Tmin
@@ -334,8 +296,7 @@ for counter = 1:Value_Params.num_rounds
         previous_SC = final_SC;
         k_iter = k_iter + 1;
 
-        % --- 3.2.3 全网状态同步 ---
-        % 收敛后，确保每一个Agent都把状态对齐到最终状态
+        % 全网状态同步
         for ii = 1:Value_Params.N
             Value_data(ii).coalitionstru = final_coalitionstru;
             Value_data(ii).SC = final_SC;
@@ -350,18 +311,15 @@ for counter = 1:Value_Params.num_rounds
     % 本轮任务分配结果已定，重新计算并缓存具体执行的时间表 (Schedule)
     Value_data = update_task_schedule(Value_data, agents, tasks, Value_Params);
 
-    %% ==================== 4. 观测与信念更新 (Observation & Belief Update) ====================
-    % 在执行任务的过程中，Agent能观察到环境的变化，从而更新对任务难度、队友能力的信念
+    %% ==================== 4. 观测与信念更新 ====================
     [Value_data, summatrix] = AgentOps.collect_observations(Value_data, agents, tasks, Value_Params, summatrix, final_SC);
     Value_data = AgentOps.update_belief_from_observations(Value_data, Value_Params);
 
-    %% ==================== 5. 结果评估 (客观/上帝视角) ====================
-    % 调用上帝视角的评价函数，计算最终真实的收益、成本、任务完成度
+    %% ==================== 5. 结果评估（客观/上帝视角） ====================
     [coalition_utility, total_global_cost, total_completed_value, task_completion_degrees] = ...
         UtilityEvaluator.evaluate_coalition_metrics(final_SC, agents, tasks, Value_Params, eps_val);
 
-    %% 4.8 信念广播 (Belief Broadcasting)
-    % 将更新后的信念在网络中传播（让Agent了解别人的最新看法）
+    %% 4.8 信念广播
     for i = 1:Value_Params.N
         for j = 1:Value_Params.N
             Value_data(i).other{j}.initbelief = Value_data(j).initbelief;
@@ -423,13 +381,7 @@ end
 
 % 【禁忌列表检查】
 function is_tabu = is_in_tabu_list(hash_str, tabu_list)
-is_tabu = false;
-for i = 1:length(tabu_list)
-    if strcmp(tabu_list{i}, hash_str)
-        is_tabu = true;
-        return;
-    end
-end
+is_tabu = ~isempty(tabu_list) && any(strcmp(tabu_list, hash_str));
 end
 
 % 【禁忌列表更新】先进先出队列(FIFO)
@@ -455,45 +407,34 @@ end
 
 function [SC_candidate, move_description] = generate_candidate_solution_tabu(Value_data_i, agents, tasks, Value_Params, AddPara)
 agent_idx = Value_data_i.agentIndex;
-SC_current = Value_data_i.SC;
 M = Value_Params.M;
 K = Value_Params.K;
 eps_val = 1e-9;
 current_T = Value_Params.Temperature;
 
-if isfield(AddPara, 'resource_confidence')
-    confidence = AddPara.resource_confidence;
-else
-    confidence = 0.9;
-end
+confidence = 0.9;
+if isfield(AddPara, 'resource_confidence'), confidence = AddPara.resource_confidence; end
 
-% 获取离开概率参数 p_leave
-if isfield(Value_Params, 'SA_p_leave')
-    p_leave = Value_Params.SA_p_leave;
-elseif isfield(AddPara, 'p_leave')
-    p_leave = AddPara.p_leave;
-else
     p_leave = 0.1;
-end
-SC_temp = SC_current;
+    if isfield(Value_Params, 'SA_p_leave'), p_leave = Value_Params.SA_p_leave;
+    elseif isfield(AddPara, 'p_leave'),     p_leave = AddPara.p_leave;
+    end
 
-% --- 步骤 A：随机撤出当前拥有的部分任务资源 ---
+% --- 步骤 A：随机撤出部分任务资源 ---
+SC_temp = Value_data_i.SC;
 for m = 1:M
     for k = 1:K
         if SC_temp{m}(agent_idx, k) > eps_val && rand < p_leave
-            removed_amount = SC_temp{m}(agent_idx, k);
-            SC_temp{m}(agent_idx, k) = 0; % 撤回资源
-            
-            % 【打印：撤出资源】
             if AddPara.verbose
                 fprintf('      [-] [撤出] Agent #%-2d 从 任务 M=%-2d 撤出 资源 k=%-2d | 数量: %.2f\n', ...
-                    agent_idx, m, k, removed_amount);
+                    agent_idx, m, k, SC_temp{m}(agent_idx, k));
             end
+            SC_temp{m}(agent_idx, k) = 0;
         end
     end
 end
 
-% 更新数据准备进行新一轮分配
+    % 更新数据准备新一轮分配
 Value_data_i.SC = SC_temp;
 % 计算当前的系统任务供需缺口(Gaps)
 [~, resource_gap] = calc_gaps(Value_data_i, Value_Params, AddPara);
@@ -505,7 +446,7 @@ task_type_demands = Value_Params.task_type_demands;
 % --- 步骤 B：将空闲（或可复用）的资源重新分配 ---
 for k = 1:K
     total_capacity = agents(agent_idx).resources(k);
-    if total_capacity <= eps_val, continue; end % 如果没有这种能力，直接跳过
+    if total_capacity <= eps_val, continue; end
     
     % 基于累积分布概率挑选目标任务
     prob_vec = probs(k, :);
@@ -516,26 +457,18 @@ for k = 1:K
     else
         selected_task = randi(M);
     end
-    if isempty(selected_task), selected_task = randi(M); end
-    
-    % 防局部重叠：不能在一个任务上“自我复用”两次
-    if SC_new{selected_task}(agent_idx, k) > eps_val
-        continue;
-    end
-    
+    % 已参与该任务则跳过
+    if SC_new{selected_task}(agent_idx, k) > eps_val, continue; end
+
     % 检查该任务是否还需要该资源
     curr_alloc = sum(SC_new{selected_task}(:, k));
     belief = Value_data_i.initbelief(selected_task, :);
     expected_demand = WorldSim.calculate_demand_quantile(belief, task_type_demands, confidence);
-    demand_k = expected_demand(k);
-    
-    % 只要任务还有一丁点缺口，我们就考虑投入
-    can_add = max(0, demand_k - curr_alloc);
+    can_add = max(0, expected_demand(k) - curr_alloc);
     
     if can_add > eps_val
         SC_candidate_temp = SC_new;
-        invest_amt = total_capacity; % 不可分割，全量投入
-        SC_candidate_temp{selected_task}(agent_idx, k) = invest_amt;
+        SC_candidate_temp{selected_task}(agent_idx, k) = total_capacity; % 全量投入
         
         % 包装成全量数组
         Value_data_array = repmat(Value_data_i, Value_Params.N, 1);
@@ -549,16 +482,12 @@ for k = 1:K
             Value_Params, agent_idx, SC_candidate_temp, true, AddPara);
             
         if isFeasible
-            SC_new = SC_candidate_temp; % 采纳方案
-            
-            % 【打印：加入资源（成功）】
+            SC_new = SC_candidate_temp;
             if AddPara.verbose
                 fprintf('      [+] [复用] Agent #%-2d 向 任务 M=%-2d 投入 资源 k=%-2d | 数量: %.2f\n', ...
-                    agent_idx, selected_task, k, invest_amt);
+                    agent_idx, selected_task, k, total_capacity);
             end
-            
         else
-            % 【打印：被拒绝的原因（可选但极力推荐，便于排错）】
             if AddPara.verbose
                 fprintf('      [x] [拒绝] Agent #%-2d 尝试向 任务 M=%-2d 投入 资源 k=%-2d 失败 | 原因: %s\n', ...
                     agent_idx, selected_task, k, info.reason);
@@ -571,28 +500,11 @@ SC_candidate = SC_new;
 move_description = sprintf('SA_Tabu_Altruistic_Agent_%d', agent_idx);
 end
 % 【计算局部社会效用 (Local Social Utility)】
-   function LSU = calculate_local_social_utility(SC_old, SC_candidate, agent_idx, agents, tasks, Value_Params, Value_data, AddPara)
-    % CALCULATE_LOCAL_SOCIAL_UTILITY 计算局部社会效用（Local Social Utility, LSU）
-    %
-    % 【核心修复版：引入时间耦合/蝴蝶效应侦测】
-    % 在多机器人协同中，智能体 i 的路径/时间表发生任何变动，都会导致它参与的所有任务的到达时间偏移。
-    % 这会直接影响在这些任务中等待 i 的其他机器人的等待耗电量 (t_wait_total)。
-    % 因此，相关利益群体不仅包括“资源增减”的任务队友，还必须包括“资源不变但时间表受波及”的稳定任务队友。
-    %
-    % 输入：
-    %   SC_old       : 旧联盟结构（当前状态）
-    %   SC_candidate : 新联盟结构（候选状态）
-    %   agent_idx    : 当前决策的智能体索引
-    %   agents/tasks : 物理属性与参数
-    %   Value_data   : 智能体信念数据
-    %   AddPara      : 附加参数
-    %
-    % 输出：
-    %   LSU : 局部社会效用（智能体 i 及其所有受波及队友在 SC_candidate 下的效用总和）
-
+% LSU = 自身效用 + 小边队友在候选解下的效用总和
+function LSU = calculate_local_social_utility(SC_old, SC_candidate, agent_idx, agents, tasks, Value_Params, Value_data, AddPara)
     eps_val = 1e-6;
 
-    %% ==================== 1 & 2. 识别受波及任务并提取利益共同体 ====================
+    % 识别小边利益相关人群：旧/新任一状态中参与该任务的成员
     related_members = [];
 
     for m = 1:Value_Params.M
@@ -602,53 +514,42 @@ end
 
         % 只要在旧状态 OR 新状态中参与了该任务，该任务的队友就算作利益相关者
         if old_investment > eps_val || new_investment > eps_val
-            % 把该任务在旧状态和新状态下的所有参与者都捞出来
             members_old = OCFUtils.get_participants(SC_old, m, eps_val);
             members_new = OCFUtils.get_participants(SC_candidate, m, eps_val);
-
-            % 合并该任务的关联成员并压入总集合
-            task_members = [members_old(:)', members_new(:)'];
-            related_members = [related_members, task_members];
+            related_members = [related_members, members_old(:)', members_new(:)'];
         end
     end
 
-    % 全局去重（防止一个人同时在两个受影响任务里被重复计算）
+    % 全局去重并排除自己
     related_members = unique(related_members);
-    
-    % 排除自己（因为智能体自身的效用在下一步会单独计算）
     related_members(related_members == agent_idx) = [];
 
-    %% ==================== 3. 计算并合并 LSU ====================
-    % 最终公式：LSU = 自身效用 + sum(受波及队友们的效用)
+    %% 计算并合并 LSU
+    % LSU = 自身效用 + 受波及队友效用之和
 
-    % 3.1 独立计算自己的效用 (在候选解 SC_candidate 状态下)
+    % 计算自身效用
     Value_data_temp = Value_data;
     Value_data_temp.SC = SC_candidate;
     self_utility = UtilityEvaluator.calc_agent_total_utility(SC_candidate, agents, tasks, Value_Params, Value_data_temp, AddPara);
 
-    % 3.2 循环计算被卷入的各个队友的效用
+    % 计算小边队友效用（使用队友信念，如未知则用自身信念代替）
     teammates_utility = 0;
     for k = 1:length(related_members)
         teammate_id = related_members(k);
 
-        % 分布式博弈的体现：我无法直接得知队友怎么看，只能根据脑海中的“关于队友想法的信念(belief)”来代入计算
+        % 使用队友信念（无则用自身信念代替）
         if isfield(Value_data, 'other') && length(Value_data.other) >= teammate_id && ~isempty(Value_data.other{teammate_id})
             teammate_belief = Value_data.other{teammate_id}.initbelief;
         else
-            % 兜底方案：如果不知道队友的想法，就假设队友和我看法一样(同质化预设)
-            teammate_belief = Value_data.initbelief;
+            teammate_belief = Value_data.initbelief; % 同质化代替
         end
 
-        % 伪造一个临时数据对象，让估值函数误以为是 teammate_id 正在计算它的效用
         temp_data.agentIndex = teammate_id;
         temp_data.initbelief = teammate_belief;
         temp_data.SC = SC_candidate;
-
-        % 评出在新的联盟状态下，该队友的预计得分 (这里底层的 calc_agent_total_utility 会捕捉到时间延误/电量消耗带来的惩罚)
         teammate_utility = UtilityEvaluator.calc_agent_total_utility(SC_candidate, agents, tasks, Value_Params, temp_data, AddPara);
         teammates_utility = teammates_utility + teammate_utility;
     end
 
-    % 3.3 汇总返回
     LSU = self_utility + teammates_utility;
 end
