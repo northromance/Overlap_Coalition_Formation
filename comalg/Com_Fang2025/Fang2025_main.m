@@ -135,6 +135,16 @@ for counter = 1:Value_Params.num_rounds
     % 初始化内循环历史记录
     inner_loop_history = ResultProcessor.init_inner_loop_history();
 
+    % ⭐ [精英快照初始化] 记录本轮SA内循环中发现的全局最优解，防止末尾退火波动引入劣解
+    elite_utility_init = 0;
+    for j = 1:Value_Params.N
+        elite_utility_init = elite_utility_init + UtilityEvaluator.calc_agent_total_utility( ...
+            Value_data(j).SC, agents, tasks, Value_Params, Value_data(j), AddPara);
+    end
+    elite_global_utility = elite_utility_init;
+    elite_SC = Value_data(1).SC;
+    elite_coalitionstru = Value_data(1).coalitionstru;
+
     while(doneflag == 0)
 
         % --- 3.1 顺序博弈 (Sequential Game) ---
@@ -195,13 +205,35 @@ for counter = 1:Value_Params.num_rounds
             current_utility = current_utility + UtilityEvaluator.calc_agent_total_utility(final_SC, agents, tasks, Value_Params, Value_data(j), AddPara);
         end
 
+        % ⭐ [精英快照更新] 若当前解超越本轮历史最优，立即缓存（"上帝照相机"）
+        if current_utility > elite_global_utility
+            elite_global_utility = current_utility;
+            elite_SC = final_SC;
+            elite_coalitionstru = final_coalitionstru;
+            if AddPara.verbose
+                fprintf('    [Elite] 发现本轮内循环历史最高全局效用: %.2f (Iter: %d)\n', elite_global_utility, k_iter - 1);
+            end
+        end
+
         % --- 3.8 记录内循环历史数据 ---
         inner_loop_history = ResultProcessor.record_inner_loop_iteration(...
             inner_loop_history, k_iter - 1, Value_Params.Temperature, ...
-            current_utility, best_utility, final_SC, Value_Params);
+            current_utility, elite_global_utility, final_SC, Value_Params);
     end
     
     
+    % ⭐ [强制采纳精英方案] 回滚至本轮SA内循环发现的历史最优解，丢弃末尾退火波动产生的劣解
+    if AddPara.verbose
+        fprintf('  [SA-Done] Round %d 内循环结束，强制采纳精英方案 (Utility: %.2f)\n', counter, elite_global_utility);
+    end
+    final_SC = elite_SC;
+    final_coalitionstru = elite_coalitionstru;
+    for ii = 1:Value_Params.N
+        Value_data(ii).coalitionstru = final_coalitionstru;
+        Value_data(ii).SC = final_SC;
+        Value_data(ii).resources_matrix = OCFUtils.get_agent_resource_matrix(final_SC, ii, Value_Params);
+    end
+
     % 重新计算并缓存具体执行的任务时间表 (Task Schedule) 及路径成本
     Value_data = update_task_schedule(Value_data, agents, tasks, Value_Params);
     

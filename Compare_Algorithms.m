@@ -18,7 +18,8 @@ addpath(fullfile(project_root, "Overlap_Coalition_Formation\comalg", "Com_Huo202
 addpath(fullfile(project_root, "Overlap_Coalition_Formation\comalg", "Com_Qi2023"));     % Qi2023 algorithm（Qi2023 算法）
 addpath(fullfile(project_root, "Overlap_Coalition_Formation\comalg", "Com_Shi2024"));    % Shi2024 OCF algorithm（Shi2024 重叠联盟形成算法）
 addpath(fullfile(project_root, "Overlap_Coalition_Formation\comalg", "Com_Fang2025"));    % Fang2025 algorithm（Fang2025 算法）
-addpath(fullfile(project_root, "Overlap_Coalition_Formation\comalg", "SA_TabuEnhance"));        % PSO algorithm（粒子群优化算法）
+addpath(fullfile(project_root, "Overlap_Coalition_Formation\comalg", "SA_TabuEnhance"));        % SA TabuEnhance algorithm
+addpath(fullfile(project_root, "Overlap_Coalition_Formation\comalg", "Com_PSO"));             % PSO algorithm（粒子群优化算法）
 
 %% ========================================================================
 %  Scenario configuration (adjust for debugging as needed)
@@ -31,7 +32,7 @@ M = 10;                         % number of tasks（任务数量）
 K = 6;                          % number of resource types（资源类型数）
 task_values = [800, 1000, 1500];  % three task types（三种不同类型任务的价值）
 num_task_types = length(task_values);
-algorithms_to_run_ids = [5]; 
+algorithms_to_run_ids = [10]; 
 
 % 算法开关：选择要运行的算法 ID
 % 1=SA_Value, 2=Greedy, 3=Huo2025, 4=Qi2023, 5=Shi2024, 6=PSO
@@ -86,20 +87,20 @@ num_rounds = 100;              % 迭代轮数（快速测试: 5轮）
 SA_Temperature = 200.0;               % 初始温度
 SA_alpha = 0.95;                      % 降温系数
 SA_Tmin = 0.01;                       % 终止温度
-SA_K_len = 10;                        % 稳定性阈值（连续无改进迭代次数）
+SA_K_len = 15;                        % 稳定性阈值（连续无改进迭代次数）
 SA_K_max_inner = 50;                  % 每轮最大迭代次数（快速测试20，完整测试建议200）
 SA_T0_round = 200;                    % 回合温度调度：初始温度 T_0
-SA_beta_round = 0.85;                 % 回合温度调度：衰减系数 beta
+SA_beta_round = 0.95;                 % 回合温度调度：衰减系数 beta
 SA_T_base_round = 40;                 % 回合温度调度：温度下界 T_base（经delta_E统计校准：均值|ΔE|≈202，此值约保证5%探索概率）
 SA_resource_confidence = 0.9;         % 初始构造阶段需求分位置信度
 SA_T_init_construction = 0.5;         % 初始构造阶段温度（低温近贪婪）
 
 % TabuEnhanced专属参数：
 % 算法 7: SA_TabuEnhanced（全局效用版本）
-SA_Tabu_K_max_outer = 50;
+SA_Tabu_K_max_outer = 100;
 % SA_Tabu_K_max_inner = 1;
 SA_Tabu_tenure = 20;
-SA_p_leave = 0.1;  % 新增：离开概率
+SA_p_leave = 0.5;  % 新增：离开概率
 
 % 算法 10: SA_TabuEnhanced_Altruistic（利他偏好版本）
 % 使用与算法7相同的参数，但决策机制基于 Preference_gain
@@ -129,7 +130,18 @@ Shi_K_max_inner = 50;                 % 每轮最大迭代次数
 Shi_K_len = 10;                       % 稳定性阈值
 
 % ========================================================================
-% 算法 10: 
+% 算法 6: PSO（粒子群优化算法）
+% ========================================================================
+PSO_swarm_size = 20;                  % 粒子群大小
+PSO_w_max = 0.9;                      % 惯性权重最大值
+PSO_w_min = 0.4;                      % 惯性权重最小值
+PSO_c1 = 2.0;                         % 认知系数（个体学习）
+PSO_c2 = 2.0;                         % 社会系数（群体学习）
+PSO_K_max_inner = 100;                % 最大迭代次数
+PSO_K_len = 10;                       % 稳定性阈值
+
+% ========================================================================
+% 算法 10: TabuEnhance
 % ========================================================================
 tabu_tenure = 20 ; % 禁忌期限
 
@@ -254,6 +266,14 @@ Value_Params.Qi_Gamma_max = Qi_Gamma_max;     % 最大 Boltzmann 系数
 Value_Params.Shi_K_max_inner = Shi_K_max_inner; % 每轮最大迭代次数
 Value_Params.Shi_K_len = Shi_K_len;             % 稳定性阈值
 
+% ------------------ PSO算法参数 ------------------
+Value_Params.PSO_swarm_size = PSO_swarm_size;   % 粒子群大小
+Value_Params.PSO_w_max = PSO_w_max;             % 惯性权重最大值
+Value_Params.PSO_w_min = PSO_w_min;             % 惯性权重最小值
+Value_Params.PSO_c1 = PSO_c1;                   % 认知系数
+Value_Params.PSO_c2 = PSO_c2;                   % 社会系数
+Value_Params.PSO_K_max_inner = PSO_K_max_inner; % 最大迭代次数
+Value_Params.PSO_K_len = PSO_K_len;             % 稳定性阈值
 
 % ------------------ 算法10参数 ------------------
 Value_Params.tabu_tenure = tabu_tenure;        % 禁忌期限
@@ -285,7 +305,7 @@ all_algorithms = {
     struct('id', 3, 'name', 'Huo2025',         'func', @Huo2025_main,         'folder', 'comalg/Com_Huo2025',  'color', [0.8, 0.2, 0.2]); % Huo2025
     struct('id', 4, 'name', 'Qi2023',          'func', @Qi2023_main,          'folder', 'comalg/Com_Qi2023',   'color', [0.2, 0.8, 0.2]); % Qi2023
     struct('id', 5, 'name', 'Shi2024',         'func', @Shi2024_main,         'folder', 'comalg/Com_Shi2024',  'color', [0.8, 0.4, 0.2]); % Shi2024 OCF
-    % struct('id', 6, 'name', 'PSO',             'func', @PSO_main,             'folder', 'comalg/Com_PSO',      'color', [0.8, 0.8, 0.2]); % 粒子
+    struct('id', 6, 'name', 'PSO',             'func', @PSO_main,             'folder', 'comalg/Com_PSO',      'color', [0.8, 0.8, 0.2]); % 粒子群优化
     % SA 改进算法（ID 7-12）
    % struct('id', 7,  'name', 'SA_TabuEnhanced',    'func', @SA_Value_TabuEnhanced_main,    'folder', 'comalg/SA_TabuEnhance', 'color', [0.3, 0.7, 0.9]); % 禁忌搜索增强
    % struct('id', 8,  'name', 'SA_AdaptiveAlpha',   'func', @SA_Value_AdaptiveAlpha_main,   'folder', 'comalg/SA_Value_Adapt', 'color', [0.4, 0.5, 0.9]); % 自适应
