@@ -86,7 +86,7 @@ num_rounds = 300;              % 迭代轮数（快速测试: 5轮）
 SA_Temperature = 200.0;               % 初始温度
 SA_alpha = 0.95;                      % 降温系数
 SA_Tmin = 0.01;                       % 终止温度
-SA_K_len = 20;                        % 稳定性阈值（连续无改进迭代次数）
+SA_K_len = 10;                        % 稳定性阈值（连续无改进迭代次数）
 SA_K_max_inner = 100;                  % 每轮最大迭代次数（快速测试20，完整测试建议200）
 SA_T0_round = 200;                    % 回合温度调度：初始温度 T_0
 SA_beta_round = 0.85;                 % 回合温度调度：衰减系数 beta
@@ -96,7 +96,7 @@ SA_T_init_construction = 0.5;         % 初始构造阶段温度（低温近贪�
 
 % TabuEnhanced专属参数：
 % 算法 7: SA_TabuEnhanced（全局效用版本）
-SA_Tabu_K_max_outer = 100;
+SA_Tabu_K_max_outer = 50;
 % SA_Tabu_K_max_inner = 1;
 SA_Tabu_tenure = 20;
 SA_p_leave = 0.1;  % 新增：离开概率

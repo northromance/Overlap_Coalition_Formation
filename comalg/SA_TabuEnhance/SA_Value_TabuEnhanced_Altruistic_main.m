@@ -16,11 +16,6 @@ function [Value_data, history_data] = SA_Value_TabuEnhanced_Altruistic_main(agen
 %      - 每个智能体维护自己的最佳历史LSU： best_LSU(i)
 %      - 特赦条件：current_LSU(i) > best_LSU(i)
 %      - 理论含义：即使当前动作被禁忌表封锁，但只要它能让“局部利益相关群体的总福利”达到历史新高，就无视禁忌，强制允许执行。
-%
-%   3. 理论依据：分布式多智能体系统，个体基于局部信息和利他性决策
-%      - 个体不掌握全局信息，但关心与自己利益相关的成员（熟人社会网络）。
-%      - 成员集合随资源交换动态变化，体现真实的社会网络特征。
-% ==============================================
 
 %% ==================== 0. 随机数种子设置 ====================
 % 为了保证科学实验的可复现性（Reproducibility），固定随机数种子
@@ -63,12 +58,6 @@ for counter = 1:Value_Params.num_rounds
     end
     for j = 1:Value_Params.N
         best_LSU(j) = calculate_local_social_utility(SC_empty, best_SC, j, agents, tasks, Value_Params, Value_data(j), AddPara);
-    end
-
-    % 全局效用（上帝视角，仅用于日志/评估，不参与分布式决策）
-    best_utility_global = 0;
-    for j = 1:Value_Params.N
-        best_utility_global = best_utility_global + UtilityEvaluator.calc_agent_total_utility(best_SC, agents, tasks, Value_Params, Value_data(j), AddPara);
     end
 
     %% ==================== 2.25 初始化禁忌列表 ====================
@@ -147,19 +136,10 @@ for counter = 1:Value_Params.num_rounds
             Value_data(i).coalitionstru = OCFUtils.build_coalitionstru_from_SC(SC_global, Value_Params, agents);
         end
 
-        % 根据生成的初始解重新计算 LSU 和全局效用
+        % 根据生成的初始解重新计算 LSU 
         best_SC = SC_global;
         for ii = 1:Value_Params.N
             best_LSU(ii) = calculate_local_social_utility(SC_empty, SC_global, ii, agents, tasks, Value_Params, Value_data(ii), AddPara);
-        end
-
-        % 重新计算上帝视角的全局效用
-        best_utility_global = 0;
-        for ii = 1:Value_Params.N
-            best_utility_global = best_utility_global + UtilityEvaluator.calc_agent_total_utility(SC_global, agents, tasks, Value_Params, Value_data(ii), AddPara);
-        end
-        if AddPara.verbose
-            fprintf('  [SA] 第1轮：初始全局效用 = %.2f\n', best_utility_global);
         end
     end
 
@@ -172,12 +152,16 @@ for counter = 1:Value_Params.num_rounds
         current_utility_global = current_utility_global + UtilityEvaluator.calc_agent_total_utility(Value_data(j).SC, agents, tasks, Value_Params, Value_data(j), AddPara);
     end
 
+    % ? [新增/修改点 1: 每轮物理执行前，初始化“上帝照相机”，起步就是目前的最佳] ?
+    elite_global_utility = current_utility_global;
+    elite_SC = Value_data(1).SC;
+    elite_coalitionstru = Value_data(1).coalitionstru;
+
     while(doneflag == 0)
         % --- 3.1 顺序博弈：N个Agent依次决策 ---
         for ii = 1:Value_Params.N
             % 步骤1: 智能体 ii 根据自身局部信息生成一个变异候选解（撤出某些任务，加入新任务）
             [SC_candidate, ~] = generate_candidate_solution_tabu(Value_data(ii), agents, tasks, Value_Params, AddPara);
-
 
             % 步骤3: 禁忌判断 (Tabu Check)
             candidate_hash = get_SC_hash(SC_candidate, Value_Params); % 对分配矩阵进行哈希，生成唯一指纹
@@ -208,8 +192,8 @@ for counter = 1:Value_Params.num_rounds
                 % 计算利他偏好差值（Delta Energy）。
                 % Preference_gain 函数不仅考虑个体自己的利益得失，还考虑被它动作影响到的队友的得失。
                 delta_E_altruistic = Preference_gain(tasks, agents, SC_current, SC_candidate, ii, Value_Params, Value_data(ii));
-                fprintf('  [ΔE] Round=%d Iter=%d Agent=%d  delta_E=%.4f  T=%.4f\n', ...
-                    counter, k_iter, ii, delta_E_altruistic, Value_Params.Temperature);
+                % 取消频繁打印 delta E，保持日志干净
+                % fprintf('  [ΔE] Round=%d Iter=%d Agent=%d  delta_E=%.4f  T=%.4f\n', counter, k_iter, ii, delta_E_altruistic, Value_Params.Temperature);
 
                 % === [利他主义 Metropolis 准则结束] ===
                 if delta_E_altruistic > 1e-4
@@ -239,7 +223,7 @@ for counter = 1:Value_Params.num_rounds
                     Value_data(jj).resources_matrix = OCFUtils.get_agent_resource_matrix(SC_candidate, jj, Value_Params);
                 end
 
-                % 5.2 将新接受的状态加入禁忌表（注意：如果是通过特赦接受的原本就在禁忌表中的解，不需要重新加入）
+                % 5.2 将新接受的状态加入禁忌表
                 if ~is_tabu
                     tabu_list = update_tabu_list(tabu_list, candidate_hash, tabu_tenure);
                 end
@@ -262,19 +246,39 @@ for counter = 1:Value_Params.num_rounds
             end
         end  % end for ii (本轮所有智能体决策完毕)
 
-        % 记录内部迭代(降温过程中的一步)的历史数据
-        inner_loop_history = ResultProcessor.record_inner_loop_iteration(...
-            inner_loop_history, k_iter, ...
-            Value_Params.Temperature, current_utility_global, best_utility_global, Value_data(1).SC, Value_Params);
-
-        % --- 3.2 完成一轮全员顺序博弈后的操作 ---
-
         % 核心动作：退火降温。Temperature = alpha * Temperature
         Value_Params.Temperature = Value_Params.alpha * Value_Params.Temperature;
 
         % 提取最终的联盟矩阵结构
         final_SC = Value_data(Value_Params.N).SC;
         final_coalitionstru = Value_data(Value_Params.N).coalitionstru;
+
+        % ? [新增/修改点 2: 提前全网状态同步，然后准确计算这一步的全局效用，并拍照！] ?
+        for ii = 1:Value_Params.N
+            Value_data(ii).coalitionstru = final_coalitionstru;
+            Value_data(ii).SC = final_SC;
+            Value_data(ii).resources_matrix = OCFUtils.get_agent_resource_matrix(final_SC, ii, Value_Params);
+        end
+
+        current_utility_global = 0;
+        for j = 1:Value_Params.N
+            current_utility_global = current_utility_global + UtilityEvaluator.calc_agent_total_utility(final_SC, agents, tasks, Value_Params, Value_data(j), AddPara);
+        end
+
+        % 【上帝照相机按下快门】：如果当前的波动画出了新高，立刻缓存
+        if current_utility_global > elite_global_utility
+            elite_global_utility = current_utility_global;
+            elite_SC = final_SC;
+            elite_coalitionstru = final_coalitionstru;
+            if AddPara.verbose
+                fprintf('    [Elite] 咔嚓！发现本轮计算内部历史最高全局效用: %.2f (Iter: %d)\n', elite_global_utility, k_iter);
+            end
+        end
+
+        % 记录内部迭代(降温过程中的一步)的历史数据 (修复了旧版记录不更新的问题)
+        inner_loop_history = ResultProcessor.record_inner_loop_iteration(...
+            inner_loop_history, k_iter, ...
+            Value_Params.Temperature, current_utility_global, elite_global_utility, final_SC, Value_Params);
 
         % 收敛检测
         if isequal(previous_SC, final_SC)
@@ -294,24 +298,32 @@ for counter = 1:Value_Params.num_rounds
 
         % 滚动更新旧状态
         previous_SC = final_SC;
-        k_iter = k_iter + 1;
-
-        % 全网状态同步
-        for ii = 1:Value_Params.N
-            Value_data(ii).coalitionstru = final_coalitionstru;
-            Value_data(ii).SC = final_SC;
-            Value_data(ii).resources_matrix = OCFUtils.get_agent_resource_matrix(Value_data(ii).SC, ii, Value_Params);
-        end
+        
         if AddPara.verbose
             fprintf('  [SA-Outer] Iter %d: T=%.2f, Utility=%.2f, Best=%.2f\n', ...
-                k_iter, Value_Params.Temperature, current_utility_global, best_utility_global);
+                k_iter, Value_Params.Temperature, current_utility_global, elite_global_utility);
         end
-    end  % end while (SA退火外循环结束)
+        k_iter = k_iter + 1;
+    end  % end while (SA退火内循环结束)
+
+    % ? [新增/修改点 3: 强制丢弃结尾波动的劣解，回滚至本轮脑内推演发现的最高分方案作为物理落地的起点] ?
+    if AddPara.verbose
+        fprintf('  [SA-Done] Round %d 结束，强行采纳并执行最优方案 (Utility: %.2f)\n', counter, elite_global_utility);
+    end
+    final_SC = elite_SC;
+    final_coalitionstru = elite_coalitionstru;
+    for ii = 1:Value_Params.N
+        Value_data(ii).coalitionstru = final_coalitionstru;
+        Value_data(ii).SC = final_SC;
+        Value_data(ii).resources_matrix = OCFUtils.get_agent_resource_matrix(final_SC, ii, Value_Params);
+    end
+    % =========================================================================
 
     % 本轮任务分配结果已定，重新计算并缓存具体执行的时间表 (Schedule)
     Value_data = update_task_schedule(Value_data, agents, tasks, Value_Params);
 
     %% ==================== 4. 观测与信念更新 ====================
+    % 基于精英方案（final_SC）进行物理模拟和观测
     [Value_data, summatrix] = AgentOps.collect_observations(Value_data, agents, tasks, Value_Params, summatrix, final_SC);
     Value_data = AgentOps.update_belief_from_observations(Value_data, Value_Params);
 
