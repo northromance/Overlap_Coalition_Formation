@@ -448,7 +448,7 @@ end
 % 这有助于跳出局部最优，探索新的联盟组合
 
 SC_temp = SC_current;
-p_leave = 0.1;  % 离开概率（可调参数）
+p_leave = Value_Params.SA_p_leave;  % 离开概率（统一由 Value_Params.SA_p_leave 控制）
 
 for m = 1:M
     for k = 1:K

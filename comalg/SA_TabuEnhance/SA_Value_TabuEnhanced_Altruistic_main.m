@@ -27,7 +27,7 @@ end
 %% ==================== 1. 初始化阶段 ====================
 eps_val = 1e-6;          % 浮点数比较容差
 history_data = struct();
-tabu_tenure = Value_Params.tabu_tenure; % 禁忌期限
+tabu_tenure = Value_Params.SA_Tabu_tenure; % 禁忌期限
 
 Value_data = WorldSim.init_value_data(agents, tasks, Value_Params);
 [Value_data, summatrix] = WorldSim.init_observe_belief_neighbor(Value_data, Value_Params.N, Value_Params.M, Value_Params);
@@ -430,10 +430,7 @@ current_T = Value_Params.Temperature;
 confidence = 0.9;
 if isfield(AddPara, 'resource_confidence'), confidence = AddPara.resource_confidence; end
 
-    p_leave = 0.1;
-    if isfield(Value_Params, 'SA_p_leave'), p_leave = Value_Params.SA_p_leave;
-    elseif isfield(AddPara, 'p_leave'),     p_leave = AddPara.p_leave;
-    end
+    p_leave = Value_Params.SA_p_leave;  % 离开概率（统一由 Value_Params.SA_p_leave 控制）
 
 % --- 步骤 A：随机撤出部分任务资源 ---
 SC_temp = Value_data_i.SC;

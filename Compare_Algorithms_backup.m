@@ -55,7 +55,7 @@ WORLD_ZMIN = 0; WORLD_ZMAX = 0;
 agent_velocity = 2;             % 移动速度
 agent_detprob_min = 0.95;        % 探测概率下限
 agent_detprob_max = 1.0;        % 探测概率上限
-agent_Emax_min = 300;           % 最大能量下限
+agent_Emax_min = 600;           % 最大能量下限
 agent_Emax_range = 50;          % 最大能量随机范围
 agent_fuel = 1;                 % 运动油耗（单位距离消耗）
 agent_wait_fuel = 0.5;          % 等待油耗（停留/等待时消耗，通常小于运动）

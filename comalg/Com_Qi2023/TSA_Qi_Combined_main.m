@@ -74,7 +74,7 @@ for round = 1:Value_Params.num_rounds
             SC_temp = SC_global;
 
             % 1. 随机撤出 (Leave)
-            p_leave = 0.3;
+            p_leave = Value_Params.SA_p_leave;  % 离开概率（统一由 Value_Params.SA_p_leave 控制）
             for m = 1:M
                 for k = 1:K
                     if SC_temp{m}(i, k) > eps_val && rand < p_leave
