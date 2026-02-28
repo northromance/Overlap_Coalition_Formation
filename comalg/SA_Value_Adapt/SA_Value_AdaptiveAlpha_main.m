@@ -284,6 +284,9 @@ for counter=1:Value_Params.num_rounds
         total_completed_value, task_completion_degrees, ...
         summatrix);
 
+    % 记录本轮的内循环迭代次数
+    history_data.k_iter_per_round{counter} = k_iter;
+
     % 记录自适应温度相关数据
     if counter > 1
         history_data.belief_diff(counter) = belief_diff;

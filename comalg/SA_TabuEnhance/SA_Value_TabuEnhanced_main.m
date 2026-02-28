@@ -334,6 +334,9 @@ for counter = 1:Value_Params.num_rounds
 
     % --- 记录内循环历史数据 ---
     history_data.inner_loop{counter} = inner_loop_history;
+
+    % 记录本轮的内循环迭代次数
+    history_data.k_iter_per_round{counter} = k_iter;
 end
 
 %% ==================== 6. 结束与最终检查 ====================

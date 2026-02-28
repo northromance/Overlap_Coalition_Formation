@@ -1,80 +1,71 @@
 function [Value_data, history_data] = Fang2025_main(agents, tasks, AddPara, Value_Params)
 
-%% ==================== 0. Ëæ»úÊıÖÖ×ÓÉèÖÃ ====================
+%% ==================== 0. éšæœºæ•°ç§å­è®¾ç½® ====================
 if isfield(Value_Params, 'seed')
-    rng(Value_Params.seed); % ¹Ì¶¨ÖÖ×ÓÒÔ¸´ÏÖÊµÑé½á¹û
+    rng(Value_Params.seed); % å›ºå®šéšæœºæ•°ä»¥ä¿è¯å®éªŒå¯å¤ç°æ€§
 end
 
-%% ==================== 1. ³õÊ¼»¯½×¶Î ====================
-eps_val = 1e-6;          % ¸¡µãÊı±È½ÏÈİ²î
-history_data = struct(); % ³õÊ¼»¯ÀúÊ·¼ÇÂ¼ÈİÆ÷
+%% ==================== 1. åˆå§‹åŒ–é˜¶æ®µ ====================
+eps_val = 1e-6;          % æµ®ç‚¹æ•°æ¯”è¾ƒå®¹å·®
+history_data = struct(); % åˆå§‹åŒ–å†å²è®°å½•å®¹å™¨
 
-% --- ³õÊ¼»¯ÖÇÄÜÌåºËĞÄÊı¾İ½á¹¹ (Value_data) ---
-% °üº¬ SC (ÁªÃË½á¹¹¾ØÕó), resources (×ÊÔ´×´Ì¬), position (Î»ÖÃ) µÈ
+% --- åˆå§‹åŒ–æ™ºèƒ½ä½“æ ¸å¿ƒæ•°æ®ç»“æ„ (Value_data) ---
+% åŒ…æ‹¬ SC (è”ç›Ÿç»“æ„çŸ©é˜µ), resources (èµ„æºçŠ¶æ€), position (ä½ç½®) ç­‰
 Value_data = WorldSim.init_value_data(agents, tasks, Value_Params);
 
-% --- ³õÊ¼»¯¹Û²â¡¢ĞÅÄîÓëÁÚ¾ÓĞÅÏ¢ ---
-% summatrix ÓÃÓÚ¼ÇÂ¼¹Û²â´ÎÊı£¬initbelief ³õÊ¼»¯ÎªÏÈÑé·Ö²¼
+% --- åˆå§‹åŒ–è§‚æµ‹ã€ä¿¡å¿µä¸é‚»å±…ä¿¡æ¯ ---
+% summatrix ç”¨äºè®°å½•è§‚æµ‹æ¬¡æ•°ï¼Œinitbelief åˆå§‹åŒ–ä¸ºå‡åŒ€åˆ†å¸ƒ
 [Value_data, summatrix] = WorldSim.init_observe_belief_neighbor(Value_data, Value_Params.N, Value_Params.M, Value_Params);
 
-%% ==================== 2. Ö÷Ñ­»·£º¶àÂÖ²©ŞÄµü´ú ====================
-
+%% ==================== 2. ä¸»å¾ªç¯ï¼šå¤šè½®åšå¼ˆè¿­ä»£ ====================
 
 for counter = 1:Value_Params.num_rounds
     
-    %% 2.2 SA ³õÊ¼»¯ (±¾ÂÖ²©ŞÄÇ°µÄ×¼±¸)
-    k_iter = 1;                         % ÄÚÑ­»·µü´ú¼ÆÊıÆ÷
-    previous_SC = Value_data(1).SC;     % ÓÃÓÚ¼ì²â×´Ì¬ÊÇ·ñ±ä»¯µÄ»ù×¼
-    k_stable = 0;                       % ÎÈ¶¨¼ÆÊıÆ÷ (Á¬Ğø¶àÉÙ´Î×´Ì¬Î´±ä)
-    doneflag = 0;                       % ÄÚÑ­»·½áÊø±êÖ¾
+    %% 2.2 SA åˆå§‹åŒ– (æœ¬è½®åšå¼ˆå‰çš„å‡†å¤‡)
+    k_iter = 1;                         % å†…å¾ªç¯è¿­ä»£è®¡æ•°å™¨
+    previous_SC = Value_data(1).SC;     % ç”¨äºæ£€æµ‹çŠ¶æ€æ˜¯å¦å˜åŒ–çš„åŸºå‡†
+    k_stable = 0;                       % ç¨³å®šè®¡æ•°å™¨ (è®°å½•è¿ç»­å‡ æ¬¡çŠ¶æ€æœªå˜)
+    doneflag = 0;                       % å†…å¾ªç¯ç»“æŸæ ‡å¿—
     
-    % --- ÎÂ¶Èµ÷¶È²ßÂÔ ---
-    % ²ÉÓÃÖ¸ÊıË¥¼õ²ßÂÔ£¬Ëæ×ÅÂÖÊı (counter) Ôö¼Ó£¬³õÊ¼ÎÂ¶È T ÖğÂÖ½µµÍ
-    % ÒâÎ¶×ÅºóÆÚµÄ²©ŞÄÌ½Ë÷ĞÔ½µµÍ£¬¸üÇãÏòÓÚÀûÓÃ (Exploitation)
-    Value_Params.Temperature = 200;
-    % Value_Params.Temperature = max(Value_Params.SA_T_base_round, Value_Params.SA_T0_round * Value_Params.SA_beta_round^(counter-1));
+    % --- æ¸©åº¦è°ƒåº¦ç­–ç•¥ ---
+    % é‡‡ç”¨æŒ‡æ•°è¡°å‡ç­–ç•¥ï¼Œéšç€è½®æ•° (counter) å¢åŠ ï¼Œåˆå§‹æ¸©åº¦ T é€æ¸é™ä½
+    % è¿™æ„å‘³ç€åæœŸçš„éšæœºæ¢ç´¢ç‡è¶Šä½ï¼Œè¶Šå€¾å‘äºåˆ©ç”¨ (Exploitation)
+    % Value_Params.Temperature = 200;
+    Value_Params.Temperature = max(Value_Params.SA_T_base_round, Value_Params.SA_T0_round * Value_Params.SA_beta_round^(counter-1));
     
     if AddPara.verbose
-        fprintf('  [SA] Round %d: ³õÊ¼ÎÂ¶È = %.2f\n', counter, Value_Params.Temperature);
+        fprintf('  [SA] Round %d: åˆå§‹æ¸©åº¦ = %.2f\n', counter, Value_Params.Temperature);
     end
     
-    % ³õÊ¼»¯±¾ÂÖ¡°Ö÷¹Û×îÓÅ¡±¼ÇÂ¼±äÁ¿
-    best_SC = Value_data(1).SC;
-    best_coalitionstru = Value_data(1).coalitionstru;
-    % ??? [¹Ø¼üĞŞ¸´¿ªÊ¼] ???
-    % ÔÚÃ¿Ò»ÂÖ¿ªÊ¼Ê±£¬±ØĞë»ùÓÚ¡°µ±Ç°µÄĞÅÄî¡±ÖØĞÂ¼ÆËã¼Ì³ĞÏÂÀ´µÄ SC µÄĞ§ÓÃ¡£
-    % ·ñÔò Round 2 µÄĞÂĞ§ÓÃ»áºÍ Round 1 µÄ¾ÉĞ§ÓÃ£¨»ùÓÚ¾ÉĞÅÄî£©½øĞĞ´íÎó±È½Ï¡£
-    best_utility = 0;
-    for j = 1:Value_Params.N
-        best_utility = best_utility + UtilityEvaluator.calc_agent_total_utility(best_SC, agents, tasks, Value_Params, Value_data(j), AddPara);
-    end
+    
 
-    %% ==================== 2.3 µÚÒ»ÂÖÌØÓĞ£ºÉú³É³õÊ¼½â (Soft Greedy) ====================
-    % ÔÚµÚ1ÂÖ£¬ÎªÁË±ÜÃâ´ÓÍêÈ«Ëæ»ú¿ªÊ¼£¬Ê¹ÓÃÆô·¢Ê½¹æÔò¿ìËÙ¹¹½¨Ò»¸ö¿ÉĞĞµÄ³õÊ¼½â
+    %% ==================== 2.3 ç¬¬ä¸€è½®ç‰¹æœ‰ï¼šç”Ÿæˆåˆå§‹è§£ (Soft Greedy) ====================
+    % åœ¨ç¬¬1è½®ï¼Œä¸ºäº†é¿å…çº¯éšæœºåˆå§‹åŒ–çš„ä½æ•ˆï¼Œä½¿ç”¨å¯å‘å¼æ¦‚ç‡å¿«é€Ÿæ„å»ºä¸€ä¸ªå°šå¯çš„åˆå§‹è§£
     if counter == 1
         if AddPara.verbose
-            fprintf('  [SA] µÚ1ÂÖ£º»ùÓÚµÍÎÂ¸ÅÂÊÓë¹æÔòÉú³ÉµÄ³õÊ¼ÁªÃË½á¹¹ (Soft Greedy)...\n');
+            fprintf('  [SA] ç¬¬1è½®ï¼šåŸºäºä½æ¸©æ¦‚ç‡ç”Ÿæˆåˆå§‹è”ç›Ÿç»“æ„ (Soft Greedy)...\n');
         end
         
         SC_global = Value_data(1).SC;
         task_type_demands = Value_Params.task_type_demands;
-        resource_confidence = Value_Params.SA_resource_confidence; % ³õÊ¼ÖÃĞÅ¶È
-        T_init_construction = Value_Params.SA_T_init_construction; % ¹¹Ôì½×¶ÎÊ¹ÓÃ¼«µÍÎÂ¶È£¬½Ó½üÌ°À·Ñ¡Ôñ
+        resource_confidence = Value_Params.SA_resource_confidence; % åˆå§‹ç½®ä¿¡åº¦
+        T_init_construction = Value_Params.SA_T_init_construction; % æ„å»ºé˜¶æ®µä½¿ç”¨æä½æ¸©åº¦ï¼Œæ¥è¿‘è´ªå¿ƒé€‰æ‹©
         
+        % è½®è¯¢æ¯ä¸ªæ™ºèƒ½ä½“ï¼Œæ ¹æ®å½“å‰éœ€æ±‚ç¼ºå£(gap)è¿›è¡Œåˆæ­¥çš„èµ„æºæŠ•æ”¾
         for i = 1:Value_Params.N
             Value_data(i).SC = SC_global;
             
-            % ¼ÆËãµ±Ç°×ÊÔ´È±¿Ú (Gap)
+            % è®¡ç®—å½“å‰èµ„æºç¼ºå£ (Gap)
             [~, resource_gap] = calc_gaps(Value_data(i), Value_Params, AddPara);
             
-            % »ùÓÚÈ±¿Ú¼ÆËãÑ¡Ôñ¸ÅÂÊ (Probabilities)
+            % æ ¹æ®ç¼ºå£è®¡ç®—é€‰æ‹©æ¦‚ç‡ (Probabilities)
             probs = SA_Select_probs(Value_data(i), agents, tasks, Value_Params, resource_gap, T_init_construction);
 
             for k = 1:Value_Params.K
                 resource_amt = agents(i).resources(k);
-                if resource_amt <= 0, continue; end % ÎŞ×ÊÔ´ÔòÌø¹ı
+                if resource_amt <= 0, continue; end % æ— è¯¥èµ„æºåˆ™è·³è¿‡
                 
-                % ÂÖÅÌ¶Ä²ÉÑùÄ¿±êÈÎÎñ
+                % è½®ç›˜èµŒé‡‡æ ·ç›®æ ‡ä»»åŠ¡
                 prob_vec = probs(k, :);
                 cum_prob = cumsum(prob_vec);
                 if cum_prob(end) > 1e-9
@@ -85,41 +76,41 @@ for counter = 1:Value_Params.num_rounds
                 end
                 if isempty(selected_task), selected_task = randi(Value_Params.M); end
                 
-                % --- ²éÖØ¼ì²â ---
-                % Èç¹û¸Ã×ÊÔ´ÒÑ¾­ÔÚ¸ÃÈÎÎñÖĞ£¬ÔòÌø¹ı (·ÀÖ¹ÖØ¸´µş¼Ó)
+                % --- é˜²é‡æ£€æŸ¥ ---
+                % å¦‚æœè¯¥èµ„æºå·²ç»æŠ•å…¥è¯¥ä»»åŠ¡ï¼Œåˆ™è·³è¿‡ (é˜²æ­¢é‡å¤æŠ•å…¥)
                 if SC_global{selected_task}(i, k) > 0, continue; end
                 
-                % --- ĞèÇó¹ÀËã ---
+                % --- å®¹é‡æ£€æŸ¥ ---
                 curr_alloc = sum(SC_global{selected_task}(:, k));
                 belief = Value_data(i).initbelief(selected_task, :);
                 expected_demand = WorldSim.calculate_demand_quantile(belief, task_type_demands, resource_confidence);
                 
-                % ½öµ±Ô¤ÆÚ»¹ÓĞÈ±¿ÚÊ±²Å³¢ÊÔ¼ÓÈë
+                % åªæœ‰é¢„æœŸè¿˜æœ‰ç¼ºå£æ—¶æ‰å°è¯•åŠ å…¥
                 can_add = max(0, expected_demand(k) - curr_alloc);
                 
                 if can_add > 0
-                    % ¹¹ÔìºòÑ¡ SC
+                    % æ„å»ºå€™é€‰ SC
                     SC_candidate = SC_global;
                     SC_candidate{selected_task}(i, k) = resource_amt;
                     
-                    % ÁÙÊ±Í¬²½Êı¾İÒÔ½øĞĞ¿ÉĞĞĞÔ¼ì²â
+                    % ä¸´æ—¶åŒæ­¥ç»™æ‰€æœ‰äººä»¥è¿›è¡Œå¯è¡Œæ€§æ£€æŸ¥
                     Value_data_temp = Value_data;
                     for j=1:Value_Params.N, Value_data_temp(j).SC = SC_candidate; end
                     
-                    % ¿ÉĞĞĞÔ¼ì²â (ÄÜÁ¿¡¢Â·¾¶¡¢ÔØÖØ)
+                    % å¯è¡Œæ€§æ£€æŸ¥ (åŒ…å«èµ„æºã€è·¯å¾„çº¦æŸç­‰)
                     [isFeasible, ~, ~] = validate_feasibility(Value_data_temp, agents, tasks, ...
                         Value_Params, i, SC_candidate, true, AddPara);
                         
                     if isFeasible
-                        SC_global = SC_candidate; % ½ÓÊÜ±ä¸ü
+                        SC_global = SC_candidate; % æ¥å—å€™é€‰æ–¹æ¡ˆ
                     end
                 end
             end
-            % Ã¿Ò»Î»ÖÇÄÜÌå²Ù×÷Íê£¬Ôİ´æ×´Ì¬
+            % æ¯ä¸€ä½æ™ºèƒ½ä½“å†³ç­–å®Œæ¯•ï¼ŒåŒæ­¥çŠ¶æ€
             for j = 1:Value_Params.N, Value_data(j).SC = SC_global; end
         end
         
-        % --- ³õÊ¼»¯½áÊøºóµÄÈ«ÍøÍ¬²½ ---
+        % --- åˆå§‹åˆ†é…ç»“æŸåå…¨å±€åŒæ­¥ ---
         for i = 1:Value_Params.N
             Value_data(i).SC = SC_global;
             Value_data(i).resources_matrix = OCFUtils.get_agent_resource_matrix(SC_global, i, Value_Params);
@@ -129,169 +120,145 @@ for counter = 1:Value_Params.num_rounds
         best_SC = SC_global;
         best_coalitionstru = Value_data(1).coalitionstru;
 
+        best_utility = 0;
         for ii = 1:Value_Params.N
             u_i = UtilityEvaluator.calc_agent_total_utility(SC_global, agents, tasks, Value_Params, Value_data(ii), AddPara);
             best_utility = best_utility + u_i;
         end
         
         if AddPara.verbose
-            fprintf('  [SA] µÚ1ÂÖ£º³õÊ¼Ö÷¹ÛĞ§ÓÃ = %.2f\n', best_utility);
+            fprintf('  [SA] ç¬¬1è½®ï¼šåˆå§‹å…¨å±€æ•ˆç”¨ = %.2f\n', best_utility);
         end
     end
     
-    %% ==================== 3. SA ÄÚÑ­»· (ºËĞÄ²©ŞÄ¹ı³Ì) ====================
-    % ³õÊ¼»¯ÄÚÑ­»·ÀúÊ·¼ÇÂ¼
+    %% ==================== 3. SA å†…å¾ªç¯ (æ ¸å¿ƒåšå¼ˆè¿‡ç¨‹) ====================
+    % åˆå§‹åŒ–å†…å¾ªç¯å†å²è®°å½•
     inner_loop_history = ResultProcessor.init_inner_loop_history();
 
     while(doneflag == 0)
 
-        % --- 3.1 Ë³Ğò²©ŞÄ (Sequential Game) ---
-        % ÖÇÄÜÌå°´ÕÕ 1 µ½ N µÄË³ĞòÒÀ´Î¾ö²ß
+        % --- 3.1 é¡ºåºåšå¼ˆ (Sequential Game) ---
+        % æ™ºèƒ½ä½“æŒ‰ 1 åˆ° N çš„é¡ºåºä¾æ¬¡å†³ç­–
         for ii = 1:Value_Params.N
-            % ºËĞÄº¯Êı£ºOverlapping Coalition Formation
-            % ÄÚ²¿°üº¬ Join/Leave/Switch ²Ù×÷¼° Metropolis ×¼ÔòÅĞ¶Ï
+            % æ ¸å¿ƒå‡½æ•°ï¼šOverlapping Coalition Formation
+            % å†…éƒ¨åŒ…å« Join/Leave/Switch åŠ¨ä½œåŠ Metropolis å‡†åˆ™åˆ¤æ–­
             [Value_data_ii] = Overlap_Coalition_Formation(agents, tasks, Value_data(ii), Value_Params, AddPara);
 
-            % ¸üĞÂµ±Ç°ÖÇÄÜÌå×´Ì¬
+            % æ›´æ–°å½“å‰æ™ºèƒ½ä½“çŠ¶æ€
             Value_data(ii) = Value_data_ii;
 
-            % [¹Ø¼ü] ĞÅÏ¢´«µİ£º½«×îĞÂµÄ SC ´«µİ¸øÏÂÒ»¸öÖÇÄÜÌå
-            % Ä£Äâ¹²ÏíºÚ°å (Shared Blackboard) »úÖÆ
+            % [å…³é”®] ä¿¡æ¯ä¼ é€’ï¼šå°†æ›´æ–°çš„ SC ä¼ é€’ç»™ä¸‹ä¸€ä¸ªæ™ºèƒ½ä½“
+            % æ¨¡æ‹Ÿå…±äº«é»‘æ¿ (Shared Blackboard) æœºåˆ¶
             if ii < Value_Params.N
                 Value_data(ii + 1).coalitionstru = Value_data_ii.coalitionstru;
                 Value_data(ii + 1).SC = Value_data_ii.SC;
             end
         end
 
-        % --- 3.3 ½µÎÂ (Cooling) ---
+        % --- 3.3 é™æ¸© (Cooling) ---
         Value_Params.Temperature = Value_Params.alpha * Value_Params.Temperature;
 
-        % »ñÈ¡±¾ÂÖµü´ú½áÊøºóµÄ×îÖÕ×´Ì¬
+        % è·å–æœ€ç»ˆçš„è”ç›Ÿç»“æ„çŸ©é˜µä¸çŠ¶æ€
         final_SC = Value_data(Value_Params.N).SC;
         final_coalitionstru = Value_data(Value_Params.N).coalitionstru;
 
-        % --- 3.4 ÊÕÁ²¼ì²â (Convergence Check) ---
+        % --- 3.4 æ”¶æ•›æ£€æµ‹ (Convergence Check) ---
         if isequal(previous_SC, final_SC)
-            k_stable = k_stable + 1; % ×´Ì¬Î´±ä£¬ÎÈ¶¨¼ÆÊıÆ÷+1
+            k_stable = k_stable + 1; % çŠ¶æ€æœªå˜ï¼Œç¨³å®šè®¡æ•°å™¨+1
         else
-            k_stable = 0;            % ×´Ì¬¸Ä±ä£¬ÖØÖÃ¼ÆÊıÆ÷
+            k_stable = 0;            % çŠ¶æ€æ”¹å˜ï¼Œæ¸…é›¶è®¡æ•°å™¨
         end
 
-        % ÅĞ¶ÏÊÇ·ñÍË³öÄÚÑ­»·
-        if k_stable >= Value_Params.SA_K_len        % Á¬Ğø¶à´ÎÎ´±ä
+        % åˆ¤æ–­æ˜¯å¦é€€å‡ºå†…å¾ªç¯
+        if k_stable >= Value_Params.SA_K_len        % è¿ç»­å¤šæ­¥æœªå˜
             doneflag = 1;
-        elseif Value_Params.Temperature < Value_Params.Tmin % ÎÂ¶È¹ıµÍ
+        elseif Value_Params.Temperature < Value_Params.Tmin % æ¸©åº¦è¿‡ä½
             doneflag = 1;
-        elseif k_iter >= Value_Params.SA_K_max_inner % ´ïµ½×î´óµü´ú´ÎÊı
+        elseif k_iter >= Value_Params.SA_K_max_inner % è¾¾åˆ°æœ€å¤§è¿­ä»£æ¬¡æ•°
             doneflag = 1;
         end
 
         previous_SC = final_SC;
         k_iter = k_iter + 1;
 
-        % --- 3.5 È«Íø×´Ì¬Í¬²½ ---
-        % È·±£ÏÂÒ»ÂÖµü´ú¿ªÊ¼Ç°£¬ËùÓĞÖÇÄÜÌå¶Ô SC ´ï³É¹²Ê¶
+        % --- 3.5 å…¨å±€çŠ¶æ€åŒæ­¥ ---
+        % ç¡®ä¿ä¸‹ä¸€è½®çš„åšå¼ˆå¼€å§‹å‰ï¼Œæ‰€æœ‰æ™ºèƒ½ä½“å¯¹ SC è¾¾æˆå…±è¯†
         for ii = 1:Value_Params.N
             Value_data(ii).coalitionstru = final_coalitionstru;
             Value_data(ii).SC = final_SC;
             Value_data(ii).resources_matrix = OCFUtils.get_agent_resource_matrix(Value_data(ii).SC, ii, Value_Params);
         end
 
-        % --- 3.7 ¸üĞÂ±¾ÂÖ×îÓÅ½â (»ùÓÚÖ÷¹ÛĞ§ÓÃ) ---
-        % ×¢Òâ£ºSA ¹ı³ÌÖĞ¿ÉÄÜ»á½ÓÊÜ²î½â£¬Òò´ËĞèÒª¼ÇÂ¼¹ı³ÌÖĞ³öÏÖ¹ıµÄ"Ö÷¹Û×îºÃ"×´Ì¬
         current_utility = 0;
         for j = 1:Value_Params.N
-            % ¼ÆËãÈ«ÏµÍ³µÄÖ÷¹ÛĞ§ÓÃ×ÜºÍ
+            % è®¡ç®—å…¨ç³»ç»Ÿçš„ä¸»è§‚æ•ˆç”¨æ€»å’Œ
             current_utility = current_utility + UtilityEvaluator.calc_agent_total_utility(final_SC, agents, tasks, Value_Params, Value_data(j), AddPara);
         end
 
-        if current_utility > best_utility
-            best_utility = current_utility;
-            best_SC = final_SC;
-            best_coalitionstru = final_coalitionstru;
-        end
-
-        % --- 3.8 ¼ÇÂ¼ÄÚÑ­»·ÀúÊ·Êı¾İ ---
+        % --- 3.8 è®°å½•å†…å¾ªç¯å†å²æ•°æ® ---
         inner_loop_history = ResultProcessor.record_inner_loop_iteration(...
             inner_loop_history, k_iter - 1, Value_Params.Temperature, ...
             current_utility, best_utility, final_SC, Value_Params);
     end
     
-    %% 3.8 »Ö¸´±¾ÂÖ×îÓÅ½â
-    % Èç¹ûÄÚÑ­»·½áÊøÊ±µÄ½â²»Èç¹ı³ÌÖĞÓöµ½µÄ×îÓÅ½â£¬Ç¿ÖÆ»Ø¹öµ½×îÓÅ½â
-    if ~isequal(final_SC, best_SC)
-        if AddPara.verbose
-            fprintf('  [SA] Round %d: »Ö¸´±¾ÂÖ×îÓÅ½â\n', counter);
-        end
-        final_SC = best_SC;
-        final_coalitionstru = best_coalitionstru;
-    end
     
-    % ½«×îÓÅ½âÓ¦ÓÃµ½ËùÓĞÖÇÄÜÌå
-    for ii = 1:Value_Params.N
-        Value_data(ii).coalitionstru = best_coalitionstru;
-        Value_data(ii).SC = best_SC;
-        Value_data(ii).resources_matrix = OCFUtils.get_agent_resource_matrix(Value_data(ii).SC, ii, Value_Params);
-    end
-    
-    % ÖØĞÂ¼ÆËã²¢»º´æÈÎÎñÊ±¼ä±í (Task Schedule) ºÍÂ·¾¶³É±¾
+    % é‡æ–°è®¡ç®—å¹¶ç¼“å­˜å…·ä½“æ‰§è¡Œçš„ä»»åŠ¡æ—¶é—´è¡¨ (Task Schedule) åŠè·¯å¾„æˆæœ¬
     Value_data = update_task_schedule(Value_data, agents, tasks, Value_Params);
     
-    %% ==================== 4. ¹Û²âÓëĞÅÄî¸üĞÂ ====================
+    %% ==================== 4. è§‚æµ‹ä¸ä¿¡å¿µæ›´æ–° ====================
     
-    % --- 4.1 ÊÕ¼¯¹Û²âÊı¾İ ---
-    % ÖÇÄÜÌå»ùÓÚ final_SC Ö´ĞĞÈÎÎñ£¬¹Û²âÈÎÎñµÄÕæÊµ·´À¡
+    % --- 4.1 æ”¶é›†è§‚æµ‹æ•°æ® ---
+    % æ™ºèƒ½ä½“æŒ‰ç…§ final_SC æ‰§è¡Œä»»åŠ¡ï¼Œè§‚æµ‹ä»»åŠ¡çš„çœŸå®éœ€æ±‚
     [Value_data, summatrix] = AgentOps.collect_observations(Value_data, agents, tasks, Value_Params, summatrix, final_SC);
     
-    % --- 4.2 ±´Ò¶Ë¹ĞÅÄî¸üĞÂ ---
-    % ÀûÓÃ Dirichlet ·Ö²¼¸üĞÂ¶ÔÈÎÎñĞèÇóµÄÈÏÖª (Belief)
+    % --- 4.2 è´å¶æ–¯ä¿¡å¿µæ›´æ–° ---
+    % åŸºäº Dirichlet åˆ†å¸ƒæ›´æ–°å¯¹ä»»åŠ¡ç±»å‹çš„è®¤çŸ¥ (Belief)
     Value_data = AgentOps.update_belief_from_observations(Value_data, Value_Params);
     
-    %% ==================== 5. ½á¹ûÆÀ¹À (¿Í¹Û/ÉÏµÛÊÓ½Ç) ====================
+    %% ==================== 5. ç»“æœè¯„ä¼° (å®¢è§‚/ä¸Šå¸è§†è§’) ====================
     
-    % Ê¹ÓÃÕæÊµ²ÎÊıÆÀ¹Àµ±Ç°ÁªÃË½á¹¹µÄĞÔÄÜ
+    % ä½¿ç”¨çœŸå®çš„ä»»åŠ¡éœ€æ±‚å¯¹å½“å‰çš„è”ç›Ÿç»“æ„è¿›è¡Œè¯„ä¼°
     [coalition_utility, total_global_cost, total_completed_value, task_completion_degrees] = ...
         UtilityEvaluator.evaluate_coalition_metrics(final_SC, agents, tasks, Value_Params, eps_val);
 
-    
-
-    
-    %% 4.8 ĞÅÄî¹ã²¥
-    % Ä£ÄâÖÇÄÜÌåÖ®¼äµÄÍ¨ĞÅ£¬½»»»ĞÅÄî²ÎÊı
+    %% 4.8 ä¿¡å¿µå¹¿æ’­
+    % æ¨¡æ‹Ÿæ™ºèƒ½ä½“ä¹‹é—´çš„é€šä¿¡ï¼ŒåŒæ­¥å„è‡ªçš„ä¿¡å¿µ
     for i = 1:Value_Params.N
         for j = 1:Value_Params.N
             Value_data(i).other{j}.initbelief = Value_data(j).initbelief;
         end
     end
     
-    % --- ¼ÇÂ¼±¾ÂÖÀúÊ·Êı¾İ ---
+    % --- è®°å½•æœ¬è½®å†å²æ•°æ® ---
     history_data = ResultProcessor.record_history_data(history_data, counter, Value_data, Value_Params, ...
         final_SC, final_coalitionstru, ...
         coalition_utility, total_global_cost, ...
         total_completed_value, task_completion_degrees, ...
         summatrix);
 
-    % --- ¼ÇÂ¼ÄÚÑ­»·ÀúÊ·Êı¾İ ---
+    % è®°å½•æœ¬è½®çš„å†…å¾ªç¯è¿­ä»£æ¬¡æ•°
+    history_data.k_iter_per_round{counter} = k_iter;
+
+    % --- è®°å½•å†…å¾ªç¯å†å²æ•°æ® ---
     history_data.inner_loop{counter} = inner_loop_history;
 end
 
-%% ==================== 6. ½áÊøÓë×îÖÕ¼ì²é ====================
+%% ==================== 6. ç»“æŸä¸æœ€ç»ˆæ£€æŸ¥ ====================
 
-
-% --- ×îÖÕÒ»ÖÂĞÔ¼ì²é ---
-% ÑéÖ¤ SC¡¢coalitionstru ºÍ resources_matrix ÊÇ·ñÂß¼­»¥Ç¢
+% --- æ‰§è¡Œä¸€è‡´æ€§æ£€æŸ¥ ---
+% éªŒè¯ SCã€coalitionstru å’Œ resources_matrix æ˜¯å¦é€»è¾‘è‡ªæ´½
 if AddPara.verbose
-    fprintf('\n[SA_Value] Ö´ĞĞ×îÖÕÒ»ÖÂĞÔ¼ì²é...\n');
+    fprintf('\n[SA_Value] æ‰§è¡Œæœ€ç»ˆä¸€è‡´æ€§æ£€æŸ¥...\n');
 end
 
 [is_valid, error_log] = check_coalition_consistency(Value_data, agents, tasks, Value_Params, 'OCF', AddPara.verbose);
 
 if ~is_valid
-    warning('[SA_Value] Ò»ÖÂĞÔ¼ì²é·¢ÏÖ %d ´¦ÎÊÌâ', length(error_log));
+    warning('[SA_Value] ä¸€è‡´æ€§æ£€æŸ¥å‘ç° %d å¤„é—®é¢˜', length(error_log));
     history_data.consistency_errors = error_log;
 else
     if AddPara.verbose
-        fprintf('? [SA_Value] ËùÓĞÒ»ÖÂĞÔ¼ì²éÍ¨¹ı£¡\n');
+        fprintf('  [SA_Value] æ‰€æœ‰ä¸€è‡´æ€§æ£€æŸ¥é€šè¿‡ï¼\n');
     end
 end
 

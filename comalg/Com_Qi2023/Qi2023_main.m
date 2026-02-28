@@ -303,6 +303,9 @@ for round = 1:Value_Params.num_rounds
 
     % --- 记录内循环历史数据 ---
     history_data.inner_loop{round} = inner_loop_history;
+
+    % 记录本轮的内循环迭代次数
+    history_data.k_iter_per_round{round} = k_iter;
 end
 
 if AddPara.verbose

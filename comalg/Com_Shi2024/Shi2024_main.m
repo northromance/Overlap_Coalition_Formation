@@ -72,13 +72,13 @@ for round = 1:num_rounds
         if AddPara.verbose
             fprintf('--- Initial Coalition Formation ---\n');
         end
-        SC = initial_coalition_formation(N, M, SC, agents, tasks, Value_Params, Value_data, AddPara, tol);
+        [SC, k_iter] = initial_coalition_formation(N, M, SC, agents, tasks, Value_Params, Value_data, AddPara, tol);
     else
         % 后续轮：迭代优化
         if AddPara.verbose
             fprintf('--- Coalition Optimization ---\n');
         end
-        SC = optimize_coalitions(N, M, SC, agents, tasks, Value_Params, Value_data, AddPara, tol);
+        [SC, k_iter] = optimize_coalitions(N, M, SC, agents, tasks, Value_Params, Value_data, AddPara, tol);
     end
 
     % 更新 Value_data 中的 SC
@@ -101,6 +101,9 @@ for round = 1:num_rounds
 
     %% Step 3: 记录历史数据
     history_data = record_round_data(history_data, round, SC, Value_data, agents, tasks, Value_Params, AddPara, summatrix, tol);
+
+    % 记录本轮的内循环迭代次数
+    history_data.k_iter_per_round{round} = k_iter;
 
     %% Step 4: 信念更新
     if enable_belief_update && round < num_rounds
@@ -187,8 +190,10 @@ end
 
 %% ========== 主要函数 ==========
 
-function SC = initial_coalition_formation(N, M, SC, agents, tasks, Value_Params, Value_data, AddPara, tol)
+function [SC, k_iter] = initial_coalition_formation(N, M, SC, agents, tasks, Value_Params, Value_data, AddPara, tol)
 % 初始化联盟形成：每个智能体选择最大效用的任务
+% 基于贪婪算法形成一个初始解
+% 返回联盟结构 SC 和迭代次数 k_iter = 1（因为是一次性构建）
 
 for j = 1:N
     best_task = -1;
@@ -238,119 +243,137 @@ for j = 1:N
     end
 end
 
+% 初始化联盟形成是一次性过程，迭代次数为 1
+k_iter = 1;
+
 end
 
 
-function SC = optimize_coalitions(N, M, SC, agents, tasks, Value_Params, Value_data, AddPara, tol)
-% 迭代优化联盟结构
-
+function [SC, k_iter] = optimize_coalitions(N, M, SC, agents, tasks, Value_Params, Value_data, AddPara, tol)
+% 迭代优化联盟结构 (解耦式：基于单种资源的细粒度调度)
 SC_prev = SC;
-iteration = 0;
-k_stable = 0;  % 稳定性计数器（连续无改进次数）
-max_iterations = Value_Params.Shi_K_max_inner;  % 从参数读取最大迭代次数
-K_len = Value_Params.Shi_K_len;                 % 稳定性阈值
+k_iter = 0;  % 内循环迭代计数器
+k_stable = 0;  % 稳定性计数器
+max_iterations = Value_Params.Shi_K_max_inner;  
+K_len = Value_Params.Shi_K_len;                 
+K_resources = Value_Params.K; % 获取资源种类总数
 
-while iteration < max_iterations && k_stable < K_len
-    iteration = iteration + 1;
+while k_iter < max_iterations && k_stable < K_len
+    k_iter = k_iter + 1;
     SC_prev_iter = SC;
-
     if AddPara.verbose
-        fprintf('  Iteration %d:\n', iteration);
+        fprintf('  Iteration %d:\n', k_iter);
     end
-
-    % Phase 1: Quit/Transfer 负效用任务
+    
+    %% Phase 1: Quit/Transfer 负效用任务 (细化到单种资源 k)
     for j = 1:N
         current_total_utility = UtilityEvaluator.calc_agent_total_utility(SC, agents, tasks, Value_Params, Value_data(j), AddPara);
-
         task_list = OCFUtils.get_agent_tasks_fast(SC, j, tol);
         task_list = task_list(task_list <= M);
-
+        
         for task_idx = 1:length(task_list)
             task_p = task_list(task_idx);
-
-            % 尝试退出
-            SC_quit = SC;
-            SC_quit{task_p}(j, :) = 0;
-            utility_after_quit = UtilityEvaluator.calc_agent_total_utility(SC_quit, agents, tasks, Value_Params, Value_data(j), AddPara);
-
-            if utility_after_quit > current_total_utility
-                % 尝试转移
-                [best_transfer_task, best_transfer_utility] = find_best_transfer(j, task_p, SC, agents, tasks, Value_Params, Value_data, AddPara, tol);
-
-                if best_transfer_task > 0 && best_transfer_utility > current_total_utility
-                    if AddPara.verbose
-                        fprintf('    Agent %d: Transfer Task %d->%d (%.2f->%.2f)\n', j, task_p, best_transfer_task, current_total_utility, best_transfer_utility);
+            
+            % 【修改核心】：遍历智能体 j 在任务 task_p 中投入的每一种资源 k
+            for k = 1:K_resources
+                if SC{task_p}(j, k) > tol  % 如果当前在 task_p 中投入了资源 k
+                    % 1. 尝试仅退出资源 k
+                    SC_quit = SC;
+                    SC_quit{task_p}(j, k) = 0; 
+                    utility_after_quit = UtilityEvaluator.calc_agent_total_utility(SC_quit, agents, tasks, Value_Params, Value_data(j), AddPara);
+                    
+                    if utility_after_quit > current_total_utility
+                        % 2. 尝试将资源 k 转移到其他任务
+                        best_transfer_task = -1;
+                        best_transfer_utility = utility_after_quit; % 基准线是单纯退出的效用
+                        
+                        for i_trans = 1:M
+                            if i_trans == task_p
+                                continue; % 不转移给当前任务
+                            end
+                            
+                            SC_temp = SC_quit; % 在已退出 task_p 的基础上
+                            SC_temp{i_trans}(j, k) = agents(j).resources(k); % 将资源 k 投入新任务
+                            
+                            % 验证可行性
+                            [isFeasible_trans, ~, ~] = validate_feasibility(Value_data, agents, tasks, Value_Params, j, SC_temp, true, AddPara);
+                            if isFeasible_trans
+                                temp_utility = UtilityEvaluator.calc_agent_total_utility(SC_temp, agents, tasks, Value_Params, Value_data(j), AddPara);
+                                if temp_utility > best_transfer_utility
+                                    best_transfer_utility = temp_utility;
+                                    best_transfer_task = i_trans;
+                                end
+                            end
+                        end
+                        
+                        % 结算：转移还是单纯退出
+                        if best_transfer_task > 0
+                            if AddPara.verbose
+                                fprintf('    Agent %d: Transfer Task %d->%d [Resource %d] (%.2f->%.2f)\n', j, task_p, best_transfer_task, k, current_total_utility, best_transfer_utility);
+                            end
+                            SC = SC_quit; % 先退出
+                            SC{best_transfer_task}(j, k) = agents(j).resources(k); % 后加入
+                            current_total_utility = best_transfer_utility;
+                        else
+                            if AddPara.verbose
+                                fprintf('    Agent %d: Quit Task %d [Resource %d] (%.2f->%.2f)\n', j, task_p, k, current_total_utility, utility_after_quit);
+                            end
+                            SC = SC_quit; % 单纯退出
+                            current_total_utility = utility_after_quit;
+                        end
                     end
-                    SC{task_p}(j, :) = 0;
-                    SC{best_transfer_task}(j, :) = agents(j).resources';
-                    current_total_utility = best_transfer_utility;
-                else
-                    if AddPara.verbose
-                        fprintf('    Agent %d: Quit Task %d (%.2f->%.2f)\n', j, task_p, current_total_utility, utility_after_quit);
-                    end
-                    SC{task_p}(j, :) = 0;
-                    current_total_utility = utility_after_quit;
                 end
             end
         end
     end
-
-    % Phase 2: Join 新任务
+    
+    %% Phase 2: Join 新任务 (细化到单种资源 k)
     for j = 1:N
         current_total_utility = UtilityEvaluator.calc_agent_total_utility(SC, agents, tasks, Value_Params, Value_data(j), AddPara);
-
-        task_list = OCFUtils.get_agent_tasks_fast(SC, j, tol);
-        task_list = task_list(task_list <= M);
-
+        
+        % 遍历所有任务
         for i = 1:M
-            if ismember(i, task_list)
-                continue;
-            end
-
-            % 尝试加入
-            SC_join = SC;
-            SC_join{i}(j, :) = agents(j).resources';
-
-            % 获取资源分配矩阵
-            R_agent_Q = zeros(M, Value_Params.K);
-            task_list_temp = OCFUtils.get_agent_tasks_fast(SC_join, j, tol);
-            for t_idx = 1:length(task_list_temp)
-                t = task_list_temp(t_idx);
-                if t <= M
-                    R_agent_Q(t, :) = SC_join{t}(j, :);
+            % 【重要修改】：取消了 ismember(i, task_list) 的跳过逻辑
+            % 因为智能体可能已经用资源 1 加入了任务 i，现在想把资源 2 也加入进去！
+            
+            % 遍历智能体拥有的每一种资源 k
+            for k = 1:K_resources
+                % 条件：智能体自身拥有该资源，且该资源尚未分配给任务 i
+                if agents(j).resources(k) > tol && SC{i}(j, k) < tol
+                    
+                    % 尝试仅将资源 k 加入任务 i
+                    SC_join = SC;
+                    SC_join{i}(j, k) = agents(j).resources(k);
+                    
+                    % 验证可行性
+                    [isFeasible, ~, cost_data] = validate_feasibility(Value_data, agents, tasks, Value_Params, j, SC_join, true, AddPara);
+                    if ~isFeasible
+                        continue;
+                    end
+                    
+                    utility_after_join = UtilityEvaluator.calc_agent_total_utility(SC_join, agents, tasks, Value_Params, Value_data(j), AddPara);
+                    if utility_after_join > current_total_utility
+                        if AddPara.verbose
+                            fprintf('    Agent %d: Join Task %d [Resource %d] (%.2f->%.2f, energy: %.2f)\n', ...
+                                j, i, k, current_total_utility, utility_after_join, cost_data.requiredEnergy);
+                        end
+                        SC{i}(j, k) = agents(j).resources(k);
+                        current_total_utility = utility_after_join;
+                    end
                 end
-            end
-
-            % 验证可行性（启用队友检查）
-            [isFeasible, ~, cost_data] = validate_feasibility(Value_data, agents, tasks, Value_Params, j, SC_join, true, AddPara);
-
-            if ~isFeasible
-                continue;
-            end
-
-            utility_after_join = UtilityEvaluator.calc_agent_total_utility(SC_join, agents, tasks, Value_Params, Value_data(j), AddPara);
-
-            if utility_after_join > current_total_utility
-                if AddPara.verbose
-                    fprintf('    Agent %d: Join Task %d (%.2f->%.2f, energy: %.2f)\n', ...
-                        j, i, current_total_utility, utility_after_join, cost_data.requiredEnergy);
-                end
-                SC{i}(j, :) = agents(j).resources';
-                current_total_utility = utility_after_join;
             end
         end
     end
-
-    % 检查收敛和稳定性
+    
+    %% 检查收敛和稳定性
     if isequal_SC(SC, SC_prev_iter)
-        k_stable = k_stable + 1;  % 连续无改进次数+1
+        k_stable = k_stable + 1;
         if AddPara.verbose
-            fprintf('  No change in iteration %d (stable count: %d/%d).\n', ...
-                iteration, k_stable, K_len);
+            fprintf('  No change in iteration %d (stable count: %d/%d).\n', k_iter, k_stable, K_len);
         end
         if k_stable >= K_len
             if AddPara.verbose
-                fprintf('  Converged after %d iterations (stability threshold reached).\n', iteration);
+                fprintf('  Converged after %d iterations (stability threshold reached).\n', k_iter);
             end
             break;
         end
@@ -358,7 +381,6 @@ while iteration < max_iterations && k_stable < K_len
         k_stable = 0;  % 有改进，重置计数器
     end
 end
-
 end
 
 

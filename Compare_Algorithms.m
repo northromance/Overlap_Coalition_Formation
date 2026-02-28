@@ -31,7 +31,7 @@ M = 10;                         % number of tasks（任务数量）
 K = 6;                          % number of resource types（资源类型数）
 task_values = [800, 1000, 1500];  % three task types（三种不同类型任务的价值）
 num_task_types = length(task_values);
-algorithms_to_run_ids = [10]; 
+algorithms_to_run_ids = [5]; 
 
 % 算法开关：选择要运行的算法 ID
 % 1=SA_Value, 2=Greedy, 3=Huo2025, 4=Qi2023, 5=Shi2024, 6=PSO
@@ -78,7 +78,7 @@ resource_exec_time = [50 65 50 60 35 45];
 
 % 通用参数
 obs_times = 50;              % 观测次数（贝叶斯更新等）
-num_rounds = 300;              % 迭代轮数（快速测试: 5轮）
+num_rounds = 100;              % 迭代轮数（快速测试: 5轮）
 
 % ========================================================================
 % 算法 1: SA_Value（模拟退火基础算法）
@@ -87,7 +87,7 @@ SA_Temperature = 200.0;               % 初始温度
 SA_alpha = 0.95;                      % 降温系数
 SA_Tmin = 0.01;                       % 终止温度
 SA_K_len = 10;                        % 稳定性阈值（连续无改进迭代次数）
-SA_K_max_inner = 100;                  % 每轮最大迭代次数（快速测试20，完整测试建议200）
+SA_K_max_inner = 50;                  % 每轮最大迭代次数（快速测试20，完整测试建议200）
 SA_T0_round = 200;                    % 回合温度调度：初始温度 T_0
 SA_beta_round = 0.85;                 % 回合温度调度：衰减系数 beta
 SA_T_base_round = 40;                 % 回合温度调度：温度下界 T_base（经delta_E统计校准：均值|ΔE|≈202，此值约保证5%探索概率）

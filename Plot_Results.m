@@ -32,6 +32,7 @@ plot_config.allocation = true;      % 算法资源分配图
 plot_config.animation = false;      % 执行动画（耗时）
 plot_config.environment = false;    % 环境图
 plot_config.print_stats = true;     % 打印统计信息
+plot_config.iterations = true;      % 迭代次数图（新增）
 
 % 3. 图形保存配置
 save_figures = false;               % 是否保存图片
@@ -246,6 +247,93 @@ if plot_config.environment
     end
 
     fprintf('✓ 环境图完成\n');
+end
+
+% 5. 迭代次数图
+if plot_config.iterations
+    fprintf('正在绘制迭代次数图...\n');
+
+    % 提取迭代次数数据
+    alg_names = fieldnames(results);
+    iteration_data = struct();
+
+    for i = 1:length(alg_names)
+        alg_field = alg_names{i};
+        alg_result = results.(alg_field);
+
+        if isfield(alg_result, 'history_data') && ~isempty(alg_result.history_data)
+            hist_data = alg_result.history_data;
+
+            % 检查是否有 k_iter_per_round 字段
+            if isfield(hist_data, 'k_iter_per_round') && ~isempty(hist_data.k_iter_per_round)
+                % 提取所有轮次的迭代次数
+                k_iters = zeros(1, length(hist_data.k_iter_per_round));
+                for r = 1:length(hist_data.k_iter_per_round)
+                    k_iters(r) = hist_data.k_iter_per_round{r};
+                end
+
+                iteration_data.(alg_field).name = alg_result.name;
+                iteration_data.(alg_field).k_iters = k_iters;
+                iteration_data.(alg_field).mean_k_iter = mean(k_iters);
+                iteration_data.(alg_field).num_rounds = length(k_iters);
+            end
+        end
+    end
+
+    % 如果没有数据，跳过绘图
+    if isempty(fieldnames(iteration_data))
+        fprintf('⚠ 未找到迭代次数数据，跳过迭代次数图\n');
+    else
+        % 绘制柱状图（平均迭代次数）
+        figure('Name', 'Average Iterations per Algorithm', 'NumberTitle', 'off');
+
+        alg_fields = fieldnames(iteration_data);
+        mean_values = zeros(1, length(alg_fields));
+        alg_labels = cell(1, length(alg_fields));
+
+        for i = 1:length(alg_fields)
+            mean_values(i) = iteration_data.(alg_fields{i}).mean_k_iter;
+            alg_labels{i} = iteration_data.(alg_fields{i}).name;
+        end
+
+        bar(mean_values);
+        set(gca, 'XTickLabel', alg_labels, 'XTickLabelRotation', 45);
+        ylabel('平均迭代次数');
+        title('各算法平均迭代次数对比');
+        grid on;
+
+        if save_figures
+            saveas(gcf, sprintf('results/iterations_avg_%s', scenario_info.timestamp), figure_format);
+        end
+
+        % 绘制折线图（每轮迭代次数变化）
+        figure('Name', 'Iterations per Round', 'NumberTitle', 'off');
+
+        hold on;
+        colors = lines(length(alg_fields));
+
+        for i = 1:length(alg_fields)
+            k_iters = iteration_data.(alg_fields{i}).k_iters;
+            plot(1:length(k_iters), k_iters, '-o', ...
+                'LineWidth', 2, ...
+                'MarkerSize', 6, ...
+                'Color', colors(i, :), ...
+                'DisplayName', iteration_data.(alg_fields{i}).name);
+        end
+
+        hold off;
+        xlabel('轮次 (Round)');
+        ylabel('迭代次数');
+        title('各算法迭代次数随轮次的变化');
+        legend('Location', 'best');
+        grid on;
+
+        if save_figures
+            saveas(gcf, sprintf('results/iterations_per_round_%s', scenario_info.timestamp), figure_format);
+        end
+
+        fprintf('✓ 迭代次数图完成\n');
+    end
 end
 
 %% ==================== 完成 ====================

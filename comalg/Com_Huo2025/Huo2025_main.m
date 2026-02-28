@@ -122,8 +122,8 @@ for counter = 1:Value_Params.num_rounds
     
     % --- 子循环：联盟形成协商 (Coalition Formation Negotiation) ---
     % 智能体之间通过多次迭代协商，达成稳定的联盟结构
-    T = 1;         % 协商迭代步数
-    lastTime = T-1;
+    k_iter = 1;         % 协商迭代步数（内循环迭代计数器）
+    lastTime = k_iter-1;
     doneflag = 0;  % 收敛标志 (0:未收敛, 1:已收敛)
     
     while(doneflag == 0)
@@ -144,7 +144,7 @@ for counter = 1:Value_Params.num_rounds
         if (length(find(incremental == 0)) == Value_Params.N)
             lastTime = lastTime; % 无人改变，最后变动时间保持不变
         else
-            lastTime = T;        % 有人改变，更新最后变动时间为当前 T
+            lastTime = k_iter;        % 有人改变，更新最后变动时间为当前 k_iter
         end
         
         % === 步骤 2.3: 通信 (Communication) ===
@@ -169,14 +169,14 @@ for counter = 1:Value_Params.num_rounds
         
         % === 步骤 2.4: 收敛判据 (Convergence Check) ===
         % 策略1：如果连续 2 次迭代没有任何人改变选择，认为联盟结构已稳定 (Nash Stable)。
-        if (T - lastTime > 2)
+        if (k_iter - lastTime > 2)
             doneflag = 1;
         else
-            T = T + 1;
+            k_iter = k_iter + 1;
         end
-        
+
         % 策略2：最大迭代次数限制 (防止死循环)
-        if isfield(Value_Params, 'max_stable_iterations') && T >= Value_Params.max_stable_iterations
+        if isfield(Value_Params, 'max_stable_iterations') && k_iter >= Value_Params.max_stable_iterations
             doneflag = 1;
         end
         
@@ -223,6 +223,9 @@ for counter = 1:Value_Params.num_rounds
         coalition_utility, Rcost, ...
         total_completed_value, task_completion_degrees, ...
         summatrix);
+
+    % 记录本轮的内循环迭代次数
+    history_data.k_iter_per_round{counter} = k_iter;
     
     % counter 在 for 循环中会自动增加，这行代码在 MATLAB 中其实是多余的，但保留原逻辑
     % counter = counter + 1;

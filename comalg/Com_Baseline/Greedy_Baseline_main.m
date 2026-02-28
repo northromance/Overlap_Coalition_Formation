@@ -181,6 +181,9 @@
     history_data.algorithm = 'Greedy_Baseline';
     history_data.final_utility = totalvalue;
     history_data.task_assignment_order = task_order;
-    
+
+    % 记录迭代次数（贪心算法是一次性构建，迭代次数为 1）
+    history_data.k_iter_per_round{1} = 1;
+
 end
 
