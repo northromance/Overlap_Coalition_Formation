@@ -32,12 +32,12 @@ M = 10;                         % number of tasks（任务数量）
 K = 6;                          % number of resource types（资源类型数）
 task_values = [800, 1000, 1500];  % three task types（三种不同类型任务的价值）
 num_task_types = length(task_values);
-algorithms_to_run_ids = [9,10]; 
+algorithms_to_run_ids = [9,11]; 
 
 % 算法开关：选择要运行的算法 ID
 % 1=SA_Value, 2=Greedy, 3=Huo2025, 4=Qi2023, 5=Shi2024, 6=PSO
-% 7-12=SA改进算法（TabuEnhanced, AdaptiveAlpha
-% 9=Fang2025
+% 7-12=SA改进算法（TabuEnhanced, AdaptiveAlpha）
+% 9=Fang2025, 10=SA_TabuEnhanced_Altruistic(局部社会效用), 11=SA_TabuEnhanced_Global(全局社会效用)
 
 % 比较非重叠联盟算法 + 信念更新机制
 % 比较重叠联盟算法Qi2023 + 信念更新机制 
@@ -88,7 +88,7 @@ SA_Temperature = 200.0;               % 初始温度
 SA_alpha = 0.95;                      % 降温系数
 SA_Tmin = 0.01;                       % 终止温度
 SA_K_len = 15;                        % 稳定性阈值（连续无改进迭代次数）
-SA_K_max_inner = 50;                  % 每轮最大迭代次数（快速测试20，完整测试建议200）
+SA_K_max_inner = 100;                  % 每轮最大迭代次数（快速测试20，完整测试建议200）
 SA_T0_round = 200;                    % 回合温度调度：初始温度 T_0
 SA_beta_round = 0.95;                 % 回合温度调度：衰减系数 beta
 SA_T_base_round = 60;                 % 回合温度调度：温度下界 T_base（经delta_E统计校准：均值|ΔE|≈202，此值约保证5%探索概率）
@@ -102,8 +102,12 @@ SA_Tabu_K_max_outer = 100;
 SA_Tabu_tenure = 10;
 SA_p_leave = 0.3;  % 离开概率（SA系列 / Qi2023 共用，统一通过 Value_Params.SA_p_leave 传入）
 
-% 算法 10: SA_TabuEnhanced_Altruistic（利他偏好版本）
-% 使用与算法7相同的参数，但决策机制基于 Preference_gain
+% 算法 10: SA_TabuEnhanced_Altruistic（局部利他偏好版本）
+% 使用与算法7相同的参数，但决策机制基于 Preference_gain (局部社会效用)
+
+% 算法 11: SA_TabuEnhanced_Global（全局社会效用版本）
+% 使用与算法10相同的参数，但 calculate_local_social_utility 和 Preference_gain
+% 均基于全体 N 个智能体的效用总和（GSU），而非仅统计局部利益相关者
 
 
 % ========================================================================
@@ -307,6 +311,7 @@ all_algorithms = {
     % 新算法
     struct('id', 9,  'name', 'Fang2025',           'func', @Fang2025_main,                 'folder', 'comalg/Com_Fang2025',  'color', [0.9, 0.3, 0.6]); % Fang2025
     struct('id', 10, 'name', 'SA_TabuEnhanced_Altruistic', 'func', @SA_Value_TabuEnhanced_Altruistic_main, 'folder', 'comalg/SA_TabuEnhance', 'color', [0.6, 0.3, 0.9]);
+    struct('id', 11, 'name', 'SA_TabuEnhanced_Global',     'func', @SA_Value_TabuEnhanced_global_main,     'folder', 'comalg/SA_TabuEnhance', 'color', [0.2, 0.8, 0.6]); % 全局社会效用版本
     };
 
 fprintf('Available algorithms (可用算法):\n');

@@ -1,21 +1,18 @@
-function [Value_data, history_data] = SA_Value_TabuEnhanced_Altruistic_main(agents, tasks, AddPara, Value_Params)
-% SA_VALUE_TABUENHANCED_ALTRUISTIC_MAIN 基于局部社会效用的模拟退火-禁忌搜索算法
+function [Value_data, history_data] = SA_Value_TabuEnhanced_global_main(agents, tasks, AddPara, Value_Params)
+% SA_VALUE_TABUENHANCED_GLOBAL_MAIN 基于全局社会效用的模拟退火-禁忌搜索算法
 %
-% === [核心设计理念 - 局部社会效用（LSU）版本] ===
-% 本版本采用完全分布式的利他主义决策机制，核心创新为"局部社会效用"：
+% === [核心设计理念 - 全局社会效用（GSU）版本] ===
+% 本版本采用完全利他主义决策机制，核心创新为"全局社会效用"：
 %
-%   1. Metropolis准则：基于 Preference_gain 计算的个体利他偏好差值
-%      - delta_E = 自身效用变化 + 队友效用变化（新增、损失、稳定）
+%   1. Metropolis准则：基于 Preference_gain 计算的全局效用差值
+%      - delta_E = SC_candidate 下全体智能体效用之和 - SC_current 下全体智能体效用之和
 %      - 用于接受/拒绝候选解的日常决策（模拟退火的核心概率接受机制）
 %
-%   2. 特赦准则（Aspiration Criterion）：基于局部社会效用（Local Social Utility, LSU）
-%      - LSU定义：智能体 i 相关利益群体在候选解下的效用总和
-%        * 自身效用
-%        * 旧联盟成员效用（资源撤出/减少时的任务队友）
-%        * 新联盟成员效用（资源增加时的任务队友）
-%      - 每个智能体维护自己的最佳历史LSU： best_LSU(i)
-%      - 特赦条件：current_LSU(i) > best_LSU(i)
-%      - 理论含义：即使当前动作被禁忌表封锁，但只要它能让“局部利益相关群体的总福利”达到历史新高，就无视禁忌，强制允许执行。
+%   2. 特赦准则（Aspiration Criterion）：基于全局社会效用（Global Social Utility, GSU）
+%      - GSU定义：所有 N 个智能体在候选解下的效用总和
+%      - 每个智能体维护自己观测到的历史最佳GSU：best_LSU(i)（账本含义升级为全局最优）
+%      - 特赦条件：current_GSU > best_LSU(i)
+%      - 理论含义：即使当前动作被禁忌表封锁，只要它能将全体智能体的社会总福利推向历史新高，就无视禁忌，强制允许执行。
 % ==============================================
 
 %% ==================== 0. 随机数种子设置 ====================
@@ -47,18 +44,17 @@ for counter = 1:Value_Params.num_rounds
         fprintf('  [SA-Altruistic] Round %d: 初始温度 = %.2f\n', counter, Value_Params.Temperature);
     end
 
-    % --- 初始化 LSU 最优账本 ---
+    % --- 初始化 GSU 最优账本 ---
+    % GSU 是全局标量（所有智能体效用之和），只需计算一次，由全体智能体共享
     best_SC = Value_data(1).SC;
-    best_LSU = zeros(Value_Params.N, 1);
 
-    % 构造空SC作为LSU基准（无任务分配状态）
+    % 构造空SC作为GSU基准（无任务分配状态）
     SC_empty = cell(Value_Params.M, 1);
     for m = 1:Value_Params.M
         SC_empty{m} = zeros(Value_Params.N, Value_Params.K);
     end
-    for j = 1:Value_Params.N
-        best_LSU(j) = calculate_local_social_utility(SC_empty, best_SC, j, agents, tasks, Value_Params, Value_data(j), AddPara);
-    end
+    % 仅计算一次：GSU与调用者agent_idx无关，结果对全体智能体相同
+    best_GSU = calculate_local_social_utility(SC_empty, best_SC, 1, agents, tasks, Value_Params, Value_data(1), AddPara);
 
     %% ==================== 2.25 初始化禁忌列表 ====================
     % 禁忌表用于防止退火搜索在两个相近状态之间反复横跳（局部死循环）
@@ -91,15 +87,9 @@ for counter = 1:Value_Params.num_rounds
                 resource_amt = agents(i).resources(k);
                 if resource_amt <= 0, continue; end % 如果没有第k种资源，跳过
 
-                % 轮盘赌选择
-                prob_vec = probs(k, :);
-                cum_prob = cumsum(prob_vec);
-                if cum_prob(end) > 1e-9
-                    r = rand * cum_prob(end);
-                    selected_task = find(cum_prob >= r, 1, 'first');
-                else
-                    selected_task = randi(Value_Params.M);
-                end
+                % 轮盘赌选择（封装在 OCFUtils.sample_task_from_probs 中）
+                selected_task = OCFUtils.sample_task_from_probs(probs(k, :), Value_Params.M);
+                if isempty(selected_task), continue; end
 
                 % 如果已在此任务中投入了该资源，跳过
                 if SC_global{selected_task}(i, k) > 0, continue; end
@@ -136,11 +126,9 @@ for counter = 1:Value_Params.num_rounds
             Value_data(i).coalitionstru = OCFUtils.build_coalitionstru_from_SC(SC_global, Value_Params, agents);
         end
 
-        % 根据生成的初始解重新计算 LSU 和全局效用
+        % 根据生成的初始解重新计算全局GSU，仅算一次并广播给全体智能体
         best_SC = SC_global;
-        for ii = 1:Value_Params.N
-            best_LSU(ii) = calculate_local_social_utility(SC_empty, SC_global, ii, agents, tasks, Value_Params, Value_data(ii), AddPara);
-        end
+        best_GSU = calculate_local_social_utility(SC_empty, SC_global, 1, agents, tasks, Value_Params, Value_data(1), AddPara);
     end
 
     %% ==================== 3. SA 外循环 (核心博弈过程 - 利他主义版本) ====================
@@ -167,31 +155,31 @@ for counter = 1:Value_Params.num_rounds
             candidate_hash = get_SC_hash(SC_candidate, Value_Params); % 对分配矩阵进行哈希，生成唯一指纹
             is_tabu = is_in_tabu_list(candidate_hash, tabu_list);     % 判断新解是否在禁忌表中
 
+            % GSU 是全局标量，与 agent_idx 无关，提前计算一次，两条分支（禁忌/非禁忌）均可复用
+            SC_current = Value_data(ii).SC;
+            current_GSU = calculate_local_social_utility(SC_current, SC_candidate, 1, agents, tasks, Value_Params, Value_data(ii), AddPara);
+
             accept = false;
 
             if is_tabu
-                % === [LSU特赦准则] ===
-                SC_current = Value_data(ii).SC;
-                current_LSU = calculate_local_social_utility(SC_current, SC_candidate, ii, agents, tasks, Value_Params, Value_data(ii), AddPara);
-                if current_LSU > best_LSU(ii)
+                % === [GSU 特赦准则：当前候选解的全局效用超过历史最优时，无视禁忌强制接受] ===
+                if current_GSU > best_GSU
                     accept = true;
                     if AddPara.verbose
-                        fprintf('      [Agent %d] LSU特赦接受禁忌解 (LSU=%.2f > 最优=%.2f)\n', ...
-                            ii, current_LSU, best_LSU(ii));
+                        fprintf('      [Agent %d] GSU特赦接受禁忌解 (GSU=%.2f > 最优=%.2f)\n', ...
+                            ii, current_GSU, best_GSU);
                     end
                 else
                     if AddPara.verbose
-                        fprintf('      [Agent %d] 拒绝禁忌解 (LSU=%.2f)\n', ii, current_LSU);
+                        fprintf('      [Agent %d] 拒绝禁忌解 (GSU=%.2f)\n', ii, current_GSU);
                     end
                 end
             else
-                % === [利他主义 Metropolis 准则] ===
+                % === [全局效用 Metropolis 准则] ===
                 % 如果不在禁忌表中，进入标准的模拟退火判定流
-                SC_current = Value_data(ii).SC;
 
-                % 计算利他偏好差值（Delta Energy）。
-                % Preference_gain 函数不仅考虑个体自己的利益得失，还考虑被它动作影响到的队友的得失。
-                delta_E_altruistic = Preference_gain(tasks, agents, SC_current, SC_candidate, ii, Value_Params, Value_data(ii));
+                % 计算全局效用差值（Delta Energy）
+                delta_E_altruistic = global_utility_diff(tasks, agents, SC_current, SC_candidate, ii, Value_Params, Value_data(ii));
                 % 取消频繁打印 delta E，保持日志干净
                 % fprintf('  [ΔE] Round=%d Iter=%d Agent=%d  delta_E=%.4f  T=%.4f\n', counter, k_iter, ii, delta_E_altruistic, Value_Params.Temperature);
 
@@ -228,13 +216,12 @@ for counter = 1:Value_Params.num_rounds
                     tabu_list = update_tabu_list(tabu_list, candidate_hash, tabu_tenure);
                 end
 
-                % 5.3 检查并更新个体LSU历史最优账本
-                SC_current = Value_data(ii).SC;
-                current_LSU = calculate_local_social_utility(SC_current, SC_candidate, ii, agents, tasks, Value_Params, Value_data(ii), AddPara);
-                if current_LSU > best_LSU(ii)
-                    best_LSU(ii) = current_LSU;
+                % 5.3 检查并更新全局GSU最优账本
+                % current_GSU 已在步骤3提前计算，直接复用，无需重复调用
+                if current_GSU > best_GSU
+                    best_GSU = current_GSU;
                     if AddPara.verbose
-                        fprintf('      [Agent %d] 更新个体LSU最优 (LSU=%.2f)\n', ii, best_LSU(ii));
+                        fprintf('      [Agent %d 触发] 更新全局GSU最优 (GSU=%.2f)\n', ii, best_GSU);
                     end
                 end
 
@@ -349,8 +336,8 @@ for counter = 1:Value_Params.num_rounds
     % 记录本轮的内循环迭代次数
     history_data.k_iter_per_round{counter} = k_iter;
 
-    % 单独记录局部社会效用的演化数据
-    history_data.best_LSU{counter} = best_LSU;
+    % 单独记录全局社会效用（GSU）的演化数据
+    history_data.best_GSU{counter} = best_GSU;
 end
 
 %% ==================== 6. 结束与最终检查 ====================
@@ -460,15 +447,9 @@ for k = 1:K
     total_capacity = agents(agent_idx).resources(k);
     if total_capacity <= eps_val, continue; end
     
-    % 基于累积分布概率挑选目标任务
-    prob_vec = probs(k, :);
-    cum_prob = cumsum(prob_vec);
-    if cum_prob(end) > eps_val
-        r = rand * cum_prob(end);
-        selected_task = find(cum_prob >= r, 1, 'first');
-    else
-        selected_task = randi(M);
-    end
+    % 基于轮盘赌挑选目标任务（封装在 OCFUtils.sample_task_from_probs 中）
+    selected_task = OCFUtils.sample_task_from_probs(probs(k, :), M);
+    if isempty(selected_task), continue; end
     % 已参与该任务则跳过
     if SC_new{selected_task}(agent_idx, k) > eps_val, continue; end
 
@@ -512,57 +493,76 @@ SC_candidate = SC_new;
 move_description = sprintf('SA_Tabu_Altruistic_Agent_%d', agent_idx);
 end
 
-% 【计算局部社会效用 (Local Social Utility)】
-% LSU = 自身效用 + 小边队友在候选解下的效用总和
-function LSU = calculate_local_social_utility(SC_old, SC_candidate, agent_idx, agents, tasks, Value_Params, Value_data, AddPara)
-    eps_val = 1e-6;
-
-    % 识别小边利益相关人群：旧/新任一状态中参与该任务的成员
-    related_members = [];
-
-    for m = 1:Value_Params.M
-        % 计算智能体在任务 m 上的总资源投入量（各种资源之和）
-        old_investment = sum(SC_old{m}(agent_idx, :));
-        new_investment = sum(SC_candidate{m}(agent_idx, :));
-
-        % 只要在旧状态 OR 新状态中参与了该任务，该任务的队友就算作利益相关者
-        if old_investment > eps_val || new_investment > eps_val
-            members_old = OCFUtils.get_participants(SC_old, m, eps_val);
-            members_new = OCFUtils.get_participants(SC_candidate, m, eps_val);
-            related_members = [related_members, members_old(:)', members_new(:)'];
-        end
-    end
-
-    % 全局去重并排除自己
-    related_members = unique(related_members);
-    related_members(related_members == agent_idx) = [];
-
-    %% 计算并合并 LSU
-    % LSU = 自身效用 + 受波及队友效用之和
-
-    % 计算自身效用
-    Value_data_temp = Value_data;
-    Value_data_temp.SC = SC_candidate;
-    self_utility = UtilityEvaluator.calc_agent_total_utility(SC_candidate, agents, tasks, Value_Params, Value_data_temp, AddPara);
-
-    % 计算小边队友效用（使用队友信念，如未知则用自身信念代替）
-    teammates_utility = 0;
-    for k = 1:length(related_members)
-        teammate_id = related_members(k);
-
-        % 使用队友信念（无则用自身信念代替）
-        if isfield(Value_data, 'other') && length(Value_data.other) >= teammate_id && ~isempty(Value_data.other{teammate_id})
-            teammate_belief = Value_data.other{teammate_id}.initbelief;
+% 【计算全局社会效用 (Global Social Utility, GSU)】
+% GSU = 所有 N 个智能体在 SC_candidate 下的效用之和
+% SC_old 参数保留以兼容原有调用接口，但本版本不再使用（改为全局求和）
+function GSU = calculate_local_social_utility(SC_old, SC_candidate, agent_idx, agents, tasks, Value_Params, Value_data, AddPara) %#ok<INUSL>
+    % 遍历全部 N 个智能体，累加各自在 SC_candidate 下的效用 —— 即全局社会效用
+    GSU = 0;
+    for j = 1:Value_Params.N
+        % 尽量使用智能体 j 自身的信念（从 agent_idx 的 other 字段获取）
+        % 若无记录，则退用 agent_idx 的信念作为同质化近似
+        if j == agent_idx
+            agent_belief = Value_data.initbelief;
+        elseif length(Value_data.other) >= j && ~isempty(Value_data.other{j})
+            agent_belief = Value_data.other{j}.initbelief;
         else
-            teammate_belief = Value_data.initbelief; % 同质化代替
+            agent_belief = Value_data.initbelief; % 同质化近似
         end
 
-        temp_data.agentIndex = teammate_id;
-        temp_data.initbelief = teammate_belief;
+        temp_data.agentIndex = j;
+        temp_data.initbelief = agent_belief;
         temp_data.SC = SC_candidate;
-        teammate_utility = UtilityEvaluator.calc_agent_total_utility(SC_candidate, agents, tasks, Value_Params, temp_data, AddPara);
-        teammates_utility = teammates_utility + teammate_utility;
+        GSU = GSU + UtilityEvaluator.calc_agent_total_utility(SC_candidate, agents, tasks, Value_Params, temp_data, AddPara);
+    end
+end
+
+% 【计算新旧联盟之间的全局效用差值 (Preference Gain)】
+% delta_E = GSU(SC_candidate) - GSU(SC_current)
+% 即：候选联盟结构下所有智能体的效用总和 减去 当前联盟结构下所有智能体的效用总和
+% 参数说明：
+%   tasks          - 任务描述（保留以兼容调用接口）
+%   agents         - 智能体描述
+%   SC_current     - 当前联盟结构（cell数组）
+%   SC_candidate   - 候选联盟结构（cell数组）
+%   agent_idx      - 发起动作的智能体编号（用于获取信念来源）
+%   Value_Params   - 全局参数
+%   Value_data_i   - agent_idx 的本地数据（含 initbelief 和 other 字段）
+function delta_E = global_utility_diff(tasks, agents, SC_current, SC_candidate, agent_idx, Value_Params, Value_data_i) %#ok<INUSL>
+    AddPara_silent.verbose = false;
+
+    % 计算候选解下的全局社会效用
+    GSU_candidate = 0;
+    for j = 1:Value_Params.N
+        if j == agent_idx
+            agent_belief = Value_data_i.initbelief;
+        elseif length(Value_data_i.other) >= j && ~isempty(Value_data_i.other{j})
+            agent_belief = Value_data_i.other{j}.initbelief;
+        else
+            agent_belief = Value_data_i.initbelief;
+        end
+        temp_data.agentIndex = j;
+        temp_data.initbelief = agent_belief;
+        temp_data.SC = SC_candidate;
+        GSU_candidate = GSU_candidate + UtilityEvaluator.calc_agent_total_utility(SC_candidate, agents, tasks, Value_Params, temp_data, AddPara_silent);
     end
 
-    LSU = self_utility + teammates_utility;
+    % 计算当前解下的全局社会效用
+    GSU_current = 0;
+    for j = 1:Value_Params.N
+        if j == agent_idx
+            agent_belief = Value_data_i.initbelief;
+        elseif length(Value_data_i.other) >= j && ~isempty(Value_data_i.other{j})
+            agent_belief = Value_data_i.other{j}.initbelief;
+        else
+            agent_belief = Value_data_i.initbelief;
+        end
+        temp_data.agentIndex = j;
+        temp_data.initbelief = agent_belief;
+        temp_data.SC = SC_current;
+        GSU_current = GSU_current + UtilityEvaluator.calc_agent_total_utility(SC_current, agents, tasks, Value_Params, temp_data, AddPara_silent);
+    end
+
+    % 全局效用差值：正值表示候选解更优，负值表示候选解更差
+    delta_E = GSU_candidate - GSU_current;
 end
