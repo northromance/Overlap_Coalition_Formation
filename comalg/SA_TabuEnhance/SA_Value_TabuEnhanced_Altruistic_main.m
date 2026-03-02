@@ -292,7 +292,7 @@ for counter = 1:Value_Params.num_rounds
             doneflag = 1;
         elseif Value_Params.Temperature < Value_Params.Tmin
             doneflag = 1;
-        elseif k_iter >= Value_Params.SA_Tabu_K_max_outer
+        elseif k_iter >= Value_Params.Tabu_MaxIter
             doneflag = 1;
         end
 

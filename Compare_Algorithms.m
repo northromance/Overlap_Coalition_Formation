@@ -13,13 +13,11 @@ script_dir = fileparts(mfilename('fullpath'));  % 获取脚本所在目录（Mai
 project_root = fileparts(script_dir);            % 获取项目根目录
 addpath(fullfile(project_root, "Overlap_Coalition_Formation\Main_fun"));              % core scenario/init functions（核心初始化与场景函数）
 addpath(fullfile(project_root, "Overlap_Coalition_Formation\SA"));                    % SA algorithm（模拟退火算法）
-addpath(fullfile(project_root, "Overlap_Coalition_Formation\comalg", "Com_Baseline"));   % Greedy baseline（贪心基线算法）
 addpath(fullfile(project_root, "Overlap_Coalition_Formation\comalg", "Com_Huo2025"));    % Huo2025 algorithm（Huo2025 算法）
 addpath(fullfile(project_root, "Overlap_Coalition_Formation\comalg", "Com_Qi2023"));     % Qi2023 algorithm（Qi2023 算法）
 addpath(fullfile(project_root, "Overlap_Coalition_Formation\comalg", "Com_Shi2024"));    % Shi2024 OCF algorithm（Shi2024 重叠联盟形成算法）
 addpath(fullfile(project_root, "Overlap_Coalition_Formation\comalg", "Com_Fang2025"));    % Fang2025 algorithm（Fang2025 算法）
 addpath(fullfile(project_root, "Overlap_Coalition_Formation\comalg", "SA_TabuEnhance"));        % SA TabuEnhance algorithm
-addpath(fullfile(project_root, "Overlap_Coalition_Formation\comalg", "Com_PSO"));             % PSO algorithm（粒子群优化算法）
 
 %% ========================================================================
 %  Scenario configuration (adjust for debugging as needed)
@@ -32,12 +30,11 @@ M = 10;                         % number of tasks（任务数量）
 K = 6;                          % number of resource types（资源类型数）
 task_values = [800, 1000, 1500];  % three task types（三种不同类型任务的价值）
 num_task_types = length(task_values);
-algorithms_to_run_ids = [9,11]; 
+algorithms_to_run_ids = [3,7]; 
 
 % 算法开关：选择要运行的算法 ID
-% 1=SA_Value, 2=Greedy, 3=Huo2025, 4=Qi2023, 5=Shi2024, 6=PSO
-% 7-12=SA改进算法（TabuEnhanced, AdaptiveAlpha）
-% 9=Fang2025, 10=SA_TabuEnhanced_Altruistic(局部社会效用), 11=SA_TabuEnhanced_Global(全局社会效用)
+% 1=SA_Value, 2=Huo2025, 3=Qi2023, 4=Shi2024
+% 5=Fang2025, 6=SA_TabuEnhanced_Altruistic(局部社会效用), 7=SA_TabuEnhanced_Global(全局社会效用)
 
 % 比较非重叠联盟算法 + 信念更新机制
 % 比较重叠联盟算法Qi2023 + 信念更新机制 
@@ -81,6 +78,8 @@ resource_exec_time = [50 65 50 60 35 45];
 obs_times = 50;              % 观测次数（贝叶斯更新等）
 num_rounds = 100;              % 迭代轮数（快速测试: 5轮）
 
+
+MaxIter = 100;                      %  每轮最大迭代次数
 % ========================================================================
 % 算法 1: SA_Value（模拟退火基础算法）
 % ========================================================================
@@ -88,26 +87,19 @@ SA_Temperature = 200.0;               % 初始温度
 SA_alpha = 0.95;                      % 降温系数
 SA_Tmin = 0.01;                       % 终止温度
 SA_K_len = 15;                        % 稳定性阈值（连续无改进迭代次数）
-SA_K_max_inner = 100;                  % 每轮最大迭代次数（快速测试20，完整测试建议200）
+
 SA_T0_round = 200;                    % 回合温度调度：初始温度 T_0
 SA_beta_round = 0.95;                 % 回合温度调度：衰减系数 beta
 SA_T_base_round = 60;                 % 回合温度调度：温度下界 T_base（经delta_E统计校准：均值|ΔE|≈202，此值约保证5%探索概率）
 SA_resource_confidence = 0.9;         % 初始构造阶段需求分位置信度
 SA_T_init_construction = 0.5;         % 初始构造阶段温度（低温近贪婪）
 
-% TabuEnhanced专属参数：
-% 算法 7: SA_TabuEnhanced（全局效用版本）
-SA_Tabu_K_max_outer = 100;
-% SA_Tabu_K_max_inner = 1;
+% TabuEnhanced专属参数（算法 6: Altruistic / 算法 7: Global）
 SA_Tabu_tenure = 10;
 SA_p_leave = 0.3;  % 离开概率（SA系列 / Qi2023 共用，统一通过 Value_Params.SA_p_leave 传入）
 
-% 算法 10: SA_TabuEnhanced_Altruistic（局部利他偏好版本）
-% 使用与算法7相同的参数，但决策机制基于 Preference_gain (局部社会效用)
-
-% 算法 11: SA_TabuEnhanced_Global（全局社会效用版本）
-% 使用与算法10相同的参数，但 calculate_local_social_utility 和 Preference_gain
-% 均基于全体 N 个智能体的效用总和（GSU），而非仅统计局部利益相关者
+% 算法 6: SA_TabuEnhanced_Altruistic — 决策机制基于 Preference_gain（局部社会效用）
+% 算法 7: SA_TabuEnhanced_Global   — calculate_local_social_utility 基于全体 N 个智能体 GSU
 
 
 % ========================================================================
@@ -123,14 +115,12 @@ Qi_omega_3 = 0.001;                   % 权重参数 3
 % 迭代控制参数
 Qi_L_tabu = 10;                       % 禁忌表长度
 Qi_K_len = 30;                        % 稳定性阈值（连续无改进迭代次数）
-Qi_K_max_inner = 20;                  % 每轮最大迭代次数（统一为20，原200）
 Qi_Gamma_init = 1;                    % 初始 Boltzmann 系数
 Qi_Gamma_max = 100;                   % 最大 Boltzmann 系数
 
 % ========================================================================
 % 算法 5: Shi2024（动态重叠联盟形成算法）
 % ========================================================================
-Shi_K_max_inner = 50;                 % 每轮最大迭代次数
 Shi_K_len = 10;                       % 稳定性阈值
 
 % ========================================================================
@@ -141,7 +131,6 @@ PSO_w_max = 0.9;                      % 惯性权重最大值
 PSO_w_min = 0.4;                      % 惯性权重最小值
 PSO_c1 = 2.0;                         % 认知系数（个体学习）
 PSO_c2 = 2.0;                         % 社会系数（群体学习）
-PSO_K_max_inner = 100;                % 最大迭代次数
 PSO_K_len = 10;                       % 稳定性阈值
 
 
@@ -233,16 +222,16 @@ Value_Params = OCFUtils.init_value_params(N, M, K, num_task_types, task_type_dem
 
 % ------------------ SA系列算法参数 ------------------
 Value_Params.SA_K_len = SA_K_len;                       % SA 稳定性阈值
-Value_Params.SA_K_max_inner = SA_K_max_inner;           % SA 每轮最大迭代次数
+Value_Params.SA_MaxIter = MaxIter;                      % SA_Value 每轮最大迭代次数
+Value_Params.Fang_MaxIter = MaxIter;                    % Fang2025 每轮最大迭代次数
 Value_Params.SA_T0_round = SA_T0_round;                 % SA 回合温度调度：初始温度
 Value_Params.SA_beta_round = SA_beta_round;             % SA 回合温度调度：衰减系数
 Value_Params.SA_T_base_round = SA_T_base_round;         % SA 回合温度调度：温度下界
 Value_Params.SA_resource_confidence = SA_resource_confidence; % SA 初始构造置信度
 Value_Params.SA_T_init_construction = SA_T_init_construction; % SA 初始构造温度
 
-% SA_TabuEnhanced 专属参数
-Value_Params.SA_Tabu_K_max_outer = SA_Tabu_K_max_outer;
-% Value_Params.SA_Tabu_K_max_inner = SA_Tabu_K_max_inner;
+% SA_TabuEnhanced 专属参数（算法 6/7）
+Value_Params.Tabu_MaxIter = MaxIter;
 Value_Params.SA_Tabu_tenure = SA_Tabu_tenure;
 Value_Params.SA_p_leave = SA_p_leave;  % 共用离开概率（SA_TabuEnhanced / Qi2023 均读此字段）
 
@@ -258,23 +247,13 @@ Value_Params.Qi_omega_3 = Qi_omega_3;     % 权重参数 3
 % 迭代控制参数
 Value_Params.Qi_L_tabu = Qi_L_tabu;           % 禁忌表长度
 Value_Params.Qi_K_len = Qi_K_len;             % 稳定性阈值
-Value_Params.Qi_K_max_inner = Qi_K_max_inner; % 每轮最大迭代次数
+Value_Params.Qi_MaxIter = MaxIter;             % 每轮最大迭代次数
 Value_Params.Qi_Gamma_init = Qi_Gamma_init;   % 初始 Boltzmann 系数
 Value_Params.Qi_Gamma_max = Qi_Gamma_max;     % 最大 Boltzmann 系数
 
 % ------------------ Shi2024算法参数 ------------------
-Value_Params.Shi_K_max_inner = Shi_K_max_inner; % 每轮最大迭代次数
+Value_Params.Shi_MaxIter = MaxIter;              % 每轮最大迭代次数
 Value_Params.Shi_K_len = Shi_K_len;             % 稳定性阈值
-
-% ------------------ PSO算法参数 ------------------
-Value_Params.PSO_swarm_size = PSO_swarm_size;   % 粒子群大小
-Value_Params.PSO_w_max = PSO_w_max;             % 惯性权重最大值
-Value_Params.PSO_w_min = PSO_w_min;             % 惯性权重最小值
-Value_Params.PSO_c1 = PSO_c1;                   % 认知系数
-Value_Params.PSO_c2 = PSO_c2;                   % 社会系数
-Value_Params.PSO_K_max_inner = PSO_K_max_inner; % 最大迭代次数
-Value_Params.PSO_K_len = PSO_K_len;             % 稳定性阈值
-
 
 
 
@@ -298,20 +277,14 @@ fprintf('Scenario initialized (%.2f s)\n\n', init_time);
 %% Define algorithms
 % 定义算法：ID、名称、主函数句柄、文件夹、绘图颜色
 all_algorithms = {
-    % 原始算法
+    % 对比基线算法
     struct('id', 1, 'name', 'SA_Value',        'func', @SA_Value_main,        'folder', 'SA',                  'color', [0.2, 0.6, 0.8]); % 模拟退火
-   %  struct('id', 2, 'name', 'Greedy baseline', 'func', @Greedy_Baseline_main, 'folder', 'comalg/Com_Baseline', 'color', [0.5, 0.5, 0.5]); % 贪心基线
-    struct('id', 3, 'name', 'Huo2025',         'func', @Huo2025_main,         'folder', 'comalg/Com_Huo2025',  'color', [0.8, 0.2, 0.2]); % Huo2025
-    struct('id', 4, 'name', 'Qi2023',          'func', @Qi2023_main,          'folder', 'comalg/Com_Qi2023',   'color', [0.2, 0.8, 0.2]); % Qi2023
-    struct('id', 5, 'name', 'Shi2024',         'func', @Shi2024_main,         'folder', 'comalg/Com_Shi2024',  'color', [0.8, 0.4, 0.2]); % Shi2024 OCF
-    struct('id', 6, 'name', 'PSO',             'func', @PSO_main,             'folder', 'comalg/Com_PSO',      'color', [0.8, 0.8, 0.2]); % 粒子群优化
-    % SA 改进算法（ID 7-12）
-   % struct('id', 7,  'name', 'SA_TabuEnhanced',    'func', @SA_Value_TabuEnhanced_main,    'folder', 'comalg/SA_TabuEnhance', 'color', [0.3, 0.7, 0.9]); % 禁忌搜索增强
-   % struct('id', 8,  'name', 'SA_AdaptiveAlpha',   'func', @SA_Value_AdaptiveAlpha_main,   'folder', 'comalg/SA_Value_Adapt', 'color', [0.4, 0.5, 0.9]); % 自适应
-    % 新算法
-    struct('id', 9,  'name', 'Fang2025',           'func', @Fang2025_main,                 'folder', 'comalg/Com_Fang2025',  'color', [0.9, 0.3, 0.6]); % Fang2025
-    struct('id', 10, 'name', 'SA_TabuEnhanced_Altruistic', 'func', @SA_Value_TabuEnhanced_Altruistic_main, 'folder', 'comalg/SA_TabuEnhance', 'color', [0.6, 0.3, 0.9]);
-    struct('id', 11, 'name', 'SA_TabuEnhanced_Global',     'func', @SA_Value_TabuEnhanced_global_main,     'folder', 'comalg/SA_TabuEnhance', 'color', [0.2, 0.8, 0.6]); % 全局社会效用版本
+    struct('id', 2, 'name', 'Huo2025',         'func', @Huo2025_main,         'folder', 'comalg/Com_Huo2025',  'color', [0.8, 0.2, 0.2]); % Huo2025
+    struct('id', 3, 'name', 'Qi2023',          'func', @Qi2023_main,          'folder', 'comalg/Com_Qi2023',   'color', [0.2, 0.8, 0.2]); % Qi2023
+    struct('id', 4, 'name', 'Shi2024',         'func', @Shi2024_main,         'folder', 'comalg/Com_Shi2024',  'color', [0.8, 0.4, 0.2]); % Shi2024 OCF
+    struct('id', 5, 'name', 'Fang2025',                   'func', @Fang2025_main,                          'folder', 'comalg/Com_Fang2025',   'color', [0.9, 0.3, 0.6]); % Fang2025
+    struct('id', 6, 'name', 'SA_TabuEnhanced_Altruistic', 'func', @SA_Value_TabuEnhanced_Altruistic_main,  'folder', 'comalg/SA_TabuEnhance', 'color', [0.6, 0.3, 0.9]); % 局部社会效用
+    struct('id', 7, 'name', 'SA_TabuEnhanced_Global',     'func', @SA_Value_TabuEnhanced_global_main,      'folder', 'comalg/SA_TabuEnhance', 'color', [0.2, 0.8, 0.6]); % 全局社会效用
     };
 
 fprintf('Available algorithms (可用算法):\n');

@@ -197,7 +197,7 @@ for counter = 1:Value_Params.num_rounds
             doneflag = 1;
         elseif Value_Params.Temperature < Value_Params.Tmin % 温度过低
             doneflag = 1;
-        elseif k_iter >= Value_Params.SA_K_max_inner % 达到最大迭代次数
+        elseif k_iter >= Value_Params.SA_MaxIter % 达到最大迭代次数
             doneflag = 1;
         end
 

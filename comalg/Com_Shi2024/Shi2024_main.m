@@ -254,7 +254,7 @@ function [SC, k_iter] = optimize_coalitions(N, M, SC, agents, tasks, Value_Param
 SC_prev = SC;
 k_iter = 0;  % 内循环迭代计数器
 k_stable = 0;  % 稳定性计数器
-max_iterations = Value_Params.Shi_K_max_inner;  
+max_iterations = Value_Params.Shi_MaxIter;      
 K_len = Value_Params.Shi_K_len;                 
 K_resources = Value_Params.K; % 获取资源种类总数
 

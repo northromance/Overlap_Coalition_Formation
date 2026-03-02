@@ -33,12 +33,12 @@ K = Value_Params.K;
 % 禁忌搜索参数（由 Compare_Algorithms.m 统一注入）
 L_tabu = Value_Params.Qi_L_tabu;               % 禁忌表长度
 K_len = Value_Params.Qi_K_len;                 % 稳定性阈值（无改进迭代次数）
-K_max_inner = Value_Params.Qi_K_max_inner;     % 每轮最大迭代次数
+K_max_inner = Value_Params.Qi_MaxIter;         % 每轮最大迭代次数
 
 % Boltzmann 系数参数（由 Compare_Algorithms.m 统一注入）
 Gamma_init = Value_Params.Qi_Gamma_init;       % 初始 Boltzmann 系数
 Gamma_max = Value_Params.Qi_Gamma_max;         % 最大 Boltzmann 系数
-Gamma = Gamma_init;                            % 当前 Boltzmann 系数
+% Gamma = Gamma_init;                            % 当前 Boltzmann 系数
 
 % 读取信念更新开关（默认启用）
 if isfield(AddPara, 'enable_belief_update')
