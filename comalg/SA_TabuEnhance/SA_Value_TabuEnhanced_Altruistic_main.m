@@ -167,12 +167,14 @@ for counter = 1:Value_Params.num_rounds
             candidate_hash = get_SC_hash(SC_candidate, Value_Params); % 对分配矩阵进行哈希，生成唯一指纹
             is_tabu = is_in_tabu_list(candidate_hash, tabu_list);     % 判断新解是否在禁忌表中
 
+            % 提前计算 SC_current 和 current_LSU（在 accept 更新 SC 之前，两支分均可复用）
+            SC_current  = Value_data(ii).SC;
+            current_LSU = calculate_local_social_utility(SC_current, SC_candidate, ii, agents, tasks, Value_Params, Value_data(ii), AddPara);
+
             accept = false;
 
             if is_tabu
                 % === [LSU特赦准则] ===
-                SC_current = Value_data(ii).SC;
-                current_LSU = calculate_local_social_utility(SC_current, SC_candidate, ii, agents, tasks, Value_Params, Value_data(ii), AddPara);
                 if current_LSU > best_LSU(ii)
                     accept = true;
                     if AddPara.verbose
@@ -186,8 +188,7 @@ for counter = 1:Value_Params.num_rounds
                 end
             else
                 % === [利他主义 Metropolis 准则] ===
-                % 如果不在禁忌表中，进入标准的模拟退火判定流
-                SC_current = Value_data(ii).SC;
+                % SC_current 已在上方提前获取，无需重复赋値
 
                 % 计算利他偏好差值（Delta Energy）。
                 % Preference_gain 函数不仅考虑个体自己的利益得失，还考虑被它动作影响到的队友的得失。
@@ -216,12 +217,15 @@ for counter = 1:Value_Params.num_rounds
 
             % 步骤5: 执行解的更新
             if accept
-                % 5.1 更新当前解到所有Agent的数据结构中（表示行动已落实）
+                % 5.1 广播 SC + coalitionstru 给全体智能体（共享黑板，仅构建一次）
+                new_coalitionstru = OCFUtils.build_coalitionstru_from_SC(SC_candidate, Value_Params, agents);
                 for jj = 1:Value_Params.N
-                    Value_data(jj).SC = SC_candidate;
-                    Value_data(jj).coalitionstru = OCFUtils.build_coalitionstru_from_SC(SC_candidate, Value_Params, agents);
-                    Value_data(jj).resources_matrix = OCFUtils.get_agent_resource_matrix(SC_candidate, jj, Value_Params);
+                    Value_data(jj).SC            = SC_candidate;
+                    Value_data(jj).coalitionstru = new_coalitionstru;
                 end
+                % 仅更新当前智能体 ii 的 resources_matrix
+                % 其余智能体在本迭代末的全局同步步骤中统一更新
+                Value_data(ii).resources_matrix = OCFUtils.get_agent_resource_matrix(SC_candidate, ii, Value_Params);
 
                 % 5.2 将新接受的状态加入禁忌表
                 if ~is_tabu
@@ -229,20 +233,14 @@ for counter = 1:Value_Params.num_rounds
                 end
 
                 % 5.3 检查并更新个体LSU历史最优账本
-                SC_current = Value_data(ii).SC;
-                current_LSU = calculate_local_social_utility(SC_current, SC_candidate, ii, agents, tasks, Value_Params, Value_data(ii), AddPara);
+                % current_LSU 已在步骤3之前提前计算（基于当时的 SC_current），直接复用
                 if current_LSU > best_LSU(ii)
                     best_LSU(ii) = current_LSU;
                     if AddPara.verbose
                         fprintf('      [Agent %d] 更新个体LSU最优 (LSU=%.2f)\n', ii, best_LSU(ii));
                     end
                 end
-
-                % 5.5 状态传递机制，确保下一个Agent能基于最新的系统状态进行决策
-                if ii < Value_Params.N
-                    Value_data(ii + 1).SC = SC_candidate;
-                    Value_data(ii + 1).coalitionstru = Value_data(ii).coalitionstru;
-                end
+                % 注：coalitionstru 已在 5.1 广播给全体，无需重复传递
             end
         end  % end for ii (本轮所有智能体决策完毕)
 

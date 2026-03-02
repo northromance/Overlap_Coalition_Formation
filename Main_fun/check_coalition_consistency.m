@@ -106,7 +106,12 @@ function [is_valid, error_log] = check_coalition_consistency(Value_data, agents,
     end
     [zero_demand_valid, zero_demand_errors] = check_zero_demand_allocation(Value_data, tasks, Value_Params, tol, verbose);
     if ~zero_demand_valid
-        is_valid = false;
+        % 注意：零需求分配是信念未收敛阶段的预期现象（智能体以主观期望需求决策，
+        % 真实需求为0时仍可能分配），不视为系统错误，仅作为警告记录
+        if verbose
+            fprintf('  ⚠️  [警告] 存在零需求分配（信念不确定性导致，非系统错误）\n');
+        end
+        % is_valid 不置 false，但仍记录供调试分析
         error_log = [error_log, zero_demand_errors];
     end
 

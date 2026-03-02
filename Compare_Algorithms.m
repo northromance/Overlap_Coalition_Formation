@@ -30,11 +30,12 @@ M = 10;                         % number of tasks（任务数量）
 K = 6;                          % number of resource types（资源类型数）
 task_values = [800, 1000, 1500];  % three task types（三种不同类型任务的价值）
 num_task_types = length(task_values);
-algorithms_to_run_ids = [3,7]; 
+algorithms_to_run_ids = [8]; 
 
 % 算法开关：选择要运行的算法 ID
 % 1=SA_Value, 2=Huo2025, 3=Qi2023, 4=Shi2024
 % 5=Fang2025, 6=SA_TabuEnhanced_Altruistic(局部社会效用), 7=SA_TabuEnhanced_Global(全局社会效用)
+% 8=Fang2025_Global(内联OCF+全局社会效用准则)
 
 % 比较非重叠联盟算法 + 信念更新机制
 % 比较重叠联盟算法Qi2023 + 信念更新机制 
@@ -79,11 +80,11 @@ obs_times = 50;              % 观测次数（贝叶斯更新等）
 num_rounds = 100;              % 迭代轮数（快速测试: 5轮）
 
 
-MaxIter = 100;                      %  每轮最大迭代次数
+MaxIter = 80;                      %  每轮最大迭代次数
 % ========================================================================
 % 算法 1: SA_Value（模拟退火基础算法）
 % ========================================================================
-SA_Temperature = 200.0;               % 初始温度
+SA_Temperature = 100.0;               % 初始温度
 SA_alpha = 0.95;                      % 降温系数
 SA_Tmin = 0.01;                       % 终止温度
 SA_K_len = 15;                        % 稳定性阈值（连续无改进迭代次数）
@@ -285,6 +286,7 @@ all_algorithms = {
     struct('id', 5, 'name', 'Fang2025',                   'func', @Fang2025_main,                          'folder', 'comalg/Com_Fang2025',   'color', [0.9, 0.3, 0.6]); % Fang2025
     struct('id', 6, 'name', 'SA_TabuEnhanced_Altruistic', 'func', @SA_Value_TabuEnhanced_Altruistic_main,  'folder', 'comalg/SA_TabuEnhance', 'color', [0.6, 0.3, 0.9]); % 局部社会效用
     struct('id', 7, 'name', 'SA_TabuEnhanced_Global',     'func', @SA_Value_TabuEnhanced_global_main,      'folder', 'comalg/SA_TabuEnhance', 'color', [0.2, 0.8, 0.6]); % 全局社会效用
+    struct('id', 8, 'name', 'Fang2025_Global',             'func', @Fang2025_global_main,                   'folder', 'comalg/Com_Fang2025',   'color', [0.1, 0.7, 0.4]); % Fang2025+内联OCF+GSU
     };
 
 fprintf('Available algorithms (可用算法):\n');

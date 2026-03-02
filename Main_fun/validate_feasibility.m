@@ -210,6 +210,7 @@ for idx = 1:length(teammates)
                     teammate_id, info_teammate.reason);
             end
         end
+        break;  % 一旦发现不可行队友，立即退出，避免冗余计算
     end
 end
 

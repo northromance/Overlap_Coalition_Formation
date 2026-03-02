@@ -187,8 +187,9 @@ for counter = 1:Value_Params.num_rounds
                 if delta_E_altruistic > 1e-4
                     % 如果是“好解”（利他偏好提升或不变），无条件接受
                     accept = true;
-                else
-                    % 如果是“劣解”，按照玻尔兹曼概率接受 (概率随温降减小)
+                elseif delta_E_altruistic < 0
+                    % 如果是"劣解"（dE<0），按照玻尔兹曼概率接受 (概率随温降减小)
+                    % dE=0 不进入此分支，避免 exp(0/T)=1 导致中性解被无条件接受
                     % 这给予了系统跳出局部最优（Local Optima）的能力
                     prob = exp(delta_E_altruistic / Value_Params.Temperature);
                     if rand < prob
@@ -204,12 +205,16 @@ for counter = 1:Value_Params.num_rounds
 
             % 步骤5: 执行解的更新
             if accept
-                % 5.1 更新当前解到所有Agent的数据结构中（表示行动已落实）
+                % 5.1 广播 SC + coalitionstru 给全体智能体（共享黑板）
+                % coalitionstru 仅构建一次，避免 N 次重复计算相同结果
+                new_coalitionstru = OCFUtils.build_coalitionstru_from_SC(SC_candidate, Value_Params, agents);
                 for jj = 1:Value_Params.N
-                    Value_data(jj).SC = SC_candidate;
-                    Value_data(jj).coalitionstru = OCFUtils.build_coalitionstru_from_SC(SC_candidate, Value_Params, agents);
-                    Value_data(jj).resources_matrix = OCFUtils.get_agent_resource_matrix(SC_candidate, jj, Value_Params);
+                    Value_data(jj).SC            = SC_candidate;
+                    Value_data(jj).coalitionstru = new_coalitionstru;
                 end
+                % 仅更新当前智能体 ii 的 resources_matrix
+                % 其余智能体的 resources_matrix 在本迭代末的全局同步步骤中统一更新
+                Value_data(ii).resources_matrix = OCFUtils.get_agent_resource_matrix(SC_candidate, ii, Value_Params);
 
                 % 5.2 将新接受的状态加入禁忌表
                 if ~is_tabu
@@ -224,12 +229,7 @@ for counter = 1:Value_Params.num_rounds
                         fprintf('      [Agent %d 触发] 更新全局GSU最优 (GSU=%.2f)\n', ii, best_GSU);
                     end
                 end
-
-                % 5.5 状态传递机制，确保下一个Agent能基于最新的系统状态进行决策
-                if ii < Value_Params.N
-                    Value_data(ii + 1).SC = SC_candidate;
-                    Value_data(ii + 1).coalitionstru = Value_data(ii).coalitionstru;
-                end
+                % 注：coalitionstru 已在 5.1 广播给全体，无需在此重复传递
             end
         end  % end for ii (本轮所有智能体决策完毕)
 
