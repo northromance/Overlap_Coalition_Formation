@@ -1,4 +1,4 @@
-﻿function [Value_data, history_data] = Huo2025_main(agents, tasks, AddPara, Value_Params)
+function [Value_data, history_data] = Huo2025_main(agents, tasks, AddPara, Value_Params)
 % HUO2025_MAIN 基于多智能体联盟形成与任务值估计的主算法函数
 %
 % 核心逻辑:
@@ -83,20 +83,13 @@ for i = 1:Value_Params.N
     Value_data(i).task_schedule.total_energy = 0;
 end
 % 全局统计变量初始化
-summatrix = zeros(Value_Params.M, task_types);            % 全局累计观测矩阵
-total_value_history = zeros(1, Value_Params.num_rounds);  % 记录每轮完成的总任务价值
-total_value_possible = sum(arrayfun(@(t) t.value, tasks));% 任务总潜在价值 (理论上限)
+summatrix = zeros(Value_Params.M, task_types);  % 全局累计观测矩阵
 
 % --- 设置初始状态：所有智能体都在 Void 任务 ---
 % Void 任务 (第 M+1 个任务) 通常代表"空闲"或"搜索中"。
 for k = 1:Value_Params.N
-    for j = 1:Value_Params.M+1
-        if j == Value_Params.M+1
-            for i = 1:Value_Params.N
-                % 将所有智能体标记在第 M+1 行 (空闲任务)
-                Value_data(k).coalitionstru(j,i) = agents(i).id;
-            end
-        end
+    for i = 1:Value_Params.N
+        Value_data(k).coalitionstru(Value_Params.M+1, i) = agents(i).id;
     end
 end
 
@@ -123,7 +116,8 @@ for counter = 1:Value_Params.num_rounds
     % --- 子循环：联盟形成协商 (Coalition Formation Negotiation) ---
     % 智能体之间通过多次迭代协商，达成稳定的联盟结构
     k_iter = 1;         % 协商迭代步数（内循环迭代计数器）
-    lastTime = k_iter-1;
+    k_stable = 0;       % 连续无改变迭代计数器
+    incremental = zeros(1, Value_Params.N); % 每轮清零，防止跨轮污染
     doneflag = 0;  % 收敛标志 (0:未收敛, 1:已收敛)
     
     while(doneflag == 0)
@@ -133,61 +127,78 @@ for counter = 1:Value_Params.num_rounds
         for ii = 1:Value_Params.N
             % Value_order 函数核心逻辑：
             % 智能体 ii 假设自己加入其他任务，计算边际贡献，选择贡献最大的任务。
-            % 返回值：
-            % incremental(ii): 效用增量 (是否变更了选择)
-            % curnumberrow(ii): 当前选择的任务编号
-            [incremental(ii), curnumberrow(ii), Value_data(ii)] = Value_order(agents, tasks, Value_data(ii), Value_Params);
+            % incremental(ii): 是否发生任务迁移 (0=不变, 1=已迁移)
+            [incremental(ii), ~, Value_data(ii)] = Value_order(agents, tasks, Value_data(ii), Value_Params);
         end
         
-        % === 步骤 2.2: 稳定性检查 ===
-        % 检查是否有智能体改变了主意 (incremental 记录了变更情况)
-        if (length(find(incremental == 0)) == Value_Params.N)
-            lastTime = lastTime; % 无人改变，最后变动时间保持不变
-        else
-            lastTime = k_iter;        % 有人改变，更新最后变动时间为当前 k_iter
-        end
-        
-        % === 步骤 2.3: 通信 (Communication) ===
-        % 智能体交换信念和联盟结构信息，达成共识。
-        % 在这里，Value_data(i) 会被更新，包含邻居的最新选择。
+        % === 步骤 2.2: 通信 (Communication) ===
+        % 智能体交换联盟结构信息，以"进化次数最多"的智能体视图为准进行广播。
+        % 通信前先快照全局状态，用于稳定性判定（通信本身也会改变状态）。
+        prev_coalitionstru = Value_data(1).coalitionstru;
 
-        
-        for k=1:Value_Params.N
-            for n=1:Value_Params.N
-                if Graph(k,n)==1
-                    if (Value_data(k).iteration>Value_data(n).iteration)...
-                            ||((Value_data(k).iteration==Value_data(n).iteration)&&(Value_data(k).unif>Value_data(n).unif))
-                        %                if GAME_data(k).unif>GAME_data(n).unif
-                        Value_data(n).coalitionstru=Value_data(k).coalitionstru;
-                        Value_data(n).SC=Value_data(k).SC;
-                        Value_data(n).iteration=Value_data(k).iteration;
-                        Value_data(n).unif=Value_data(k).unif;
-                    end
-                end
+  % === 1. 拍下通信前的全局状态快照 ===
+% 所有人发送的都是这个 Snapshot_data 里的状态，避免同一轮内的信息串扰
+Snapshot_data = Value_data; 
+
+% === 2. 遍历每个智能体 n (作为接收方) ===
+for n = 1:Value_Params.N
+    
+    % 记录邻居中版本最新的智能体 ID，初始设定为自己
+    best_k = n;
+    max_iter = Snapshot_data(n).iteration;
+    max_unif = Snapshot_data(n).unif;
+    
+    % === 3. 遍历所有邻居 k (作为发送方)，寻找最高版本的视野 ===
+    for k = 1:Value_Params.N
+        if Graph(k, n) == 1
+            % 判断邻居 k 的版本是否比当前记录的最高版本更新
+            if (Snapshot_data(k).iteration > max_iter) || ...
+               ((Snapshot_data(k).iteration == max_iter) && (Snapshot_data(k).unif > max_unif))
+               
+                % 更新最高版本记录
+                max_iter = Snapshot_data(k).iteration;
+                max_unif = Snapshot_data(k).unif;
+                best_k = k; 
             end
         end
+    end
+    
+    % === 4. 如果发现邻居有更新的版本，则进行共识同步 ===
+    if best_k ~= n
+        Value_data(n).coalitionstru = Snapshot_data(best_k).coalitionstru;
+        Value_data(n).SC              = Snapshot_data(best_k).SC;
+        Value_data(n).iteration       = Snapshot_data(best_k).iteration;
+        Value_data(n).unif            = Snapshot_data(best_k).unif;
         
-        % === 步骤 2.4: 收敛判据 (Convergence Check) ===
-        % 策略1：如果连续 2 次迭代没有任何人改变选择，认为联盟结构已稳定 (Nash Stable)。
-        if (k_iter - lastTime > 2)
-            doneflag = 1;
+        % 共识完毕后，从最新的全局视图中提取自己的资源分配
+        Value_data(n).resources_matrix = OCFUtils.get_agent_resource_matrix(Value_data(n).SC, n, Value_Params);
+    end
+end
+
+        % === 步骤 2.3: 稳定性检查（通信后）===
+        % 真正的 Nash 稳定性 = 所有智能体主动决策无改变(incremental全0)
+        %                    + 通信也未改变共识状态
+        % 只有两者都满足，才计为一次真正稳定迭代。
+        no_agent_changed  = all(incremental == 0);
+        no_comm_changed   = isequal(Value_data(1).coalitionstru, prev_coalitionstru);
+        if no_agent_changed && no_comm_changed
+            k_stable = k_stable + 1; % 两层均无变化，稳定计数 +1
         else
-            k_iter = k_iter + 1;
+            k_stable = 0;            % 任一层有变化，重置稳定计数
         end
 
-        % 策略2：最大迭代次数限制 (防止死循环)
-        if isfield(Value_Params, 'max_stable_iterations') && k_iter >= Value_Params.max_stable_iterations
+        % === 步骤 2.4: 收敛判据 (Convergence Check) ===
+        % 策略1：连续 K_stable_max 次迭代完全无变化，认为已达 Nash 稳定
+        if k_stable >= Value_Params.K_stable_max
             doneflag = 1;
         end
+        % 策略2：最大迭代次数限制 (防止死循环)
+        if k_iter >= Value_Params.max_inner_iter
+            doneflag = 1;
+        end
+        k_iter = k_iter + 1;
         
     end % End of While (Negotiation)
-    
-    % (可选) 记录第一轮形成的初始联盟，用于对比分析
-    if counter == 1
-        for j = 1:Value_Params.M
-            initial_coalition(j).member = find(Value_data(1).coalitionstru(j,:) ~= 0);
-        end
-    end
     
     % --- 步骤 2.5: 观测与信念更新 (Observation & Belief Update) ---
     % 联盟稳定后，智能体执行任务并获得观测值。
@@ -226,9 +237,6 @@ for counter = 1:Value_Params.num_rounds
 
     % 记录本轮的内循环迭代次数
     history_data.k_iter_per_round{counter} = k_iter;
-    
-    % counter 在 for 循环中会自动增加，这行代码在 MATLAB 中其实是多余的，但保留原逻辑
-    % counter = counter + 1;
     
 end % End of For (Rounds)
 
