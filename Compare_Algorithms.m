@@ -30,7 +30,7 @@ M = 10;                         % number of tasks（任务数量）
 K = 6;                          % number of resource types（资源类型数）
 task_values = [800, 1000, 1500];  % three task types（三种不同类型任务的价值）
 num_task_types = length(task_values);
-algorithms_to_run_ids = [8]; 
+algorithms_to_run_ids = [2]; 
 
 % 算法开关：选择要运行的算法 ID
 % 1=SA_Value, 2=Huo2025, 3=Qi2023, 4=Shi2024
@@ -87,17 +87,17 @@ MaxIter = 80;                      %  每轮最大迭代次数
 SA_Temperature = 100.0;               % 初始温度
 SA_alpha = 0.95;                      % 降温系数
 SA_Tmin = 0.01;                       % 终止温度
-SA_K_len = 15;                        % 稳定性阈值（连续无改进迭代次数）
+K_stable_max = 15;                    % 稳定性阈值（连续无改进迭代次数，SA/Fang/Tabu 系列共用）
 
-SA_T0_round = 200;                    % 回合温度调度：初始温度 T_0
-SA_beta_round = 0.95;                 % 回合温度调度：衰减系数 beta
-SA_T_base_round = 60;                 % 回合温度调度：温度下界 T_base（经delta_E统计校准：均值|ΔE|≈202，此值约保证5%探索概率）
-SA_resource_confidence = 0.9;         % 初始构造阶段需求分位置信度
-SA_T_init_construction = 0.5;         % 初始构造阶段温度（低温近贪婪）
+T0_round = 200;                       % 回合温度调度：初始温度 T_0
+T_decay = 0.95;                       % 回合温度调度：衰减系数
+T_min_round = 60;                     % 回合温度调度：温度下界（经delta_E统计校准：均值|ΔE|≈202，此值约保证5%探索概率）
+resource_confidence = 0.9;            % 初始构造阶段需求分位置信度（SA/Fang/Tabu 系列共用）
+T_init_construction = 0.5;            % 初始构造阶段温度（低温近贪婪，SA/Fang/Tabu 系列共用）
 
 % TabuEnhanced专属参数（算法 6: Altruistic / 算法 7: Global）
-SA_Tabu_tenure = 10;
-SA_p_leave = 0.3;  % 离开概率（SA系列 / Qi2023 共用，统一通过 Value_Params.SA_p_leave 传入）
+tabu_tenure = 10;                     % 禁忌期限
+p_leave = 0.3;                        % 离开概率（TabuEnhanced / Qi2023 共用）
 
 % 算法 6: SA_TabuEnhanced_Altruistic — 决策机制基于 Preference_gain（局部社会效用）
 % 算法 7: SA_TabuEnhanced_Global   — calculate_local_social_utility 基于全体 N 个智能体 GSU
@@ -106,34 +106,16 @@ SA_p_leave = 0.3;  % 离开概率（SA系列 / Qi2023 共用，统一通过 Valu
 % ========================================================================
 % 算法 4: Qi2023（基于禁忌搜索的重叠联盟形成算法）
 % ========================================================================
-% 效用函数参数
-Qi_beta_m = 1.0;                      % 边际效用权重
-Qi_C_req = 0.5;                       % 资源需求成本系数
-Qi_omega = 0.1;                       % 惩罚/松弛项
-Qi_omega_1 = 1.0;                     % 权重参数 1
-Qi_omega_2 = 0.01;                    % 权重参数 2
-Qi_omega_3 = 0.001;                   % 权重参数 3
 % 迭代控制参数
 Qi_L_tabu = 10;                       % 禁忌表长度
-Qi_K_len = 30;                        % 稳定性阈值（连续无改进迭代次数）
+Qi_K_stable_max = 30;                 % 稳定性阈值（连续无改进迭代次数）
 Qi_Gamma_init = 1;                    % 初始 Boltzmann 系数
 Qi_Gamma_max = 100;                   % 最大 Boltzmann 系数
 
 % ========================================================================
 % 算法 5: Shi2024（动态重叠联盟形成算法）
 % ========================================================================
-Shi_K_len = 10;                       % 稳定性阈值
-
-% ========================================================================
-% 算法 6: PSO（粒子群优化算法）
-% ========================================================================
-PSO_swarm_size = 20;                  % 粒子群大小
-PSO_w_max = 0.9;                      % 惯性权重最大值
-PSO_w_min = 0.4;                      % 惯性权重最小值
-PSO_c1 = 2.0;                         % 认知系数（个体学习）
-PSO_c2 = 2.0;                         % 社会系数（群体学习）
-PSO_K_len = 10;                       % 稳定性阈值
-
+Shi_K_stable_max = 10;                % 稳定性阈值
 
 
 %% AddPara (算法接口参数)
@@ -214,47 +196,34 @@ end
 
 % Algorithm shared params（各算法通用参数）
 Value_Params = OCFUtils.init_value_params(N, M, K, num_task_types, task_type_demands, ...
-    SA_Temperature, SA_alpha, SA_Tmin, SA_K_len, ...
+    SA_Temperature, SA_alpha, SA_Tmin, K_stable_max, ...
     obs_times, num_rounds);
 
 %% ========================================================================
 %% 算法专属参数注入 Value_Params
 %% ========================================================================
 
-% ------------------ SA系列算法参数 ------------------
-Value_Params.SA_K_len = SA_K_len;                       % SA 稳定性阈值
-Value_Params.SA_MaxIter = MaxIter;                      % SA_Value 每轮最大迭代次数
-Value_Params.Fang_MaxIter = MaxIter;                    % Fang2025 每轮最大迭代次数
-Value_Params.SA_T0_round = SA_T0_round;                 % SA 回合温度调度：初始温度
-Value_Params.SA_beta_round = SA_beta_round;             % SA 回合温度调度：衰减系数
-Value_Params.SA_T_base_round = SA_T_base_round;         % SA 回合温度调度：温度下界
-Value_Params.SA_resource_confidence = SA_resource_confidence; % SA 初始构造置信度
-Value_Params.SA_T_init_construction = SA_T_init_construction; % SA 初始构造温度
+% ------------------ 共用迭代控制参数 ------------------
+Value_Params.K_stable_max = K_stable_max;             % 稳定性阈值（SA/Fang/Tabu 系列）
+Value_Params.max_inner_iter = MaxIter;                % 每轮最大迭代次数（所有算法共用）
+Value_Params.T0_round = T0_round;                     % 回合温度调度：初始温度
+Value_Params.T_decay = T_decay;                       % 回合温度调度：衰减系数
+Value_Params.T_min_round = T_min_round;               % 回合温度调度：温度下界
+Value_Params.resource_confidence = resource_confidence; % 初始构造置信度（SA/Fang/Tabu 系列）
+Value_Params.T_init_construction = T_init_construction; % 初始构造温度（SA/Fang/Tabu 系列）
 
-% SA_TabuEnhanced 专属参数（算法 6/7）
-Value_Params.Tabu_MaxIter = MaxIter;
-Value_Params.SA_Tabu_tenure = SA_Tabu_tenure;
-Value_Params.SA_p_leave = SA_p_leave;  % 共用离开概率（SA_TabuEnhanced / Qi2023 均读此字段）
+% ------------------ TabuEnhanced 专属参数（算法 6/7）------------------
+Value_Params.tabu_tenure = tabu_tenure;               % 禁忌期限
+Value_Params.p_leave = p_leave;                       % 离开概率（TabuEnhanced / Qi2023 共用）
 
 % ------------------ Qi2023算法参数 ------------------
-% 效用函数参数
-Value_Params.Qi_beta_m = Qi_beta_m;       % 边际效用权重
-Value_Params.Qi_C_req = Qi_C_req;         % 资源需求成本系数
-Value_Params.Qi_omega = Qi_omega;         % 惩罚/松弛项
-Value_Params.Qi_omega_1 = Qi_omega_1;     % 权重参数 1
-Value_Params.Qi_omega_2 = Qi_omega_2;     % 权重参数 2
-Value_Params.Qi_omega_3 = Qi_omega_3;     % 权重参数 3
-
-% 迭代控制参数
-Value_Params.Qi_L_tabu = Qi_L_tabu;           % 禁忌表长度
-Value_Params.Qi_K_len = Qi_K_len;             % 稳定性阈值
-Value_Params.Qi_MaxIter = MaxIter;             % 每轮最大迭代次数
-Value_Params.Qi_Gamma_init = Qi_Gamma_init;   % 初始 Boltzmann 系数
-Value_Params.Qi_Gamma_max = Qi_Gamma_max;     % 最大 Boltzmann 系数
+Value_Params.Qi_L_tabu = Qi_L_tabu;                  % 禁忌表长度
+Value_Params.Qi_K_stable_max = Qi_K_stable_max;       % 稳定性阈值
+Value_Params.Qi_Gamma_init = Qi_Gamma_init;           % 初始 Boltzmann 系数
+Value_Params.Qi_Gamma_max = Qi_Gamma_max;             % 最大 Boltzmann 系数
 
 % ------------------ Shi2024算法参数 ------------------
-Value_Params.Shi_MaxIter = MaxIter;              % 每轮最大迭代次数
-Value_Params.Shi_K_len = Shi_K_len;             % 稳定性阈值
+Value_Params.Shi_K_stable_max = Shi_K_stable_max;     % 稳定性阈值
 
 
 

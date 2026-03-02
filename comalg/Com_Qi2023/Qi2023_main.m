@@ -32,8 +32,8 @@ K = Value_Params.K;
 
 % 禁忌搜索参数（由 Compare_Algorithms.m 统一注入）
 L_tabu = Value_Params.Qi_L_tabu;               % 禁忌表长度
-K_len = Value_Params.Qi_K_len;                 % 稳定性阈值（无改进迭代次数）
-K_max_inner = Value_Params.Qi_MaxIter;         % 每轮最大迭代次数
+K_len = Value_Params.Qi_K_stable_max;         % 稳定性阈值（无改进迭代次数）
+K_max_inner = Value_Params.max_inner_iter;    % 每轮最大迭代次数
 
 % Boltzmann 系数参数（由 Compare_Algorithms.m 统一注入）
 Gamma_init = Value_Params.Qi_Gamma_init;       % 初始 Boltzmann 系数
@@ -139,7 +139,7 @@ for round = 1:Value_Params.num_rounds
             
             % ========== A. 离开操作：随机移除部分资源 ==========
             SC_temp = SC_global;
-            p_leave = Value_Params.SA_p_leave;  % 离开概率（统一由 Value_Params.SA_p_leave 控制）
+            p_leave = Value_Params.p_leave;  % 离开概率（统一由 Value_Params.p_leave 控制）
             for m = 1:M
                 for k = 1:K
                     % 只有当资源量大于阈值(eps_val) 且 随机数小于 p_leave 时才执行

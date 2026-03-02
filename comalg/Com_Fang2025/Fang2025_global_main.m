@@ -37,8 +37,8 @@ for counter = 1:Value_Params.num_rounds
     k_stable     = 0;
     doneflag     = 0;
 
-    Value_Params.Temperature = max(Value_Params.SA_T_base_round, ...
-        Value_Params.SA_T0_round * Value_Params.SA_beta_round^(counter - 1));
+    Value_Params.Temperature = max(Value_Params.T_min_round, ...
+        Value_Params.T0_round * Value_Params.T_decay^(counter - 1));
 
     if AddPara.verbose
         fprintf('  [Fang-GSU] Round %d: ³õÊ¼ÎÂ¶È = %.2f\n', counter, Value_Params.Temperature);
@@ -52,8 +52,8 @@ for counter = 1:Value_Params.num_rounds
 
         SC_global            = Value_data(1).SC;
         task_type_demands    = Value_Params.task_type_demands;
-        resource_confidence  = Value_Params.SA_resource_confidence;
-        T_init_construction  = Value_Params.SA_T_init_construction;
+        resource_confidence  = Value_Params.resource_confidence;
+        T_init_construction  = Value_Params.T_init_construction;
 
         for i = 1:Value_Params.N
             Value_data(i).SC = SC_global;
@@ -301,11 +301,11 @@ for counter = 1:Value_Params.num_rounds
             k_stable = 0;
         end
 
-        if k_stable >= Value_Params.SA_K_len
+        if k_stable >= Value_Params.K_stable_max
             doneflag = 1;
         elseif Value_Params.Temperature < Value_Params.Tmin
             doneflag = 1;
-        elseif k_iter >= Value_Params.Fang_MaxIter
+        elseif k_iter >= Value_Params.max_inner_iter
             doneflag = 1;
         end
 

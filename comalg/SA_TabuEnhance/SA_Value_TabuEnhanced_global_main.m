@@ -24,7 +24,7 @@ end
 %% ==================== 1. 初始化阶段 ====================
 eps_val = 1e-6;          % 浮点数比较容差
 history_data = struct();
-tabu_tenure = Value_Params.SA_Tabu_tenure; % 禁忌期限
+tabu_tenure = Value_Params.tabu_tenure; % 禁忌期限
 
 Value_data = WorldSim.init_value_data(agents, tasks, Value_Params);
 [Value_data, summatrix] = WorldSim.init_observe_belief_neighbor(Value_data, Value_Params.N, Value_Params.M, Value_Params);
@@ -38,8 +38,8 @@ for counter = 1:Value_Params.num_rounds
     doneflag = 0;
 
     % 轮间温度调度：初始温度随轮数指数衰减
-    Value_Params.Temperature = max(Value_Params.SA_T_base_round, ...
-        Value_Params.SA_T0_round * Value_Params.SA_beta_round^(counter-1));
+    Value_Params.Temperature = max(Value_Params.T_min_round, ...
+        Value_Params.T0_round * Value_Params.T_decay^(counter-1));
     if AddPara.verbose
         fprintf('  [SA-Altruistic] Round %d: 初始温度 = %.2f\n', counter, Value_Params.Temperature);
     end
@@ -71,8 +71,8 @@ for counter = 1:Value_Params.num_rounds
         end
         SC_global = Value_data(1).SC;
         task_type_demands = Value_Params.task_type_demands;
-        resource_confidence = Value_Params.SA_resource_confidence; % 资源需求的置信度（抵御不确定性）
-        T_init_construction = Value_Params.SA_T_init_construction;
+        resource_confidence = Value_Params.resource_confidence; % 资源需求的置信度（抗御不确定性）
+        T_init_construction = Value_Params.T_init_construction;
 
         % 轮询每个智能体，根据当前需求缺口(gap)进行初步的资源投放
         for i = 1:Value_Params.N
@@ -275,11 +275,11 @@ for counter = 1:Value_Params.num_rounds
         end
 
         % 退出条件：连续收敛 / 温度过低 / 达到最大迭代次数
-        if k_stable >= Value_Params.SA_K_len
+        if k_stable >= Value_Params.K_stable_max
             doneflag = 1;
         elseif Value_Params.Temperature < Value_Params.Tmin
             doneflag = 1;
-        elseif k_iter >= Value_Params.Tabu_MaxIter
+        elseif k_iter >= Value_Params.max_inner_iter
             doneflag = 1;
         end
 
@@ -417,7 +417,7 @@ current_T = Value_Params.Temperature;
 confidence = 0.9;
 if isfield(AddPara, 'resource_confidence'), confidence = AddPara.resource_confidence; end
 
-    p_leave = Value_Params.SA_p_leave;  % 离开概率（统一由 Value_Params.SA_p_leave 控制）
+    p_leave = Value_Params.p_leave;  % 离开概率（统一由 Value_Params.p_leave 控制）
 
 % --- 步骤 A：随机撤出部分任务资源 ---
 SC_temp = Value_data_i.SC;

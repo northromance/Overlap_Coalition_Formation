@@ -31,7 +31,7 @@ for counter = 1:Value_Params.num_rounds
     % 采用指数衰减策略，随着轮数 (counter) 增加，初始温度 T 逐渐降低
     % 这意味着后期的随机探索率越低，越倾向于利用 (Exploitation)
     % Value_Params.Temperature = 200;
-    Value_Params.Temperature = max(Value_Params.SA_T_base_round, Value_Params.SA_T0_round * Value_Params.SA_beta_round^(counter-1));
+    Value_Params.Temperature = max(Value_Params.T_min_round, Value_Params.T0_round * Value_Params.T_decay^(counter-1));
     
     if AddPara.verbose
         fprintf('  [SA] Round %d: 初始温度 = %.2f\n', counter, Value_Params.Temperature);
@@ -48,8 +48,8 @@ for counter = 1:Value_Params.num_rounds
         
         SC_global = Value_data(1).SC;
         task_type_demands = Value_Params.task_type_demands;
-        resource_confidence = Value_Params.SA_resource_confidence; % 初始置信度
-        T_init_construction = Value_Params.SA_T_init_construction; % 构建阶段使用极低温度，接近贪心选择
+        resource_confidence = Value_Params.resource_confidence; % 初始置信度
+        T_init_construction = Value_Params.T_init_construction; % 构造阶段使用极低温度，接近贪婪选择
         
         % 轮询每个智能体，根据当前需求缺口(gap)进行初步的资源投放
         for i = 1:Value_Params.N
@@ -180,11 +180,11 @@ for counter = 1:Value_Params.num_rounds
         end
 
         % 判断是否退出内循环
-        if k_stable >= Value_Params.SA_K_len        % 连续多步未变
+        if k_stable >= Value_Params.K_stable_max        % 连续多次未变
             doneflag = 1;
         elseif Value_Params.Temperature < Value_Params.Tmin % 温度过低
             doneflag = 1;
-        elseif k_iter >= Value_Params.Fang_MaxIter % 达到最大迭代次数
+        elseif k_iter >= Value_Params.max_inner_iter % 达到最大迭代次数
             doneflag = 1;
         end
 

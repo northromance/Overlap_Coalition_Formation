@@ -32,7 +32,7 @@ for counter = 1:Value_Params.num_rounds
     % 采用指数衰减策略，随着轮数 (counter) 增加，初始温度 T 逐轮降低
     % 意味着后期的博弈探索性降低，更倾向于利用 (Exploitation)
     Value_Params.Temperature = 200;
-    % Value_Params.Temperature = max(Value_Params.SA_T_base_round, Value_Params.SA_T0_round * Value_Params.SA_beta_round^(counter-1));
+    % Value_Params.Temperature = max(Value_Params.T_min_round, Value_Params.T0_round * Value_Params.T_decay^(counter-1));
     
     if AddPara.verbose
         fprintf('  [SA] Round %d: 初始温度 = %.2f\n', counter, Value_Params.Temperature);
@@ -58,8 +58,8 @@ for counter = 1:Value_Params.num_rounds
         
         SC_global = Value_data(1).SC;
         task_type_demands = Value_Params.task_type_demands;
-        resource_confidence = Value_Params.SA_resource_confidence; % 初始置信度
-        T_init_construction = Value_Params.SA_T_init_construction; % 构造阶段使用极低温度，接近贪婪选择
+        resource_confidence = Value_Params.resource_confidence; % 初始置信度
+        T_init_construction = Value_Params.T_init_construction; % 构造阶段使用极低温度，接近贪婪选择
         
         for i = 1:Value_Params.N
             Value_data(i).SC = SC_global;
@@ -178,8 +178,8 @@ for counter = 1:Value_Params.num_rounds
         end
 
 
-        % reheat_trigger = floor(Value_Params.SA_K_len / 2); 
-        % if k_stable >= reheat_trigger && k_stable < Value_Params.SA_K_len
+        % reheat_trigger = floor(Value_Params.K_stable_max / 2); 
+        % if k_stable >= reheat_trigger && k_stable < Value_Params.K_stable_max
         %     % 只有当温度还没低到极致时才升温，或者根据需要强行拉升
         %     Value_Params.Temperature = Value_Params.Temperature * 1.5; % 升温系数 1.5
             
@@ -193,11 +193,11 @@ for counter = 1:Value_Params.num_rounds
         % end
 
         % 判断是否退出内循环
-        if k_stable >= Value_Params.SA_K_len        % 连续多次未变
+        if k_stable >= Value_Params.K_stable_max        % 连续多次未变
             doneflag = 1;
         elseif Value_Params.Temperature < Value_Params.Tmin % 温度过低
             doneflag = 1;
-        elseif k_iter >= Value_Params.SA_MaxIter % 达到最大迭代次数
+        elseif k_iter >= Value_Params.max_inner_iter % 达到最大迭代次数
             doneflag = 1;
         end
 

@@ -358,7 +358,7 @@ classdef OCFUtils
         end
 
 
-        function Value_Params = init_value_params(N, M, K, num_task_types, task_type_demands, SA_Temperature, SA_alpha, SA_Tmin, SA_K_len, obs_times, num_rounds)
+        function Value_Params = init_value_params(N, M, K, num_task_types, task_type_demands, SA_Temperature, SA_alpha, SA_Tmin, K_stable_max, obs_times, num_rounds)
             % INIT_VALUE_PARAMS 初始化算法参数结构
             %
             % 输入参数:
@@ -370,7 +370,7 @@ classdef OCFUtils
             %   SA_Temperature             - 模拟退火初始温度
             %   SA_alpha                   - 模拟退火温度衰减率
             %   SA_Tmin                    - 模拟退火最小温度
-            %   SA_K_len                   - SA稳定性阈值（无改进迭代次数，统一命名）
+            %   K_stable_max               - 稳定性阈值（连续无改进迭代次数）
             %   obs_times                  - 每个任务的观测次数
             %   num_rounds                 - 游戏总轮数
             %
@@ -391,7 +391,7 @@ classdef OCFUtils
             Value_Params.Temperature = SA_Temperature;
             Value_Params.alpha = SA_alpha;
             Value_Params.Tmin = SA_Tmin;
-            Value_Params.SA_K_len = SA_K_len;  % 稳定性阈值（统一命名为SA_K_len）
+            Value_Params.K_stable_max = K_stable_max;  % 稳定性阈值（各算法共用概念）
 
             % 观测参数
             Value_Params.obs_times = obs_times;
