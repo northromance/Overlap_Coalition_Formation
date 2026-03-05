@@ -251,12 +251,19 @@ end
 
 function [SC, k_iter] = optimize_coalitions(N, M, SC, agents, tasks, Value_Params, Value_data, AddPara, tol)
 % 迭代优化联盟结构 (解耦式：基于单种资源的细粒度调度)
-SC_prev = SC;
 k_iter = 0;  % 内循环迭代计数器
 k_stable = 0;  % 稳定性计数器
 max_iterations = Value_Params.max_inner_iter;      
 K_len = Value_Params.Shi_K_stable_max;             
 K_resources = Value_Params.K; % 获取资源种类总数
+L_tabu = Value_Params.Qi_L_tabu;           % 禁忌表长度（与 Qi2023 共用参数）
+
+% 探索阶段使用静默模式，避免大量"试错"日志淹没有效信息
+AddPara_silent = AddPara;
+AddPara_silent.verbose = false;
+
+% 禁忌表（跨迭代累积，避免重复访问相同 SC 状态）
+TabuList = {};
 
 while k_iter < max_iterations && k_stable < K_len
     k_iter = k_iter + 1;
@@ -265,100 +272,113 @@ while k_iter < max_iterations && k_stable < K_len
         fprintf('  Iteration %d:\n', k_iter);
     end
     
-    %% Phase 1: Quit/Transfer 负效用任务 (细化到单种资源 k)
+    %% Phase 1: Quit/Transfer (利他偏好增益判断，单种资源粒度)
     for j = 1:N
-        current_total_utility = UtilityEvaluator.calc_agent_total_utility(SC, agents, tasks, Value_Params, Value_data(j), AddPara);
+        Value_data(j).SC = SC;  % 确保信念数据同步
         task_list = OCFUtils.get_agent_tasks_fast(SC, j, tol);
         task_list = task_list(task_list <= M);
-        
+
         for task_idx = 1:length(task_list)
             task_p = task_list(task_idx);
-            
-            % 【修改核心】：遍历智能体 j 在任务 task_p 中投入的每一种资源 k
+
             for k = 1:K_resources
-                if SC{task_p}(j, k) > tol  % 如果当前在 task_p 中投入了资源 k
-                    % 1. 尝试仅退出资源 k
+                if SC{task_p}(j, k) > tol
                     SC_quit = SC;
-                    SC_quit{task_p}(j, k) = 0; 
-                    utility_after_quit = UtilityEvaluator.calc_agent_total_utility(SC_quit, agents, tasks, Value_Params, Value_data(j), AddPara);
-                    
-                    if utility_after_quit > current_total_utility
-                        % 2. 尝试将资源 k 转移到其他任务
-                        best_transfer_task = -1;
-                        best_transfer_utility = utility_after_quit; % 基准线是单纯退出的效用
-                        
-                        for i_trans = 1:M
-                            if i_trans == task_p
-                                continue; % 不转移给当前任务
+                    SC_quit{task_p}(j, k) = 0;
+
+                    % 【Transfer 独立评估】以当前 SC 为基准，遍历所有目标任务
+                    best_transfer_task = -1;
+                    best_transfer_gain = 0;  % 必须严格 > 0 才接受
+
+                    for i_trans = 1:M
+                        if i_trans == task_p, continue; end
+                        if SC_quit{i_trans}(j, k) > tol, continue; end
+
+                        SC_temp = SC_quit;
+                        SC_temp{i_trans}(j, k) = agents(j).resources(k);
+
+                        [isFeasible_trans, ~, ~] = validate_feasibility(Value_data, agents, tasks, Value_Params, j, SC_temp, true, AddPara_silent);
+                        if isFeasible_trans
+                            % 利他偏好增益：SC(当前) → SC_temp(转移后)
+                            gain_transfer = Preference_gain(tasks, agents, SC, SC_temp, j, Value_Params, Value_data(j));
+                            if gain_transfer > best_transfer_gain
+                                best_transfer_gain = gain_transfer;
+                                best_transfer_task = i_trans;
                             end
-                            
-                            SC_temp = SC_quit; % 在已退出 task_p 的基础上
-                            SC_temp{i_trans}(j, k) = agents(j).resources(k); % 将资源 k 投入新任务
-                            
-                            % 验证可行性
-                            [isFeasible_trans, ~, ~] = validate_feasibility(Value_data, agents, tasks, Value_Params, j, SC_temp, true, AddPara);
-                            if isFeasible_trans
-                                temp_utility = UtilityEvaluator.calc_agent_total_utility(SC_temp, agents, tasks, Value_Params, Value_data(j), AddPara);
-                                if temp_utility > best_transfer_utility
-                                    best_transfer_utility = temp_utility;
-                                    best_transfer_task = i_trans;
-                                end
-                            end
-                        end
-                        
-                        % 结算：转移还是单纯退出
-                        if best_transfer_task > 0
-                            if AddPara.verbose
-                                fprintf('    Agent %d: Transfer Task %d->%d [Resource %d] (%.2f->%.2f)\n', j, task_p, best_transfer_task, k, current_total_utility, best_transfer_utility);
-                            end
-                            SC = SC_quit; % 先退出
-                            SC{best_transfer_task}(j, k) = agents(j).resources(k); % 后加入
-                            current_total_utility = best_transfer_utility;
-                        else
-                            if AddPara.verbose
-                                fprintf('    Agent %d: Quit Task %d [Resource %d] (%.2f->%.2f)\n', j, task_p, k, current_total_utility, utility_after_quit);
-                            end
-                            SC = SC_quit; % 单纯退出
-                            current_total_utility = utility_after_quit;
                         end
                     end
+
+                    % 计算单纯退出的利他增益
+                    gain_quit = Preference_gain(tasks, agents, SC, SC_quit, j, Value_Params, Value_data(j));
+
+                    % 结算优先级：Transfer > Quit > 不动（禁忌检查）
+                    if best_transfer_task > 0
+                        SC_cand = SC_quit;
+                        SC_cand{best_transfer_task}(j, k) = agents(j).resources(k);
+                        SC_hash = get_SC_hash(SC_cand);
+                        if ~is_in_tabu(SC_hash, TabuList)
+                            if AddPara.verbose
+                                fprintf('    Agent %d: Transfer Task %d->%d [Res %d] (gain=%.4f)\n', j, task_p, best_transfer_task, k, best_transfer_gain);
+                            end
+                            SC = SC_cand;
+                            Value_data(j).SC = SC;
+                            TabuList = update_tabu_list(TabuList, SC_hash, L_tabu);
+                        end
+                    elseif gain_quit > 0
+                        SC_hash = get_SC_hash(SC_quit);
+                        if ~is_in_tabu(SC_hash, TabuList)
+                            if AddPara.verbose
+                                fprintf('    Agent %d: Quit Task %d [Res %d] (gain=%.4f)\n', j, task_p, k, gain_quit);
+                            end
+                            SC = SC_quit;
+                            Value_data(j).SC = SC;
+                            TabuList = update_tabu_list(TabuList, SC_hash, L_tabu);
+                        end
+                    end
+                    % else: 保持不动
                 end
             end
         end
     end
-    
-    %% Phase 2: Join 新任务 (细化到单种资源 k)
+
+    %% Phase 2: Join 新任务 (利他偏好增益判断，概率加权任务顺序)
     for j = 1:N
-        current_total_utility = UtilityEvaluator.calc_agent_total_utility(SC, agents, tasks, Value_Params, Value_data(j), AddPara);
-        
-        % 遍历所有任务
-        for i = 1:M
-            % 【重要修改】：取消了 ismember(i, task_list) 的跳过逻辑
-            % 因为智能体可能已经用资源 1 加入了任务 i，现在想把资源 2 也加入进去！
-            
-            % 遍历智能体拥有的每一种资源 k
-            for k = 1:K_resources
-                % 条件：智能体自身拥有该资源，且该资源尚未分配给任务 i
-                if agents(j).resources(k) > tol && SC{i}(j, k) < tol
-                    
-                    % 尝试仅将资源 k 加入任务 i
-                    SC_join = SC;
-                    SC_join{i}(j, k) = agents(j).resources(k);
-                    
-                    % 验证可行性
-                    [isFeasible, ~, cost_data] = validate_feasibility(Value_data, agents, tasks, Value_Params, j, SC_join, true, AddPara);
-                    if ~isFeasible
-                        continue;
-                    end
-                    
-                    utility_after_join = UtilityEvaluator.calc_agent_total_utility(SC_join, agents, tasks, Value_Params, Value_data(j), AddPara);
-                    if utility_after_join > current_total_utility
+        Value_data(j).SC = SC;
+
+        % 计算资源缺口与概率分布
+        [~, resource_gap] = calc_gaps(Value_data(j), Value_Params, AddPara);
+        T_explore = Value_Params.T0_round;
+        probs = SA_Select_probs(Value_data(j), agents, tasks, Value_Params, resource_gap, T_explore);
+
+        for k = 1:K_resources
+            if agents(j).resources(k) <= tol, continue; end
+
+            % 确定性概率降序排列
+            prob_k = probs(k, :);
+            [~, task_order] = sort(-(prob_k * (M + 1) + (M:-1:1)));
+
+            for i_idx = 1:M
+                i = task_order(i_idx);
+                if SC{i}(j, k) >= tol, continue; end  % 资源已投入，跳过
+
+                SC_join = SC;
+                SC_join{i}(j, k) = agents(j).resources(k);
+
+                [isFeasible, ~, cost_data] = validate_feasibility(Value_data, agents, tasks, Value_Params, j, SC_join, true, AddPara_silent);
+                if ~isFeasible, continue; end
+
+                % 利他偏好增益：SC(当前) → SC_join(加入后)
+                gain_join = Preference_gain(tasks, agents, SC, SC_join, j, Value_Params, Value_data(j));
+                if gain_join > 0
+                    SC_hash = get_SC_hash(SC_join);
+                    if ~is_in_tabu(SC_hash, TabuList)
                         if AddPara.verbose
-                            fprintf('    Agent %d: Join Task %d [Resource %d] (%.2f->%.2f, energy: %.2f)\n', ...
-                                j, i, k, current_total_utility, utility_after_join, cost_data.requiredEnergy);
+                            fprintf('    Agent %d: Join Task %d [Res %d] (gain=%.4f, energy=%.2f)\n', ...
+                                j, i, k, gain_join, cost_data.requiredEnergy);
                         end
                         SC{i}(j, k) = agents(j).resources(k);
-                        current_total_utility = utility_after_join;
+                        Value_data(j).SC = SC;
+                        TabuList = update_tabu_list(TabuList, SC_hash, L_tabu);
                     end
                 end
             end
@@ -384,60 +404,12 @@ end
 end
 
 
-function [best_task, best_utility] = find_best_transfer(agent_id, current_task, SC, agents, tasks, Value_Params, Value_data, AddPara, tol)
-% 寻找最佳转移目标任务
-
-M = Value_Params.M;
-best_task = -1;
-best_utility = -inf;
-
-for i = 1:M
-    if i == current_task
-        continue;
-    end
-
-    % 创建临时 SC
-    SC_temp = SC;
-    SC_temp{current_task}(agent_id, :) = 0;
-    SC_temp{i}(agent_id, :) = agents(agent_id).resources';
-
-    % 获取资源分配矩阵
-    R_agent_Q = zeros(M, Value_Params.K);
-    task_list_temp = OCFUtils.get_agent_tasks_fast(SC_temp, agent_id, tol);
-    for idx = 1:length(task_list_temp)
-        t = task_list_temp(idx);
-        if t <= M
-            R_agent_Q(t, :) = SC_temp{t}(agent_id, :);
-        end
-    end
-
-    % 验证可行性（启用队友检查）
-    [isFeasible, ~, ~] = validate_feasibility(Value_data, agents, tasks, Value_Params, agent_id, SC_temp, true, AddPara);
-
-    if ~isFeasible
-        continue;
-    end
-
-    % 计算转移后的总效用
-    utility = UtilityEvaluator.calc_agent_total_utility(SC_temp, agents, tasks, Value_Params, Value_data(agent_id), AddPara);
-
-    if utility > best_utility
-        best_utility = utility;
-        best_task = i;
-    end
-end
-
-end
-
-
 function equal = isequal_SC(SC1, SC2)
-% 比较两个 SC 是否相等
-
+% 比较两个 SC 是否完全相等
 if length(SC1) ~= length(SC2)
     equal = false;
     return;
 end
-
 equal = true;
 for i = 1:length(SC1)
     if ~isequal(SC1{i}, SC2{i})
@@ -445,7 +417,37 @@ for i = 1:length(SC1)
         return;
     end
 end
+end
 
+
+function hash_str = get_SC_hash(SC)
+% GET_SC_HASH 计算联盟结构的哈希字符串，用于禁忌检查
+temp_vec = [];
+for m = 1:length(SC)
+    temp_vec = [temp_vec; SC{m}(:)]; %#ok<AGROW>
+end
+hash_str = mat2str(temp_vec);
+end
+
+
+function is_in = is_in_tabu(sc_hash, tabu_list)
+% IS_IN_TABU 检查当前 SC 状态是否在禁忌表中
+is_in = false;
+for i = 1:length(tabu_list)
+    if strcmp(sc_hash, tabu_list{i})
+        is_in = true;
+        return;
+    end
+end
+end
+
+
+function tabu_list = update_tabu_list(tabu_list, sc_hash, L_tabu)
+% UPDATE_TABU_LIST 更新禁忌表（FIFO 队列，超出长度时移除最旧条目）
+tabu_list{end+1} = sc_hash;
+if length(tabu_list) > L_tabu
+    tabu_list(1) = [];
+end
 end
 
 

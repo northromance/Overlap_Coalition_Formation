@@ -30,7 +30,7 @@ M = 10;                         % number of tasks（任务数量）
 K = 6;                          % number of resource types（资源类型数）
 task_values = [800, 1000, 1500];  % three task types（三种不同类型任务的价值）
 num_task_types = length(task_values);
-algorithms_to_run_ids = [2]; 
+algorithms_to_run_ids = [3,4]; 
 
 % 算法开关：选择要运行的算法 ID
 % 1=SA_Value, 2=Huo2025, 3=Qi2023, 4=Shi2024
@@ -77,7 +77,7 @@ resource_exec_time = [50 65 50 60 35 45];
 
 % 通用参数
 obs_times = 50;              % 观测次数（贝叶斯更新等）
-num_rounds = 100;              % 迭代轮数（快速测试: 5轮）
+num_rounds = 20;              % 迭代轮数（快速测试: 5轮）
 
 
 MaxIter = 80;                      %  每轮最大迭代次数
