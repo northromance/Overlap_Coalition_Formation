@@ -82,10 +82,5 @@ orderedTasks = OCFUtils.sort_tasks_by_priority(myOrderedTasks, tasks);
 cost = t_fly * alpha_fly + t_wait * alpha_wait + t_exec * beta;
 
 %% 4. 计算净效用
-% 理性约束：收益必须大于成本
-if revenue > cost
-    agentutility = revenue - cost;
-else
-    agentutility = 0;
-end
+agentutility = revenue - cost;
 end

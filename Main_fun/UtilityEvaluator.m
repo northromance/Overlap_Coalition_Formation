@@ -101,11 +101,7 @@ classdef UtilityEvaluator
             total_cost = t_fly * alpha_fly + t_wait * alpha_wait + t_exec * beta;
             
             %% 3. 第三阶段：计算净效用
-            if total_revenue > total_cost
-                agentutility = total_revenue - total_cost;
-            else
-                agentutility = 0;
-            end
+            agentutility = total_revenue - total_cost;
         end
         
         
