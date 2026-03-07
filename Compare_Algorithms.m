@@ -30,7 +30,7 @@ M = 10;                         % number of tasks（任务数量）
 K = 6;                          % number of resource types（资源类型数）
 task_values = [800, 1000, 1500];  % three task types（三种不同类型任务的价值）
 num_task_types = length(task_values);
-algorithms_to_run_ids = [3,4]; 
+algorithms_to_run_ids = [3,7]; 
 
 % 算法开关：选择要运行的算法 ID
 % 1=SA_Value, 2=Huo2025, 3=Qi2023, 4=Shi2024
@@ -101,6 +101,9 @@ p_leave = 0.3;                        % 离开概率（TabuEnhanced / Qi2023 共
 
 % 算法 6: SA_TabuEnhanced_Altruistic — 决策机制基于 Preference_gain（局部社会效用）
 % 算法 7: SA_TabuEnhanced_Global   — calculate_local_social_utility 基于全体 N 个智能体 GSU
+
+
+Value_Params.C = 2000;
 
 
 % ========================================================================
@@ -224,6 +227,7 @@ Value_Params.Qi_Gamma_max = Qi_Gamma_max;             % 最大 Boltzmann 系数
 
 % ------------------ Shi2024算法参数 ------------------
 Value_Params.Shi_K_stable_max = Shi_K_stable_max;     % 稳定性阈值
+Value_Params.C = 2000;
 
 
 
