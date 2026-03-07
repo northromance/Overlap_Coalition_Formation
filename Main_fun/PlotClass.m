@@ -41,7 +41,7 @@ classdef PlotClass
                 demand = tasks(m).resource_demand; 
                 plot(1:K, demand, 'r-o', 'LineWidth', 1.5, ...
                     'MarkerFaceColor', 'w', 'MarkerSize', 4);
-                title(sprintf('Task %d (Value: %.0f)', m, tasks(m).value), 'FontSize', 10);
+                title(sprintf('Task %d  Val:%.0f  Pri:%d', m, tasks(m).value, tasks(m).priority), 'FontSize', 10);
                 if m > (rows-1)*cols, xlabel('Resource Type'); end
                 if mod(m-1, cols) == 0, ylabel('Amount'); end
                 grid on; box on;

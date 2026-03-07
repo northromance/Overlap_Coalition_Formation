@@ -1,7 +1,7 @@
 classdef UtilityEvaluator
     % UtilityEvaluator 效用与性能评估工具类
     % 包含个体效用计算 (Agent View) 和全局性能指标评估 (Global View)。
-
+    
     methods(Static)
         %
         % function agentutility = calc_agent_total_utility(SC, agents, tasks, Value_Params, Value_data, AddPara)
@@ -103,9 +103,9 @@ classdef UtilityEvaluator
         %     %% 3. 第三阶段：计算净效用
         %     agentutility = total_revenue - total_cost;
         % end
-
-
-
+        
+        
+        
         function [agentutility, task_utilities] = calc_agent_total_utility(SC, agents, tasks, Value_Params, Value_data, AddPara)
             % CALC_AGENT_TOTAL_UTILITY 计算智能体 n 在当前重叠联盟结构 SC 下的总效用
             %
@@ -133,9 +133,9 @@ classdef UtilityEvaluator
             % 输出：
             %   agentutility   - 智能体 n 的总效用标量
             %   task_utilities - containers.Map，键为任务编号，值为 r_{n,m}*U_m
-
+            
             tol = 1e-9;
-
+            
             % 获取当前智能体索引与环境维度（兼容 agentID 和 agentIndex 两种字段名）
             if isfield(Value_data, 'agentID')
                 agent_id = Value_data.agentID;
@@ -145,94 +145,108 @@ classdef UtilityEvaluator
             K = Value_Params.K;   % 资源类型数
             M = Value_Params.M;   % 任务数
             N = Value_Params.N;   % 智能体数
-            C = Value_Params.C;   % 托底正数
-
+            
             % 获取智能体 n 参与的任务列表（过滤无效索引）
             task_list = OCFUtils.get_agent_tasks_fast(SC, agent_id, tol);
             task_list = task_list(task_list <= M);
             task_utilities = containers.Map('KeyType', 'double', 'ValueType', 'double');
-
+            
             % 若未参与任何任务，效用为 0
             if isempty(task_list)
                 agentutility = 0;
                 return;
             end
-
+            
             % 获取需求估计置信度（默认 0.9）
             confidence = Value_Params.resource_confidence;
-
+            
             task_type_demands = Value_Params.task_type_demands;
             task_types = Value_Params.task_type;
-
+            
             %% 第一阶段：预计算所有智能体的路径总成本 C_i
             % C_i = alpha_fly * t_fly_i + alpha_wait * t_wait_i + beta * t_exec_i
             % 需对全部 N 个智能体计算，以便后续联盟成本 Cost(A_m) 的摊派
             agent_costs = zeros(N, 1);
             for i = 1:N
                 tasks_i = OCFUtils.get_agent_tasks_fast(SC, i, tol); % 计算出所有参与的任务
-                tasks_i = tasks_i(tasks_i <= M); 
+                tasks_i = tasks_i(tasks_i <= M);
                 if isempty(tasks_i), continue; end
                 ordered_i = OCFUtils.sort_tasks_by_priority(tasks_i, tasks);
                 [t_fly_i, t_wait_i, t_exec_i] = WorldSim.calc_with_global_sync( ...
                     i, ordered_i, agents, tasks, Value_Params, SC, tol);
                 agent_costs(i) = t_fly_i * agents(i).fuel ...
-                                + t_wait_i * agents(i).wait_fuel ...
-                                + t_exec_i * agents(i).beta; % 个体效用
+                    + t_wait_i * agents(i).wait_fuel ...
+                    + t_exec_i * agents(i).beta; % 个体效用
             end
 
+            % 预计算每个智能体投向所有任务的总资源量，用于将全局成本切分到单个任务
+            agent_total_resources = zeros(N, 1);
+            for i = 1:N
+                tasks_i = OCFUtils.get_agent_tasks_fast(SC, i, tol);
+                tasks_i = tasks_i(tasks_i <= M);
+                for task_idx = 1:length(tasks_i)
+                    task_id = tasks_i(task_idx);
+                    agent_total_resources(i) = agent_total_resources(i) + sum(SC{task_id}(i, :));
+                end
+            end
+            
             %% 第二阶段：逐任务计算联盟效用并按贡献比例分摊给智能体 n
             agentutility = 0;
-
+            
             for idx = 1:length(task_list)
                 curr_task = task_list(idx);
-
+                
                 % --- A. 估算任务需求（基于信念分布的分位数法）---
                 belief = Value_data.initbelief(curr_task, :);
                 demand = WorldSim.calculate_demand_quantile(belief, task_type_demands, confidence);
-
+                
                 % --- B. 获取联盟成员及资源分配矩阵 ---
                 participants = OCFUtils.get_participants(SC, curr_task, tol);
                 SC_task = SC{curr_task};  % N x K 分配矩阵
-
+                
                 % --- C. 计算任务完成度 varsigma_m = D_m（联盟资源 vs 需求）---
                 total_resources = sum(SC_task(participants, :), 1);
                 D_m = WorldSim.calc_task_completion_degree(total_resources, demand, K);
-
+                
                 % 完成度为 0 表示联盟无效，跳过
                 if D_m <= tol
                     task_utilities(curr_task) = 0;
                     continue;
                 end
-
+                
                 % --- D. 计算期望价值 E[V_m]（信念加权）---
                 values = tasks(curr_task).WORLD.value;
                 tlen = min([task_types, numel(values), size(belief, 2)]);
                 V_m = sum(values(1:tlen) .* belief(1:tlen));
-
-                % --- E. 计算联盟加权成本 Cost(A_m) = sum_{i in C_m} r_{i,m} * C_i ---
+                
+                % --- E. 按智能体对当前任务的资源投入占其总投入的比例切分全局成本 ---
                 coalition_cost = 0;
                 for j = 1:length(participants)
                     i_id = participants(j);
-                    coalition_cost = coalition_cost + agent_costs(i_id);
+
+                    resource_to_this_task = sum(SC_task(i_id, :));
+                    if agent_total_resources(i_id) > tol
+                        cost_slice_ratio = resource_to_this_task / agent_total_resources(i_id);
+                    else
+                        cost_slice_ratio = 0;
+                    end
+
+                    coalition_cost = coalition_cost + agent_costs(i_id) * cost_slice_ratio;
                 end
+                
+                % --- F. 计算联盟总效用 ---
+                U_m = V_m * D_m - coalition_cost;
 
-                % --- F. 获取任务重要性缩放因子 rho_m ---
-
-               rho_m = tasks(curr_task).priority;
-
-                % --- G. 计算联盟总效用 U_m(A_m) = log(1 + rho_m*(V_m*D_m - Cost(A_m))) ---
-                U_m = rho_m * V_m * D_m - coalition_cost;
-
-                % --- H. 智能体 n 的分摊效用：u_{n,m} = r_{n,m} * U_m ---
+                % --- G. 智能体 n 的分摊效用：u_{n,m} = r_{n,m} * U_m ---
                 r_nm = OCFUtils.calc_resource_contribution_ratio(SC_task, agent_id, participants);
                 u_nm = r_nm * U_m;
-
+                
                 task_utilities(curr_task) = u_nm;
                 agentutility = agentutility + u_nm;
             end
         end
         %
-
+        
         function [global_net_utility, total_global_cost, total_completed_value, task_completion_degrees] = ...
                 evaluate_coalition_metrics(SC_global, agents, tasks, Value_Params, eps_val)
             % EVALUATE_COALITION_METRICS 计算全局联盟结构的净效用 (上帝视角)
@@ -243,72 +257,72 @@ classdef UtilityEvaluator
             %   tasks        - 任务结构体数组
             %   Value_Params - 全局参数
             %   eps_val      - (可选) 容差
-
+            
             %% 1. 参数初始化
             if nargin < 5 || isempty(eps_val)
                 eps_val = 1e-6;
             end
-
+            
             M = Value_Params.M;
             N = Value_Params.N;
             K = Value_Params.K;
-
+            
             task_completion_degrees = zeros(M, 1);
             total_completed_value = 0;
             total_global_cost = zeros(1, N);
-
+            
             %% 2. 第一阶段：计算所有任务的收益 (Revenue)
             for j = 1:M
                 participants = OCFUtils.get_participants(SC_global, j, eps_val);
-
+                
                 if isempty(participants)
                     task_completion_degrees(j) = 0;
                     continue;
                 end
-
+                
                 SC_task = SC_global{j};
                 demand = tasks(j).resource_demand(:)'; % 上帝视角：真实需求
-
+                
                 total_resources = sum(SC_task(participants, :), 1);
-
+                
                 D_C = WorldSim.calc_task_completion_degree(total_resources, demand, K);
                 task_completion_degrees(j) = D_C;
-
+                
                 if D_C > 0
                     V_C = tasks(j).value; % 上帝视角：真实价值
                     total_completed_value = total_completed_value + (V_C * D_C);
                 end
             end
-
+            
             %% 3. 第二阶段：计算所有智能体的成本 (Cost)
             for i = 1:N
                 my_raw_tasks = OCFUtils.get_agent_tasks_fast(SC_global, i);
-
+                
                 if isempty(my_raw_tasks)
                     total_global_cost(i) = 0;
                     continue;
                 end
-
+                
                 my_tasks = OCFUtils.sort_tasks_by_priority(my_raw_tasks, tasks);
-
+                
                 alpha_fly = agents(i).fuel;
                 alpha_wait = agents(i).wait_fuel;
                 beta = agents(i).beta;
-
+                
                 [t_fly_total, t_wait_total, t_exec_total] = WorldSim.calc_with_global_sync( ...
                     i, my_tasks, agents, tasks, Value_Params, SC_global, eps_val);
-
+                
                 cost_i = t_fly_total * alpha_fly + t_wait_total * alpha_wait + t_exec_total * beta;
                 total_global_cost(i) = cost_i;
             end
-
+            
             %% 4. 第三阶段：计算全局净效用
             total_global_cost_sum = sum(total_global_cost);
             global_net_utility = total_completed_value - total_global_cost_sum;
-
+            
             % 返回的 total_global_cost 是总和，如果需要向量形式，请修改函数签名
             total_global_cost = total_global_cost_sum;
         end
-
+        
     end
 end

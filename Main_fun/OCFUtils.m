@@ -214,31 +214,32 @@ classdef OCFUtils
         end
 
         %% ==================== 7. 效用与完成度计算 ====================
-
         function r_n = calc_resource_contribution_ratio(SC_m, agent_idx, member_indices)
-            % calc_resource_contribution_ratio 计算智能体在联盟中的相对贡献占比。
-            % 计算方式：(该智能体投入资源的范数) / (联盟所有成员投入资源的总范数)。
-            % 输入：
-            %   SC_m: (Matrix) 当前任务的资源分配矩阵 (N x K)。
-            %   agent_idx: (Int) 当前计算的智能体ID。
-            %   member_indices: (Array) 联盟所有成员的ID列表。
+    % calc_resource_contribution_ratio 计算智能体在联盟中的相对贡献占比。
+    % 
+    % 计算方式：(该智能体投入资源的综合数量) / (联盟所有成员投入资源的总数量)。
+    % 使用一范数 (sum) 替代二范数 (norm)，保证多维资源相加的物理公平性。
+    %
+    % 输入：
+    %   SC_m: (Matrix) 当前任务的资源分配矩阵 (N x K)。
+    %   agent_idx: (Int) 当前计算的智能体ID。
+    %   member_indices: (Array) 联盟所有成员的ID列表。
 
-            A_n = norm(SC_m(agent_idx, :)); % 当前智能体投入向量的模长
-            total_norm = 0;
-
-            % 累加所有成员的投入模长
-            for i = 1:numel(member_indices)
-                member_id = member_indices(i);
-                total_norm = total_norm + norm(SC_m(member_id, :));
-            end
-
-            if total_norm > 1e-9
-                r_n = A_n / total_norm; % 正常计算比率
-            else
-                % 避免除以零：若总投入为0，假设贡献均等
-                r_n = 1 / max(numel(member_indices), 1);
-            end
-        end
+    % 1. 计算当前智能体的总资源投入 (对行向量求和)
+    A_n = sum(SC_m(agent_idx, :)); 
+    
+    % 2. 向量化计算整个联盟的总资源投入 (提取子矩阵，一并求和)
+    % 取出所有参与者的行，对所有元素求和
+    total_resources = sum(SC_m(member_indices, :), "all"); 
+    
+    % 3. 防护与比例计算
+    if total_resources > 1e-9
+        r_n = A_n / total_resources; 
+    else
+        % 避免除以零：若总投入为0，假设贡献均等
+        r_n = 1 / max(numel(member_indices), 1);
+    end
+end
 
 
         function [SC_P, SC_Q, R_agent_P, R_agent_Q] = calc_move_changes(Value_data, agents, Value_Params, cur_task_idx, target_task_idx, agent_col_idx)

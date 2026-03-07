@@ -24,7 +24,7 @@ addpath(fullfile(project_root, "Overlap_Coalition_Formation\comalg", "SA_TabuEnh
 %  场景参数配置（调试时可在此处修改）
 %% ========================================================================
 
-SEED = 2456;                    % 随机种子（确保实验可复现）
+SEED = 2457;                    % 随机种子（确保实验可复现）
 N = 6;                          % number of agents（智能体数量）
 M = 10;                         % number of tasks（任务数量）
 K = 6;                          % number of resource types（资源类型数）
@@ -92,18 +92,16 @@ K_stable_max = 15;                    % 稳定性阈值（连续无改进迭代�
 T0_round = 200;                       % 回合温度调度：初始温度 T_0
 T_decay = 0.95;                       % 回合温度调度：衰减系数
 T_min_round = 60;                     % 回合温度调度：温度下界（经delta_E统计校准：均值|ΔE|≈202，此值约保证5%探索概率）
-resource_confidence = 0.9;            % 初始构造阶段需求分位置信度（SA/Fang/Tabu 系列共用）
-T_init_construction = 0.5;            % 初始构造阶段温度（低温近贪婪，SA/Fang/Tabu 系列共用）
+resource_confidence = 0.7;            % 初始构造阶段需求分位置信度（SA/Fang/Tabu 系列共用）
+T_init_construction = 2;            % 初始构造阶段温度（低温近贪婪，SA/Fang/Tabu 系列共用）
 
 % TabuEnhanced专属参数（算法 6: Altruistic / 算法 7: Global）
 tabu_tenure = 10;                     % 禁忌期限
 p_leave = 0.3;                        % 离开概率（TabuEnhanced / Qi2023 共用）
 
 % 算法 6: SA_TabuEnhanced_Altruistic — 决策机制基于 Preference_gain（局部社会效用）
-% 算法 7: SA_TabuEnhanced_Global   — calculate_local_social_utility 基于全体 N 个智能体 GSU
+% 算法 7: SA_TabuEnhanced_Global— calculate_local_social_utility 基于全体 N 个智能体 GSU
 
-
-Value_Params.C = 2000;
 
 
 % ========================================================================
@@ -390,16 +388,37 @@ if enabled_count > 0
         timestamp = datestr(now, 'yyyymmdd_HHMMSS');
         
         % 生成算法名称缩写（用于文件名）
-        abbr_patterns = {'SA', 'Qi', 'Huo', 'Shi', 'PSO', 'Greedy'};
-        abbr_values = {'SA', 'Qi', 'Huo', 'Shi', 'PSO', 'Grd'};
+        % 注意：优先匹配更具体的模式（长名称），避免子串误匹配
+        abbr_patterns = {
+            'SA_TabuEnhanced_Altruistic', 'TabuAltruistic';
+            'SA_TabuEnhanced_Global',     'TabuGlobal';
+            'Fang2025_Global',            'FangGlobal';
+            'Fang2025',                   'Fang';
+            'SA_Value',                   'SA';
+            'Qi2023',                     'Qi';
+            'Huo2025',                    'Huo';
+            'Shi2024',                    'Shi';
+            'PSO',                        'PSO';
+            'Greedy',                     'Grd'
+        };
+
         alg_abbr = cell(1, enabled_count);
         for i = 1:enabled_count
             alg_name = enabled_algorithms{i}.name;
-            idx = find(cellfun(@(p) contains(alg_name, p), abbr_patterns), 1, 'first');
-            if isempty(idx)
-                alg_abbr{i} = regexprep(alg_name, '\s+', '');
-            else
-                alg_abbr{i} = abbr_values{idx};
+            matched = false;
+
+            % 按顺序匹配（优先匹配更具体的名称）
+            for j = 1:size(abbr_patterns, 1)
+                if contains(alg_name, abbr_patterns{j, 1})
+                    alg_abbr{i} = abbr_patterns{j, 2};
+                    matched = true;
+                    break;
+                end
+            end
+
+            % 如果没有匹配到，使用完整名称（去除空格和下划线）
+            if ~matched
+                alg_abbr{i} = regexprep(alg_name, '[\s_]+', '');
             end
         end
         alg_names_short = strjoin(alg_abbr, '+');

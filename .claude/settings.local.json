@@ -10,7 +10,8 @@
       "Bash(tee:*)",
       "Bash(taskkill:*)",
       "Bash(/d/Matlab/bin/matlab:*)",
-      "Bash(iconv:*)"
+      "Bash(iconv:*)",
+      "Bash(find:*)"
     ]
   }
 }
