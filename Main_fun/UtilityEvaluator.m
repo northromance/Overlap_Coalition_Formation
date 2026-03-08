@@ -107,11 +107,29 @@ classdef UtilityEvaluator
         
         
         function [agentutility, task_utilities] = calc_agent_total_utility(SC, agents, tasks, Value_Params, Value_data, AddPara)
-  
-            
+            % CALC_AGENT_TOTAL_UTILITY 计算智能体 n 在当前联盟结构 SC 下的总净效用
+            %
+            % 按照式(1)-(6)的建模:
+            %   u_n^m(A_m) = [||A_m^(n)||_1 / sum||A_m^(i)||_1] * (V_km * varsigma_m) - E_{n,m}^Cost
+            %   E_{n,m}^Cost = E_{n,m}^move + E_{n,m}^wait + E_{n,m}^exec
+            %   E_{n,m}^move = varpi * Dist(m', m)
+            %   E_{n,m}^wait = gamma * (T_{n,m}^wait_pre + T_{n,m}^wait_post)
+            %
+            % 输入:
+            %   SC           - 全局联盟结构 (M x 1 Cell, 每个为 N x K 资源分配矩阵)
+            %   agents       - 智能体结构体数组
+            %   tasks        - 任务结构体数组
+            %   Value_Params - 全局参数 (N, M, K, task_type, task_type_demands)
+            %   Value_data   - 当前智能体数据 (agentID/agentIndex, initbelief)
+            %   AddPara      - (可选) 附加参数，包含 resource_confidence
+            %
+            % 输出:
+            %   agentutility   - 智能体 n 的总净效用标量
+            %   task_utilities - containers.Map，键为任务号，值为 u_n^m
+
             tol = 1e-9;
-            
-            % 获取当前智能体 ID 及环境维度，兼容 agentID 或 agentIndex 两种字段命名
+
+            % 获取当前智能体 ID 及环境维度
             if isfield(Value_data, 'agentID')
                 agent_id = Value_data.agentID;
             else
@@ -120,99 +138,123 @@ classdef UtilityEvaluator
             K = Value_Params.K;   % 资源种类数
             M = Value_Params.M;   % 任务数
             N = Value_Params.N;   % 智能体数
-            
-            % 获取智能体 n 参与的任务列表并过滤无效任务
+
+            % 获取智能体 n 参与的任务列表
             task_list = OCFUtils.get_agent_tasks_fast(SC, agent_id, tol);
             task_list = task_list(task_list <= M);
             task_utilities = containers.Map('KeyType', 'double', 'ValueType', 'double');
-            
-            % 若未参与任何任务，效用为 0
+
             if isempty(task_list)
                 agentutility = 0;
                 return;
             end
-            
-            % 获取资源置信度，默认 0.9
+
+            % 获取资源置信度和任务类型需求
             confidence = Value_Params.resource_confidence;
-            
             task_type_demands = Value_Params.task_type_demands;
             task_types = Value_Params.task_type;
-            
-            %% 第一阶段：预计算所有智能体的路径总成本 C_i
-            % C_i = alpha_fly * t_fly_i + alpha_wait * t_wait_i + beta * t_exec_i
-            % 需对全局 N 个智能体进行推演，以便计算联盟成本 Cost(A_m) 分摊
-            agent_costs = zeros(N, 1);
-            all_agents_results = WorldSim.calc_all_agents_with_global_sync(agents, tasks, Value_Params, SC, tol);
-            for i = 1:N
-                agent_costs(i) = all_agents_results(i).t_fly_total * agents(i).fuel ...
-                    + all_agents_results(i).t_wait_total * agents(i).wait_fuel ...
-                    + all_agents_results(i).t_exec_total * agents(i).beta;
-            end
 
-            % 预计算每个智能体投入到所有任务的总资源量，用于将全局成本分摊到具体任务
-            agent_total_resources = zeros(N, 1);
-            for i = 1:N
-                tasks_i = OCFUtils.get_agent_tasks_fast(SC, i, tol);
-                tasks_i = tasks_i(tasks_i <= M);
-                for task_idx = 1:length(tasks_i)
-                    task_id = tasks_i(task_idx);
-                    agent_total_resources(i) = agent_total_resources(i) + sum(SC{task_id}(i, :));
-                end
-            end
-            
-            %% 第二阶段：计算各任务净效用并按资源比例分摊给智能体 n
+            % 获取智能体能耗系数
+            varpi = agents(agent_id).fuel;      % 移动能耗系数 ϖ
+            gamma = agents(agent_id).wait_fuel; % 等待能耗系数 γ
+            beta = agents(agent_id).beta;       % 执行能耗系数 β
+            vel = agents(agent_id).vel;         % 智能体速度
+
+            % 对任务按优先级排序（确定执行顺序 m' -> m）
+            ordered_tasks = OCFUtils.sort_tasks_by_priority(task_list, tasks);
+
+            % 计算全局同步信息（获取所有任务的同步时间和执行时长）
+            all_agents_results = WorldSim.calc_all_agents_with_global_sync(agents, tasks, Value_Params, SC, tol);
+            agent_result = all_agents_results(agent_id);
+
+            % 初始化当前位置为智能体起始位置
+            curr_pos = [agents(agent_id).x, agents(agent_id).y];
+            curr_time = 0;  % 当前时刻
+
+            % 累计总效用
             agentutility = 0;
-            
-            for idx = 1:length(task_list)
-                curr_task = task_list(idx);
-                
-                % --- A. 计算任务需求（基于信念分布的分位数需求） ---
-                belief = Value_data.initbelief(curr_task, :);
+
+            %% 对每个任务计算效用 u_n^m
+            for idx = 1:length(ordered_tasks)
+                task_id = ordered_tasks(idx);
+                task_pos = [tasks(task_id).x, tasks(task_id).y];
+
+                % ========== 收益计算 ==========
+                % A. 计算任务需求（基于信念分布的分位数需求）
+                belief = Value_data.initbelief(task_id, :);
                 demand = WorldSim.calculate_demand_quantile(belief, task_type_demands, confidence);
-                
-                % --- B. 获取联盟成员及资源分配矩阵 ---
-                participants = OCFUtils.get_participants(SC, curr_task, tol);
-                SC_task = SC{curr_task};  % N x K 分配矩阵
-                
-                % --- C. 计算任务完成度 varsigma_m = D_m（投入资源 vs 需求）---
+
+                % B. 获取联盟成员及资源分配
+                participants = OCFUtils.get_participants(SC, task_id, tol);
+                SC_task = SC{task_id};
+
+                % C. 计算任务完成度 varsigma_m
                 total_resources = sum(SC_task(participants, :), 1);
-                D_m = WorldSim.calc_task_completion_degree(total_resources, demand, K);
-                
-                % 完成度为 0 表示无效任务，跳过
-                if D_m <= tol
-                    task_utilities(curr_task) = 0;
+                varsigma_m = WorldSim.calc_task_completion_degree(total_resources, demand, K);
+
+                if varsigma_m <= tol
+                    task_utilities(task_id) = 0;
                     continue;
                 end
-                
-                % --- D. 计算任务期望值 E[V_m]（信念加权）---
-                values = tasks(curr_task).WORLD.value;
+
+                % D. 计算任务期望价值 V_km（基于信念的期望值）
+                values = tasks(task_id).WORLD.value;
                 tlen = min([task_types, numel(values), size(belief, 2)]);
-                V_m = sum(values(1:tlen) .* belief(1:tlen));
-                
-                % --- E. 根据智能体对当前任务资源投入占总投入的比例分摊全局成本 ---
-                coalition_cost = 0;
-                for j = 1:length(participants)
-                    i_id = participants(j);
+                V_km = sum(values(1:tlen) .* belief(1:tlen));
 
-                    resource_to_this_task = sum(SC_task(i_id, :));
-                    if agent_total_resources(i_id) > tol
-                        cost_slice_ratio = resource_to_this_task / agent_total_resources(i_id);
-                    else
-                        cost_slice_ratio = 0;
-                    end
-
-                    coalition_cost = coalition_cost + agent_costs(i_id) * cost_slice_ratio;
-                end
-                
-                % --- F. 计算任务净效用 ---
-                U_m = V_m * D_m - coalition_cost;
-
-                % --- G. 智能体 n 的分摊效用：u_{n,m} = r_{n,m} * U_m ---
+                % E. 计算资源贡献比例 ||A_m^(n)||_1 / sum_i ||A_m^(i)||_1
                 r_nm = OCFUtils.calc_resource_contribution_ratio(SC_task, agent_id, participants);
-                u_nm = r_nm * U_m;
-                
-                task_utilities(curr_task) = u_nm;
+
+                % F. 收益 = 资源贡献比例 × 任务价值 × 完成度
+                revenue_nm = r_nm * V_km * varsigma_m;
+
+                % ========== 成本计算 ==========
+                % G. 移动成本 E_{n,m}^move = varpi * Dist(m', m)
+                dist_to_task = norm(task_pos - curr_pos);
+                E_move = varpi * dist_to_task;
+
+                % H. 获取时间信息
+                % 从 agent_result 中找到该任务在序列中的索引
+                task_idx_in_seq = find(agent_result.task_sequence == task_id, 1);
+
+                % 智能体到达任务 m 的时刻
+                fly_time = dist_to_task / max(vel, tol);
+                AT_nm = curr_time + fly_time;
+
+                % 任务 m 的同步开始时刻 ST_m
+                ST_m = agent_result.start_times(task_idx_in_seq);
+
+                % 智能体 n 在任务 m 的执行时长 Dur_{n,m}
+                Dur_nm = agent_result.execution_times(task_idx_in_seq);
+
+                % 联盟整体执行时长 Dur_m（需要计算联盟中最慢的成员）
+                Dur_m = WorldSim.calc_coalition_exec_time(SC, task_id, tasks(task_id), Value_Params, tol);
+
+                % I. 同步前等待时间 T_{n,m}^wait_pre = ST_m - AT_{n,m}
+                T_wait_pre = max(0, ST_m - AT_nm);
+
+                % J. 同步后等待时间 T_{n,m}^wait_post = Dur_m - Dur_{n,m}
+                T_wait_post = max(0, Dur_m - Dur_nm);
+
+                % K. 等待成本 E_{n,m}^wait = gamma * (T_wait_pre + T_wait_post)
+                E_wait = gamma * (T_wait_pre + T_wait_post);
+
+                % L. 执行成本 E_{n,m}^exec = beta * Dur_{n,m}
+                E_exec = beta * Dur_nm;
+
+                % M. 任务 m 的总成本
+                E_nm_cost = E_move + E_wait + E_exec;
+
+                % ========== 计算任务效用 ==========
+                % N. u_n^m = 收益 - 成本
+                u_nm = revenue_nm - E_nm_cost;
+
+                task_utilities(task_id) = u_nm;
                 agentutility = agentutility + u_nm;
+
+                % 更新当前位置和时间（任务完成后）
+                curr_pos = task_pos;
+                curr_time = ST_m + Dur_m;  % 联盟任务完成时刻
             end
         end
         %

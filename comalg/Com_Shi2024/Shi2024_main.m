@@ -120,6 +120,7 @@ if AddPara.verbose
 end
 
 % 计算每个智能体的最终效用和成本
+all_agents_results = WorldSim.calc_all_agents_with_global_sync(agents, tasks, Value_Params, SC, tol);
 for i = 1:N
     Value_data(i).SC = SC;
 
@@ -128,25 +129,23 @@ for i = 1:N
     task_list = task_list(task_list <= M);
 
     if ~isempty(task_list)
-        ordered_tasks = OCFUtils.sort_tasks_by_priority(task_list, tasks);
-        Value_data(i).task_schedule.task_sequence = ordered_tasks;
+        Value_data(i).task_schedule.task_sequence = all_agents_results(i).task_sequence;
 
-        % 计算时间和成本
-        [t_fly, t_wait, t_exec, start_times, exec_times, comp_times, mission_end] = ...
-            WorldSim.calc_with_global_sync(i, ordered_tasks, agents, tasks, Value_Params, SC, tol);
-
-        Value_data(i).task_schedule.total_flight_time = t_fly;
-        Value_data(i).task_schedule.total_execution_time = t_exec;
-        Value_data(i).task_schedule.start_times = start_times;
-        Value_data(i).task_schedule.execution_times = exec_times;
-        Value_data(i).task_schedule.completion_times = comp_times;
-        Value_data(i).task_schedule.mission_end_time = mission_end;
+        % 使用批量计算的结果
+        Value_data(i).task_schedule.total_flight_time = all_agents_results(i).t_fly_total;
+        Value_data(i).task_schedule.total_execution_time = all_agents_results(i).t_exec_total;
+        Value_data(i).task_schedule.start_times = all_agents_results(i).start_times;
+        Value_data(i).task_schedule.execution_times = all_agents_results(i).execution_times;
+        Value_data(i).task_schedule.completion_times = all_agents_results(i).completion_times;
+        Value_data(i).task_schedule.mission_end_time = all_agents_results(i).mission_end_time;
 
         % 计算总能量消耗
         alpha_fly = agents(i).fuel;
         alpha_wait = agents(i).wait_fuel;
         beta = agents(i).beta;
-        E_total = alpha_fly * t_fly + alpha_wait * t_wait + beta * t_exec;
+        E_total = alpha_fly * all_agents_results(i).t_fly_total ...
+            + alpha_wait * all_agents_results(i).t_wait_total ...
+            + beta * all_agents_results(i).t_exec_total;
         Value_data(i).task_schedule.total_energy = E_total;
 
         if AddPara.verbose

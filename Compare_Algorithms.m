@@ -77,7 +77,7 @@ resource_exec_time = [50 65 50 60 35 45];
 
 % 通用参数
 obs_times = 50;              % 观测次数（贝叶斯更新等）
-num_rounds = 100;              % 迭代轮数（快速测试: 5轮）
+num_rounds = 5;              % 迭代轮数（快速测试: 5轮）
 
 
 MaxIter = 80;                      %  每轮最大迭代次数
