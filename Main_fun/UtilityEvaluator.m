@@ -1,32 +1,32 @@
 classdef UtilityEvaluator
-    % UtilityEvaluator Ğ§ÓÃÓëĞÔÄÜÆÀ¹À¹¤¾ßÀà
-    % °üº¬¸öÌåĞ§ÓÃ¼ÆËã (Agent View) ºÍÈ«¾ÖĞÔÄÜÖ¸±êÆÀ¹À (Global View)¡£
+    % UtilityEvaluator æ•ˆç”¨è¯„ä¼°ç±»
+    % æä¾›æ™ºèƒ½ä½“æ•ˆç”¨è®¡ç®— (Agent View) å’Œå…¨å±€æ•ˆç”¨æŒ‡æ ‡è¯„ä¼° (Global View)ã€‚
     
     methods(Static)
         %
         % function agentutility = calc_agent_total_utility(SC, agents, tasks, Value_Params, Value_data, AddPara)
-        %     % CALC_AGENT_TOTAL_UTILITY ¼ÆËãÖÇÄÜÌåÔÚµ±Ç°ÁªÃË½á¹¹ SC ÏÂµÄ×Ü¾»Ğ§ÓÃ (¸öÌåÊÓ½Ç)
+        %     % CALC_AGENT_TOTAL_UTILITY è®¡ç®—æ™ºèƒ½ä½“åœ¨å½“å‰è”ç›Ÿç»“æ„ SC ä¸‹çš„æ€»å‡€æ•ˆç”¨ (ä¸ªä½“è§†è§’)
         %     %
-        %     % ºËĞÄÂß¼­£ºTotal Utility = (Sum of Revenues) - (Total Path Cost)
+        %     % è®¡ç®—é€»è¾‘ï¼šTotal Utility = (Sum of Revenues) - (Total Path Cost)
         %     %
-        %     % ÊäÈë£º
-        %     %   SC           - È«¾ÖÁªÃË½á¹¹ (Cell Array)
-        %     %   agents       - ÖÇÄÜÌå½á¹¹ÌåÊı×é
-        %     %   tasks        - ÈÎÎñ½á¹¹ÌåÊı×é
-        %     %   Value_Params - È«¾Ö²ÎÊı
-        %     %   Value_data   - °üº¬ agentID/agentIndex ºÍ initbelief
-        %     %   AddPara      - (¿ÉÑ¡) °üº¬ resource_confidence µÈ²ÎÊı
+        %     % è¾“å…¥ï¼š
+        %     %   SC           - å…¨å±€è”ç›Ÿç»“æ„ (Cell Array)
+        %     %   agents       - æ™ºèƒ½ä½“ç»“æ„ä½“æ•°ç»„
+        %     %   tasks        - ä»»åŠ¡ç»“æ„ä½“æ•°ç»„
+        %     %   Value_Params - å…¨å±€å‚æ•°
+        %     %   Value_data   - åŒ…å« agentID/agentIndex å’Œ initbelief
+        %     %   AddPara      - (å¯é€‰) åŒ…å« resource_confidence ç­‰å‚æ•°
         %
-        %     %% 0. ³õÊ¼»¯ÓëÊı¾İ×¼±¸
+        %     %% 0. åˆå§‹åŒ–ä¸åŸºç¡€å‡†å¤‡
         %     tol = 1e-9;
         %
-        %     % »ñÈ¡µ±Ç°ÖÇÄÜÌå ID
+        %     % è·å–å½“å‰æ™ºèƒ½ä½“ ID
         %     if isfield(Value_data, 'agentID')
         %         agent_id = Value_data.agentID;
         %     elseif isfield(Value_data, 'agentIndex')
         %         agent_id = Value_data.agentIndex;
         %     else
-        %         error('ÎŞ·¨ÔÚ Value_data ÖĞÕÒµ½ agent_id');
+        %         error('æ— æ³•åœ¨ Value_data ä¸­æ‰¾åˆ° agent_id');
         %     end
         %
         %     K = Value_Params.K;
@@ -35,20 +35,20 @@ classdef UtilityEvaluator
         %     alpha_wait = agents(agent_id).wait_fuel;
         %     beta = agents(agent_id).beta;
         %
-        %     % »ñÈ¡²ÎÓëÈÎÎñÁĞ±í
+        %     % è·å–åˆ†é…çš„ä»»åŠ¡åˆ—è¡¨
         %     task_list = OCFUtils.get_agent_tasks_fast(SC, agent_id, tol);
-        %     task_list = task_list(task_list <= M); % ¹ıÂËÎŞĞ§ÈÎÎñ
+        %     task_list = task_list(task_list <= M); % è¿‡æ»¤æ— æ•ˆä»»åŠ¡
         %
         %     if isempty(task_list)
         %         agentutility = 0;
         %         return;
         %     end
         %
-        %     %% 1. µÚÒ»½×¶Î£ºÀÛ¼Ó×ÜÊÕÒæ (Total Revenue)
+        %     %% 1. ç¬¬ä¸€é˜¶æ®µï¼šç´¯è®¡æ€»æ”¶ç›Š (Total Revenue)
         %     total_revenue = 0;
         %
-        %     % »ñÈ¡ÖÃĞÅ¶È²ÎÊı
-        %     confidence = 0.9; % Ä¬ÈÏÖµ
+        %     % è·å–ç½®ä¿¡åº¦å‚æ•°
+        %     confidence = 0.9; % é»˜è®¤å€¼
         %     if nargin >= 6 && isfield(AddPara, 'resource_confidence')
         %         confidence = AddPara.resource_confidence;
         %     end
@@ -59,17 +59,17 @@ classdef UtilityEvaluator
         %     for i = 1:length(task_list)
         %         curr_task = task_list(i);
         %
-        %         % A. ×¼±¸ĞÅÄîÓëĞèÇó
+        %         % A. å‡†å¤‡ä»»åŠ¡ä¿¡å¿µ
         %         belief = Value_data.initbelief(curr_task, :);
         %
-        %         % Ê¹ÓÃ·ÖÎ»Êı·¨¹ÀËãĞèÇó
+        %         % ä½¿ç”¨åˆ†ä½æ•°è®¡ç®—éœ€æ±‚
         %         demand = WorldSim.calculate_demand_quantile(belief, task_type_demands, confidence);
         %
-        %         % B. ½âÎöÁªÃË×´Ì¬
+        %         % B. è·å–å‚ä¸è€…çŠ¶æ€
         %         participants = OCFUtils.get_participants(SC, curr_task, tol);
         %         SC_task = SC{curr_task};
         %
-        %         % C. ¼ÆËãÍê³É¶È
+        %         % C. è®¡ç®—ä»»åŠ¡å®Œæˆåº¦
         %         total_resources = sum(SC_task(participants, :), 1);
         %         D_C = WorldSim.calc_task_completion_degree(total_resources, demand, K);
         %
@@ -77,109 +77,79 @@ classdef UtilityEvaluator
         %             continue;
         %         end
         %
-        %         % D. ¼ÆËã×ÊÔ´¹±Ï×±ÈÀı
+        %         % D. è®¡ç®—èµ„æºè´¡çŒ®æ¯”ä¾‹
         %         r_n_C = OCFUtils.calc_resource_contribution_ratio(SC_task, agent_id, participants);
         %
-        %         % E. ¼ÆËãÆÚÍû¼ÛÖµ
+        %         % E. è®¡ç®—ä»»åŠ¡æœŸæœ›å€¼
         %         values = tasks(curr_task).WORLD.value;
         %         tlen = min([task_types, numel(values), size(belief, 2)]);
         %         V_C = sum(values(1:tlen) .* belief(1:tlen));
         %
-        %         % F. ÀÛ¼ÓÊÕÒæ
+        %         % F. ç´¯è®¡æ”¶ç›Š
         %         total_revenue = total_revenue + (r_n_C * V_C * D_C);
         %     end
         %
-        %     %% 2. µÚ¶ş½×¶Î£º¼ÆËã×Ü³É±¾ (Total Cost)
-        %     % ÈÎÎñÅÅĞò
+        %     %% 2. ç¬¬äºŒé˜¶æ®µï¼šè®¡ç®—æ€»æˆæœ¬ (Total Cost)
+        %     % ä»»åŠ¡æ’åº
         %     orderedTasks = OCFUtils.sort_tasks_by_priority(task_list, tasks);
         %
-        %     % µ÷ÓÃÎïÀíÒıÇæ¼ÆËãÊ±¼ä
+        %     % å…¨å±€åŒæ­¥æ¨æ¼”æ—¶é—´
         %     [t_fly, t_wait, t_exec] = WorldSim.calc_with_global_sync( ...
         %         agent_id, orderedTasks, agents, tasks, Value_Params, SC, tol);
         %
-        %     % ¾ÛºÏ×Ü³É±¾
+        %     % ç»¼åˆæ€»æˆæœ¬
         %     total_cost = t_fly * alpha_fly + t_wait * alpha_wait + t_exec * beta;
         %
-        %     %% 3. µÚÈı½×¶Î£º¼ÆËã¾»Ğ§ÓÃ
+        %     %% 3. ç¬¬ä¸‰é˜¶æ®µï¼šè®¡ç®—å‡€æ•ˆç”¨
         %     agentutility = total_revenue - total_cost;
         % end
         
         
         
         function [agentutility, task_utilities] = calc_agent_total_utility(SC, agents, tasks, Value_Params, Value_data, AddPara)
-            % CALC_AGENT_TOTAL_UTILITY ¼ÆËãÖÇÄÜÌå n ÔÚµ±Ç°ÖØµşÁªÃË½á¹¹ SC ÏÂµÄ×ÜĞ§ÓÃ
-            %
-            % ºËĞÄ¹«Ê½£º
-            %   ÁªÃË m µÄ×ÜĞ§ÓÃ£º
-            %     U_m(A_m) = log(1 + rho_m * (Val(A_m) * varsigma_m - Cost(A_m)))
-            %   ÆäÖĞ£º
-            %     Val(A_m)    = E[V_m] * D_m        % ÆÚÍû¼ÛÖµ * Íê³É¶È
-            %     Cost(A_m)   = sum_{i in C_m} r_{i,m} * C_i   % ÁªÃË¼ÓÈ¨³É±¾
-            %     r_{i,m}     = ||s_{i,m}|| / sum_j ||s_{j,m}||  % ×ÊÔ´¹±Ï×±ÈÀı
-            %     C_i         = alpha_fly*t_fly + alpha_wait*t_wait + beta*t_exec  % ÖÇÄÜÌå i µÄ×ÜÂ·¾¶³É±¾
-            %     rho_m       = tasks(m).priority   % ÈÎÎñÖØÒªĞÔËõ·ÅÒò×Ó
-            %
-            %   ÖÇÄÜÌå n µÄ×ÜĞ§ÓÃ£º
-            %     agentutility = sum_{m in M_n} r_{n,m} * U_m(A_m)
-            %
-            % ÊäÈë£º
-            %   SC           - È«¾ÖÁªÃË½á¹¹ (M x 1 Cell£¬Ã¿¸ñÎª N x K ×ÊÔ´·ÖÅä¾ØÕó)
-            %   agents       - ÖÇÄÜÌå½á¹¹ÌåÊı×é
-            %   tasks        - ÈÎÎñ½á¹¹ÌåÊı×é
-            %   Value_Params - È«¾Ö²ÎÊı (N, M, K, task_type, task_type_demands)
-            %   Value_data   - µ±Ç°ÖÇÄÜÌåÊı¾İ (agentID, initbelief)
-            %   AddPara      - (¿ÉÑ¡) ¸½¼Ó²ÎÊı£¬¿Éº¬ resource_confidence
-            %
-            % Êä³ö£º
-            %   agentutility   - ÖÇÄÜÌå n µÄ×ÜĞ§ÓÃ±êÁ¿
-            %   task_utilities - containers.Map£¬¼üÎªÈÎÎñ±àºÅ£¬ÖµÎª r_{n,m}*U_m
+  
             
             tol = 1e-9;
             
-            % »ñÈ¡µ±Ç°ÖÇÄÜÌåË÷ÒıÓë»·¾³Î¬¶È£¨¼æÈİ agentID ºÍ agentIndex Á½ÖÖ×Ö¶ÎÃû£©
+            % è·å–å½“å‰æ™ºèƒ½ä½“ ID åŠç¯å¢ƒç»´åº¦ï¼Œå…¼å®¹ agentID æˆ– agentIndex ä¸¤ç§å­—æ®µå‘½å
             if isfield(Value_data, 'agentID')
                 agent_id = Value_data.agentID;
             else
                 agent_id = Value_data.agentIndex;
             end
-            K = Value_Params.K;   % ×ÊÔ´ÀàĞÍÊı
-            M = Value_Params.M;   % ÈÎÎñÊı
-            N = Value_Params.N;   % ÖÇÄÜÌåÊı
+            K = Value_Params.K;   % èµ„æºç§ç±»æ•°
+            M = Value_Params.M;   % ä»»åŠ¡æ•°
+            N = Value_Params.N;   % æ™ºèƒ½ä½“æ•°
             
-            % »ñÈ¡ÖÇÄÜÌå n ²ÎÓëµÄÈÎÎñÁĞ±í£¨¹ıÂËÎŞĞ§Ë÷Òı£©
+            % è·å–æ™ºèƒ½ä½“ n å‚ä¸çš„ä»»åŠ¡åˆ—è¡¨å¹¶è¿‡æ»¤æ— æ•ˆä»»åŠ¡
             task_list = OCFUtils.get_agent_tasks_fast(SC, agent_id, tol);
             task_list = task_list(task_list <= M);
             task_utilities = containers.Map('KeyType', 'double', 'ValueType', 'double');
             
-            % ÈôÎ´²ÎÓëÈÎºÎÈÎÎñ£¬Ğ§ÓÃÎª 0
+            % è‹¥æœªå‚ä¸ä»»ä½•ä»»åŠ¡ï¼Œæ•ˆç”¨ä¸º 0
             if isempty(task_list)
                 agentutility = 0;
                 return;
             end
             
-            % »ñÈ¡ĞèÇó¹À¼ÆÖÃĞÅ¶È£¨Ä¬ÈÏ 0.9£©
+            % è·å–èµ„æºç½®ä¿¡åº¦ï¼Œé»˜è®¤ 0.9
             confidence = Value_Params.resource_confidence;
             
             task_type_demands = Value_Params.task_type_demands;
             task_types = Value_Params.task_type;
             
-            %% µÚÒ»½×¶Î£ºÔ¤¼ÆËãËùÓĞÖÇÄÜÌåµÄÂ·¾¶×Ü³É±¾ C_i
+            %% ç¬¬ä¸€é˜¶æ®µï¼šé¢„è®¡ç®—æ‰€æœ‰æ™ºèƒ½ä½“çš„è·¯å¾„æ€»æˆæœ¬ C_i
             % C_i = alpha_fly * t_fly_i + alpha_wait * t_wait_i + beta * t_exec_i
-            % Ğè¶ÔÈ«²¿ N ¸öÖÇÄÜÌå¼ÆËã£¬ÒÔ±ãºóĞøÁªÃË³É±¾ Cost(A_m) µÄÌ¯ÅÉ
+            % éœ€å¯¹å…¨å±€ N ä¸ªæ™ºèƒ½ä½“è¿›è¡Œæ¨æ¼”ï¼Œä»¥ä¾¿è®¡ç®—è”ç›Ÿæˆæœ¬ Cost(A_m) åˆ†æ‘Š
             agent_costs = zeros(N, 1);
+            all_agents_results = WorldSim.calc_all_agents_with_global_sync(agents, tasks, Value_Params, SC, tol);
             for i = 1:N
-                tasks_i = OCFUtils.get_agent_tasks_fast(SC, i, tol); % ¼ÆËã³öËùÓĞ²ÎÓëµÄÈÎÎñ
-                tasks_i = tasks_i(tasks_i <= M);
-                if isempty(tasks_i), continue; end
-                ordered_i = OCFUtils.sort_tasks_by_priority(tasks_i, tasks);
-                [t_fly_i, t_wait_i, t_exec_i] = WorldSim.calc_with_global_sync( ...
-                    i, ordered_i, agents, tasks, Value_Params, SC, tol);
-                agent_costs(i) = t_fly_i * agents(i).fuel ...
-                    + t_wait_i * agents(i).wait_fuel ...
-                    + t_exec_i * agents(i).beta; % ¸öÌåĞ§ÓÃ
+                agent_costs(i) = all_agents_results(i).t_fly_total * agents(i).fuel ...
+                    + all_agents_results(i).t_wait_total * agents(i).wait_fuel ...
+                    + all_agents_results(i).t_exec_total * agents(i).beta;
             end
 
-            % Ô¤¼ÆËãÃ¿¸öÖÇÄÜÌåÍ¶ÏòËùÓĞÈÎÎñµÄ×Ü×ÊÔ´Á¿£¬ÓÃÓÚ½«È«¾Ö³É±¾ÇĞ·Öµ½µ¥¸öÈÎÎñ
+            % é¢„è®¡ç®—æ¯ä¸ªæ™ºèƒ½ä½“æŠ•å…¥åˆ°æ‰€æœ‰ä»»åŠ¡çš„æ€»èµ„æºé‡ï¼Œç”¨äºå°†å…¨å±€æˆæœ¬åˆ†æ‘Šåˆ°å…·ä½“ä»»åŠ¡
             agent_total_resources = zeros(N, 1);
             for i = 1:N
                 tasks_i = OCFUtils.get_agent_tasks_fast(SC, i, tol);
@@ -190,36 +160,36 @@ classdef UtilityEvaluator
                 end
             end
             
-            %% µÚ¶ş½×¶Î£ºÖğÈÎÎñ¼ÆËãÁªÃËĞ§ÓÃ²¢°´¹±Ï×±ÈÀı·ÖÌ¯¸øÖÇÄÜÌå n
+            %% ç¬¬äºŒé˜¶æ®µï¼šè®¡ç®—å„ä»»åŠ¡å‡€æ•ˆç”¨å¹¶æŒ‰èµ„æºæ¯”ä¾‹åˆ†æ‘Šç»™æ™ºèƒ½ä½“ n
             agentutility = 0;
             
             for idx = 1:length(task_list)
                 curr_task = task_list(idx);
                 
-                % --- A. ¹ÀËãÈÎÎñĞèÇó£¨»ùÓÚĞÅÄî·Ö²¼µÄ·ÖÎ»Êı·¨£©---
+                % --- A. è®¡ç®—ä»»åŠ¡éœ€æ±‚ï¼ˆåŸºäºä¿¡å¿µåˆ†å¸ƒçš„åˆ†ä½æ•°éœ€æ±‚ï¼‰ ---
                 belief = Value_data.initbelief(curr_task, :);
                 demand = WorldSim.calculate_demand_quantile(belief, task_type_demands, confidence);
                 
-                % --- B. »ñÈ¡ÁªÃË³ÉÔ±¼°×ÊÔ´·ÖÅä¾ØÕó ---
+                % --- B. è·å–è”ç›Ÿæˆå‘˜åŠèµ„æºåˆ†é…çŸ©é˜µ ---
                 participants = OCFUtils.get_participants(SC, curr_task, tol);
-                SC_task = SC{curr_task};  % N x K ·ÖÅä¾ØÕó
+                SC_task = SC{curr_task};  % N x K åˆ†é…çŸ©é˜µ
                 
-                % --- C. ¼ÆËãÈÎÎñÍê³É¶È varsigma_m = D_m£¨ÁªÃË×ÊÔ´ vs ĞèÇó£©---
+                % --- C. è®¡ç®—ä»»åŠ¡å®Œæˆåº¦ varsigma_m = D_mï¼ˆæŠ•å…¥èµ„æº vs éœ€æ±‚ï¼‰---
                 total_resources = sum(SC_task(participants, :), 1);
                 D_m = WorldSim.calc_task_completion_degree(total_resources, demand, K);
                 
-                % Íê³É¶ÈÎª 0 ±íÊ¾ÁªÃËÎŞĞ§£¬Ìø¹ı
+                % å®Œæˆåº¦ä¸º 0 è¡¨ç¤ºæ— æ•ˆä»»åŠ¡ï¼Œè·³è¿‡
                 if D_m <= tol
                     task_utilities(curr_task) = 0;
                     continue;
                 end
                 
-                % --- D. ¼ÆËãÆÚÍû¼ÛÖµ E[V_m]£¨ĞÅÄî¼ÓÈ¨£©---
+                % --- D. è®¡ç®—ä»»åŠ¡æœŸæœ›å€¼ E[V_m]ï¼ˆä¿¡å¿µåŠ æƒï¼‰---
                 values = tasks(curr_task).WORLD.value;
                 tlen = min([task_types, numel(values), size(belief, 2)]);
                 V_m = sum(values(1:tlen) .* belief(1:tlen));
                 
-                % --- E. °´ÖÇÄÜÌå¶Ôµ±Ç°ÈÎÎñµÄ×ÊÔ´Í¶ÈëÕ¼Æä×ÜÍ¶ÈëµÄ±ÈÀıÇĞ·ÖÈ«¾Ö³É±¾ ---
+                % --- E. æ ¹æ®æ™ºèƒ½ä½“å¯¹å½“å‰ä»»åŠ¡èµ„æºæŠ•å…¥å æ€»æŠ•å…¥çš„æ¯”ä¾‹åˆ†æ‘Šå…¨å±€æˆæœ¬ ---
                 coalition_cost = 0;
                 for j = 1:length(participants)
                     i_id = participants(j);
@@ -234,10 +204,10 @@ classdef UtilityEvaluator
                     coalition_cost = coalition_cost + agent_costs(i_id) * cost_slice_ratio;
                 end
                 
-                % --- F. ¼ÆËãÁªÃË×ÜĞ§ÓÃ ---
+                % --- F. è®¡ç®—ä»»åŠ¡å‡€æ•ˆç”¨ ---
                 U_m = V_m * D_m - coalition_cost;
 
-                % --- G. ÖÇÄÜÌå n µÄ·ÖÌ¯Ğ§ÓÃ£ºu_{n,m} = r_{n,m} * U_m ---
+                % --- G. æ™ºèƒ½ä½“ n çš„åˆ†æ‘Šæ•ˆç”¨ï¼šu_{n,m} = r_{n,m} * U_m ---
                 r_nm = OCFUtils.calc_resource_contribution_ratio(SC_task, agent_id, participants);
                 u_nm = r_nm * U_m;
                 
@@ -249,16 +219,16 @@ classdef UtilityEvaluator
         
         function [global_net_utility, total_global_cost, total_completed_value, task_completion_degrees] = ...
                 evaluate_coalition_metrics(SC_global, agents, tasks, Value_Params, eps_val)
-            % EVALUATE_COALITION_METRICS ¼ÆËãÈ«¾ÖÁªÃË½á¹¹µÄ¾»Ğ§ÓÃ (ÉÏµÛÊÓ½Ç)
+            % EVALUATE_COALITION_METRICS è¯„ä¼°å…¨å±€è”ç›Ÿç»“æ„çš„å‡€æ•ˆç”¨ (ä¸Šå¸è§†è§’)
             %
-            % ÊäÈë:
-            %   SC_global    - È«¾ÖÁªÃË½á¹¹ SC
-            %   agents       - ÖÇÄÜÌå½á¹¹ÌåÊı×é
-            %   tasks        - ÈÎÎñ½á¹¹ÌåÊı×é
-            %   Value_Params - È«¾Ö²ÎÊı
-            %   eps_val      - (¿ÉÑ¡) Èİ²î
+            % è¾“å…¥:
+            %   SC_global    - å…¨å±€è”ç›Ÿç»“æ„ SC
+            %   agents       - æ™ºèƒ½ä½“ç»“æ„ä½“æ•°ç»„
+            %   tasks        - ä»»åŠ¡ç»“æ„ä½“æ•°ç»„
+            %   Value_Params - å…¨å±€å‚æ•°
+            %   eps_val      - (å¯é€‰) å®¹å·®
             
-            %% 1. ²ÎÊı³õÊ¼»¯
+            %% 1. å‚æ•°åˆå§‹åŒ–
             if nargin < 5 || isempty(eps_val)
                 eps_val = 1e-6;
             end
@@ -271,7 +241,7 @@ classdef UtilityEvaluator
             total_completed_value = 0;
             total_global_cost = zeros(1, N);
             
-            %% 2. µÚÒ»½×¶Î£º¼ÆËãËùÓĞÈÎÎñµÄÊÕÒæ (Revenue)
+            %% 2. ç¬¬ä¸€é˜¶æ®µï¼šè®¡ç®—æ‰€æœ‰ä»»åŠ¡çš„æ€»æ”¶ç›Š (Revenue)
             for j = 1:M
                 participants = OCFUtils.get_participants(SC_global, j, eps_val);
                 
@@ -281,7 +251,7 @@ classdef UtilityEvaluator
                 end
                 
                 SC_task = SC_global{j};
-                demand = tasks(j).resource_demand(:)'; % ÉÏµÛÊÓ½Ç£ºÕæÊµĞèÇó
+                demand = tasks(j).resource_demand(:)'; % ä¸Šå¸è§†è§’ï¼šçœŸå®éœ€æ±‚
                 
                 total_resources = sum(SC_task(participants, :), 1);
                 
@@ -289,38 +259,29 @@ classdef UtilityEvaluator
                 task_completion_degrees(j) = D_C;
                 
                 if D_C > 0
-                    V_C = tasks(j).value; % ÉÏµÛÊÓ½Ç£ºÕæÊµ¼ÛÖµ
+                    V_C = tasks(j).value; % ä¸Šå¸è§†è§’ï¼šçœŸå®ä»·å€¼
                     total_completed_value = total_completed_value + (V_C * D_C);
                 end
             end
             
-            %% 3. µÚ¶ş½×¶Î£º¼ÆËãËùÓĞÖÇÄÜÌåµÄ³É±¾ (Cost)
+            %% 3. ç¬¬äºŒé˜¶æ®µï¼šè®¡ç®—æ‰€æœ‰æ™ºèƒ½ä½“çš„æ€»æˆæœ¬ (Cost)
+            all_agents_results = WorldSim.calc_all_agents_with_global_sync(agents, tasks, Value_Params, SC_global, eps_val);
             for i = 1:N
-                my_raw_tasks = OCFUtils.get_agent_tasks_fast(SC_global, i);
-                
-                if isempty(my_raw_tasks)
-                    total_global_cost(i) = 0;
-                    continue;
-                end
-                
-                my_tasks = OCFUtils.sort_tasks_by_priority(my_raw_tasks, tasks);
-                
                 alpha_fly = agents(i).fuel;
                 alpha_wait = agents(i).wait_fuel;
                 beta = agents(i).beta;
-                
-                [t_fly_total, t_wait_total, t_exec_total] = WorldSim.calc_with_global_sync( ...
-                    i, my_tasks, agents, tasks, Value_Params, SC_global, eps_val);
-                
-                cost_i = t_fly_total * alpha_fly + t_wait_total * alpha_wait + t_exec_total * beta;
+
+                cost_i = all_agents_results(i).t_fly_total * alpha_fly ...
+                    + all_agents_results(i).t_wait_total * alpha_wait ...
+                    + all_agents_results(i).t_exec_total * beta;
                 total_global_cost(i) = cost_i;
             end
             
-            %% 4. µÚÈı½×¶Î£º¼ÆËãÈ«¾Ö¾»Ğ§ÓÃ
+            %% 4. ç¬¬ä¸‰é˜¶æ®µï¼šè®¡ç®—å…¨å±€å‡€æ•ˆç”¨
             total_global_cost_sum = sum(total_global_cost);
             global_net_utility = total_completed_value - total_global_cost_sum;
             
-            % ·µ»ØµÄ total_global_cost ÊÇ×ÜºÍ£¬Èç¹ûĞèÒªÏòÁ¿ĞÎÊ½£¬ÇëĞŞ¸Äº¯ÊıÇ©Ãû
+            % è¿”å› total_global_cost çš„æ€»å’Œï¼Œå¦‚æœéœ€è¦æ•°ç»„å½¢å¼è¯·ä¿®æ”¹å‡½æ•°ç­¾åã€‚
             total_global_cost = total_global_cost_sum;
         end
         
