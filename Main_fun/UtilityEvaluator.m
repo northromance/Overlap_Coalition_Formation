@@ -1,4 +1,4 @@
-classdef UtilityEvaluator
+﻿classdef UtilityEvaluator
     % UtilityEvaluator 效用评估类
     % 提供智能体效用计算 (Agent View) 和全局效用指标评估 (Global View)。
     

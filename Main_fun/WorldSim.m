@@ -70,35 +70,35 @@ classdef WorldSim
 
 
         function all_agents_results = calc_all_agents_with_global_sync(agents, tasks, Value_Params, SC, tol)
-            %CALC_ALL_AGENTS_WITH_GLOBAL_SYNC 鍦�"鍏ㄥ眬鍚屾鎵ц"鍋囪涓嬩竴娆℃€ц绠楁墍鏈夋櫤鑳戒綋鐨勯琛�/绛夊緟/鎵ц鏃堕棿
+            %CALC_ALL_AGENTS_WITH_GLOBAL_SYNC 在“全局同步执行”假设下一次性计算所有智能体的飞行/等待/执行时间
             %
-            % 鏍稿績鎬濇兂锛�
-            % 1) 鍏堟寜鍏ㄥ眬浠诲姟浼樺厛绾�(global_order)鎺ㄨ繘"绯荤粺鏃堕挓"锛屽姣忎釜浠诲姟璁＄畻锛�
-            %    - 璇ヤ换鍔＄殑鍚屾寮€濮嬫椂鍒� task_sync_start(task_id)
-            %    - 璇ヤ换鍔＄殑鑱旂洘鎵ц鏃堕暱 task_coalition_dur(task_id)
-            % 2) 鐒跺悗瀵规墍鏈夋櫤鑳戒綋骞惰璁＄畻鍏跺悇鑷殑鏃堕棿鎸囨爣
+            % 核心思想：
+            % 1) 先按全局任务优先级(global_order)推进“系统时钟”，对每个任务计算：
+            %    - 该任务的同步开始时刻 task_sync_start(task_id)
+            %    - 该任务的联盟执行时长 task_coalition_dur(task_id)
+            % 2) 然后对所有智能体并行计算其各自的时间指标
             %
             % Inputs:
-            %   agents, tasks   - 鏅鸿兘浣�/浠诲姟缁撴瀯浣撴暟缁�
-            %   Value_Params    - 鍙傛暟缁撴瀯浣�(鍖呭惈 N,M,K)
-            %   SC              - 璧勬簮鍒嗛厤/鑱旂洘缁撴瀯
-            %   tol             - 鏁板€煎宸�
+            %   agents, tasks   - 智能体/任务结构体数组
+            %   Value_Params    - 参数结构体(包含 N,M,K)
+            %   SC              - 资源分配/联盟结构
+            %   tol             - 数值容差
             %
             % Outputs:
-            %   all_agents_results - 缁撴瀯浣撴暟缁�(1xN)锛屽寘鍚瘡涓櫤鑳戒綋鐨勶細
-            %       .t_fly_total     - 鎬婚琛屾椂闂�(鍚繑鑸�)
-            %       .t_wait_total    - 鎬荤瓑寰呮椂闂�
-            %       .t_exec_total    - 鎬绘墽琛屾椂闂�
-            %       .start_times     - 姣忎釜浠诲姟鐨勫悓姝ュ紑濮嬫椂鍒�
-            %       .execution_times - 姣忎釜浠诲姟鐨勮嚜韬墽琛屾椂闀�
-            %       .completion_times- 姣忎釜浠诲姟瀹屾垚鏃跺埢
-            %       .mission_end_time- 浠诲姟搴忓垪瀹屾垚骞惰繑鑸悗鐨勭粨鏉熸椂鍒�
-            %       .task_sequence   - 浠诲姟搴忓垪(鎸変紭鍏堢骇鎺掑簭鍚�)
+            %   all_agents_results - 结构体数组(1xN)，包含每个智能体的：
+            %       .t_fly_total     - 总飞行时间(含返航)
+            %       .t_wait_total    - 总等待时间
+            %       .t_exec_total    - 总执行时间
+            %       .start_times     - 每个任务的同步开始时刻
+            %       .execution_times - 每个任务的自身执行时长
+            %       .completion_times- 每个任务完成时刻
+            %       .mission_end_time- 任务序列完成并返航后的结束时刻
+            %       .task_sequence   - 任务序列(按优先级排序后)
 
             N = Value_Params.N;
             M = Value_Params.M;
 
-            %% 闃舵1锛氬叏灞€鍚屾妯℃嫙锛岃绠楁墍鏈変换鍔＄殑鍚屾寮€濮嬫椂鍒诲拰鑱旂洘鎵ц鏃堕暱
+            %% 阶段1：全局同步模拟，计算所有任务的同步开始时刻和联盟执行时长
             agent_state = struct('pos', {}, 'ready_time', {});
             for i = 1:N
                 agent_state(i).pos = [agents(i).x, agents(i).y];
@@ -140,18 +140,18 @@ classdef WorldSim
                 end
             end
 
-            %% 闃舵2锛氫负姣忎釜鏅鸿兘浣撹绠楄缁嗙殑鏃堕棿鎸囨爣
+            %% 阶段2：为每个智能体计算详细的时间指标
             all_agents_results = struct('t_fly_total', {}, 't_wait_total', {}, 't_exec_total', {}, ...
                 'start_times', {}, 'execution_times', {}, 'completion_times', {}, ...
                 'mission_end_time', {}, 'task_sequence', {});
 
             for agentIdx = 1:N
-                % 鑾峰彇璇ユ櫤鑳戒綋鐨勪换鍔″垪琛ㄥ苟鎺掑簭
+                % 获取该智能体的任务列表并排序
                 task_list = OCFUtils.get_agent_tasks_fast(SC, agentIdx, tol);
                 task_list = task_list(task_list <= M);
 
                 if isempty(task_list)
-                    % 璇ユ櫤鑳戒綋娌℃湁浠诲姟
+                    % 该智能体没有任务
                     all_agents_results(agentIdx).t_fly_total = 0;
                     all_agents_results(agentIdx).t_wait_total = 0;
                     all_agents_results(agentIdx).t_exec_total = 0;
@@ -183,7 +183,7 @@ classdef WorldSim
                     task_id = myOrderedTasks(ii);
                     task_pos = [tasks(task_id).x, tasks(task_id).y];
 
-                    % (1) 椋炶
+                    % (1) 飞行
                     dist = norm(task_pos - curr_pos);
                     fly_time = dist / max(v, tol);
                     t_fly_total = t_fly_total + fly_time;
@@ -193,7 +193,7 @@ classdef WorldSim
                     sync_start = task_sync_start(task_id);
                     coalition_dur = task_coalition_dur(task_id);
 
-                    % (2) 鍚屾鍓嶇瓑寰�
+                    % (2) 同步前等待
                     wait_pre_start = max(0, sync_start - my_arrival);
 
                     if ~isempty(SC) && task_id <= numel(SC) && ~isempty(SC{task_id})
@@ -202,11 +202,11 @@ classdef WorldSim
                         R_row = R_agent(task_id, :);
                     end
 
-                    % (3) 鑷韩鎵ц鏃堕暱
+                    % (3) 自身执行时长
                     my_exec_time = WorldSim.calc_exec_time(tasks(task_id), R_row, Value_Params, tol);
                     t_exec_total = t_exec_total + my_exec_time;
 
-                    % (4) 鍚屾鍚庣瓑寰�
+                    % (4) 同步后等待
                     wait_post_exec = max(0, coalition_dur - my_exec_time);
 
                     t_wait_total = t_wait_total + wait_pre_start + wait_post_exec;
@@ -219,13 +219,13 @@ classdef WorldSim
                     completion_times(ii) = curr_clock;
                 end
 
-                % 杩旇埅
+                % 返航
                 return_dist = norm([agents(agentIdx).x, agents(agentIdx).y] - curr_pos);
                 return_time = return_dist / max(v, tol);
                 t_fly_total = t_fly_total + return_time;
                 mission_end_time = curr_clock + return_time;
 
-                % 淇濆瓨缁撴灉
+                % 保存结果
                 all_agents_results(agentIdx).t_fly_total = t_fly_total;
                 all_agents_results(agentIdx).t_wait_total = t_wait_total;
                 all_agents_results(agentIdx).t_exec_total = t_exec_total;
@@ -240,48 +240,49 @@ classdef WorldSim
 
         function [t_fly_total, t_wait_total, t_exec_total, start_times, execution_times, completion_times,mission_end_time] = calc_with_global_sync(...
                 agentIdx, myOrderedTasks, agents, tasks, Value_Params, SC, tol)
-            %CALC_WITH_GLOBAL_SYNC 锟节★拷全锟斤拷同锟斤拷执锟叫★拷锟斤拷锟斤拷锟铰硷拷锟姐单锟斤拷锟斤拷锟斤拷锟斤拷姆锟斤拷锟�/锟饺达拷/执锟斤拷时锟戒。
+            %CALC_WITH_GLOBAL_SYNC 在“全局同步执行”假设下计算单个智能体的飞行/等待/执行时间。
             %
-            % 锟斤拷锟斤拷思锟诫：
-            % 1) 锟饺帮拷全锟斤拷锟斤拷锟斤拷锟斤拷锟饺硷拷(global_order)锟狡斤拷锟斤拷系统时锟接★拷锟斤拷锟斤拷每锟斤拷锟斤拷锟斤拷锟斤拷悖�
-            %    - 锟斤拷锟斤拷锟斤拷锟酵拷锟斤拷锟绞际憋拷锟� task_sync_start(task_id)锟斤拷锟斤拷锟斤拷锟斤拷锟斤拷锟斤拷锟斤拷锟斤拷锟斤拷锟斤拷锟藉都锟斤拷锟斤拷锟斤拷时锟斤拷
-            %    - 锟斤拷锟斤拷锟斤拷锟斤拷锟斤拷锟街达拷锟绞憋拷锟� task_coalition_dur(task_id)锟斤拷锟斤拷锟斤拷锟斤拷锟斤拷锟斤拷锟斤拷员锟斤拷执锟斤拷时锟斤拷(取 max)
-            %    锟斤拷锟捷此革拷锟斤拷锟斤拷锟叫诧拷锟斤拷锟竭的碉拷前位锟斤拷锟斤拷锟斤拷锟绞憋拷锟�(ready_time)锟斤拷
-            % 2) 锟劫讹拷指锟斤拷锟斤拷锟斤拷锟斤拷(agentIdx)锟斤拷锟斤拷锟斤拷锟斤拷锟斤拷锟斤拷锟斤拷锟�(myOrderedTasks)锟斤拷锟姐：
-            %    - 锟斤拷锟斤拷时锟戒：锟斤拷锟斤拷一锟斤拷位锟矫飞碉拷锟斤拷前锟斤拷锟斤拷锟斤拷时锟斤拷
-            %    - 锟饺达拷时锟戒：锟斤拷锟斤拷锟饺碉拷同锟斤拷锟斤拷始 + 执锟叫猴拷鹊锟斤拷锟斤拷锟斤拷锟斤拷锟斤拷锟斤拷
-            %    - 执锟斤拷时锟戒：锟斤拷锟斤拷锟斤拷锟斤拷锟节革拷锟斤拷锟斤拷锟较碉拷锟斤拷锟斤拷执锟斤拷时锟斤拷
-            % 3) 锟斤拷锟斤拷锟较凤拷锟斤拷(锟截碉拷锟斤拷始位锟斤拷)时锟戒，锟矫碉拷 mission_end_time锟斤拷
+            % 核心思想：
+            % 1) 先按全局任务优先级(global_order)推进“系统时钟”，对每个任务计算：
+            %    - 该任务的同步开始时刻 task_sync_start(task_id)（即所有参与该任务的智能体都到达的时间）
+            %    - 该任务的联盟执行时长 task_coalition_dur(task_id)（即联盟成员中最长的执行时间(取 max)）
+            %    根据此更新所有参与者的当前位置和准备时间(ready_time)。
+            % 2) 再对指定智能体(agentIdx)的任务序列(myOrderedTasks)计算：
+            %    - 飞行时间：从上一个位置飞到当前任务的时间
+            %    - 等待时间：到达后等同步开始 + 执行后等整个联盟结束
+            %    - 执行时间：该智能体在该任务上的实际执行时间
+            % 3) 累加最后返航(回到初始位置)时间，得到 mission_end_time。
             %
             % Inputs:
-            %   agentIdx        - 锟斤拷前要锟斤拷锟斤拷锟斤拷锟斤拷锟斤拷锟斤拷锟斤拷锟斤拷(1..N)
-            %   myOrderedTasks  - 锟斤拷前锟斤拷锟斤拷锟斤拷执锟叫碉拷锟斤拷锟斤拷锟斤拷锟斤拷(锟斤拷锟斤拷锟斤拷锟斤拷锟斤拷)
-            %   agents, tasks   - 锟斤拷锟斤拷锟斤拷/锟斤拷锟斤拷峁癸拷锟斤拷锟斤拷锟�(锟斤拷锟斤拷锟� x,y,vel 锟斤拷锟街讹拷)
-            %   Value_Params    - 锟斤拷锟斤拷锟结构锟斤拷(锟斤拷锟劫帮拷锟斤拷 N,M,K)
-            %   SC              - 锟斤拷源锟斤拷锟斤拷/锟斤拷锟剿结构锟斤拷SC{m} 为 N锟斤拷K 锟斤拷锟斤拷(锟斤拷 m 锟斤拷锟斤拷锟斤拷姆锟斤拷锟�)
-            %   tol             - 锟斤拷值锟捷诧拷(锟斤拷锟斤拷锟斤拷锟�/锟叫讹拷锟斤拷源锟角凤拷使锟斤拷)
+            %   agentIdx        - 当前要计算的智能体索引(1..N)
+            %   myOrderedTasks  - 当前智能体执行的任务序列(已按优先级排序)
+            %   agents, tasks   - 智能体/任务结构体数组(需包含 x,y,vel 等字段)
+            %   Value_Params    - 参数结构体(至少包含 N,M,K)
+            %   SC              - 资源分配/联盟结构，SC{m} 为 NxK 矩阵(第 m 个任务的分配)
+            %   tol             - 数值容差(用于容错/判断资源是否被使用)
             %
             % Outputs:
-            %   t_fly_total     - 锟杰凤拷锟斤拷时锟斤拷(锟斤拷锟斤拷锟斤拷)
-            %   t_wait_total    - 锟杰等达拷时锟斤拷(同锟斤拷前锟饺达拷 + 同锟斤拷锟襟“诧拷锟诫到锟斤拷锟剿斤拷锟斤拷锟斤拷锟侥等达拷)
-            %   t_exec_total    - 锟斤拷执锟斤拷时锟斤拷(锟斤拷锟斤拷锟斤拷锟斤拷锟斤拷锟斤拷执锟斤拷时锟斤拷锟桔硷拷)
-            %   start_times     - 锟斤拷锟斤拷锟斤拷锟斤拷每锟斤拷锟斤拷锟斤拷锟酵拷锟斤拷锟绞际憋拷锟�
-            %   execution_times - 锟斤拷锟斤拷锟斤拷锟斤拷每锟斤拷锟斤拷锟斤拷锟斤拷锟斤拷锟街达拷锟绞憋拷锟�
-            %   completion_times- 锟斤拷锟斤拷锟斤拷锟斤拷每锟斤拷锟斤拷锟斤拷锟斤拷锟绞憋拷锟�(同锟斤拷锟斤拷始 + 锟斤拷锟斤拷时锟斤拷)
-            %   mission_end_time- 锟斤拷锟斤拷锟斤拷锟斤拷锟斤拷刹锟斤拷锟斤拷锟斤拷锟侥斤拷锟斤拷时锟斤拷
+            %   t_fly_total     - 总飞行时间(含返航)
+            %   t_wait_total    - 总等待时间(同步前等待 + 同步后等待)
+            %   t_exec_total    - 总执行时间(自身执行时间累计)
+            %   start_times     - 记录每个任务的同步开始时刻
+            %   execution_times - 记录每个任务的自身执行时长
+            %   completion_times- 记录每个任务完成时刻(同步开始 + 执行时长)
+            %   mission_end_time- 任务序列完成并返航的结束时间
+
             N = Value_Params.N;
             M = Value_Params.M;
             R_agent = OCFUtils.get_agent_resource_matrix(SC, agentIdx, Value_Params);
 
             agent_state = struct('pos', {}, 'ready_time', {});
             for i = 1:N
-                % 锟斤拷录每锟斤拷锟斤拷锟斤拷锟斤拷摹锟斤拷锟角拔伙拷锟� pos锟斤拷锟酵★拷锟斤拷一锟轿可筹拷锟斤拷时锟斤拷 ready_time锟斤拷
+                % 记录每个智能体的“当前位置” pos，和“下一次可出发时间” ready_time。
                 agent_state(i).pos = [agents(i).x, agents(i).y];
                 agent_state(i).ready_time = 0;
             end
 
             all_tasks = 1:M;
-            % 全锟斤拷锟斤拷锟斤拷顺锟斤拷锟斤拷锟斤拷模锟斤拷系统锟斤拷锟斤拷摹锟斤拷锟酵伙拷锟斤拷燃锟斤拷锟斤拷锟酵拷锟斤拷平锟斤拷锟�
+            % 全局任务顺序（模拟系统的“统一时间线”按任务优先级同步推进）
             global_order = OCFUtils.sort_tasks_by_priority(all_tasks, tasks);
 
             task_sync_start = zeros(M, 1);
@@ -291,7 +292,7 @@ classdef WorldSim
                 task_id = global_order(order_idx);
                 task_pos = [tasks(task_id).x, tasks(task_id).y];
 
-                % 锟揭筹拷锟斤拷锟斤拷锟斤拷牟锟斤拷锟斤拷锟�(锟斤拷 SC{task_id} 锟叫凤拷锟斤拷锟斤拷锟斤拷源锟斤拷锟斤拷锟斤拷锟斤拷)
+                % 找出参与该任务的参与者(即 SC{task_id} 中分配了资源的智能体)
                 participants = OCFUtils.get_participants(SC, task_id, tol);
                 if isempty(participants), continue; end
 
@@ -300,24 +301,24 @@ classdef WorldSim
                     p_id = participants(k);
                     v = agents(p_id).vel;
 
-                    % 锟斤拷锟斤拷锟竭达拷锟戒当前 pos 锟缴碉拷锟斤拷锟斤拷锟侥碉拷锟斤拷时锟斤拷 = ready_time + 锟斤拷锟斤拷时锟斤拷
+                    % 参与者从其当前 pos 飞到任务点的到达时间 = ready_time + 飞行时间
                     dist = norm(task_pos - agent_state(p_id).pos);
                     fly_time = dist / max(v, tol);
 
                     arrival_times(k) = agent_state(p_id).ready_time + fly_time;
                 end
 
-                % 同锟斤拷锟斤拷始锟斤拷锟斤拷锟斤拷锟斤拷锟斤拷胁锟斤拷锟斤拷叨锟斤拷锟斤拷耄拷锟斤拷取锟斤拷锟斤拷时锟教碉拷锟斤拷锟街�
+                % 同步开始时间：必须等所有参与者都到达，故取到达时间的最大值
                 sync_start = max(arrival_times);
                 task_sync_start(task_id) = sync_start;
 
-                % 锟斤拷锟斤拷执锟斤拷时锟斤拷锟斤拷锟斤拷锟斤拷锟斤拷执锟斤拷锟斤拷锟斤拷锟侥筹拷员锟斤拷锟斤拷锟斤拷锟斤拷锟斤拷锟斤拷锟斤拷锟绞憋拷锟�
+                % 联盟执行时长：取所有执行该任务的成员中自身的执行时长最大值
                 t_coalition = WorldSim.calc_coalition_exec_time(SC, task_id, tasks(task_id), Value_Params, tol);
                 task_coalition_dur(task_id) = t_coalition;
 
                 for k = 1:numel(participants)
                     p_id = participants(k);
-                    % 锟斤拷锟斤拷锟斤拷锟斤拷螅翰锟斤拷锟斤拷锟轿伙拷帽锟轿拷锟斤拷锟姐，锟斤拷锟斤拷时锟斤拷锟斤拷锟轿� sync_start + t_coalition
+                    % 状态更新后：参与者位置变为任务点，就绪时间变为 sync_start + t_coalition
                     agent_state(p_id).pos = task_pos;
                     agent_state(p_id).ready_time = sync_start + t_coalition;
                 end
@@ -340,7 +341,7 @@ classdef WorldSim
                 task_id = myOrderedTasks(ii);
                 task_pos = [tasks(task_id).x, tasks(task_id).y];
 
-                % (1) 锟斤拷锟叫ｏ拷锟接碉拷前锟姐到锟斤拷锟斤拷锟�
+                % (1) 飞行：从当前点到任务点
                 dist = norm(task_pos - curr_pos);
                 fly_time = dist / max(v, tol);
                 t_fly_total = t_fly_total + fly_time;
@@ -350,7 +351,7 @@ classdef WorldSim
                 sync_start = task_sync_start(task_id);
                 coalition_dur = task_coalition_dur(task_id);
 
-                % (2) 同锟斤拷前锟饺达拷锟斤拷锟斤拷锟斤拷业锟斤拷锟斤拷耍锟斤拷锟揭拷鹊锟酵拷锟斤拷锟绞�
+                % (2) 同步前等待：如果我先到了，还要等同步开始
                 wait_pre_start = max(0, sync_start - my_arrival);
 
                 if ~isempty(SC) && task_id <= numel(SC) && ~isempty(SC{task_id})
@@ -358,17 +359,17 @@ classdef WorldSim
                 else
                     R_row = R_agent(task_id, :);
                 end
-                % (3) 锟斤拷锟斤拷执锟斤拷时锟斤拷锟斤拷锟斤拷锟斤拷锟斤拷锟斤拷锟绞憋拷锟斤拷锟斤拷曳锟斤拷涞斤拷锟斤拷锟皆达拷锟斤拷锟�
+                % (3) 自身执行时长：计算基于实际分配的资源量自身所需时长
                 my_exec_time = WorldSim.calc_exec_time(tasks(task_id), R_row, Value_Params, tol);
                 t_exec_total = t_exec_total + my_exec_time;
 
-                % (4) 同锟斤拷锟斤拷却锟斤拷锟斤拷锟斤拷锟斤拷锟斤拷锟斤拷锟斤拷锟斤拷 coalition_dur 锟斤拷锟斤拷锟斤拷锟斤拷锟斤拷执锟叫革拷锟斤拷锟斤拷锟斤拷要锟饺达拷锟斤拷锟斤拷
+                % (4) 同步后等待：联盟总时长 coalition_dur 减去自身执行时间即为需要等待的时间
                 wait_post_exec = max(0, coalition_dur - my_exec_time);
 
-                % 锟杰等达拷时锟斤拷 = 同锟斤拷前锟饺达拷 + 同锟斤拷锟斤拷锟斤拷却锟�
+                % 总等待时间 = 同步前等待 + 同步后等待
                 t_wait_total = t_wait_total + wait_pre_start + wait_post_exec;
 
-                % 锟斤拷锟斤拷时锟斤拷锟狡斤拷锟斤拷锟斤拷锟斤拷锟斤拷锟斤拷锟斤拷锟斤拷锟绞憋拷獭锟�(锟斤拷全锟斤拷同锟斤拷锟斤拷锟斤拷一锟斤拷)
+                % 当前时钟推进到该任务的完成时刻。(与全局同步计算一致)
                 curr_clock = sync_start + coalition_dur;
                 curr_pos = task_pos;
 
@@ -377,13 +378,13 @@ classdef WorldSim
                 completion_times(ii) = curr_clock;
             end
 
-            % 锟斤拷锟斤拷锟斤拷锟截碉拷锟斤拷锟斤拷锟斤拷锟斤拷锟绞嘉伙拷锟�
+            % 返航：返回到智能体的起始位置
             return_dist = norm([agents(agentIdx).x, agents(agentIdx).y] - curr_pos);
             return_time = return_dist / max(v, tol);
 
             t_fly_total = t_fly_total + return_time;
 
-            % 锟斤拷锟斤拷锟斤拷锟叫斤拷锟斤拷锟斤拷锟斤拷锟斤拷锟斤拷锟斤拷锟斤拷锟斤拷时锟斤拷
+            % 记录整个任务序列结束以及返航后的最终时间
             mission_end_time = curr_clock + return_time;
         end
 
@@ -513,7 +514,6 @@ classdef WorldSim
                 end
             end
         end
-
 
     end
 
