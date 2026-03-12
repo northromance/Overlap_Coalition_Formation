@@ -1,25 +1,25 @@
 function [Value_data, history_data] = Fang2025_global_main(agents, tasks, AddPara, Value_Params)
-% FANG2025_GLOBAL_MAIN Fang2025¿ò¼Ü + È«¾ÖÉç»áĞ§ÓÃ(GSU)ÅĞ¶Ï×¼Ôò
+% FANG2025_GLOBAL_MAIN Fang2025æ¡†æ¶ + å…¨å±€ç¤¾ä¼šæ•ˆç”¨(GSU)åˆ¤æ–­å‡†åˆ™
 %
-% === [Óë Fang2025_main µÄºËĞÄÇø±ğ] ===
-%   Ô­°æ£ºµ÷ÓÃ Overlap_Coalition_Formation ¡ú join_operation/leave_operation
-%         ½ÓÊÜ×¼Ôò»ùÓÚ Preference_gain£¨¾Ö²¿Ğ§ÓÃ²î£¬BMBT¹«Ê½£©
+% === [ä¸ Fang2025_main çš„æ ¸å¿ƒåŒºåˆ«] ===
+%   åŸç‰ˆï¼šè°ƒç”¨ Overlap_Coalition_Formation â†’ join_operation/leave_operation
+%         æ¥å—å‡†åˆ™åŸºäº Preference_gainï¼ˆå±€éƒ¨æ•ˆç”¨å·®ï¼ŒBMBTå…¬å¼ï¼‰
 %
-%   ±¾°æ£º½« Join/Leave ²Ù×÷ÄÚÁªÓÚº¯ÊıÌåÄÚ£¨Ïû³ıÍâ²¿ÒÀÀµ£©
-%         ½ÓÊÜ×¼Ôò¸ÄÎª global_utility_diff£¨È«¾ÖÉç»áĞ§ÓÃGSU²îÖµ£©
-%         GSU = ËùÓĞ N ¸öÖÇÄÜÌåÔÚºòÑ¡½âÏÂµÄĞ§ÓÃ×ÜºÍ
+%   æœ¬ç‰ˆï¼šå°† Join/Leave æ“ä½œå†…è”äºå‡½æ•°ä½“å†…ï¼ˆæ¶ˆé™¤å¤–éƒ¨ä¾èµ–ï¼‰
+%         æ¥å—å‡†åˆ™æ”¹ä¸º global_utility_diffï¼ˆå…¨å±€ç¤¾ä¼šæ•ˆç”¨GSUå·®å€¼ï¼‰
+%         GSU = æ‰€æœ‰ N ä¸ªæ™ºèƒ½ä½“åœ¨å€™é€‰è§£ä¸‹çš„æ•ˆç”¨æ€»å’Œ
 %
-% === [GSU Metropolis ×¼Ôò] ===
+% === [GSU Metropolis å‡†åˆ™] ===
 %   delta_E = GSU(SC_candidate) - GSU(SC_current)
-%   - delta_E > 0£ºÎŞÌõ¼ş½ÓÊÜ
-%   - delta_E ¡Ü 0£ºÒÔ exp(delta_E / T) ¸ÅÂÊ½ÓÊÜ£¬ÔÊĞíÌø³ö¾Ö²¿×îÓÅ
+%   - delta_E > 0ï¼šæ— æ¡ä»¶æ¥å—
+%   - delta_E â‰¤ 0ï¼šä»¥ exp(delta_E / T) æ¦‚ç‡æ¥å—ï¼Œå…è®¸è·³å‡ºå±€éƒ¨æœ€ä¼˜
 
-%% ==================== 0. Ëæ»úÊıÖÖ×ÓÉèÖÃ ====================
+%% ==================== 0. éšæœºæ•°ç§å­è®¾ç½® ====================
 if isfield(Value_Params, 'seed')
     rng(Value_Params.seed);
 end
 
-%% ==================== 1. ³õÊ¼»¯½×¶Î ====================
+%% ==================== 1. åˆå§‹åŒ–é˜¶æ®µ ====================
 eps_val   = 1e-6;
 tol       = 1e-9;
 history_data = struct();
@@ -28,10 +28,10 @@ Value_data = WorldSim.init_value_data(agents, tasks, Value_Params);
 [Value_data, summatrix] = WorldSim.init_observe_belief_neighbor( ...
     Value_data, Value_Params.N, Value_Params.M, Value_Params);
 
-%% ==================== 2. Ö÷Ñ­»·£º¶àÂÖ²©ŞÄµü´ú ====================
+%% ==================== 2. ä¸»å¾ªç¯ï¼šå¤šè½®åšå¼ˆè¿­ä»£ ====================
 for counter = 1:Value_Params.num_rounds
 
-    %% 2.2 SA ³õÊ¼»¯
+    %% 2.2 SA åˆå§‹åŒ–
     k_iter       = 1;
     previous_SC  = Value_data(1).SC;
     k_stable     = 0;
@@ -41,13 +41,13 @@ for counter = 1:Value_Params.num_rounds
         Value_Params.T0_round * Value_Params.T_decay^(counter - 1));
 
     if AddPara.verbose
-        fprintf('  [Fang-GSU] Round %d: ³õÊ¼ÎÂ¶È = %.2f\n', counter, Value_Params.Temperature);
+        fprintf('  [Fang-GSU] Round %d: åˆå§‹æ¸©åº¦ = %.2f\n', counter, Value_Params.Temperature);
     end
 
-    %% ==================== 2.3 µÚÒ»ÂÖ£ºSoft Greedy ³õÊ¼½â ====================
+    %% ==================== 2.3 ç¬¬ä¸€è½®ï¼šSoft Greedy åˆå§‹è§£ ====================
     if counter == 1
         if AddPara.verbose
-            fprintf('  [Fang-GSU] µÚ1ÂÖ£º»ùÓÚµÍÎÂ¸ÅÂÊÉú³É³õÊ¼ÁªÃË½á¹¹ (Soft Greedy)...\n');
+            fprintf('  [Fang-GSU] ç¬¬1è½®ï¼šåŸºäºä½æ¸©æ¦‚ç‡ç”Ÿæˆåˆå§‹è”ç›Ÿç»“æ„ (Soft Greedy)...\n');
         end
 
         SC_global            = Value_data(1).SC;
@@ -64,7 +64,7 @@ for counter = 1:Value_Params.num_rounds
                 resource_amt = agents(i).resources(k);
                 if resource_amt <= 0, continue; end
 
-                % ÂÖÅÌ¶ÄÑ¡ÔñÈÎÎñ
+                % è½®ç›˜èµŒé€‰æ‹©ä»»åŠ¡
                 prob_vec = probs(k, :);
                 cum_prob = cumsum(prob_vec);
                 if cum_prob(end) > 1e-9
@@ -100,7 +100,7 @@ for counter = 1:Value_Params.num_rounds
             for j = 1:Value_Params.N, Value_data(j).SC = SC_global; end
         end
 
-        % Í¬²½³õÊ¼½â¸øËùÓĞÖÇÄÜÌå
+        % åŒæ­¥åˆå§‹è§£ç»™æ‰€æœ‰æ™ºèƒ½ä½“
         for i = 1:Value_Params.N
             Value_data(i).SC             = SC_global;
             Value_data(i).resources_matrix = OCFUtils.get_agent_resource_matrix(SC_global, i, Value_Params);
@@ -113,14 +113,14 @@ for counter = 1:Value_Params.num_rounds
                 SC_global, agents, tasks, Value_Params, Value_data(ii), AddPara);
         end
         if AddPara.verbose
-            fprintf('  [Fang-GSU] µÚ1ÂÖ£º³õÊ¼È«¾ÖĞ§ÓÃ = %.2f\n', best_utility);
+            fprintf('  [Fang-GSU] ç¬¬1è½®ï¼šåˆå§‹å…¨å±€æ•ˆç”¨ = %.2f\n', best_utility);
         end
     end
 
-    %% ==================== 3. SA ÄÚÑ­»·£¨GSU°æË³Ğò²©ŞÄ£© ====================
+    %% ==================== 3. SA å†…å¾ªç¯ï¼ˆGSUç‰ˆé¡ºåºåšå¼ˆï¼‰ ====================
     inner_loop_history = ResultProcessor.init_inner_loop_history();
 
-    % ¾«Ó¢¿ìÕÕ³õÊ¼»¯
+    % ç²¾è‹±å¿«ç…§åˆå§‹åŒ–
     elite_utility_init = 0;
     for j = 1:Value_Params.N
         elite_utility_init = elite_utility_init + UtilityEvaluator.calc_agent_total_utility( ...
@@ -132,33 +132,33 @@ for counter = 1:Value_Params.num_rounds
 
     while doneflag == 0
 
-        %% 3.1 Ë³Ğò²©ŞÄ£ºÖÇÄÜÌå 1..N ÒÀ´Î¾ö²ß
+        %% 3.1 é¡ºåºåšå¼ˆï¼šæ™ºèƒ½ä½“ 1..N ä¾æ¬¡å†³ç­–
         for ii = 1:Value_Params.N
 
-            % --- ¼ÆËã×ÊÔ´È±¿ÚÓëÑ¡Ôñ¸ÅÂÊ ---
+            % --- è®¡ç®—èµ„æºç¼ºå£ä¸é€‰æ‹©æ¦‚ç‡ ---
             [~, resource_gap] = calc_gaps(Value_data(ii), Value_Params, AddPara);
             probs_ii = SA_Select_probs(Value_data(ii), agents, tasks, Value_Params, ...
                 resource_gap, Value_Params.Temperature);
             Value_data(ii).selectProb = probs_ii;
 
-            % --- ±¸·İµ±Ç°×´Ì¬ ---
+            % --- å¤‡ä»½å½“å‰çŠ¶æ€ ---
             SC_backup = Value_data(ii).SC;
 
             % ============================================================
-            %  [Join ²Ù×÷] ÄÚÁªÊµÏÖ£¨Ìæ´ú join_operation.m£©
-            %  ½ÓÊÜ×¼Ôò£ºglobal_utility_diff£¨GSU²îÖµ£©Ìæ´ú Preference_gain
+            %  [Join æ“ä½œ] å†…è”å®ç°ï¼ˆæ›¿ä»£ join_operation.mï¼‰
+            %  æ¥å—å‡†åˆ™ï¼šglobal_utility_diffï¼ˆGSUå·®å€¼ï¼‰æ›¿ä»£ Preference_gain
             % ============================================================
             agentID = Value_data(ii).agentID;
 
             for r = 1:Value_Params.K
-                % 1. ÂÖÅÌ¶Ä²ÉÑùÄ¿±êÈÎÎñ
+                % 1. è½®ç›˜èµŒé‡‡æ ·ç›®æ ‡ä»»åŠ¡
                 target = OCFUtils.sample_task_from_probs(probs_ii(r, :), Value_Params.M);
                 if isempty(target), continue; end
 
-                % ÒÑÔÚ¸ÃÈÎÎñÖĞÍ¶Èë¸Ã×ÊÔ´£¬Ìø¹ı
+                % å·²åœ¨è¯¥ä»»åŠ¡ä¸­æŠ•å…¥è¯¥èµ„æºï¼Œè·³è¿‡
                 if Value_data(ii).SC{target}(agentID, r) > tol, continue; end
 
-                % ÈİÁ¿¼ì²é
+                % å®¹é‡æ£€æŸ¥
                 belief      = Value_data(ii).initbelief(target, :);
                 exp_demand  = WorldSim.calculate_demand_quantile( ...
                     belief, Value_Params.task_type_demands, AddPara.resource_confidence);
@@ -166,19 +166,19 @@ for counter = 1:Value_Params.num_rounds
                 can_add     = max(0, exp_demand(r) - curr_alloc);
                 if can_add <= 0, continue; end
 
-                % 2. Éú³ÉºòÑ¡×´Ì¬
+                % 2. ç”Ÿæˆå€™é€‰çŠ¶æ€
                 [SC_P, SC_Q, ~, R_agent_Q] = StateTran.join_changes( ...
                     Value_data(ii), agents, Value_Params, target, agentID, r);
 
-                % 3. ¿ÉĞĞĞÔ¼ì²â
+                % 3. å¯è¡Œæ€§æ£€æµ‹
                 [feasible, ~, cost_data] = validate_feasibility( ...
                     Value_data(ii), agents, tasks, Value_Params, agentID, SC_Q, true, AddPara);
                 if ~feasible, continue; end
 
-                % 4. GSU²î‚£¨È«¾ÖĞ§ÓÃMetropolis×¼Ôò£©
+                % 4. GSUå·®å€¤ï¼ˆå…¨å±€æ•ˆç”¨Metropoliså‡†åˆ™ï¼‰
                 delta_E = global_utility_diff(tasks, agents, SC_P, SC_Q, agentID, Value_Params, Value_data(ii));
 
-                % 5. ½ÓÊÜÅĞ¶Ï
+                % 5. æ¥å—åˆ¤æ–­
                 accept_join = false;
                 if delta_E > 1e-4
                     accept_join = true;
@@ -187,34 +187,34 @@ for counter = 1:Value_Params.num_rounds
                     if rand < exp(delta_E / T)
                         accept_join = true;
                         if AddPara.verbose
-                            fprintf('      [Join-GSU] Agent %d -> Task %d Res %d ¸ÅÂÊ½ÓÊÜ (dE=%.4f)\n', ...
+                            fprintf('      [Join-GSU] Agent %d -> Task %d Res %d æ¦‚ç‡æ¥å— (dE=%.4f)\n', ...
                                 agentID, target, r, delta_E);
                         end
                     end
                 end
 
-                % 6. Ö´ĞĞ¸üĞÂ
+                % 6. æ‰§è¡Œæ›´æ–°
                 if accept_join
                     Value_data(ii).SC               = SC_Q;
                     Value_data(ii).resources_matrix = R_agent_Q;
                     if ~isempty(cost_data)
                         Value_data(ii).task_schedule = cost_data;
                     end
-                    % ¸üĞÂ coalitionstru
+                    % æ›´æ–° coalitionstru
                     Value_data(ii).coalitionstru = update_coalitionstru( ...
                         Value_data(ii).coalitionstru, R_agent_Q, agentID, agents, Value_Params, tol);
 
                     if AddPara.verbose
-                        fprintf('      [Join-GSU] Agent %d -> Task %d Res %d ½ÓÊÜ (dE=%.4f)\n', ...
+                        fprintf('      [Join-GSU] Agent %d -> Task %d Res %d æ¥å— (dE=%.4f)\n', ...
                             agentID, target, r, delta_E);
                     end
-                    break; % Ã¿ÂÖÃ¿¸öÖÇÄÜÌåÖ»Ö´ĞĞÒ»´Î¼ÓÈë
+                    break; % æ¯è½®æ¯ä¸ªæ™ºèƒ½ä½“åªæ‰§è¡Œä¸€æ¬¡åŠ å…¥
                 end
             end  % end for r (Join)
 
             % ============================================================
-            %  [Leave ²Ù×÷] ÄÚÁªÊµÏÖ£¨Ìæ´ú leave_operation.m£©
-            %  ÎŞÂÛ Join ÊÇ·ñ³É¹¦¾ùÖ´ĞĞ£ºÏÈÍêÕû³¢ÊÔ¼ÓÈë£¬ÔÙ³¢ÊÔÀë¿ªÄÜ·ñÌáÉı GSU
+            %  [Leave æ“ä½œ] å†…è”å®ç°ï¼ˆæ›¿ä»£ leave_operation.mï¼‰
+            %  æ— è®º Join æ˜¯å¦æˆåŠŸå‡æ‰§è¡Œï¼šå…ˆå®Œæ•´å°è¯•åŠ å…¥ï¼Œå†å°è¯•ç¦»å¼€èƒ½å¦æå‡ GSU
             % ============================================================
             original_rm = Value_data(ii).resources_matrix;
 
@@ -227,17 +227,17 @@ for counter = 1:Value_Params.num_rounds
                 for tidx = 1:numel(candidate_tasks)
                     src_task = candidate_tasks(tidx);
 
-                    % Éú³É³·³öºóµÄ×´Ì¬
+                    % ç”Ÿæˆæ’¤å‡ºåçš„çŠ¶æ€
                     [SC_P, SC_Q, R_agent_P, R_agent_Q] = StateTran.leave_changes( ...
                         Value_data(ii), agents, Value_Params, src_task, agentID, r);
 
-                    % ÁÙÊ±¸üĞÂ×ÊÔ´¾ØÕóÒÔ¹©Ğ§ÓÃ¼ÆËã
+                    % ä¸´æ—¶æ›´æ–°èµ„æºçŸ©é˜µä»¥ä¾›æ•ˆç”¨è®¡ç®—
                     Value_data(ii).resources_matrix = R_agent_Q;
 
-                    % GSU²îÖµ
+                    % GSUå·®å€¼
                     delta_E = global_utility_diff(tasks, agents, SC_P, SC_Q, agentID, Value_Params, Value_data(ii));
 
-                    % ½ÓÊÜÅĞ¶Ï
+                    % æ¥å—åˆ¤æ–­
                     accept_leave = false;
                     if delta_E > 1e-4
                         accept_leave = true;
@@ -246,7 +246,7 @@ for counter = 1:Value_Params.num_rounds
                         if rand < exp(delta_E / T)
                             accept_leave = true;
                             if AddPara.verbose
-                                fprintf('      [Leave-GSU] Agent %d <- Task %d Res %d ¸ÅÂÊ½ÓÊÜ (dE=%.4f)\n', ...
+                                fprintf('      [Leave-GSU] Agent %d <- Task %d Res %d æ¦‚ç‡æ¥å— (dE=%.4f)\n', ...
                                     agentID, src_task, r, delta_E);
                             end
                         end
@@ -258,19 +258,19 @@ for counter = 1:Value_Params.num_rounds
                         Value_data(ii).coalitionstru    = update_coalitionstru( ...
                             Value_data(ii).coalitionstru, R_agent_Q, agentID, agents, Value_Params, tol);
                         if AddPara.verbose
-                            fprintf('      [Leave-GSU] Agent %d <- Task %d Res %d ½ÓÊÜ (dE=%.4f)\n', ...
+                            fprintf('      [Leave-GSU] Agent %d <- Task %d Res %d æ¥å— (dE=%.4f)\n', ...
                                 agentID, src_task, r, delta_E);
                         end
                         did_leave = true;
                         break;
                     else
-                        Value_data(ii).resources_matrix = R_agent_P; % »Ø¹ö×ÊÔ´¾ØÕó
+                        Value_data(ii).resources_matrix = R_agent_P; % å›æ»šèµ„æºçŸ©é˜µ
                     end
                 end  % end for tidx
                 if did_leave, break; end
             end  % end for r (Leave)
 
-            % Èç¹û Join+Leave ¾ùÎŞ±ä»¯£¬»Ø¹ö resources_matrix ÖÁ¿ìÕÕ
+            % å¦‚æœ Join+Leave å‡æ— å˜åŒ–ï¼Œå›æ»š resources_matrix è‡³å¿«ç…§
             SC_now_changed = false;
             for m = 1:Value_Params.M
                 if ~isequal(SC_backup{m}, Value_data(ii).SC{m})
@@ -281,20 +281,20 @@ for counter = 1:Value_Params.num_rounds
                 Value_data(ii).resources_matrix = original_rm;
             end
 
-            % --- ĞÅÏ¢´«µİ£º½«¸üĞÂºóµÄ SC ´«µİ¸øÏÂÒ»¸öÖÇÄÜÌå ---
+            % --- ä¿¡æ¯ä¼ é€’ï¼šå°†æ›´æ–°åçš„ SC ä¼ é€’ç»™ä¸‹ä¸€ä¸ªæ™ºèƒ½ä½“ ---
             if ii < Value_Params.N
                 Value_data(ii + 1).coalitionstru = Value_data(ii).coalitionstru;
                 Value_data(ii + 1).SC            = Value_data(ii).SC;
             end
-        end  % end for ii (Ë³Ğò²©ŞÄ)
+        end  % end for ii (é¡ºåºåšå¼ˆ)
 
-        %% 3.3 ½µÎÂ
+        %% 3.3 é™æ¸©
         Value_Params.Temperature = Value_Params.alpha * Value_Params.Temperature;
 
         final_SC            = Value_data(Value_Params.N).SC;
         final_coalitionstru = Value_data(Value_Params.N).coalitionstru;
 
-        %% 3.4 ÊÕÁ²¼ì²â
+        %% 3.4 æ”¶æ•›æ£€æµ‹
         if isequal(previous_SC, final_SC)
             k_stable = k_stable + 1;
         else
@@ -312,39 +312,39 @@ for counter = 1:Value_Params.num_rounds
         previous_SC = final_SC;
         k_iter      = k_iter + 1;
 
-        %% 3.5 È«¾Ö×´Ì¬Í¬²½
+        %% 3.5 å…¨å±€çŠ¶æ€åŒæ­¥
         for ii = 1:Value_Params.N
             Value_data(ii).coalitionstru  = final_coalitionstru;
             Value_data(ii).SC             = final_SC;
             Value_data(ii).resources_matrix = OCFUtils.get_agent_resource_matrix(final_SC, ii, Value_Params);
         end
 
-        % ¼ÆËãµ±Ç°È«¾ÖĞ§ÓÃ
+        % è®¡ç®—å½“å‰å…¨å±€æ•ˆç”¨
         current_utility = 0;
         for j = 1:Value_Params.N
             current_utility = current_utility + UtilityEvaluator.calc_agent_total_utility( ...
                 final_SC, agents, tasks, Value_Params, Value_data(j), AddPara);
         end
 
-        % ¾«Ó¢¿ìÕÕ¸üĞÂ
+        % ç²¾è‹±å¿«ç…§æ›´æ–°
         if current_utility > elite_global_utility
             elite_global_utility = current_utility;
             elite_SC             = final_SC;
             elite_coalitionstru  = final_coalitionstru;
             if AddPara.verbose
-                fprintf('    [Elite] ·¢ÏÖ±¾ÂÖÀúÊ·×î¸ßÈ«¾ÖĞ§ÓÃ: %.2f (Iter: %d)\n', elite_global_utility, k_iter - 1);
+                fprintf('    [Elite] å‘ç°æœ¬è½®å†å²æœ€é«˜å…¨å±€æ•ˆç”¨: %.2f (Iter: %d)\n', elite_global_utility, k_iter - 1);
             end
         end
 
-        % ¼ÇÂ¼ÄÚÑ­»·ÀúÊ·
+        % è®°å½•å†…å¾ªç¯å†å²
         inner_loop_history = ResultProcessor.record_inner_loop_iteration( ...
             inner_loop_history, k_iter - 1, Value_Params.Temperature, ...
             current_utility, elite_global_utility, final_SC, Value_Params);
     end  % end while
 
-    %% Ç¿ÖÆ²ÉÄÉ¾«Ó¢·½°¸
+    %% å¼ºåˆ¶é‡‡çº³ç²¾è‹±æ–¹æ¡ˆ
     if AddPara.verbose
-        fprintf('  [Fang-GSU Done] Round %d ÄÚÑ­»·½áÊø£¬²ÉÄÉ¾«Ó¢·½°¸ (Utility: %.2f)\n', counter, elite_global_utility);
+        fprintf('  [Fang-GSU Done] Round %d å†…å¾ªç¯ç»“æŸï¼Œé‡‡çº³ç²¾è‹±æ–¹æ¡ˆ (Utility: %.2f)\n', counter, elite_global_utility);
     end
     final_SC            = elite_SC;
     final_coalitionstru = elite_coalitionstru;
@@ -356,23 +356,23 @@ for counter = 1:Value_Params.num_rounds
 
     Value_data = update_task_schedule(Value_data, agents, tasks, Value_Params);
 
-    %% ==================== 4. ¹Û²âÓëĞÅÄî¸üĞÂ ====================
+    %% ==================== 4. è§‚æµ‹ä¸ä¿¡å¿µæ›´æ–° ====================
     [Value_data, summatrix] = AgentOps.collect_observations( ...
         Value_data, agents, tasks, Value_Params, summatrix, final_SC);
     Value_data = AgentOps.update_belief_from_observations(Value_data, Value_Params);
 
-    %% ==================== 5. ½á¹ûÆÀ¹À ====================
+    %% ==================== 5. ç»“æœè¯„ä¼° ====================
     [coalition_utility, total_global_cost, total_completed_value, task_completion_degrees] = ...
         UtilityEvaluator.evaluate_coalition_metrics(final_SC, agents, tasks, Value_Params, eps_val);
 
-    %% ĞÅÄî¹ã²¥
+    %% ä¿¡å¿µå¹¿æ’­
     for i = 1:Value_Params.N
         for j = 1:Value_Params.N
             Value_data(i).other{j}.initbelief = Value_data(j).initbelief;
         end
     end
 
-    %% ¼ÇÂ¼ÀúÊ·Êı¾İ
+    %% è®°å½•å†å²æ•°æ®
     history_data = ResultProcessor.record_history_data(history_data, counter, Value_data, Value_Params, ...
         final_SC, final_coalitionstru, ...
         coalition_utility, total_global_cost, ...
@@ -382,26 +382,26 @@ for counter = 1:Value_Params.num_rounds
     history_data.inner_loop{counter}       = inner_loop_history;
 end
 
-%% ==================== 6. ×îÖÕÒ»ÖÂĞÔ¼ì²é ====================
+%% ==================== 6. æœ€ç»ˆä¸€è‡´æ€§æ£€æŸ¥ ====================
 if AddPara.verbose
-    fprintf('\n[Fang2025_Global] Ö´ĞĞ×îÖÕÒ»ÖÂĞÔ¼ì²é...\n');
+    fprintf('\n[Fang2025_Global] æ‰§è¡Œæœ€ç»ˆä¸€è‡´æ€§æ£€æŸ¥...\n');
 end
 [is_valid, error_log] = check_coalition_consistency( ...
     Value_data, agents, tasks, Value_Params, 'OCF', AddPara.verbose);
 if ~is_valid
-    warning('[Fang2025_Global] Ò»ÖÂĞÔ¼ì²é·¢ÏÖ %d ´¦ÎÊÌâ', length(error_log));
+    warning('[Fang2025_Global] ä¸€è‡´æ€§æ£€æŸ¥å‘ç° %d å¤„é—®é¢˜', length(error_log));
     history_data.consistency_errors = error_log;
 else
     if AddPara.verbose
-        fprintf('  [Fang2025_Global] ËùÓĞÒ»ÖÂĞÔ¼ì²éÍ¨¹ı£¡\n');
+        fprintf('  [Fang2025_Global] æ‰€æœ‰ä¸€è‡´æ€§æ£€æŸ¥é€šè¿‡ï¼\n');
     end
 end
 end
 
-%% ==================== ÄÚ²¿¸¨Öúº¯Êı ====================
+%% ==================== å†…éƒ¨è¾…åŠ©å‡½æ•° ====================
 
 % -----------------------------------------------------------------------
-% update_coalitionstru: ¸ù¾İĞÂµÄ×ÊÔ´¾ØÕó¸üĞÂÁªÃË¹éÊô½á¹¹
+% update_coalitionstru: æ ¹æ®æ–°çš„èµ„æºçŸ©é˜µæ›´æ–°è”ç›Ÿå½’å±ç»“æ„
 % -----------------------------------------------------------------------
 function coalition = update_coalitionstru(coalition, R_agent_Q, agentID, agents, Value_Params, tol)
 agentIdx           = agentID;
@@ -418,9 +418,9 @@ end
 end
 
 % -----------------------------------------------------------------------
-% global_utility_diff: ¼ÆËãºòÑ¡½âÓëµ±Ç°½âµÄÈ«¾ÖÉç»áĞ§ÓÃ(GSU)²îÖµ
+% global_utility_diff: è®¡ç®—å€™é€‰è§£ä¸å½“å‰è§£çš„å…¨å±€ç¤¾ä¼šæ•ˆç”¨(GSU)å·®å€¼
 %   delta_E = GSU(SC_candidate) - GSU(SC_current)
-%   ÕıÖµ±íÊ¾ºòÑ¡½â¸üÓÅ£¬¸ºÖµ±íÊ¾ºòÑ¡½â¸ü²î
+%   æ­£å€¼è¡¨ç¤ºå€™é€‰è§£æ›´ä¼˜ï¼Œè´Ÿå€¼è¡¨ç¤ºå€™é€‰è§£æ›´å·®
 % -----------------------------------------------------------------------
 function delta_E = global_utility_diff(tasks, agents, SC_current, SC_candidate, agent_idx, Value_Params, Value_data_i) %#ok<INUSL>
 AddPara_silent.verbose = false;

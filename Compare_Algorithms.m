@@ -1,4 +1,5 @@
 clear; clc; close all;
+feature('DefaultCharacterSet', 'UTF-8');
 
 fprintf('\n');
 fprintf('========================================================================\n');
@@ -11,13 +12,13 @@ fprintf('=======================================================================
 % 获取项目根目录（Compare_Algorithms.m 在 Main_fun 子目录中）
 script_dir = fileparts(mfilename('fullpath'));  % 获取脚本所在目录（Main_fun）
 project_root = fileparts(script_dir);            % 获取项目根目录
-addpath(fullfile(project_root, "Overlap_Coalition_Formation\Main_fun"));              % core scenario/init functions（核心初始化与场景函数）
-addpath(fullfile(project_root, "Overlap_Coalition_Formation\SA"));                    % SA algorithm（模拟退火算法）
-addpath(fullfile(project_root, "Overlap_Coalition_Formation\comalg", "Com_Huo2025"));    % Huo2025 algorithm（Huo2025 算法）
-addpath(fullfile(project_root, "Overlap_Coalition_Formation\comalg", "Com_Qi2023"));     % Qi2023 algorithm（Qi2023 算法）
-addpath(fullfile(project_root, "Overlap_Coalition_Formation\comalg", "Com_Shi2024"));    % Shi2024 OCF algorithm（Shi2024 重叠联盟形成算法）
-addpath(fullfile(project_root, "Overlap_Coalition_Formation\comalg", "Com_Fang2025"));    % Fang2025 algorithm（Fang2025 算法）
-addpath(fullfile(project_root, "Overlap_Coalition_Formation\comalg", "SA_TabuEnhance"));        % SA TabuEnhance algorithm
+addpath(fullfile(project_root, "Overlap_Coalition_Formation\Main_fun"));                    % 框架层：效用/时间/工具函数 + 共享算法辅助函数
+addpath(fullfile(project_root, "Overlap_Coalition_Formation\comalg", "alg1_SA"));           % 算法 1: SA_Value（早期算法，保留代码）
+addpath(fullfile(project_root, "Overlap_Coalition_Formation\comalg", "alg2_Huo2025"));     % 算法 2: Huo2025
+addpath(fullfile(project_root, "Overlap_Coalition_Formation\comalg", "alg3_Qi2023"));      % 算法 3: Qi2023
+addpath(fullfile(project_root, "Overlap_Coalition_Formation\comalg", "alg4_Shi2024"));     % 算法 4: Shi2024
+addpath(fullfile(project_root, "Overlap_Coalition_Formation\comalg", "Com_Fang2025"));     % Fang2025 algorithm（已删除，保留路径避免报错）
+addpath(fullfile(project_root, "Overlap_Coalition_Formation\comalg", "alg7_OCF_SAtabu")); % 算法 7: OCF_SAtabu_global（主算法）
 
 %% ========================================================================
 %  Scenario configuration (adjust for debugging as needed)
@@ -30,16 +31,15 @@ M = 10;                         % number of tasks（任务数量）
 K = 6;                          % number of resource types（资源类型数）
 task_values = [800, 1000, 1500];  % three task types（三种不同类型任务的价值）
 num_task_types = length(task_values);
-algorithms_to_run_ids = [3,7]; 
+algorithms_to_run_ids = [7]; 
 
 % 算法开关：选择要运行的算法 ID
-% 1=SA_Value, 2=Huo2025, 3=Qi2023, 4=Shi2024
-% 5=Fang2025, 6=SA_TabuEnhanced_Altruistic(局部社会效用), 7=SA_TabuEnhanced_Global(全局社会效用)
-% 8=Fang2025_Global(内联OCF+全局社会效用准则)
+% 1=SA_Value（早期算法，保留代码但 Compare 中不运行）
+% 2=Huo2025, 3=Qi2023, 4=Shi2024
+% 7=OCF_SAtabu_global（主算法，SA+TabuEnhanced+全局社会效用）
 
 % 比较非重叠联盟算法 + 信念更新机制
 % 比较重叠联盟算法Qi2023 + 信念更新机制 
-% 
 
 %% Display/save options（显示与保存选项）
 save_results = true;    % 是否保存结果到 MAT 文件
@@ -95,12 +95,9 @@ T_min_round = 60;                     % 回合温度调度：温度下界（经d
 resource_confidence = 0.7;            % 初始构造阶段需求分位置信度（SA/Fang/Tabu 系列共用）
 T_init_construction = 2;            % 初始构造阶段温度（低温近贪婪，SA/Fang/Tabu 系列共用）
 
-% TabuEnhanced专属参数（算法 6: Altruistic / 算法 7: Global）
+% TabuEnhanced专属参数（算法 7: OCF_SAtabu_global）
 tabu_tenure = 10;                     % 禁忌期限
 p_leave = 0.3;                        % 离开概率（TabuEnhanced / Qi2023 共用）
-
-% 算法 6: SA_TabuEnhanced_Altruistic — 决策机制基于 Preference_gain（局部社会效用）
-% 算法 7: SA_TabuEnhanced_Global— calculate_local_social_utility 基于全体 N 个智能体 GSU
 
 
 
@@ -212,7 +209,7 @@ Value_Params.T_min_round = T_min_round;               % 回合温度调度：温
 Value_Params.resource_confidence = resource_confidence; % 初始构造置信度（SA/Fang/Tabu 系列）
 Value_Params.T_init_construction = T_init_construction; % 初始构造温度（SA/Fang/Tabu 系列）
 
-% ------------------ TabuEnhanced 专属参数（算法 6/7）------------------
+% ------------------ TabuEnhanced 专属参数（算法 7: OCF_SAtabu_global）------------------
 Value_Params.tabu_tenure = tabu_tenure;               % 禁忌期限
 Value_Params.p_leave = p_leave;                       % 离开概率（TabuEnhanced / Qi2023 共用）
 
@@ -224,7 +221,7 @@ Value_Params.Qi_Gamma_max = Qi_Gamma_max;             % 最大 Boltzmann 系数
 
 % ------------------ Shi2024算法参数 ------------------
 Value_Params.Shi_K_stable_max = Shi_K_stable_max;     % 稳定性阈值
-Value_Params.C = 2000;
+Value_Params.C = 2000; % Shi2024 OCF算法中计算偏好增益的常数 C（根据 ΔE 统计校准，确保合理的增益范围）
 
 
 
@@ -249,14 +246,11 @@ fprintf('Scenario initialized (%.2f s)\n\n', init_time);
 % 定义算法：ID、名称、主函数句柄、文件夹、绘图颜色
 all_algorithms = {
     % 对比基线算法
-    struct('id', 1, 'name', 'SA_Value',        'func', @SA_Value_main,        'folder', 'SA',                  'color', [0.2, 0.6, 0.8]); % 模拟退火
-    struct('id', 2, 'name', 'Huo2025',         'func', @Huo2025_main,         'folder', 'comalg/Com_Huo2025',  'color', [0.8, 0.2, 0.2]); % Huo2025
-    struct('id', 3, 'name', 'Qi2023',          'func', @Qi2023_main,          'folder', 'comalg/Com_Qi2023',   'color', [0.2, 0.8, 0.2]); % Qi2023
-    struct('id', 4, 'name', 'Shi2024',         'func', @Shi2024_main,         'folder', 'comalg/Com_Shi2024',  'color', [0.8, 0.4, 0.2]); % Shi2024 OCF
-    struct('id', 5, 'name', 'Fang2025',                   'func', @Fang2025_main,                          'folder', 'comalg/Com_Fang2025',   'color', [0.9, 0.3, 0.6]); % Fang2025
-    struct('id', 6, 'name', 'SA_TabuEnhanced_Altruistic', 'func', @SA_Value_TabuEnhanced_Altruistic_main,  'folder', 'comalg/SA_TabuEnhance', 'color', [0.6, 0.3, 0.9]); % 局部社会效用
-    struct('id', 7, 'name', 'SA_TabuEnhanced_Global',     'func', @SA_Value_TabuEnhanced_global_main,      'folder', 'comalg/SA_TabuEnhance', 'color', [0.2, 0.8, 0.6]); % 全局社会效用
-    struct('id', 8, 'name', 'Fang2025_Global',             'func', @Fang2025_global_main,                   'folder', 'comalg/Com_Fang2025',   'color', [0.1, 0.7, 0.4]); % Fang2025+内联OCF+GSU
+    struct('id', 2, 'name', 'Huo2025',          'func', @Huo2025_main,          'folder', 'comalg/alg2_Huo2025',    'color', [0.8, 0.2, 0.2]); % Huo2025
+    struct('id', 3, 'name', 'Qi2023',           'func', @Qi2023_main,           'folder', 'comalg/alg3_Qi2023',     'color', [0.2, 0.8, 0.2]); % Qi2023
+    struct('id', 4, 'name', 'Shi2024',          'func', @Shi2024_main,          'folder', 'comalg/alg4_Shi2024',    'color', [0.8, 0.4, 0.2]); % Shi2024 OCF
+    % 主算法
+    struct('id', 7, 'name', 'OCF_SAtabu_global', 'func', @OCF_SAtabu_global_main, 'folder', 'comalg/alg7_OCF_SAtabu', 'color', [0.2, 0.8, 0.6]); % 主算法：SA+TabuEnhanced+全局社会效用
     };
 
 fprintf('Available algorithms (可用算法):\n');
@@ -390,16 +384,12 @@ if enabled_count > 0
         % 生成算法名称缩写（用于文件名）
         % 注意：优先匹配更具体的模式（长名称），避免子串误匹配
         abbr_patterns = {
-            'SA_TabuEnhanced_Altruistic', 'TabuAltruistic';
-            'SA_TabuEnhanced_Global',     'TabuGlobal';
-            'Fang2025_Global',            'FangGlobal';
-            'Fang2025',                   'Fang';
-            'SA_Value',                   'SA';
-            'Qi2023',                     'Qi';
-            'Huo2025',                    'Huo';
-            'Shi2024',                    'Shi';
-            'PSO',                        'PSO';
-            'Greedy',                     'Grd'
+            'OCF_SAtabu_global', 'OCFSAtabu';
+            'Qi2023',            'Qi';
+            'Huo2025',           'Huo';
+            'Shi2024',           'Shi';
+            'PSO',               'PSO';
+            'Greedy',            'Grd'
         };
 
         alg_abbr = cell(1, enabled_count);

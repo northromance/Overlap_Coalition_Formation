@@ -1,169 +1,178 @@
 classdef StateTran
-    % StateTransition ×¨ÃÅÓÃÓÚ´¦ÀíÁªÃË½á¹¹ºÍ×ÊÔ´×´Ì¬µÄ±ä¸ü²Ù×÷
-    % °üº¬£ºcalc_move_changes (È«Á¿Ç¨ÒÆ), join_changes (ÔöÁ¿¼ÓÈë) µÈ
+    % StateTran ä¸“é—¨ç”¨äºå¤„ç†è”ç›Ÿç»“æ„ä¸èµ„æºçŠ¶æ€å˜åŒ–çš„æ¨¡å—
+    % åŒ…å« calc_move_changesï¼ˆæ•´ä½“è¿ç§»ï¼‰ã€join_changesï¼ˆèµ„æºåŠ å…¥ï¼‰ã€
+    % leave_changesï¼ˆèµ„æºæ’¤å‡ºï¼‰ç­‰æ“ä½œ
     
     methods(Static)
         
         function [SC_P, SC_Q, R_agent_P, R_agent_Q] = calc_move_changes(Value_data, agents, Value_Params, cur_task_idx, target_task_idx, agent_col_idx)
-            % CALC_MOVE_CHANGES ¼ÆËãÖÇÄÜÌå´ÓÒ»¸öÈÎÎñ¡¾È«Á¿Ç¨ÒÆ¡¿µ½ÁíÒ»¸öÈÎÎñÊ±µÄ×ÊÔ´×´Ì¬±ä»¯¡£
-            % ÊÊÓÃ³¡¾°£ºÌ°À·²ßÂÔÖĞµÄÈÎÎñÑ¡Ôñ£¨Switch£©£¬Í¨³£¼ÙÉèµ¥ÈÎÎñÄ£Ê½»òÈ«Á¿×ªÒÆ¡£
-            % ºËĞÄĞŞÕı£ºÕë¶Ô¸öÌå×ÊÔ´¾ØÕó R_agent ²ÉÓÃ"È«ÅÌÇåÁã"²ßÂÔ¡£
+            % CALC_MOVE_CHANGES è®¡ç®—æ™ºèƒ½ä½“æ‰§è¡Œä¸€æ¬¡â€œæ•´ä½“è¿ç§»â€ï¼ˆSwitchï¼‰æ—¶ï¼Œ
+            % è”ç›Ÿç»“æ„å’Œèµ„æºçŠ¶æ€çš„å˜åŒ–ã€‚
             %
-            % ÊäÈë£º
-            %   Value_data: µ±Ç°Êı¾İ×´Ì¬¡£
-            %   agents: ÖÇÄÜÌåÁĞ±í¡£
-            %   Value_Params: È«¾Ö²ÎÊı¡£
-            %   cur_task_idx: µ±Ç°ËùÔÚÈÎÎñID (¾ÉÈÎÎñ)¡£
-            %   target_task_idx: Ä¿±êÈÎÎñID (ĞÂÈÎÎñ)¡£
-            %   agent_col_idx: ÖÇÄÜÌåÔÚ¾ØÕóÖĞµÄĞĞË÷Òı¡£
+            % è¯¥å‡½æ•°ç”¨äºè´ªå©ªç®—æ³•æˆ–å±€éƒ¨æœç´¢ä¸­çš„ Switch æ“ä½œï¼š
+            % æ™ºèƒ½ä½“ä»å½“å‰ä»»åŠ¡é€€å‡ºï¼Œå¹¶å°†å…¨éƒ¨èµ„æºè¿ç§»åˆ°ç›®æ ‡ä»»åŠ¡ã€‚
+            %
+            % è¾“å…¥ï¼š
+            %   Value_data        å½“å‰ç³»ç»ŸçŠ¶æ€
+            %   agents            æ™ºèƒ½ä½“åˆ—è¡¨
+            %   Value_Params      å…¨å±€å‚æ•°
+            %   cur_task_idx      å½“å‰æ‰€åœ¨ä»»åŠ¡ ID
+            %   target_task_idx   ç›®æ ‡ä»»åŠ¡ ID
+            %   agent_col_idx     æ™ºèƒ½ä½“åœ¨è”ç›ŸçŸ©é˜µä¸­çš„è¡Œç´¢å¼•
             
-            %% 1. ³õÊ¼»¯Óë±¸·İ
+            %% 1. åˆå§‹åŒ–
             M = Value_Params.M;
             K = Value_Params.K;
             agentID = Value_data.agentID;
             
-            % ±¸·İÔ­Ê¼×´Ì¬ (P×´Ì¬)
+            % åŸå§‹çŠ¶æ€ (P çŠ¶æ€)
             SC_P = Value_data.SC;
             R_agent_P = Value_data.resources_matrix;
             
-            % ³õÊ¼»¯ĞÂ×´Ì¬ (Q×´Ì¬)£¬ÏÈ¸´ÖÆ SC
+            % åˆå§‹åŒ–æ–°çŠ¶æ€ (Q çŠ¶æ€)
             SC_Q = SC_P;
             
-            %% 2. ×¼±¸ÖÇÄÜÌå×ÊÔ´ÏòÁ¿
+            %% 2. å‡†å¤‡æ™ºèƒ½ä½“èµ„æºå‘é‡
             raw_res = agents(agentID).resources(:)';
-            % È·±£×ÊÔ´ÏòÁ¿Î¬¶ÈÎª K
+            
             if length(raw_res) >= K
                 agent_full_res = raw_res(1:K);
             else
                 agent_full_res = [raw_res, zeros(1, K - length(raw_res))];
             end
             
-            %% 3. [¹Ø¼ü²Ù×÷] ¸öÌå×ÊÔ´¾ØÕóÈ«ÅÌÇåÁã
-            % ÎŞÂÛÖ®Ç°ÔÚÄÄ£¬ĞÂ×´Ì¬ R_agent_Q Ó¦Ö»°üº¬Ä¿±êÈÎÎñµÄ×ÊÔ´£¬ÆäÓà¹éÁã
+            %% 3. åˆå§‹åŒ–èµ„æºçŠ¶æ€
+            % æ–°çŠ¶æ€ä¸‹èµ„æºåªåœ¨ç›®æ ‡ä»»åŠ¡ä¸Šåˆ†é…
             R_agent_Q = zeros(M, K);
             
-            %% 4. Ö´ĞĞ"³·³ö"Âß¼­ (¸üĞÂ SC È«¾Ö¾ØÕó)
-            % ¸öÌå¾ØÕó R_agent_Q ÒÑÔÚÉÏ·½ÇåÁã£¬´Ë´¦Ö»Ğè´¦Àí SC_Q
+            %% 4. æ‰§è¡Œâ€œç¦»å¼€å½“å‰ä»»åŠ¡â€æ“ä½œ
             if cur_task_idx <= M
-                % ´Ó¾ÉÈÎÎñµÄĞ¡×éÖĞÒÆ³ı¸ÃÖÇÄÜÌåµÄ×ÊÔ´¹±Ï×
                 if cur_task_idx <= numel(SC_Q) && ~isempty(SC_Q{cur_task_idx})
                     SC_Q{cur_task_idx}(agent_col_idx, :) = 0;
                 end
             end
             
-            %% 5. Ö´ĞĞ"¼ÓÈë"Âß¼­ (¸üĞÂ SC ºÍ R_agent)
+            %% 5. æ‰§è¡Œâ€œåŠ å…¥ç›®æ ‡ä»»åŠ¡â€æ“ä½œ
             if target_task_idx <= M
-                % A. ¸öÌåÊÓÍ¼£ºÔÚÄ¿±êÈÎÎñĞĞÌîÈë×ÊÔ´ (Î¨Ò»·ÇÁãĞĞ)
+                
+                % A. æ›´æ–°èµ„æºçŸ©é˜µï¼ˆè¯¥æ™ºèƒ½ä½“çš„èµ„æºå…¨éƒ¨æŠ•å…¥ç›®æ ‡ä»»åŠ¡ï¼‰
                 R_agent_Q(target_task_idx, :) = agent_full_res;
                 
-                % B. È«¾ÖÊÓÍ¼£º½«×ÊÔ´¼ÓÈëĞÂÈÎÎñµÄ·ÖÅä¾ØÕóÖĞ
+                % B. æ›´æ–°å…¨å±€è”ç›Ÿç»“æ„ SC
                 if target_task_idx <= numel(SC_Q)
+                    
                     if isempty(SC_Q{target_task_idx})
                         SC_Q{target_task_idx} = zeros(Value_Params.N, K);
                     end
+                    
                     cols_to_fill = min(K, size(SC_Q{target_task_idx}, 2));
                     SC_Q{target_task_idx}(agent_col_idx, 1:cols_to_fill) = agent_full_res(1:cols_to_fill);
                 end
             end
         end
         
+        
         function [SC_P, SC_Q, R_agent_P, R_agent_Q] = join_changes(Value_data, agents, Value_Params, target, agentID, r)
-            % JOIN_CHANGES ¼ÆËã¡¾µ¥×ÊÔ´ÔöÁ¿¼ÓÈë¡¿²Ù×÷Ç°ºóµÄÈ«¾Ö½á¹¹Óë¸öÌå×´Ì¬±ä»¯¡£
-            % ÊÊÓÃ³¡¾°£ºSAËã·¨ÖĞµÄÎ¢µ÷£¨Join£©£¬Ö§³ÖÖØµşÁªÃË¡£
+            % JOIN_CHANGES è®¡ç®—â€œèµ„æºåŠ å…¥â€æ“ä½œåçš„çŠ¶æ€å˜åŒ–
             %
-            % ÊäÈë£º
-            %   Value_data: µ±Ç°Êı¾İ×´Ì¬
-            %   agents: ÖÇÄÜÌåÁĞ±í
-            %   Value_Params: È«¾Ö²ÎÊı
-            %   target: Ä¿±êÈÎÎñË÷Òı
-            %   agentID: ÖÇÄÜÌå ID
-            %   r: ÒªÍ¶ÈëµÄ×ÊÔ´ÀàĞÍË÷Òı (1..K)
+            % ç”¨äº SA ç®—æ³•ä¸­çš„å¾®æ“ä½œ Joinï¼š
+            % æ™ºèƒ½ä½“å°†æŸä¸€ç§èµ„æº r æŠ•å…¥ç›®æ ‡ä»»åŠ¡ã€‚
+            %
+            % è¾“å…¥ï¼š
+            %   Value_data   å½“å‰ç³»ç»ŸçŠ¶æ€
+            %   agents       æ™ºèƒ½ä½“åˆ—è¡¨
+            %   Value_Params å…¨å±€å‚æ•°
+            %   target       ç›®æ ‡ä»»åŠ¡
+            %   agentID      æ™ºèƒ½ä½“ ID
+            %   r            èµ„æºç±»å‹ (1..K)
             
             M = Value_Params.M;
             
-            %% 0. Ë÷Òı×ª»»ÓëĞ£Ñé
-            % È·±£»ñÈ¡µÄÊÇ¾ØÕóÖĞµÄĞĞË÷Òı
-            if agentID >= 1 && agentID <= numel(agents) && isstruct(agents(agentID)) && agents(agentID).id == agentID
+            %% 0. æ™ºèƒ½ä½“ç´¢å¼•æ£€æŸ¥
+            if agentID >= 1 && agentID <= numel(agents) && ...
+                    isstruct(agents(agentID)) && agents(agentID).id == agentID
+                
                 agentIdx = agentID;
             else
                 agentIdx = find([agents.id] == agentID, 1, 'first');
+                
                 if isempty(agentIdx)
                     error('join_changes:AgentNotFound', 'agentID=%d not found.', agentID);
                 end
             end
             
-            %% 1. »ñÈ¡²Ù×÷Ç°×´Ì¬ (P)
-            SC_P = Value_data.SC; % ÒıÓÃµ±Ç°×´Ì¬
+            %% 1. å½“å‰çŠ¶æ€ (P)
+            SC_P = Value_data.SC;
             
-            % µ÷ÓÃ±¾ÀàÄÚ²¿µÄ¹¤¾ßº¯ÊıÌáÈ¡²Ù×÷Ç°µÄ¸öÌå¾ØÕó
             R_agent_P = OCFUtils.get_agent_resource_matrix(SC_P, agentIdx, Value_Params);
 
-            %% 2. ¹¹½¨²Ù×÷ºó×´Ì¬ (Q)
-            SC_Q = SC_P; % ¸´ÖÆ Cell Êı×é
+            %% 2. æ–°çŠ¶æ€ (Q)
+            SC_Q = SC_P;
             
-            % »ñÈ¡¸Ã×ÊÔ´ÀàĞÍµÄ¿ÉÓÃÁ¿£¨¼ÙÉèÈ«Á¿Í¶Èë£©
+            % è·å–è¯¥èµ„æºç±»å‹çš„å®¹é‡
             if isfield(Value_data, 'resources')
                  cap_r = Value_data.resources(r); 
             else
                  cap_r = agents(agentIdx).resources(r);
             end
             
-            % Ö´ĞĞ Join£º¸üĞÂÄ¿±êÈÎÎñµÄ·ÖÅä¾ØÕó
+            % æ‰§è¡Œ Join æ“ä½œ
             if isempty(SC_Q{target})
                 SC_Q{target} = zeros(Value_Params.N, Value_Params.K);
             end
+            
             SC_Q{target}(agentIdx, r) = cap_r;
             
-            %% 3. »ñÈ¡²Ù×÷ºó×´Ì¬ (Q) µÄ¸öÌåÊÓÍ¼
-            % µ÷ÓÃ±¾ÀàÄÚ²¿µÄ¹¤¾ßº¯ÊıÌáÈ¡²Ù×÷ºóµÄ¸öÌå¾ØÕó
+            %% 3. è®¡ç®—æ–°èµ„æºçŠ¶æ€
             R_agent_Q = OCFUtils.get_agent_resource_matrix(SC_Q, agentIdx, Value_Params);
         end
         
 
-
         function [SC_P, SC_Q, R_agent_P, R_agent_Q] = leave_changes(Value_data, agents, Value_Params, target_task_idx, agentID, r)
-            % LEAVE_CHANGES ¼ÆËã¡¾µ¥×ÊÔ´³·³ö¡¿²Ù×÷Ç°ºóµÄÈ«¾Ö½á¹¹Óë¸öÌå×´Ì¬±ä»¯¡£
-            % ÊÊÓÃ³¡¾°£ºSAËã·¨ÖĞµÄÎ¢µ÷£¨Leave£©£¬½«Ä³Ò»ÖÖ×ÊÔ´´ÓÌØ¶¨ÈÎÎñÖĞÍêÈ«³·»Ø¡£
+            % LEAVE_CHANGES è®¡ç®—â€œèµ„æºæ’¤å‡ºâ€æ“ä½œåçš„çŠ¶æ€å˜åŒ–
             %
-            % ÊäÈë£º
-            %   Value_data: µ±Ç°Êı¾İ×´Ì¬
-            %   agents: ÖÇÄÜÌåÁĞ±í
-            %   Value_Params: È«¾Ö²ÎÊı
-            %   target_task_idx: ÒªÀë¿ªµÄÄ¿±êÈÎÎñË÷Òı
-            %   agentID: ÖÇÄÜÌå ID
-            %   r: Òª³·³öµÄ×ÊÔ´ÀàĞÍË÷Òı (1..K)
+            % ç”¨äº SA ç®—æ³•ä¸­çš„å¾®æ“ä½œ Leaveï¼š
+            % æ™ºèƒ½ä½“ä»æŸä¸ªä»»åŠ¡ä¸­æ’¤å‡ºæŸä¸€ç±»èµ„æºã€‚
+            %
+            % è¾“å…¥ï¼š
+            %   Value_data       å½“å‰ç³»ç»ŸçŠ¶æ€
+            %   agents           æ™ºèƒ½ä½“åˆ—è¡¨
+            %   Value_Params     å…¨å±€å‚æ•°
+            %   target_task_idx  è¦æ’¤å‡ºçš„ä»»åŠ¡
+            %   agentID          æ™ºèƒ½ä½“ ID
+            %   r                èµ„æºç±»å‹
             
             M = Value_Params.M;
             
-            %% 0. Ë÷Òı×ª»»ÓëĞ£Ñé
-            % È·±£»ñÈ¡µÄÊÇ¾ØÕóÖĞµÄĞĞË÷Òı
-            if agentID >= 1 && agentID <= numel(agents) && isstruct(agents(agentID)) && agents(agentID).id == agentID
+            %% 0. æ™ºèƒ½ä½“ç´¢å¼•æ£€æŸ¥
+            if agentID >= 1 && agentID <= numel(agents) && ...
+                    isstruct(agents(agentID)) && agents(agentID).id == agentID
+                
                 agentIdx = agentID;
             else
                 agentIdx = find([agents.id] == agentID, 1, 'first');
+                
                 if isempty(agentIdx)
                     error('leave_changes:AgentNotFound', 'agentID=%d not found.', agentID);
                 end
             end
             
-            %% 1. »ñÈ¡²Ù×÷Ç°×´Ì¬ (P)
+            %% 1. å½“å‰çŠ¶æ€ (P)
             SC_P = Value_data.SC; 
             
-            % ÌáÈ¡²Ù×÷Ç°µÄ¸öÌå¾ØÕó (ÓÃÓÚ¶Ô±È»ò»Ö¸´)
             R_agent_P = OCFUtils.get_agent_resource_matrix(SC_P, agentIdx, Value_Params);
 
-            %% 2. ¹¹½¨²Ù×÷ºó×´Ì¬ (Q)
-            SC_Q = SC_P; % ¸´ÖÆ Cell Êı×é
+            %% 2. æ–°çŠ¶æ€ (Q)
+            SC_Q = SC_P;
             
-            % Ö´ĞĞ Leave£º½«Ä¿±êÈÎÎñµÄÌØ¶¨×ÊÔ´·ÖÅäÖÃÎª 0 (ÍêÈ«³·³ö)
+            % ä»ç›®æ ‡ä»»åŠ¡æ’¤å‡ºèµ„æº
             if target_task_idx <= numel(SC_Q) && ~isempty(SC_Q{target_task_idx})
                 SC_Q{target_task_idx}(agentIdx, r) = 0;
             end
             
-            %% 3. »ñÈ¡²Ù×÷ºó×´Ì¬ (Q) µÄ¸öÌåÊÓÍ¼
-            % µ÷ÓÃ¹¤¾ßº¯ÊıÖØĞÂÉú³É R_agent_Q£¬È·±£Êı¾İÒ»ÖÂĞÔ
+            %% 3. æ›´æ–°èµ„æºçŸ©é˜µ
             R_agent_Q = OCFUtils.get_agent_resource_matrix(SC_Q, agentIdx, Value_Params);
         end
         
-    end % end methods
-end % end classdef
+    end
+end

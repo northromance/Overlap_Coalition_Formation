@@ -19,14 +19,13 @@ classdef OCFUtils
 
             % 定义需要添加到路径的子文件夹列表
             candidates = { ...
-                'Main_fun', ...           % 存放核心功能与主逻辑函数
-                'SA', ...                 % 模拟退火 (Simulated Annealing) 相关代码
-                'plots', ...              % 绘图与可视化工具函数
-                'comalg/Com_Baseline', ...% 对比算法：基线贪婪策略
-                'comalg/Com_Huo2025', ... % 对比算法：参考文献 Huo2025
-                'comalg/Com_Qi2023', ...  % 对比算法：参考文献 Qi2023
-                'comalg/Com_PSO', ...     % 对比算法：粒子群优化 (PSO)
-                'Com_Qin2025' ...         % 当前研究提出的算法实现
+                'Main_fun', ...                % 框架层：效用/时间/工具 + 共享算法辅助函数
+                'plots', ...                   % 绘图与可视化工具函数
+                'comalg/alg1_SA', ...          % 算法 1: SA_Value（早期算法）
+                'comalg/alg2_Huo2025', ...     % 算法 2: Huo2025
+                'comalg/alg3_Qi2023', ...      % 算法 3: Qi2023
+                'comalg/alg4_Shi2024', ...     % 算法 4: Shi2024
+                'comalg/alg7_OCF_SAtabu' ...   % 算法 7: OCF_SAtabu_global（主算法）
                 };
 
             added = {};

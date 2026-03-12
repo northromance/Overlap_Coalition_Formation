@@ -1,201 +1,202 @@
-function [Value_data, history_data] = SA_Value_TabuEnhanced_global_main(agents, tasks, AddPara, Value_Params)
-% SA_VALUE_TABUENHANCED_GLOBAL_MAIN »ùÓÚÈ«¾ÖÉç»áĞ§ÓÃµÄÄ£ÄâÍË»ğ-½û¼ÉËÑË÷Ëã·¨
+function [Value_data, history_data] = OCF_SAtabu_global_main(agents, tasks, AddPara, Value_Params)
+feature('DefaultCharacterSet', 'UTF-8');
+% SA_VALUE_TABUENHANCED_GLOBAL_MAIN åŸºäºå…¨å±€ç¤¾ä¼šæ•ˆç”¨çš„æ¨¡æ‹Ÿé€€ç«-ç¦å¿Œæœç´¢ç®—æ³•
 %
-% === [ºËĞÄÉè¼ÆÀíÄî - È«¾ÖÉç»áĞ§ÓÃ£¨GSU£©°æ±¾] ===
-% ±¾°æ±¾²ÉÓÃÍêÈ«ÀûËûÖ÷Òå¾ö²ß»úÖÆ£¬ºËĞÄ´´ĞÂÎª"È«¾ÖÉç»áĞ§ÓÃ"£º
+% === [æ ¸å¿ƒä¿®æ”¹è¯´æ˜ - å…¨å±€ç¤¾ä¼šæ•ˆç”¨ï¼ˆGSUï¼‰ç‰ˆæœ¬] ===
+% æœ¬ç‰ˆæœ¬å¼•å…¥äº†å…¨å±€æœ€ä¼˜åå¥½æœºåˆ¶ï¼Œæ ¸å¿ƒæ€æƒ³ä¸ºâ€œå…¨å±€ç¤¾ä¼šæ•ˆç”¨â€ï¼š
 %
-%   1. Metropolis×¼Ôò£º»ùÓÚ Preference_gain ¼ÆËãµÄÈ«¾ÖĞ§ÓÃ²îÖµ
-%      - delta_E = SC_candidate ÏÂÈ«ÌåÖÇÄÜÌåĞ§ÓÃÖ®ºÍ - SC_current ÏÂÈ«ÌåÖÇÄÜÌåĞ§ÓÃÖ®ºÍ
-%      - ÓÃÓÚ½ÓÊÜ/¾Ü¾øºòÑ¡½âµÄÈÕ³£¾ö²ß£¨Ä£ÄâÍË»ğµÄºËĞÄ¸ÅÂÊ½ÓÊÜ»úÖÆ£©
+%   1. Metropolis å‡†åˆ™ï¼šåŸºäº Preference_gain è€Œéå…¨å±€æ•ˆç”¨å·®å€¼
+%      - delta_E = SC_candidate çš„å…¨å±€ç¤¾ä¼šæ•ˆç”¨ - SC_current çš„å…¨å±€ç¤¾ä¼šæ•ˆç”¨
+%      - ç”¨äºæ¥å—/æ‹’ç»å€™é€‰è§£çš„æ¦‚ç‡æ€§åˆ¤å®šï¼Œæ˜¯æ¨¡æ‹Ÿé€€ç«çš„æ ¸å¿ƒæ¦‚ç‡æ¥å—æœºåˆ¶
 %
-%   2. ÌØÉâ×¼Ôò£¨Aspiration Criterion£©£º»ùÓÚÈ«¾ÖÉç»áĞ§ÓÃ£¨Global Social Utility, GSU£©
-%      - GSU¶¨Òå£ºËùÓĞ N ¸öÖÇÄÜÌåÔÚºòÑ¡½âÏÂµÄĞ§ÓÃ×ÜºÍ
-%      - Ã¿¸öÖÇÄÜÌåÎ¬»¤×Ô¼º¹Û²âµ½µÄÀúÊ·×î¼ÑGSU£ºbest_LSU(i)£¨ÕË±¾º¬ÒåÉı¼¶ÎªÈ«¾Ö×îÓÅ£©
-%      - ÌØÉâÌõ¼ş£ºcurrent_GSU > best_LSU(i)
-%      - ÀíÂÛº¬Òå£º¼´Ê¹µ±Ç°¶¯×÷±»½û¼É±í·âËø£¬Ö»ÒªËüÄÜ½«È«ÌåÖÇÄÜÌåµÄÉç»á×Ü¸£ÀûÍÆÏòÀúÊ·ĞÂ¸ß£¬¾ÍÎŞÊÓ½û¼É£¬Ç¿ÖÆÔÊĞíÖ´ĞĞ¡£
+%   2. æ„¿æœ›å‡†åˆ™ï¼ˆAspiration Criterionï¼‰åŸºäºå…¨å±€ç¤¾ä¼šæ•ˆç”¨ï¼ˆGlobal Social Utility, GSUï¼‰
+%      - GSU å®šä¹‰ï¼šæ‰€æœ‰ N ä¸ªæ™ºèƒ½ä½“åœ¨å€™é€‰è§£ä¸‹çš„æ•ˆç”¨æ€»å’Œ
+%      - æ¯ä¸ªæ™ºèƒ½ä½“ç»´æŠ¤è‡ªå·±è§‚æµ‹åˆ°çš„å†å²æœ€ä¼˜ GSUï¼ˆbest_GSUï¼‰ï¼Œè¿™é‡Œå°†å…¶ç»Ÿä¸€ä¸ºå…¨å±€å˜é‡
+%      - æ„¿æœ›æ¡ä»¶ï¼šcurrent_GSU > best_GSU
+%      - ç›´è§‚å«ä¹‰ï¼šå³ä½¿å½“å‰å€™é€‰è§£è¢«ç¦å¿Œï¼Œåªè¦å®ƒèƒ½å°†å…¨å±€ç¤¾ä¼šæ•ˆç”¨æå‡åˆ°å†å²æ–°é«˜ï¼Œå°±å…è®¸ç¦å¿Œå¤±æ•ˆï¼Œå¼ºåˆ¶æ‰§è¡Œ
 % ==============================================
 
-%% ==================== 0. Ëæ»úÊıÖÖ×ÓÉèÖÃ ====================
-% ÎªÁË±£Ö¤¿ÆÑ§ÊµÑéµÄ¿É¸´ÏÖĞÔ£¨Reproducibility£©£¬¹Ì¶¨Ëæ»úÊıÖÖ×Ó
+%% ==================== 0. éšæœºæ•°åˆå§‹åŒ– ====================
+% ä¸ºäº†ä¿è¯æ•°å€¼å®éªŒçš„å¯å¤ç°æ€§ï¼ˆReproducibilityï¼‰ï¼Œå›ºå®šéšæœºæ•°ç§å­
 if isfield(Value_Params, 'seed')
     rng(Value_Params.seed);
 end
 
-%% ==================== 1. ³õÊ¼»¯½×¶Î ====================
-eps_val = 1e-6;          % ¸¡µãÊı±È½ÏÈİ²î
+%% ==================== 1. åˆå§‹åŒ–é˜¶æ®µ ====================
+eps_val = 1e-6;          % æµ®ç‚¹æ•°æ¯”è¾ƒå®¹å·®
 history_data = struct();
-tabu_tenure = Value_Params.tabu_tenure; % ½û¼ÉÆÚÏŞ
+tabu_tenure = Value_Params.tabu_tenure; % ç¦å¿Œé•¿åº¦
 
 Value_data = WorldSim.init_value_data(agents, tasks, Value_Params);
 [Value_data, summatrix] = WorldSim.init_observe_belief_neighbor(Value_data, Value_Params.N, Value_Params.M, Value_Params);
 
-%% ==================== 2. Ö÷Ñ­»·£º¶àÂÖ²©ŞÄµü´ú ====================
+%% ==================== 2. å¤–å¾ªç¯ï¼ˆè½®æ¬¡è¿­ä»£ï¼‰ ====================
 for counter = 1:Value_Params.num_rounds
-    %% 2.2 SA ³õÊ¼»¯
-    k_iter = 1;                     % µü´ú¼ÆÊıÆ÷
-    previous_SC = Value_data(1).SC; % ÊÕÁ²¼ì²â»ù×¼
+    %% 2.2 SA åˆå§‹åŒ–
+    k_iter = 1;                     % å†…å¾ªç¯è¿­ä»£è®¡æ•°
+    previous_SC = Value_data(1).SC; % ä¸Šä¸€è½®è”ç›Ÿç»“æ„
     k_stable = 0;
     doneflag = 0;
 
-    % ÂÖ¼äÎÂ¶Èµ÷¶È£º³õÊ¼ÎÂ¶ÈËæÂÖÊıÖ¸ÊıË¥¼õ
+    % åˆ†è½®æ¸©åº¦è°ƒåº¦ï¼šåˆå§‹æ¸©åº¦éšè½®æ¬¡æŒ‡æ•°è¡°å‡
     Value_Params.Temperature = max(Value_Params.T_min_round, ...
         Value_Params.T0_round * Value_Params.T_decay^(counter-1));
     if AddPara.verbose
-        fprintf('  [SA-Altruistic] Round %d: ³õÊ¼ÎÂ¶È = %.2f\n', counter, Value_Params.Temperature);
+        fprintf('  [SA-Altruistic] Round %d: åˆå§‹æ¸©åº¦ = %.2f\n', counter, Value_Params.Temperature);
     end
 
-    % --- ³õÊ¼»¯ GSU ×îÓÅÕË±¾ ---
-    % GSU ÊÇÈ«¾Ö±êÁ¿£¨ËùÓĞÖÇÄÜÌåĞ§ÓÃÖ®ºÍ£©£¬Ö»Ğè¼ÆËãÒ»´Î£¬ÓÉÈ«ÌåÖÇÄÜÌå¹²Ïí
+    % --- åˆå§‹åŒ– GSU æœ€ä¼˜è®°å½• ---
+    % GSU æ˜¯å…¨å±€å˜é‡ï¼Œè¡¨ç¤ºæ‰€æœ‰æ™ºèƒ½ä½“æ€»æ•ˆç”¨ä¹‹å’Œï¼Œå› æ­¤åªéœ€è¦è®¡ç®—ä¸€æ¬¡ï¼Œæ‰€æœ‰æ™ºèƒ½ä½“å…±äº«
     best_SC = Value_data(1).SC;
 
-    % ¹¹Ôì¿ÕSC×÷ÎªGSU»ù×¼£¨ÎŞÈÎÎñ·ÖÅä×´Ì¬£©
+    % æ„é€ ç©ºSCä½œä¸ºGSUåŸºå‡†ï¼Œç”¨äºåˆå§‹åŒ–çŠ¶æ€
     SC_empty = cell(Value_Params.M, 1);
     for m = 1:Value_Params.M
         SC_empty{m} = zeros(Value_Params.N, Value_Params.K);
     end
-    % ½ö¼ÆËãÒ»´Î£ºGSUÓëµ÷ÓÃÕßagent_idxÎŞ¹Ø£¬½á¹û¶ÔÈ«ÌåÖÇÄÜÌåÏàÍ¬
+    % è®¡ç®—ä¸€æ¬¡ï¼ŒGSU çš„å€¼ä¸ agent_idx æ— å…³ï¼Œå› æ­¤ä»»æ„ä¼ ä¸€ä¸ª agent å³å¯
     best_GSU = calculate_local_social_utility(SC_empty, best_SC, 1, agents, tasks, Value_Params, Value_data(1), AddPara);
 
-    %% ==================== 2.25 ³õÊ¼»¯½û¼ÉÁĞ±í ====================
-    % ½û¼É±íÓÃÓÚ·ÀÖ¹ÍË»ğËÑË÷ÔÚÁ½¸öÏà½ü×´Ì¬Ö®¼ä·´¸´ºáÌø£¨¾Ö²¿ËÀÑ­»·£©
+    %% ==================== 2.25 åˆå§‹åŒ–ç¦å¿Œè¡¨ ====================
+    % ç¦å¿Œè¡¨ç”¨äºé˜²æ­¢ç®—æ³•åœ¨å±€éƒ¨çŠ¶æ€ä¹‹é—´åå¤éœ‡è¡ï¼Œä»è€Œé¿å…å±€éƒ¨å¾ªç¯
     tabu_list = {};
     if AddPara.verbose
-        fprintf('  [Tabu] ½û¼ÉÆÚÏŞ = %d\n', tabu_tenure);
+        fprintf('  [Tabu] ç¦å¿Œé•¿åº¦ = %d\n', tabu_tenure);
     end
 
-    %% ==================== 2.3 µÚÒ»ÂÖÌØÓĞ£ºÉú³É³õÊ¼½â (Soft Greedy) ====================
-    % ÔÚµÚ1ÂÖ£¬ÎªÁË¼Ó¿ìÊÕÁ²£¬²»Ê¹ÓÃ´¿Ëæ»ú·ÖÅä£¬¶øÊÇÓÃ¡°ÈíÌ°ĞÄ¡±²ßÂÔ¸ø³öÒ»¸öÖÊÁ¿½ÏºÃµÄ³õÊ¼½â
+    %% ==================== 2.3 ç¬¬ä¸€è½®æ‰§è¡Œï¼šæ„é€ åˆå§‹è§£ (Soft Greedy) ====================
+    % åœ¨ç¬¬1è½®ï¼Œä¸ºäº†åŠ å¿«æ”¶æ•›é€Ÿåº¦ï¼Œä½¿ç”¨å¸¦æ¸©åº¦æ§åˆ¶çš„â€œè½¯è´ªå©ªâ€ç­–ç•¥æ„é€ ä¸€ä¸ªè´¨é‡è¾ƒå¥½çš„åˆå§‹è”ç›Ÿç»“æ„
     if counter == 1
         if AddPara.verbose
-            fprintf('  [SA] µÚ1ÂÖ£º»ùÓÚµÍÎÂ¸ÅÂÊÉú³É³õÊ¼ÁªÃË½á¹¹ (Soft Greedy)...\n');
+            fprintf('  [SA] ç¬¬1è½®ï¼Œä½¿ç”¨è½¯è´ªå©ªç­–ç•¥æ„é€ åˆå§‹è”ç›Ÿç»“æ„ (Soft Greedy)...\n');
         end
         SC_global = Value_data(1).SC;
         task_type_demands = Value_Params.task_type_demands;
-        resource_confidence = Value_Params.resource_confidence; % ×ÊÔ´ĞèÇóµÄÖÃĞÅ¶È£¨¿¹Óù²»È·¶¨ĞÔ£©
+        resource_confidence = Value_Params.resource_confidence; % èµ„æºéœ€æ±‚ç½®ä¿¡åº¦ï¼ˆå¤„ç†ä¸ç¡®å®šæ€§ï¼‰
         T_init_construction = Value_Params.T_init_construction;
 
-        % ÂÖÑ¯Ã¿¸öÖÇÄÜÌå£¬¸ù¾İµ±Ç°ĞèÇóÈ±¿Ú(gap)½øĞĞ³õ²½µÄ×ÊÔ´Í¶·Å
+        % ä¾æ¬¡éå†æ¯ä¸ªæ™ºèƒ½ä½“ï¼Œæ ¹æ®å½“å‰èµ„æºç¼ºå£(gap)è¿›è¡Œèµ„æºæŠ•æ”¾
         for i = 1:Value_Params.N
             Value_data(i).SC = SC_global;
-            % ¸ù¾İ·ÖÎ»Êı¼ÆËãµ±Ç°×ÊÔ´ĞèÇó
+            % æ ¹æ®å½“å‰è”ç›Ÿç»“æ„è®¡ç®—å½“å‰èµ„æºç¼ºå£
             [~, resource_gap] = calc_gaps(Value_data(i), Value_Params, AddPara);
 
-            % »ùÓÚÂÖÅÌ¶Ä£¨¸ÅÂÊÓÉsoftmaxÉú³É£©Ñ¡ÔñÈÎÎñ£¬Æ«ÏòÓÚÈ±¿Ú´óµÄÈÎÎñ
+            % ä½¿ç”¨è½¯æœ€å¤§ç­–ç•¥ï¼ˆsoftmaxï¼‰ç”Ÿæˆæ¦‚ç‡åˆ†å¸ƒï¼Œä¼˜å…ˆé€‰æ‹©æ›´åå‘äºç¼ºå£å¤§çš„ä»»åŠ¡
             probs = SA_Select_probs(Value_data(i), agents, tasks, Value_Params, resource_gap, T_init_construction);
 
-            for k = 1:Value_Params.K % ±éÀúÃ¿ÖÖÀàĞÍ
+            for k = 1:Value_Params.K % éå†æ¯ä¸€ç±»èµ„æº
                 resource_amt = agents(i).resources(k);
-                if resource_amt <= 0, continue; end % Èç¹ûÃ»ÓĞµÚkÖÖ×ÊÔ´£¬Ìø¹ı
+                if resource_amt <= 0, continue; end % å¦‚æœæ²¡æœ‰ç¬¬kç±»èµ„æºåˆ™è·³è¿‡
 
-                % ÂÖÅÌ¶ÄÑ¡Ôñ£¨·â×°ÔÚ OCFUtils.sample_task_from_probs ÖĞ£©
+                % æŒ‰æ¦‚ç‡é€‰æ‹©ä»»åŠ¡ï¼ˆå°è£…åœ¨ OCFUtils.sample_task_from_probs ä¸­ï¼‰
                 selected_task = OCFUtils.sample_task_from_probs(probs(k, :), Value_Params.M);
                 if isempty(selected_task), continue; end
 
-                % Èç¹ûÒÑÔÚ´ËÈÎÎñÖĞÍ¶ÈëÁË¸Ã×ÊÔ´£¬Ìø¹ı
+                % å¦‚æœå½“å‰è¯¥ä»»åŠ¡å·²ç»æŠ•è¿‡è¯¥ç±»èµ„æºï¼Œåˆ™è·³è¿‡
                 if SC_global{selected_task}(i, k) > 0, continue; end
 
-                % ¼ÆËãÆÚÍûĞèÇóÁ¿£¬ÅĞ¶ÏÊÇ·ñ»¹ÄÜÈûµÃÏÂ×ÊÔ´
+                % æ ¹æ®ç½®ä¿¡éœ€æ±‚åˆ¤æ–­æ˜¯å¦éœ€è¦è¡¥å……è¯¥ç±»èµ„æº
                 curr_alloc = sum(SC_global{selected_task}(:, k));
                 belief = Value_data(i).initbelief(selected_task, :);
                 expected_demand = WorldSim.calculate_demand_quantile(belief, task_type_demands, resource_confidence);
                 can_add = max(0, expected_demand(k) - curr_alloc);
 
-                % Èç¹û¸ÃÈÎÎñ»¹ĞèÒª×ÊÔ´£¬³¢ÊÔÍ¶Èë
+                % å¦‚æœè¯¥ä»»åŠ¡è¿˜éœ€è¦è¯¥ç±»èµ„æºï¼Œåˆ™å°è¯•æŠ•æ”¾
                 if can_add > 0
                     SC_candidate = SC_global;
                     SC_candidate{selected_task}(i, k) = resource_amt;
 
-                    % ÑéÖ¤¸Ã¶¯×÷ÊÇ·ñÂú×ãÏµÍ³Ó²Ô¼Êø£¨ÀıÈç²»¿É³¬Ô½×î´óÈİÁ¿µÈ£©
+                    % éªŒè¯è¯¥åŠ¨ä½œæ˜¯å¦åˆæ³•ï¼ˆå¦‚ä¸è¶…è¿‡èµ„æºå®¹é‡ç­‰ç¡¬çº¦æŸï¼‰
                     Value_data_temp = Value_data;
-                    for j=1:Value_Params.N, Value_data_temp(j).SC = SC_candidate; end
+                    for j = 1:Value_Params.N, Value_data_temp(j).SC = SC_candidate; end
                     [isFeasible, ~, ~] = validate_feasibility(Value_data_temp, agents, tasks, ...
                         Value_Params, i, SC_candidate, true, AddPara);
                     if isFeasible
-                        SC_global = SC_candidate; % Èç¹ûºÏ·¨£¬ÕæÕı²ÉÄÉ¸Ã½â
+                        SC_global = SC_candidate; % è‹¥åˆæ³•åˆ™æ¥å—è¯¥æ­¥
                     end
                 end
             end
-            % Í¬²½µ±Ç°È«¾Ö×´Ì¬¸øËùÓĞAgent
+            % åŒæ­¥å½“å‰å…¨å±€çŠ¶æ€åˆ°æ‰€æœ‰Agent
             for j = 1:Value_Params.N, Value_data(j).SC = SC_global; end
         end
 
-        % ÈíÌ°ĞÄ·ÖÅä½áÊøºó£¬¹¹½¨×îÖÕµÄÄÚ²¿Êı¾İ½á¹¹£¨¾ØÕó¡¢ÁªÃË¹éÊôµÈ£©
+        % è´ªå©ªåˆ†é…å®Œæˆåï¼Œæ„é€ æœ€ç»ˆå†…éƒ¨æ•°æ®ç»“æ„ï¼ˆèµ„æºçŸ©é˜µã€è”ç›Ÿç»“æ„ï¼‰
         for i = 1:Value_Params.N
             Value_data(i).SC = SC_global;
             Value_data(i).resources_matrix = OCFUtils.get_agent_resource_matrix(SC_global, i, Value_Params);
             Value_data(i).coalitionstru = OCFUtils.build_coalitionstru_from_SC(SC_global, Value_Params, agents);
         end
 
-        % ¸ù¾İÉú³ÉµÄ³õÊ¼½âÖØĞÂ¼ÆËãÈ«¾ÖGSU£¬½öËãÒ»´Î²¢¹ã²¥¸øÈ«ÌåÖÇÄÜÌå
+        % å¯¹æ„é€ å‡ºçš„åˆå§‹è§£é‡æ–°è®¡ç®—å…¨å±€GSUï¼Œå¹¶æ›´æ–°ä¸€æ¬¡å…¨å±€æœ€ä¼˜è®°å½•
         best_SC = SC_global;
         best_GSU = calculate_local_social_utility(SC_empty, SC_global, 1, agents, tasks, Value_Params, Value_data(1), AddPara);
     end
 
-    %% ==================== 3. SA ÍâÑ­»· (ºËĞÄ²©ŞÄ¹ı³Ì - ÀûËûÖ÷Òå°æ±¾) ====================
+    %% ==================== 3. SA å†…å¾ªç¯ï¼ˆæ ¸å¿ƒæœç´¢è¿‡ç¨‹ - ç¦å¿Œå¢å¼ºç‰ˆï¼‰ ====================
     inner_loop_history = ResultProcessor.init_inner_loop_history();
 
-    % ¼ÇÂ¼µ±Ç°×´Ì¬µÄÈ«¾ÖĞ§ÓÃ£¨ÉÏµÛÊÓ½Ç£¬½ö¹©»æÍ¼/ÆÀ¹À£©
+    % è®°å½•å½“å‰çŠ¶æ€çš„å…¨å±€æ•ˆç”¨ï¼ˆä¸Šå¸è§†è§’ï¼‰ï¼Œç”¨äºç”»å›¾/åˆ†æ
     current_utility_global = 0;
     for j = 1:Value_Params.N
         current_utility_global = current_utility_global + UtilityEvaluator.calc_agent_total_utility(Value_data(j).SC, agents, tasks, Value_Params, Value_data(j), AddPara);
     end
 
-    % ? [ĞÂÔö/ĞŞ¸Äµã 1: Ã¿ÂÖÎïÀíÖ´ĞĞÇ°£¬³õÊ¼»¯¡°ÉÏµÛÕÕÏà»ú¡±£¬Æğ²½¾ÍÊÇÄ¿Ç°µÄ×î¼Ñ] ?
+    % [æ–°å¢/ä¿®æ”¹ 1: æ¯è½®æœç´¢å¼€å§‹å‰ï¼Œåˆå§‹åŒ–â€œç²¾è‹±è§£â€ï¼Œé€æ­¥è®°å½•ç›®å‰æœ€å¥½çš„å…¨å±€çŠ¶æ€]
     elite_global_utility = current_utility_global;
     elite_SC = Value_data(1).SC;
     elite_coalitionstru = Value_data(1).coalitionstru;
 
     while(doneflag == 0)
-        % --- 3.1 Ë³Ğò²©ŞÄ£ºN¸öAgentÒÀ´Î¾ö²ß ---
+        % --- 3.1 é¡ºåºæ‰«æï¼šNä¸ªAgentè½®æµå†³ç­– ---
         for ii = 1:Value_Params.N
-            % ²½Öè1: ÖÇÄÜÌå ii ¸ù¾İ×ÔÉí¾Ö²¿ĞÅÏ¢Éú³ÉÒ»¸ö±äÒìºòÑ¡½â£¨³·³öÄ³Ğ©ÈÎÎñ£¬¼ÓÈëĞÂÈÎÎñ£©
+            % æ­¥éª¤1ï¼šä¸ºå½“å‰ ii æ™ºèƒ½ä½“ç”Ÿæˆä¸€ä¸ªå±€éƒ¨å€™é€‰è§£ï¼ˆå¯èƒ½æ’¤å‡ºæŸäº›ä»»åŠ¡ï¼ŒåŠ å…¥æŸäº›ä»»åŠ¡ï¼‰
             [SC_candidate, ~] = generate_candidate_solution_tabu(Value_data(ii), agents, tasks, Value_Params, AddPara);
 
-            % ²½Öè3: ½û¼ÉÅĞ¶Ï (Tabu Check)
-            candidate_hash = get_SC_hash(SC_candidate, Value_Params); % ¶Ô·ÖÅä¾ØÕó½øĞĞ¹şÏ££¬Éú³ÉÎ¨Ò»Ö¸ÎÆ
-            is_tabu = is_in_tabu_list(candidate_hash, tabu_list);     % ÅĞ¶ÏĞÂ½âÊÇ·ñÔÚ½û¼É±íÖĞ
+            % æ­¥éª¤3ï¼šç¦å¿Œåˆ¤æ–­ (Tabu Check)
+            candidate_hash = get_SC_hash(SC_candidate, Value_Params); % å¯¹åˆ†é…ç»“æ„è¿›è¡Œå“ˆå¸Œç¼–ç ï¼Œå”¯ä¸€æ ‡è¯†
+            is_tabu = is_in_tabu_list(candidate_hash, tabu_list);     % åˆ¤æ–­è¯¥è§£æ˜¯å¦åœ¨ç¦å¿Œè¡¨ä¸­
 
-            % GSU ÊÇÈ«¾Ö±êÁ¿£¬Óë agent_idx ÎŞ¹Ø£¬ÌáÇ°¼ÆËãÒ»´Î£¬Á½Ìõ·ÖÖ§£¨½û¼É/·Ç½û¼É£©¾ù¿É¸´ÓÃ
+            % GSU æ˜¯å…¨å±€å˜é‡ï¼Œä¸ agent_idx æ— å…³ï¼Œå› æ­¤å½“å‰åªç®—ä¸€æ¬¡ï¼Œç”¨äºåŒæ—¶æ”¯æŒç¦å¿Œ/éç¦å¿Œã€æ¥å—æ¦‚ç‡åˆ¤æ–­
             SC_current = Value_data(ii).SC;
             current_GSU = calculate_local_social_utility(SC_current, SC_candidate, 1, agents, tasks, Value_Params, Value_data(ii), AddPara);
 
             accept = false;
 
             if is_tabu
-                % === [GSU ÌØÉâ×¼Ôò£ºµ±Ç°ºòÑ¡½âµÄÈ«¾ÖĞ§ÓÃ³¬¹ıÀúÊ·×îÓÅÊ±£¬ÎŞÊÓ½û¼ÉÇ¿ÖÆ½ÓÊÜ] ===
+                % === [GSU æ„¿æœ›å‡†åˆ™ï¼šå½“å‰å€™é€‰è§£çš„å…¨å±€æ•ˆç”¨è¶…è¿‡å†å²æœ€ä¼˜æ—¶ï¼Œå…è®¸çªç ´ç¦å¿Œå¼ºåˆ¶æ¥å—] ===
                 if current_GSU > best_GSU
                     accept = true;
                     if AddPara.verbose
-                        fprintf('      [Agent %d] GSUÌØÉâ½ÓÊÜ½û¼É½â (GSU=%.2f > ×îÓÅ=%.2f)\n', ...
+                        fprintf('      [Agent %d] GSUæ„¿æœ›å‡†åˆ™è§¦å‘ï¼Œæ¥å—ç¦å¿Œè§£ (GSU=%.2f > å†å²=%.2f)\n', ...
                             ii, current_GSU, best_GSU);
                     end
                 else
                     if AddPara.verbose
-                        fprintf('      [Agent %d] ¾Ü¾ø½û¼É½â (GSU=%.2f)\n', ii, current_GSU);
+                        fprintf('      [Agent %d] æ‹’ç»ç¦å¿Œè§£ (GSU=%.2f)\n', ii, current_GSU);
                     end
                 end
             else
-                % === [È«¾ÖĞ§ÓÃ Metropolis ×¼Ôò] ===
-                % Èç¹û²»ÔÚ½û¼É±íÖĞ£¬½øÈë±ê×¼µÄÄ£ÄâÍË»ğÅĞ¶¨Á÷
+                % === [å…¨å±€æ•ˆç”¨ Metropolis å‡†åˆ™] ===
+                % å¦‚æœä¸åœ¨ç¦å¿Œè¡¨ä¸­ï¼Œåˆ™æŒ‰ç…§æ ‡å‡†æ¨¡æ‹Ÿé€€ç«å‡†åˆ™åˆ¤æ–­æ˜¯å¦æ¥å—
 
-                % ¼ÆËãÈ«¾ÖĞ§ÓÃ²îÖµ£¨Delta Energy£©
+                % è®¡ç®—å…¨å±€æ•ˆç”¨å·®å€¼ï¼ˆDelta Energyï¼‰
                 delta_E_altruistic = global_utility_diff(tasks, agents, SC_current, SC_candidate, ii, Value_Params, Value_data(ii));
-                % È¡ÏûÆµ·±´òÓ¡ delta E£¬±£³ÖÈÕÖ¾¸É¾»
-                % fprintf('  [¦¤E] Round=%d Iter=%d Agent=%d  delta_E=%.4f  T=%.4f\n', counter, k_iter, ii, delta_E_altruistic, Value_Params.Temperature);
+                % å¯é€‰æ‰“å° delta Eï¼Œè°ƒè¯•æ—¶æ‰“å¼€æ—¥å¿—å¯è§‚å¯Ÿ
+                % fprintf('  [Î”E] Round=%d Iter=%d Agent=%d  delta_E=%.4f  T=%.4f\n', counter, k_iter, ii, delta_E_altruistic, Value_Params.Temperature);
 
-                % === [ÀûËûÖ÷Òå Metropolis ×¼Ôò½áÊø] ===
+                % === [æ ‡å‡† Metropolis å‡†åˆ™å®ç°] ===
                 if delta_E_altruistic > 1e-4
-                    % Èç¹ûÊÇ¡°ºÃ½â¡±£¨ÀûËûÆ«ºÃÌáÉı»ò²»±ä£©£¬ÎŞÌõ¼ş½ÓÊÜ
+                    % å¦‚æœæ˜¯â€œä¼˜è§£â€ï¼ˆç¤¾ä¼šæ•ˆç”¨æ›´é«˜æˆ–ä¸å˜ï¼‰ï¼Œåˆ™ç›´æ¥æ¥å—
                     accept = true;
                 elseif delta_E_altruistic < 0
-                    % Èç¹ûÊÇ"ÁÓ½â"£¨dE<0£©£¬°´ÕÕ²£¶û×ÈÂü¸ÅÂÊ½ÓÊÜ (¸ÅÂÊËæÎÂ½µ¼õĞ¡)
-                    % dE=0 ²»½øÈë´Ë·ÖÖ§£¬±ÜÃâ exp(0/T)=1 µ¼ÖÂÖĞĞÔ½â±»ÎŞÌõ¼ş½ÓÊÜ
-                    % Õâ¸øÓèÁËÏµÍ³Ìø³ö¾Ö²¿×îÓÅ£¨Local Optima£©µÄÄÜÁ¦
+                    % å¦‚æœæ˜¯â€œåŠ£è§£â€ï¼Œåˆ™æŒ‰ç…§ Metropolis æ¦‚ç‡æ¥å—
+                    % dE=0 çš„æƒ…å†µç•™ç»™ä¸Šé¢åˆ†æ”¯å¤„ç†ï¼›exp(0/T)=1 ä¼šå¯¼è‡´ç­‰ä»·è§£æ€»è¢«æ¥å—
+                    % è¿™æ ·å¯ä»¥è®©ç³»ç»Ÿè·³å‡ºå±€éƒ¨æœ€ä¼˜ï¼ˆLocal Optimaï¼‰
                     prob = exp(delta_E_altruistic / Value_Params.Temperature);
                     if rand < prob
                         accept = true;
                         if AddPara.verbose
-                            fprintf('      [Agent %d] ¸ÅÂÊ½ÓÊÜ¶ñ»¯½â (ÀûËû¦¤E=%.2f, prob=%.4f)\n', ii, delta_E_altruistic, prob);
+                            fprintf('      [Agent %d] æ¦‚ç‡æ¥å—åŠ£è§£ (å…¨å±€Î”E=%.2f, prob=%.4f)\n', ii, delta_E_altruistic, prob);
                         end
                     else
                         accept = false;
@@ -203,44 +204,44 @@ for counter = 1:Value_Params.num_rounds
                 end
             end
 
-            % ²½Öè5: Ö´ĞĞ½âµÄ¸üĞÂ
+            % æ­¥éª¤5ï¼šæ‰§è¡Œè§£çš„æ›´æ–°
             if accept
-                % 5.1 ¹ã²¥ SC + coalitionstru ¸øÈ«ÌåÖÇÄÜÌå£¨¹²ÏíºÚ°å£©
-                % coalitionstru ½ö¹¹½¨Ò»´Î£¬±ÜÃâ N ´ÎÖØ¸´¼ÆËãÏàÍ¬½á¹û
+                % 5.1 å¹¿æ’­ SC + coalitionstru åˆ°å…¨ä½“æ™ºèƒ½ä½“ï¼ˆç»Ÿä¸€çœ‹æ¿ï¼‰
+                % coalitionstru åªæ„å»ºä¸€æ¬¡ï¼Œé¿å… N æ¬¡é‡å¤è®¡ç®—
                 new_coalitionstru = OCFUtils.build_coalitionstru_from_SC(SC_candidate, Value_Params, agents);
                 for jj = 1:Value_Params.N
                     Value_data(jj).SC            = SC_candidate;
                     Value_data(jj).coalitionstru = new_coalitionstru;
                 end
-                % ½ö¸üĞÂµ±Ç°ÖÇÄÜÌå ii µÄ resources_matrix
-                % ÆäÓàÖÇÄÜÌåµÄ resources_matrix ÔÚ±¾µü´úÄ©µÄÈ«¾ÖÍ¬²½²½ÖèÖĞÍ³Ò»¸üĞÂ
+                % æ›´æ–°å½“å‰è¡ŒåŠ¨è€… ii çš„ resources_matrix
+                % å…¶ä½™æ™ºèƒ½ä½“çš„ resources_matrix åœ¨æœ¬è½®æœ«å°¾ç»Ÿä¸€åŒæ­¥ï¼Œä¿è¯ç»Ÿè®¡ä¸€è‡´
                 Value_data(ii).resources_matrix = OCFUtils.get_agent_resource_matrix(SC_candidate, ii, Value_Params);
 
-                % 5.2 ½«ĞÂ½ÓÊÜµÄ×´Ì¬¼ÓÈë½û¼É±í
+                % 5.2 å°†æ–°æ¥å—çš„çŠ¶æ€åŠ å…¥ç¦å¿Œè¡¨
                 if ~is_tabu
                     tabu_list = update_tabu_list(tabu_list, candidate_hash, tabu_tenure);
                 end
 
-                % 5.3 ¼ì²é²¢¸üĞÂÈ«¾ÖGSU×îÓÅÕË±¾
-                % current_GSU ÒÑÔÚ²½Öè3ÌáÇ°¼ÆËã£¬Ö±½Ó¸´ÓÃ£¬ÎŞĞèÖØ¸´µ÷ÓÃ
+                % 5.3 æ£€æŸ¥å¹¶æ›´æ–°å…¨å±€ GSU æœ€ä¼˜è®°å½•
+                % current_GSU å·²åœ¨æ­¥éª¤3å‰ç®—å¥½ï¼Œç›´æ¥å¤ç”¨ï¼Œé¿å…é‡å¤è®¡ç®—
                 if current_GSU > best_GSU
                     best_GSU = current_GSU;
                     if AddPara.verbose
-                        fprintf('      [Agent %d ´¥·¢] ¸üĞÂÈ«¾ÖGSU×îÓÅ (GSU=%.2f)\n', ii, best_GSU);
+                        fprintf('      [Agent %d æ›´æ–°] æ–°çš„å…¨å±€GSUæœ€ä¼˜ (GSU=%.2f)\n', ii, best_GSU);
                     end
                 end
-                % ×¢£ºcoalitionstru ÒÑÔÚ 5.1 ¹ã²¥¸øÈ«Ìå£¬ÎŞĞèÔÚ´ËÖØ¸´´«µİ
+                % æ³¨æ„ï¼šcoalitionstru å·²åœ¨ 5.1 å¹¿æ’­ç»™å…¨ä½“ï¼Œå› æ­¤æ— éœ€åœ¨æ­¤é‡å¤å¤„ç†
             end
-        end  % end for ii (±¾ÂÖËùÓĞÖÇÄÜÌå¾ö²ßÍê±Ï)
+        end  % end for ii
 
-        % ºËĞÄ¶¯×÷£ºÍË»ğ½µÎÂ¡£Temperature = alpha * Temperature
+        % æ¨¡æ‹Ÿé€€ç«é™æ¸©ï¼šTemperature = alpha * Temperature
         Value_Params.Temperature = Value_Params.alpha * Value_Params.Temperature;
 
-        % ÌáÈ¡×îÖÕµÄÁªÃË¾ØÕó½á¹¹
+        % è·å–æœ€ç»ˆå…±äº«è”ç›Ÿç»“æ„
         final_SC = Value_data(Value_Params.N).SC;
         final_coalitionstru = Value_data(Value_Params.N).coalitionstru;
 
-        % ? [ĞÂÔö/ĞŞ¸Äµã 2: ÌáÇ°È«Íø×´Ì¬Í¬²½£¬È»ºó×¼È·¼ÆËãÕâÒ»²½µÄÈ«¾ÖĞ§ÓÃ£¬²¢ÅÄÕÕ£¡] ?
+        % [æ–°å¢/ä¿®æ”¹ 2: å½“å‰å…¨å±€çŠ¶æ€åŒæ­¥åï¼Œå‡†ç¡®è®¡ç®—ä¸€æ¬¡å…¨å±€æ•ˆç”¨ï¼Œç”¨äºè®°å½•]
         for ii = 1:Value_Params.N
             Value_data(ii).coalitionstru = final_coalitionstru;
             Value_data(ii).SC = final_SC;
@@ -252,29 +253,29 @@ for counter = 1:Value_Params.num_rounds
             current_utility_global = current_utility_global + UtilityEvaluator.calc_agent_total_utility(final_SC, agents, tasks, Value_Params, Value_data(j), AddPara);
         end
 
-        % ¡¾ÉÏµÛÕÕÏà»ú°´ÏÂ¿ìÃÅ¡¿£ºÈç¹ûµ±Ç°µÄ²¨¶¯»­³öÁËĞÂ¸ß£¬Á¢¿Ì»º´æ
+        % ç²¾è‹±ä¿ç•™ç­–ç•¥ï¼šå¦‚æœå½“å‰è½®äº§ç”Ÿäº†æ–°çš„å†å²æœ€é«˜å…¨å±€æ•ˆç”¨ï¼Œåˆ™ä¿å­˜
         if current_utility_global > elite_global_utility
             elite_global_utility = current_utility_global;
             elite_SC = final_SC;
             elite_coalitionstru = final_coalitionstru;
             if AddPara.verbose
-                fprintf('    [Elite] ßÇàê£¡·¢ÏÖ±¾ÂÖ¼ÆËãÄÚ²¿ÀúÊ·×î¸ßÈ«¾ÖĞ§ÓÃ: %.2f (Iter: %d)\n', elite_global_utility, k_iter);
+                fprintf('    [Elite] æ›´æ–°ï¼å‘ç°æœ¬è½®è¿­ä»£å†å²æœ€ä¼˜å…¨å±€æ•ˆç”¨: %.2f (Iter: %d)\n', elite_global_utility, k_iter);
             end
         end
 
-        % ¼ÇÂ¼ÄÚ²¿µü´ú(½µÎÂ¹ı³ÌÖĞµÄÒ»²½)µÄÀúÊ·Êı¾İ (ĞŞ¸´ÁË¾É°æ¼ÇÂ¼²»¸üĞÂµÄÎÊÌâ)
+        % è®°å½•å†…å¾ªç¯ï¼ˆé€€ç«è¿‡ç¨‹ä¸­çš„æ¯ä¸€æ­¥ï¼‰å†å²ä¿¡æ¯
         inner_loop_history = ResultProcessor.record_inner_loop_iteration(...
             inner_loop_history, k_iter, ...
             Value_Params.Temperature, current_utility_global, elite_global_utility, final_SC, Value_Params);
 
-        % ÊÕÁ²¼ì²â
+        % åˆ¤æ–­æ˜¯å¦ç¨³å®š
         if isequal(previous_SC, final_SC)
             k_stable = k_stable + 1;
         else
             k_stable = 0;
         end
 
-        % ÍË³öÌõ¼ş£ºÁ¬ĞøÊÕÁ² / ÎÂ¶È¹ıµÍ / ´ïµ½×î´óµü´ú´ÎÊı
+        % é€€å‡ºæ¡ä»¶ï¼šç¨³å®šæ¬¡æ•°è¾¾åˆ° / æ¸©åº¦è¿‡ä½ / è¾¾åˆ°æœ€å¤§è¿­ä»£æ•°
         if k_stable >= Value_Params.K_stable_max
             doneflag = 1;
         elseif Value_Params.Temperature < Value_Params.Tmin
@@ -283,7 +284,7 @@ for counter = 1:Value_Params.num_rounds
             doneflag = 1;
         end
 
-        % ¹ö¶¯¸üĞÂ¾É×´Ì¬
+        % æ›´æ–°ä¸Šä¸€è½®çŠ¶æ€
         previous_SC = final_SC;
         
         if AddPara.verbose
@@ -291,11 +292,11 @@ for counter = 1:Value_Params.num_rounds
                 k_iter, Value_Params.Temperature, current_utility_global, elite_global_utility);
         end
         k_iter = k_iter + 1;
-    end  % end while (SAÍË»ğÄÚÑ­»·½áÊø)
+    end  % end while
 
-    % ? [ĞÂÔö/ĞŞ¸Äµã 3: Ç¿ÖÆ¶ªÆú½áÎ²²¨¶¯µÄÁÓ½â£¬»Ø¹öÖÁ±¾ÂÖÄÔÄÚÍÆÑİ·¢ÏÖµÄ×î¸ß·Ö·½°¸×÷ÎªÎïÀíÂäµØµÄÆğµã] ?
+    % [æ–°å¢/ä¿®æ”¹ 3: å¼ºåˆ¶åœ¨æ¯è½®ç»“æŸæ—¶å›æ»šåˆ°æœ¬è½®æœç´¢è¿‡ç¨‹ä¸­å‘ç°çš„æœ€ä¼˜ç²¾è‹±è§£ï¼Œä½œä¸ºæœ€ç»ˆè¾“å‡º]
     if AddPara.verbose
-        fprintf('  [SA-Done] Round %d ÄÔÄÚÍÆÑİ½áÊø£¬Ç¿ĞĞ²ÉÄÉ²¢Ö´ĞĞ×îÓÅ·½°¸ (Utility: %.2f)\n', counter, elite_global_utility);
+        fprintf('  [SA-Done] Round %d é€€ç«ç»“æŸï¼Œæ‰§è¡Œç²¾è‹±è§£å›æ»š (Utility: %.2f)\n', counter, elite_global_utility);
     end
     final_SC = elite_SC;
     final_coalitionstru = elite_coalitionstru;
@@ -306,26 +307,26 @@ for counter = 1:Value_Params.num_rounds
     end
     % =========================================================================
 
-    % ±¾ÂÖÈÎÎñ·ÖÅä½á¹ûÒÑ¶¨£¬ÖØĞÂ¼ÆËã²¢»º´æ¾ßÌåÖ´ĞĞµÄÊ±¼ä±í (Schedule)
+    % æ›´æ–°ä»»åŠ¡æ‰§è¡ŒçŠ¶æ€ï¼Œå¹¶è®¡ç®—å½“å‰æ‰§è¡Œæ—¶åºï¼ˆScheduleï¼‰
     Value_data = update_task_schedule(Value_data, agents, tasks, Value_Params);
 
-    %% ==================== 4. ¹Û²âÓëĞÅÄî¸üĞÂ ====================
-    % »ùÓÚ¾«Ó¢·½°¸£¨final_SC£©½øĞĞÎïÀíÄ£ÄâºÍ¹Û²â
+    %% ==================== 4. è§‚æµ‹ä¸ä¿¡å¿µæ›´æ–° ====================
+    % åŸºäºç²¾è‹±è§£ final_SC è¿›è¡Œè§‚æµ‹å¹¶æ›´æ–°ä¿¡å¿µ
     [Value_data, summatrix] = AgentOps.collect_observations(Value_data, agents, tasks, Value_Params, summatrix, final_SC);
     Value_data = AgentOps.update_belief_from_observations(Value_data, Value_Params);
 
-    %% ==================== 5. ½á¹ûÆÀ¹À£¨¿Í¹Û/ÉÏµÛÊÓ½Ç£© ====================
+    %% ==================== 5. è®¡ç®—è”ç›Ÿæ•ˆç”¨ï¼ˆä¸Šå¸è§†è§’ï¼‰ ====================
     [coalition_utility, total_global_cost, total_completed_value, task_completion_degrees] = ...
         UtilityEvaluator.evaluate_coalition_metrics(final_SC, agents, tasks, Value_Params, eps_val);
 
-    %% 4.8 ĞÅÄî¹ã²¥
+    %% 4.8 ä¿¡å¿µå¹¿æ’­
     for i = 1:Value_Params.N
         for j = 1:Value_Params.N
             Value_data(i).other{j}.initbelief = Value_data(j).initbelief;
         end
     end
 
-    % --- ¼ÇÂ¼±¾ÂÖµÄËùÓĞ¹Ø¼üÀúÊ·Êı¾İ£¬ÓÃÓÚºóĞø»­Í¼»ò¸´ÅÌ ---
+    % --- è®°å½•æ¯è½®è¿è¡Œå…³é”®å†å²æ•°æ®ï¼Œç”¨äºåç»­ç”»å›¾åˆ†æ ---
     history_data = ResultProcessor.record_history_data(history_data, counter, Value_data, Value_Params, ...
         final_SC, final_coalitionstru, ...
         coalition_utility, total_global_cost, ...
@@ -333,38 +334,38 @@ for counter = 1:Value_Params.num_rounds
         summatrix);
     history_data.inner_loop{counter} = inner_loop_history;
 
-    % ¼ÇÂ¼±¾ÂÖµÄÄÚÑ­»·µü´ú´ÎÊı
+    % è®°å½•æ¯è½®å†…å¾ªç¯è¿­ä»£æ¬¡æ•°
     history_data.k_iter_per_round{counter} = k_iter;
 
-    % µ¥¶À¼ÇÂ¼È«¾ÖÉç»áĞ§ÓÃ£¨GSU£©µÄÑİ»¯Êı¾İ
+    % è®°å½•è¯¥è½®å…¨å±€ç¤¾ä¼šæ•ˆç”¨ï¼ˆGSUï¼‰æœ€ä¼˜å€¼ï¼Œä¾¿äºåç»­åˆ†æ
     history_data.best_GSU{counter} = best_GSU;
 end
 
-%% ==================== 6. ½áÊøÓë×îÖÕ¼ì²é ====================
+%% ==================== 6. æœ€ç»ˆç»“æœä¸€è‡´æ€§æ£€æŸ¥ ====================
 if AddPara.verbose
-    fprintf('\n[SA_Value_Altruistic] Ö´ĞĞ×îÖÕÒ»ÖÂĞÔ¼ì²é...\n');
+    fprintf('\n[SA_Value_Altruistic] æ‰§è¡Œç»“æŸï¼Œè¿›è¡Œä¸€è‡´æ€§æ£€æŸ¥...\n');
 end
-% OCFÒ»ÖÂĞÔ¼ì²é£¬È·±£×îÖÕ¸ø³öµÄ·ÖÅä½âÃ»ÓĞÎ¥·´ÎïÀí¶¨ÂÉ£¨Èç×ÊÔ´³¬ÊÛ¡¢ÎŞÖĞÉúÓĞµÈ£©
+% OCF ä¸€è‡´æ€§æ£€æŸ¥ï¼Œç¡®ä¿æœ€ç»ˆè”ç›Ÿåˆ†é…æ²¡æœ‰è¿åèµ„æºå®¹é‡ã€ä»»åŠ¡è°ƒåº¦ç­‰çº¦æŸ
 [is_valid, error_log] = check_coalition_consistency(Value_data, agents, tasks, Value_Params, 'OCF', AddPara.verbose);
 if ~is_valid
-    warning('[SA_Value_Altruistic] Ò»ÖÂĞÔ¼ì²é·¢ÏÖ %d ´¦ÎÊÌâ', length(error_log));
+    warning('[SA_Value_Altruistic] ä¸€è‡´æ€§æ£€æŸ¥å‘ç° %d ä¸ªé—®é¢˜', length(error_log));
     history_data.consistency_errors = error_log;
 else
     if AddPara.verbose
-        fprintf('  [SA_Value_Altruistic] ËùÓĞÒ»ÖÂĞÔ¼ì²éÍ¨¹ı£¡\n');
+        fprintf('  [SA_Value_Altruistic] æ‰€æœ‰ä¸€è‡´æ€§æ£€æŸ¥é€šè¿‡ã€‚\n');
     end
 end
 end
 
-%% ==================== ÄÚ²¿¸¨Öúº¯Êı ====================
+%% ==================== å†…éƒ¨è¾…åŠ©å‡½æ•° ====================
 
-% ¡¾¼ÆËã·ÖÅä½á¹¹µÄ¹şÏ£Öµ¡¿½«µ±Ç°µÄ¾ØÕó×ª»¯³ÉÎ¨Ò»×Ö·û´®£¬ÓÃÓÚ½û¼É±í±È¶Ô
+% ç”Ÿæˆè”ç›Ÿç»“æ„çš„å“ˆå¸Œå€¼ï¼Œç”¨äºå°†å½“å‰è§£ç¼–ç æˆå”¯ä¸€å­—ç¬¦ä¸²ï¼Œä¾¿äºç¦å¿Œè¡¨æ£€ç´¢
 function hash_str = get_SC_hash(SC, Value_Params)
 hash_parts = {};
 eps_val = 1e-9;
 for m = 1:Value_Params.M
     SC_m = SC{m};
-    % ½ö¼ÇÂ¼¾ØÕóÖĞ·Ç0µÄÔªËØ£¨¼´ÓĞÊµ¼Ê×ÊÔ´·ÖÅäµÄ¶¯×÷£©
+    % åªè®°å½•æ‰€æœ‰é0å…ƒç´ ï¼Œå¯¹åº”å®é™…èµ„æºæŠ•æ”¾åŠ¨ä½œ
     [rows, cols] = find(SC_m > eps_val);
     for idx = 1:length(rows)
         i = rows(idx); % Agent i
@@ -373,7 +374,7 @@ for m = 1:Value_Params.M
         hash_parts{end+1} = sprintf('%d-%d-%d-%.4f', m, i, k, amount);
     end
 end
-hash_parts = sort(hash_parts); % ±ØĞëÅÅĞòÒÔ±£Ö¤ÏàÍ¬µÄ·ÖÅä×ÜÊÇÉú³ÉÏàÍ¬µÄ¹şÏ£
+hash_parts = sort(hash_parts); % æ’åºä¿è¯ç›¸åŒè”ç›Ÿç»“æ„ç”Ÿæˆç›¸åŒå“ˆå¸Œ
 if isempty(hash_parts)
     hash_str = 'EMPTY';
 else
@@ -381,21 +382,21 @@ else
 end
 end
 
-% ¡¾½û¼ÉÁĞ±í¼ì²é¡¿
+% åˆ¤æ–­æ˜¯å¦åœ¨ç¦å¿Œè¡¨ä¸­
 function is_tabu = is_in_tabu_list(hash_str, tabu_list)
 is_tabu = ~isempty(tabu_list) && any(strcmp(tabu_list, hash_str));
 end
 
-% ¡¾½û¼ÉÁĞ±í¸üĞÂ¡¿ÏÈ½øÏÈ³ö¶ÓÁĞ(FIFO)
+% æ›´æ–°ç¦å¿Œè¡¨ï¼Œå…ˆè¿›å…ˆå‡ºï¼ˆFIFOï¼‰
 function tabu_list = update_tabu_list(tabu_list, hash_str, tabu_tenure)
 tabu_list{end+1} = hash_str;
-% Èç¹û³¬³öÆÚÏŞ£¬Ìß³ö×îÔç¼ÓÈëºÚÃûµ¥µÄ½â
+% å¦‚æœè¶…è¿‡é•¿åº¦é™åˆ¶ï¼Œç§»é™¤æœ€æ—©è¿›å…¥çš„è§£
 if length(tabu_list) > tabu_tenure
     tabu_list = tabu_list(2:end);
 end
 end
 
-% ¡¾×Ö·û´®Æ´½Ó×Ô¶¨Òåº¯Êı¡¿Ìæ´ú½Ï¸ß°æ±¾MATLABµÄstrjoin»ò·ÀÖ¹¼æÈİĞÔÎÊÌâ
+% å­—ç¬¦ä¸²æ‹¼æ¥è‡ªå®šä¹‰å‡½æ•°ï¼Œå…¼å®¹ä½ç‰ˆæœ¬ MATLABï¼ˆæ—  strjoin æ—¶ï¼‰
 function result = strjoin_custom(cell_array, delimiter)
 if isempty(cell_array)
     result = '';
@@ -417,15 +418,15 @@ current_T = Value_Params.Temperature;
 confidence = 0.9;
 if isfield(AddPara, 'resource_confidence'), confidence = AddPara.resource_confidence; end
 
-    p_leave = Value_Params.p_leave;  % Àë¿ª¸ÅÂÊ£¨Í³Ò»ÓÉ Value_Params.p_leave ¿ØÖÆ£©
+p_leave = Value_Params.p_leave;  % ç¦»å¼€æ¦‚ç‡ï¼Œç»Ÿä¸€ç”± Value_Params.p_leave æ§åˆ¶
 
-% --- ²½Öè A£ºËæ»ú³·³ö²¿·ÖÈÎÎñ×ÊÔ´ ---
+% --- æ­¥éª¤ Aï¼šéšæœºç§»é™¤éƒ¨åˆ†å·²åˆ†é…èµ„æº ---
 SC_temp = Value_data_i.SC;
 for m = 1:M
     for k = 1:K
         if SC_temp{m}(agent_idx, k) > eps_val && rand < p_leave
             if AddPara.verbose
-                fprintf('      [-] [³·³ö] Agent #%-2d ´Ó ÈÎÎñ M=%-2d ³·³ö ×ÊÔ´ k=%-2d | ÊıÁ¿: %.2f\n', ...
+                fprintf('      [-] [ç§»é™¤] Agent #%-2d ä» ä»»åŠ¡ M=%-2d æ’¤å‡º èµ„æº k=%-2d | æ•°é‡: %.2f\n', ...
                     agent_idx, m, k, SC_temp{m}(agent_idx, k));
             end
             SC_temp{m}(agent_idx, k) = 0;
@@ -433,27 +434,27 @@ for m = 1:M
     end
 end
 
-% ¸üĞÂÊı¾İ×¼±¸ĞÂÒ»ÂÖ·ÖÅä
+% æ›´æ–°å½“å‰ç»“æ„ï¼Œå‡†å¤‡ç”Ÿæˆä¸‹ä¸€ç§åˆ†é…
 Value_data_i.SC = SC_temp;
-% ¼ÆËãµ±Ç°µÄÏµÍ³ÈÎÎñ¹©ĞèÈ±¿Ú(Gaps)
+% è®¡ç®—å½“å‰ç³»ç»Ÿèµ„æºç¼ºå£ï¼ˆGapsï¼‰
 [~, resource_gap] = calc_gaps(Value_data_i, Value_Params, AddPara);
-% Ê¹ÓÃsoftmax»òÆäËûÑ¡Ôñ²ßÂÔ£¬¼ÆËã¸÷¸öÈÎÎñ±»Ñ¡ÖĞµÄ¸ÅÂÊ
+% ä½¿ç”¨ softmax ç”Ÿæˆé€‰æ‹©æ¦‚ç‡ï¼Œå¢å¼ºæ¢ç´¢èƒ½åŠ›
 probs = SA_Select_probs(Value_data_i, agents, tasks, Value_Params, resource_gap, current_T);
 SC_new = SC_temp;
 task_type_demands = Value_Params.task_type_demands;
 
-% --- ²½Öè B£º½«¿ÕÏĞ£¨»ò¿É¸´ÓÃ£©µÄ×ÊÔ´ÖØĞÂ·ÖÅä ---
+% --- æ­¥éª¤ Bï¼šé‡æ–°åˆ†é…èµ„æºï¼Œå½¢æˆå€™é€‰è§£ ---
 for k = 1:K
     total_capacity = agents(agent_idx).resources(k);
     if total_capacity <= eps_val, continue; end
     
-    % »ùÓÚÂÖÅÌ¶ÄÌôÑ¡Ä¿±êÈÎÎñ£¨·â×°ÔÚ OCFUtils.sample_task_from_probs ÖĞ£©
+    % æŒ‰æ¦‚ç‡é€‰æ‹©ç›®æ ‡ä»»åŠ¡ï¼ˆå°è£…åœ¨ OCFUtils.sample_task_from_probs ä¸­ï¼‰
     selected_task = OCFUtils.sample_task_from_probs(probs(k, :), M);
     if isempty(selected_task), continue; end
-    % ÒÑ²ÎÓë¸ÃÈÎÎñÔòÌø¹ı
+    % å·²ç»å¯¹è¯¥ä»»åŠ¡æŠ•æ”¾è¿‡è¯¥ç±»èµ„æºåˆ™è·³è¿‡
     if SC_new{selected_task}(agent_idx, k) > eps_val, continue; end
 
-    % ¼ì²é¸ÃÈÎÎñÊÇ·ñ»¹ĞèÒª¸Ã×ÊÔ´
+    % åˆ¤æ–­è¯¥ä»»åŠ¡æ˜¯å¦ä»ç„¶éœ€è¦è¯¥ç±»èµ„æº
     curr_alloc = sum(SC_new{selected_task}(:, k));
     belief = Value_data_i.initbelief(selected_task, :);
     expected_demand = WorldSim.calculate_demand_quantile(belief, task_type_demands, confidence);
@@ -461,28 +462,28 @@ for k = 1:K
     
     if can_add > eps_val
         SC_candidate_temp = SC_new;
-        SC_candidate_temp{selected_task}(agent_idx, k) = total_capacity; % È«Á¿Í¶Èë
+        SC_candidate_temp{selected_task}(agent_idx, k) = total_capacity; % å…¨é‡æŠ•æ”¾
         
-        % °ü×°³ÉÈ«Á¿Êı×é
+        % å°è£…æˆå…¨ä½“çŠ¶æ€æ•°ç»„
         Value_data_array = repmat(Value_data_i, Value_Params.N, 1);
         for j = 1:Value_Params.N
             Value_data_array(j).agentIndex = j;
             Value_data_array(j).SC = SC_candidate_temp;
         end
         
-        % µ÷ÓÃ¿ÉĞĞĞÔ¼ì²â
+        % è°ƒç”¨å¯è¡Œæ€§æ£€æŸ¥
         [isFeasible, info, ~] = validate_feasibility(Value_data_array, agents, tasks, ...
             Value_Params, agent_idx, SC_candidate_temp, true, AddPara);
             
         if isFeasible
             SC_new = SC_candidate_temp;
             if AddPara.verbose
-                fprintf('      [+] [¸´ÓÃ] Agent #%-2d Ïò ÈÎÎñ M=%-2d Í¶Èë ×ÊÔ´ k=%-2d | ÊıÁ¿: %.2f\n', ...
+                fprintf('      [+] [åŠ å…¥] Agent #%-2d å‘ ä»»åŠ¡ M=%-2d æŠ•å…¥ èµ„æº k=%-2d | æ•°é‡: %.2f\n', ...
                     agent_idx, selected_task, k, total_capacity);
             end
         else
             if AddPara.verbose
-                fprintf('      [x] [¾Ü¾ø] Agent #%-2d ³¢ÊÔÏò ÈÎÎñ M=%-2d Í¶Èë ×ÊÔ´ k=%-2d Ê§°Ü | Ô­Òò: %s\n', ...
+                fprintf('      [x] [æ‹’ç»] Agent #%-2d å‘ ä»»åŠ¡ M=%-2d æŠ•å…¥ èµ„æº k=%-2d å¤±è´¥ | åŸå› : %s\n', ...
                     agent_idx, selected_task, k, info.reason);
             end
         end
@@ -493,21 +494,21 @@ SC_candidate = SC_new;
 move_description = sprintf('SA_Tabu_Altruistic_Agent_%d', agent_idx);
 end
 
-% ¡¾¼ÆËãÈ«¾ÖÉç»áĞ§ÓÃ (Global Social Utility, GSU)¡¿
-% GSU = ËùÓĞ N ¸öÖÇÄÜÌåÔÚ SC_candidate ÏÂµÄĞ§ÓÃÖ®ºÍ
-% SC_old ²ÎÊı±£ÁôÒÔ¼æÈİÔ­ÓĞµ÷ÓÃ½Ó¿Ú£¬µ«±¾°æ±¾²»ÔÙÊ¹ÓÃ£¨¸ÄÎªÈ«¾ÖÇóºÍ£©
+% è®¡ç®—å…¨å±€ç¤¾ä¼šæ•ˆç”¨ (Global Social Utility, GSU)
+% GSU = æ‰€æœ‰ N ä¸ªæ™ºèƒ½ä½“åœ¨ SC_candidate ä¸‹çš„æ•ˆç”¨æ€»å’Œ
+% SC_old å‚æ•°ä¿ç•™æ˜¯ä¸ºäº†å…¼å®¹åŸæœ‰è°ƒç”¨æ¥å£ï¼Œæœ¬ç‰ˆæœ¬ä¸­æœªä½¿ç”¨ï¼Œå› ä¸ºè¿™é‡Œåªå…³å¿ƒå€™é€‰çŠ¶æ€
 function GSU = calculate_local_social_utility(SC_old, SC_candidate, agent_idx, agents, tasks, Value_Params, Value_data, AddPara) %#ok<INUSL>
-    % ±éÀúÈ«²¿ N ¸öÖÇÄÜÌå£¬ÀÛ¼Ó¸÷×ÔÔÚ SC_candidate ÏÂµÄĞ§ÓÃ ¡ª¡ª ¼´È«¾ÖÉç»áĞ§ÓÃ
+    % éå†å…¨ä½“ N ä¸ªæ™ºèƒ½ä½“ï¼Œç´¯åŠ å„è‡ªåœ¨ SC_candidate ä¸‹çš„æ•ˆç”¨ï¼Œå¾—åˆ°å…¨å±€ç¤¾ä¼šæ•ˆç”¨
     GSU = 0;
     for j = 1:Value_Params.N
-        % ¾¡Á¿Ê¹ÓÃÖÇÄÜÌå j ×ÔÉíµÄĞÅÄî£¨´Ó agent_idx µÄ other ×Ö¶Î»ñÈ¡£©
-        % ÈôÎŞ¼ÇÂ¼£¬ÔòÍËÓÃ agent_idx µÄĞÅÄî×÷ÎªÍ¬ÖÊ»¯½üËÆ
+        % ä¼˜å…ˆä½¿ç”¨æ™ºèƒ½ä½“ j çš„ä¸»è§‚ beliefï¼ˆä» agent_idx çš„ other å­—æ®µä¸­è·å–ï¼‰
+        % å¦‚æœæ²¡æœ‰è®°å½•ï¼Œåˆ™é€€åŒ–ä¸º agent_idx çš„ belief ä½œä¸ºè¿‘ä¼¼
         if j == agent_idx
             agent_belief = Value_data.initbelief;
         elseif length(Value_data.other) >= j && ~isempty(Value_data.other{j})
             agent_belief = Value_data.other{j}.initbelief;
         else
-            agent_belief = Value_data.initbelief; % Í¬ÖÊ»¯½üËÆ
+            agent_belief = Value_data.initbelief; % è¿‘ä¼¼æ›¿ä»£
         end
 
         temp_data.agentIndex = j;
@@ -517,21 +518,13 @@ function GSU = calculate_local_social_utility(SC_old, SC_candidate, agent_idx, a
     end
 end
 
-% ¡¾¼ÆËãĞÂ¾ÉÁªÃËÖ®¼äµÄÈ«¾ÖĞ§ÓÃ²îÖµ (Preference Gain)¡¿
+% è®¡ç®—å½“å‰è§£ä¸å€™é€‰è§£ä¹‹é—´çš„å…¨å±€æ•ˆç”¨å·®å€¼ (Preference Gain)
 % delta_E = GSU(SC_candidate) - GSU(SC_current)
-% ¼´£ººòÑ¡ÁªÃË½á¹¹ÏÂËùÓĞÖÇÄÜÌåµÄĞ§ÓÃ×ÜºÍ ¼õÈ¥ µ±Ç°ÁªÃË½á¹¹ÏÂËùÓĞÖÇÄÜÌåµÄĞ§ÓÃ×ÜºÍ
-% ²ÎÊıËµÃ÷£º
-%   tasks          - ÈÎÎñÃèÊö£¨±£ÁôÒÔ¼æÈİµ÷ÓÃ½Ó¿Ú£©
-%   agents         - ÖÇÄÜÌåÃèÊö
-%   SC_current     - µ±Ç°ÁªÃË½á¹¹£¨cellÊı×é£©
-%   SC_candidate   - ºòÑ¡ÁªÃË½á¹¹£¨cellÊı×é£©
-%   agent_idx      - ·¢Æğ¶¯×÷µÄÖÇÄÜÌå±àºÅ£¨ÓÃÓÚ»ñÈ¡ĞÅÄîÀ´Ô´£©
-%   Value_Params   - È«¾Ö²ÎÊı
-%   Value_data_i   - agent_idx µÄ±¾µØÊı¾İ£¨º¬ initbelief ºÍ other ×Ö¶Î£©
+% å³å€™é€‰è”ç›Ÿç»“æ„ä¸‹æ‰€æœ‰æ™ºèƒ½ä½“æ€»æ•ˆç”¨ å‡å» å½“å‰è”ç›Ÿç»“æ„ä¸‹æ‰€æœ‰æ™ºèƒ½ä½“æ€»æ•ˆç”¨
 function delta_E = global_utility_diff(tasks, agents, SC_current, SC_candidate, agent_idx, Value_Params, Value_data_i) %#ok<INUSL>
     AddPara_silent.verbose = false;
 
-    % ¼ÆËãºòÑ¡½âÏÂµÄÈ«¾ÖÉç»áĞ§ÓÃ
+    % è®¡ç®—å€™é€‰è§£ä¸‹çš„å…¨å±€ç¤¾ä¼šæ•ˆç”¨
     GSU_candidate = 0;
     for j = 1:Value_Params.N
         if j == agent_idx
@@ -547,7 +540,7 @@ function delta_E = global_utility_diff(tasks, agents, SC_current, SC_candidate, 
         GSU_candidate = GSU_candidate + UtilityEvaluator.calc_agent_total_utility(SC_candidate, agents, tasks, Value_Params, temp_data, AddPara_silent);
     end
 
-    % ¼ÆËãµ±Ç°½âÏÂµÄÈ«¾ÖÉç»áĞ§ÓÃ
+    % è®¡ç®—å½“å‰è§£ä¸‹çš„å…¨å±€ç¤¾ä¼šæ•ˆç”¨
     GSU_current = 0;
     for j = 1:Value_Params.N
         if j == agent_idx
@@ -563,6 +556,6 @@ function delta_E = global_utility_diff(tasks, agents, SC_current, SC_candidate, 
         GSU_current = GSU_current + UtilityEvaluator.calc_agent_total_utility(SC_current, agents, tasks, Value_Params, temp_data, AddPara_silent);
     end
 
-    % È«¾ÖĞ§ÓÃ²îÖµ£ºÕıÖµ±íÊ¾ºòÑ¡½â¸üÓÅ£¬¸ºÖµ±íÊ¾ºòÑ¡½â¸ü²î
+    % å…¨å±€æ•ˆç”¨å·®å€¼ï¼šæ­£å€¼è¡¨ç¤ºå€™é€‰è§£æ›´ä¼˜ï¼Œè´Ÿå€¼è¡¨ç¤ºå€™é€‰è§£æ›´å·®
     delta_E = GSU_candidate - GSU_current;
 end

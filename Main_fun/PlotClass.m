@@ -1,25 +1,25 @@
-classdef PlotClass
-    % PlotClass ÓÃÓÚ´æ´¢ÏîÄ¿ÖĞµÄ»æÍ¼º¯Êı
-    % °üº¬ÁË»·¾³µØÍ¼»æÖÆ¡¢ÈÎÎñ·ÖÅä½á¹û¾²Ì¬Õ¹Ê¾ÒÔ¼°¶¯Ì¬Ö´ĞĞ¹ı³Ì¶¯»­Õ¹Ê¾
+ï»¿classdef PlotClass
+    % PlotClass ç”¨äºå­˜å‚¨é¡¹ç›®ä¸­çš„ç»˜å›¾å‡½æ•°
+    % åŒ…æ‹¬ç»“æœå±•ç¤ºå›¾ã€ç¯å¢ƒåœ°å›¾ã€æ‰§è¡ŒåŠ¨æ€å±•ç¤ºä»¥åŠç®—æ³•å¯¹æ¯”å›¾
     
     methods(Static)
         function plot_SA_allocation(Value_data, tasks, Value_Params, varargin)
-            % plot_SA_allocation »æÖÆSAËã·¨µÄ×ÊÔ´·ÖÅä¶ÑµşÖù×´Í¼
+            % plot_SA_allocation ç»˜åˆ¶ SA ç®—æ³•èµ„æºåˆ†é…è¯¦æƒ…æŸ±çŠ¶å›¾
             
             alg_display_name = 'SA_Value';
             if ~isempty(varargin) && ~isempty(varargin{1})
                 alg_display_name = char(varargin{1});
             end
-            fprintf('ÕıÔÚ»æÖÆ %s ×ÊÔ´·ÖÅäÏêÇé...\n', alg_display_name);
+            fprintf('æ­£åœ¨ç»˜åˆ¶ %s èµ„æºåˆ†é…è¯¦æƒ…å›¾...\n', alg_display_name);
             
-            % 1. ÌáÈ¡Êı¾İ
+            % 1. è¯»å–æ•°æ®
             SC = Value_data(1).SC; 
             
             N = Value_Params.N;
             M = Value_Params.M;
             K = Value_Params.K;
             
-            % 2. ´´½¨»­²¼
+            % 2. åˆ›å»ºå›¾çª—
             figure('Name', sprintf('%s Resource Allocation Detail', alg_display_name), ...
                    'NumberTitle', 'off', 'Color', 'w', ...
                    'Position', [100, 100, 1200, 800]);
@@ -60,11 +60,11 @@ classdef PlotClass
         end
 
         function print_agent_capabilities(agents)
-            % print_agent_capabilities ÔÚÃüÁîĞĞ´òÓ¡ËùÓĞÖÇÄÜÌåµÄ³õÊ¼×ÊÔ´ÓµÓĞÁ¿
+            % print_agent_capabilities åœ¨å‘½ä»¤è¡Œæ‰“å°å„æ™ºèƒ½ä½“çš„åˆå§‹èµ„æºèƒ½åŠ›
             
             fprintf('\n=================================================\n');
             fprintf('          Agent Resource Capabilities\n');
-            fprintf('          ÖÇÄÜÌå×ÊÔ´ÄÜÁ¦ÉÏÏŞÇåµ¥\n');
+            fprintf('          æ™ºèƒ½ä½“èµ„æºèƒ½åŠ›æ¸…å•\n');
             fprintf('=================================================\n');
             if isempty(agents)
                 fprintf('No agents found.\n');
@@ -78,7 +78,7 @@ classdef PlotClass
             fprintf('Agent ID |%s\n', header_str);
             fprintf('%s\n', repmat('-', 1, 10 + 7*K));
             for i = 1:length(agents)
-                % [¹Ø¼üĞŞ¸´] ÕâÀïÖ®Ç°ÉÙÁËÒ»¸öÒıºÅ
+                % [å…³é”®ä¿®å¤] æ¯æ¬¡å¾ªç¯å‰åˆå§‹åŒ–ä¸€æ¬¡å­—ç¬¦ä¸²
                 res_str = ''; 
                 for k = 1:K
                     res_str = [res_str, sprintf('%6d ', agents(i).resources(k))];
@@ -89,7 +89,7 @@ classdef PlotClass
         end
 
         function plot_env(agents, tasks, Value_Params)
-            % plot_env »æÖÆ»ù±¾µÄ»·¾³µØÍ¼£¨ÖÇÄÜÌå³õÊ¼Î»ÖÃºÍÈÎÎñÎ»ÖÃ£©
+            % plot_env ç»˜åˆ¶ç¯å¢ƒåœ°å›¾ï¼Œæ˜¾ç¤ºæ™ºèƒ½ä½“åˆå§‹ä½ç½®å’Œä»»åŠ¡ä½ç½®
             figure('Name', 'Environment Map', 'Color', 'w');
             hold on; grid on; box on;
             task_coords = zeros(length(tasks), 2);
@@ -99,7 +99,7 @@ classdef PlotClass
                 elseif isfield(tasks, 'x') && isfield(tasks, 'y')
                     task_coords(t, :) = [tasks(t).x, tasks(t).y];
                 else
-                    error('tasks È±ÉÙ×ø±ê×Ö¶Î loc »ò x/y£¬ÎŞ·¨»æÖÆ»·¾³Í¼');
+                    error('tasks ç¼ºå°‘åæ ‡å­—æ®µ loc æˆ– x/yï¼Œæ— æ³•ç»˜åˆ¶ç¯å¢ƒå›¾');
                 end
             end
             if ~isempty(task_coords)
@@ -129,25 +129,25 @@ classdef PlotClass
         end
         
         function plot_execution_animation(Value_data, agents, tasks, Value_Params, varargin)
-            % plot_execution_animation ¶¯Ì¬Õ¹Ê¾Ëã·¨Ö´ĞĞ½á¹û
-            % ×óÍ¼£º»úÆ÷ÈËÂ·¾¶¶¯»­£»ÓÒÍ¼£º´¹Ö±¸ÊÌØÍ¼Ê±¼äÏß¶¯»­
+            % plot_execution_animation åŠ¨æ€å±•ç¤ºç®—æ³•æ‰§è¡Œç»“æœ
+            % å·¦å›¾æ˜¾ç¤ºç©ºé—´è·¯å¾„ï¼Œå³å›¾æ˜¾ç¤ºç”˜ç‰¹å›¾æ—¶é—´è¿›åº¦
             
-            fprintf('ÕıÔÚ×¼±¸¶¯Ì¬Ö´ĞĞÑİÊ¾¶¯»­...\n');
+            fprintf('æ­£åœ¨å‡†å¤‡åŠ¨æ€æ‰§è¡Œæ¼”ç¤ºå›¾...\n');
             
             N = Value_Params.N;
             
-            % --- 0. »ñÈ¡Ã¿¸öÖÇÄÜÌåµÄÆğÊ¼Î»ÖÃ ---
+            % --- 0. è¯»å–æ¯ä¸ªæ™ºèƒ½ä½“çš„åˆå§‹ä½ç½® ---
             agent_start_pos = zeros(N, 2);
             for i = 1:N
                 agent_start_pos(i, :) = [agents(i).x, agents(i).y];
             end
 
-            % --- 1. Êı¾İÔ¤´¦Àí ---
+            % --- 1. æ•°æ®é¢„å¤„ç† ---
             max_time = 0;
             agent_schedules = cell(N, 1); 
             agent_mission_ends = zeros(N, 1); 
             
-            % È·±£ÈÎÎñ×ø±êÌáÈ¡ÕıÈ·
+            % ç¡®ä¿ä»»åŠ¡åæ ‡è¯»å–æ­£ç¡®
             task_locs = zeros(length(tasks), 2);
             for m = 1:length(tasks)
                 if isfield(tasks, 'loc') && ~isempty(tasks(m).loc)
@@ -192,21 +192,21 @@ classdef PlotClass
             end
             
             if max_time == 0
-                warning('Ã»ÓĞÈÎÎñ±»·ÖÅä»òÖ´ĞĞÊ±¼äÎª0£¬ÎŞ·¨Éú³É¶¯»­¡£');
+                warning('æ²¡æœ‰ä»»åŠ¡è¢«åˆ†é…ï¼Œæ‰§è¡Œæ—¶é—´ä¸º 0ï¼Œæ— æ³•ç”ŸæˆåŠ¨ç”»ã€‚');
                 return;
             end
             
-            % --- 2. ³õÊ¼»¯Í¼ĞÎ½çÃæ ---
+            % --- 2. åˆå§‹åŒ–å›¾å½¢ç•Œé¢ ---
             fig_anim = figure('Name', 'Dynamic Execution Output', 'Color', 'w', ...
                 'Position', [100, 100, 1400, 700]); 
             
-            % ÑÕÉ«¶¨Òå
+            % é¢œè‰²å®šä¹‰
             agent_colors = lines(N);
-            color_future = [0.9 0.9 0.9]; % Ç³»ÒÉ«
-            color_wait   = [1 1 0];       % »ÆÉ« (µÈ´ıÖĞ)
-            color_active = [0 1 0];       % ÁÁÂÌÉ« (Ö´ĞĞÖĞ)
+            color_future = [0.9 0.9 0.9]; % æµ…ç°è‰²
+            color_wait   = [1 1 0];       % é»„è‰²ï¼ˆç­‰å¾…ä¸­ï¼‰
+            color_active = [0 1 0];       % ç»¿è‰²ï¼ˆæ‰§è¡Œä¸­ï¼‰
             
-            % --- ×ó²à£ºµØÍ¼¶¯»­³õÊ¼»¯ ---
+            % --- å·¦ä¾§ï¼šåœ°å›¾è§†å›¾åˆå§‹åŒ– ---
             ax_map = subplot(1, 2, 1);
             hold(ax_map, 'on'); grid(ax_map, 'on'); box(ax_map, 'on');
             title(ax_map, 'Agent Trajectories (Map View)');
@@ -237,7 +237,7 @@ classdef PlotClass
                 agent_paths_history{i} = start_p;
             end
             
-            % --- ÓÒ²à£ºÊ±¼äÖá¸ÊÌØÍ¼³õÊ¼»¯ ---
+            % --- å³ä¾§ï¼šæ—¶é—´çº¿è§†å›¾åˆå§‹åŒ– ---
             ax_timeline = subplot(1, 2, 2);
             hold(ax_timeline, 'on'); grid(ax_timeline, 'on'); box(ax_timeline, 'on');
             title(ax_timeline, 'Execution Timeline (Gantt View)');
@@ -267,13 +267,13 @@ classdef PlotClass
             h_time_line = plot(ax_timeline, [0, 0], ylim(ax_timeline), 'r-', 'LineWidth', 2);
             h_suptitle = sgtitle(fig_anim, sprintf('Simulation Time: 0.0 / %.1f s', max_time), 'FontSize', 14, 'FontWeight', 'bold');
             
-            %% --- 3. ¶¯»­Ö÷Ñ­»· ---
+            %% --- 3. åŠ¨ç”»ä¸»å¾ªç¯ ---
             fps = 30;               
-            duration_sec = 30; % ¶¯»­Ê±³¤ 30s
+            duration_sec = 30; % åŠ¨ç”»æ—¶é•¿ 30s
             total_frames = fps * duration_sec;
             time_step = max_time / total_frames;
             
-            fprintf('¿ªÊ¼²¥·Å¶¯»­... (×ÜÄ£ÄâÊ±³¤: %.1fs, ¶¯»­Ê±³¤: %ds)\n', max_time, duration_sec);
+            fprintf('å¼€å§‹æ’­æ”¾åŠ¨ç”»... (æ€»æ¨¡æ‹Ÿæ—¶é—´: %.1fs, åŠ¨ç”»æ—¶é•¿: %ds)\n', max_time, duration_sec);
             
             current_sim_time = 0;
             
@@ -290,42 +290,42 @@ classdef PlotClass
                     agent_state = 'idle';
                     
                     if num_tasks_i > 0
-                        % --- ×´Ì¬ÅĞ¶¨Âß¼­ ---
+                        % --- çŠ¶æ€åˆ¤æ–­é€»è¾‘ ---
                         
-                        % 1. ÔÚµÚÒ»¸öÈÎÎñÖ®Ç°
+                        % 1. åœ¨ç¬¬ä¸€ä¸ªä»»åŠ¡ä¹‹å‰
                         if current_sim_time < sched(1).start_t
                             p_start = agent_start_pos(i, :);
                             p_end = sched(1).loc;
-                            t_available_start = 0; % ¼ÙÉè´Ó0Ê±¿Ì¿ªÊ¼³ö·¢
+                            t_available_start = 0; % é»˜è®¤ 0 æ—¶åˆ»å¼€å§‹å‡ºå‘
                             t_task_start = sched(1).start_t;
                             
-                            % ¼ÆËãÀíÂÛÉÏµÄ¡°×î´óËÙ¶Èµ½´ïÊ±¼ä¡±
+                            % æŒ‰æ˜¾å¼é€Ÿåº¦è®¡ç®—åˆ°è¾¾æ—¶é—´
                             dist = norm(p_end - p_start);
                             v = agents(i).vel; if v==0, v=1e-5; end
                             t_travel_needed = dist / v;
                             t_arrival = t_available_start + t_travel_needed;
                             
                             if current_sim_time < t_arrival
-                                % ÕıÔÚÂ·ÉÏ (Traveling)
+                                % åœ¨è·¯ä¸Š (Traveling)
                                 ratio = (current_sim_time - t_available_start) / t_travel_needed;
                                 ratio = max(0, min(1, ratio));
                                 current_pos = p_start + ratio * (p_end - p_start);
                                 agent_state = 'traveling';
                             else
-                                % ÒÑ¾­µ½´ï£¬ÕıÔÚµÈ´ıÈÎÎñ¿ªÊ¼ (Waiting)
+                                % å·²ç»åˆ°è¾¾ï¼Œæ­£åœ¨ç­‰å¾…ä»»åŠ¡å¼€å§‹ (Waiting)
                                 current_pos = p_end;
                                 agent_state = 'waiting';
                             end
                             
-                        % 2. ×îºóÒ»¸öÈÎÎñÖ®ºó (·µº½)
+                        % 2. æœ€åä¸€ä¸ªä»»åŠ¡ä¹‹åï¼ˆè¿”èˆªï¼‰
                         elseif current_sim_time >= sched(end).finish_t
                              t_return_start = sched(end).finish_t;
-                             t_return_end = agent_mission_ends(i); % ÕâÊÇÒÑ¾­°üº¬·ÉĞĞÊ±¼äµÄÊ±¿Ì
+                             t_return_end = agent_mission_ends(i); % è¿™é‡Œå·²ç»åŒ…å«è¿”ç¨‹ç»“æŸæ—¶é—´
                              
                              if current_sim_time < t_return_end
                                  p_start = sched(end).loc;
                                  p_end = agent_start_pos(i, :);
-                                 t_travel_total = t_return_end - t_return_start; % Õâ¾ÍÊÇ´¿·ÉĞĞÊ±¼ä
+                                 t_travel_total = t_return_end - t_return_start; % è¿™é‡Œæ˜¯å®é™…è¿”èˆªæ—¶é—´
                                  
                                  if t_travel_total > 0
                                      ratio = (current_sim_time - t_return_start) / t_travel_total;
@@ -340,35 +340,35 @@ classdef PlotClass
                                  agent_state = 'finished_cycle';
                              end
                              
-                        % 3. ÈÎÎñÖĞ¼ä
+                        % 3. ä»»åŠ¡è¿‡ç¨‹ä¸­é—´
                         else
                             for j = 1:num_tasks_i
-                                % A. ÕıÔÚÖ´ĞĞÈÎÎñ
+                                % A. æ­£åœ¨æ‰§è¡Œä»»åŠ¡
                                 if current_sim_time >= sched(j).start_t && current_sim_time < sched(j).finish_t
                                     current_pos = sched(j).loc;
                                     agent_state = 'executing';
                                     break;
                                     
-                                % B. ÈÎÎñ¼äÏ¶ (´Ó Task j µ½ Task j+1)
+                                % B. ä»»åŠ¡é—´ç§»åŠ¨ï¼ˆä» Task j åˆ° Task j+1ï¼‰
                                 elseif j < num_tasks_i && current_sim_time >= sched(j).finish_t && current_sim_time < sched(j+1).start_t
                                     p_start = sched(j).loc;
                                     p_end = sched(j+1).loc;
                                     t_prev_finish = sched(j).finish_t;
                                     
-                                    % ¼ÆËãÀíÂÛµ½´ïÊ±¼ä
+                                    % è®¡ç®—ç†è®ºåˆ°è¾¾æ—¶é—´
                                     dist = norm(p_end - p_start);
                                     v = agents(i).vel; if v==0, v=1e-5; end
                                     t_travel_needed = dist / v;
                                     t_arrival = t_prev_finish + t_travel_needed;
                                     
                                     if current_sim_time < t_arrival
-                                        % ÕıÔÚÂ·ÉÏ
+                                        % åœ¨è·¯ä¸Š
                                         ratio = (current_sim_time - t_prev_finish) / t_travel_needed;
                                         ratio = max(0, min(1, ratio));
                                         current_pos = p_start + ratio * (p_end - p_start);
                                         agent_state = 'traveling';
                                     else
-                                        % ÒÑµ½´ï£¬µÈ´ıÖĞ
+                                        % å·²åˆ°è¾¾ï¼Œç­‰å¾…ä¸­
                                         current_pos = p_end;
                                         agent_state = 'waiting';
                                     end
@@ -381,13 +381,13 @@ classdef PlotClass
                     % Update Marker
                     set(h_agents_marker(i), 'XData', current_pos(1), 'YData', current_pos(2));
                     
-                    % ¸ù¾İ×´Ì¬¸Ä±ä Marker ÑÕÉ«»òÑùÊ½ (¿ÉÑ¡)
+                    % æ ¹æ®çŠ¶æ€æ”¹å˜ Marker é¢œè‰²æ ·å¼ï¼ˆå¯é€‰ï¼‰
                     if strcmp(agent_state, 'waiting')
-                        set(h_agents_marker(i), 'MarkerFaceColor', 'y'); % µÈ´ıÊ±±ä»Æ
+                        set(h_agents_marker(i), 'MarkerFaceColor', 'y'); % ç­‰å¾…æ—¶é»„è‰²
                     elseif strcmp(agent_state, 'executing')
-                        set(h_agents_marker(i), 'MarkerFaceColor', 'g'); % Ö´ĞĞÊ±±äÂÌ
+                        set(h_agents_marker(i), 'MarkerFaceColor', 'g'); % æ‰§è¡Œæ—¶ç»¿è‰²
                     else
-                        set(h_agents_marker(i), 'MarkerFaceColor', agent_colors(i,:)); % Õı³£ÑÕÉ«
+                        set(h_agents_marker(i), 'MarkerFaceColor', agent_colors(i,:)); % é»˜è®¤é¢œè‰²
                     end
                     
                     % Update Trail
@@ -399,8 +399,8 @@ classdef PlotClass
                     % Update Timeline Colors
                     for j = 1:num_tasks_i
                         if current_sim_time < sched(j).start_t
-                             % [ÓÅ»¯] Èç¹ûµ±Ç°Ê±¼äÒÑ¾­³¬¹ıÁË¸ÃÈÎÎñµÄÀíÂÛµ½´ïÊ±¼ä£¬ËµÃ÷ÔÚµÈ´ı
-                             % ÕâÀï¼ò»¯´¦Àí£¬¸ÊÌØÍ¼Ö»ÏÔÊ¾Ö´ĞĞ×´Ì¬£¬²»ÏÔÊ¾µÈ´ı×´Ì¬£¬ÒÔÃâÌ«ÂÒ
+                             % [ä¼˜åŒ–] è‹¥å½“å‰æ—¶é—´å·²è¶…è¿‡ç†è®ºåˆ°è¾¾æ—¶é—´ï¼Œåˆ™å¯èƒ½å¤„äºç­‰å¾…çŠ¶æ€
+                             % è¿™é‡Œæ—¶é—´çº¿å›¾åªæ˜¾ç¤ºæ‰§è¡ŒçŠ¶æ€ï¼Œä¸å•ç‹¬æ˜¾ç¤ºç­‰å¾…çŠ¶æ€ï¼Œé¿å…å›¾é¢è¿‡æ‚
                              set(task_patches{i}(j), 'FaceColor', color_future);
                         elseif current_sim_time >= sched(j).start_t && current_sim_time < sched(j).finish_t
                             set(task_patches{i}(j), 'FaceColor', color_active); 
@@ -412,23 +412,23 @@ classdef PlotClass
                 end % end agent loop
                 
                 drawnow;
-                pause(1/fps); % ¿ØÖÆ²¥·ÅËÙ¶È
+                pause(1/fps); % æ§åˆ¶æ’­æ”¾é€Ÿåº¦
                 current_sim_time = current_sim_time + time_step;
                 
                 if ~ishandle(fig_anim), break; end
                 
             end 
             
-            fprintf('¶¯»­²¥·ÅÍê³É¡£\n');
+            fprintf('åŠ¨ç”»æ’­æ”¾å®Œæˆã€‚\n');
         end
         
         
         function plot_algorithm_comparison(results, comparison_stats, num_algorithms, tasks, Value_Params, WORLD)
-            % PLOT_ALGORITHM_COMPARISON »æÖÆËã·¨¶Ô±ÈÍ¼±í
+            % PLOT_ALGORITHM_COMPARISON ç»˜åˆ¶ç®—æ³•å¯¹æ¯”å›¾
             
             alg_names = fieldnames(results);
 
-            % ÍÆµ¼ÈÎÎñÀàĞÍ¼ÛÖµÏòÁ¿ (ÓÃÓÚĞÅÄîÆÚÍû¼ÛÖµÇúÏß)
+            % æ¨æ–­ä»»åŠ¡ç±»å‹ä»·å€¼å‘é‡ï¼ˆç”¨äºæœŸæœ›ä»·å€¼è®¡ç®—ï¼‰
             has_tasks = (nargin >= 4) && exist('tasks', 'var') && ~isempty(tasks);
             has_world_values = (nargin >= 6) && exist('WORLD', 'var') && isstruct(WORLD) && isfield(WORLD, 'value');
             type_values = [];
@@ -447,20 +447,20 @@ classdef PlotClass
                 end
             end
 
-            % --- 1. ÌáÈ¡Êı¾İÓÃÓÚ»æÍ¼ ---
+            % --- 1. æå–æ•°æ®ç”¨äºç»˜å›¾ ---
             names_list = {};
             utilities = [];
-            costs = [];              % [ĞÂÔö] ³É±¾
-            completed_values = [];   % Íê³É¼ÛÖµ
+            costs = [];
+            completed_values = [];
             comp_times = [];
-            coalitions = [];         % ÁªÃËÊı
-            avg_rates = [];          % Æ½¾ùÍê³ÉÂÊ
+            coalitions = [];
+            avg_rates = [];
             colors = [];
             
             for i = 1:num_algorithms
                 alg_name = alg_names{i};
                 
-                % ¼ì²éÍ³¼Æ½á¹ûÊÇ·ñ´æÔÚ
+                % æ£€æŸ¥ç»Ÿè®¡ç»“æœæ˜¯å¦å­˜åœ¨
                 if ~isfield(comparison_stats, alg_name)
                     continue;
                 end
@@ -472,15 +472,15 @@ classdef PlotClass
                 
                 names_list{end+1} = stats.name;
                 
-                % ÌáÈ¡ºËĞÄ±êÁ¿
+                % æå–éœ€è¦çš„å˜é‡
                 utilities(end+1) = stats.total_utility;
                 costs(end+1) = stats.total_cost;
                 completed_values(end+1) = stats.total_completion_score;
                 comp_times(end+1) = stats.computation_time;
                 coalitions(end+1) = stats.num_coalitions;
-                avg_rates(end+1) = stats.avg_task_completion * 100; % ×ª»»Îª°Ù·Ö±È
+                avg_rates(end+1) = stats.avg_task_completion * 100; % è½¬ä¸ºç™¾åˆ†æ¯”
                 
-                % ÌáÈ¡ÑÕÉ«
+                % æå–é¢œè‰²
                 if isfield(results.(alg_name), 'color')
                     colors(end+1, :) = results.(alg_name).color;
                 else
@@ -491,86 +491,84 @@ classdef PlotClass
             valid_count = length(names_list);
             
             if valid_count == 0
-                fprintf('¾¯¸æ: Ã»ÓĞÓĞĞ§µÄËã·¨½á¹ûÓÃÓÚ»æÍ¼\n');
+                fprintf('è­¦å‘Š: æ²¡æœ‰æœ‰æ•ˆçš„ç®—æ³•ç»“æœå¯ç”¨äºç»˜å›¾\n');
                 return;
             end
             
-            %% --- 2. ´´½¨×ÛºÏÖù×´¶Ô±ÈÍ¼ (2ĞĞ3ÁĞ) ---
-            figure('Name', 'Ëã·¨ĞÔÄÜ×ÛºÏ¶Ô±È', 'Position', [100, 100, 1400, 900]);
+            %% --- 2. ç»˜åˆ¶ç»¼åˆæŸ±çŠ¶å¯¹æ¯”å›¾ (2è¡Œ3åˆ—) ---
+            figure('Name', 'ç®—æ³•æ€§èƒ½ç»¼åˆå¯¹æ¯”', 'Position', [100, 100, 1400, 900]);
             
-            % ¸¨Öú»æÍ¼º¯Êı (ÄÚ²¿Ê¹ÓÃ)
+            % å­å›¾ç»˜åˆ¶å‡½æ•°
             plot_bar = @(idx, data, title_str, y_label, fmt) ...
                 PlotClass.local_plot_bar(idx, data, title_str, y_label, fmt, names_list, colors, valid_count);
             
-            % ×ÓÍ¼1: ×ÜĞ§ÓÃ (Utility)
-            plot_bar(1, utilities, '×ÜĞ§ÓÃ¶Ô±È (Utility)', 'Ğ§ÓÃÖµ', '%.1f');
+            % å­å›¾1: æ€»æ•ˆç”¨
+            plot_bar(1, utilities, 'æ€»æ•ˆç”¨å¯¹æ¯” (Utility)', 'æ•ˆç”¨å€¼', '%.1f');
             
-            % ×ÓÍ¼2: ×Ü³É±¾ (Cost) - [ĞÂÔö]
-            plot_bar(2, costs, '×Ü³É±¾¶Ô±È (Cost)', '³É±¾Öµ', '%.1f');
+            % å­å›¾2: æ€»æˆæœ¬
+            plot_bar(2, costs, 'æ€»æˆæœ¬å¯¹æ¯” (Cost)', 'æˆæœ¬å€¼', '%.1f');
             
-            % ×ÓÍ¼3: ×ÜÍê³É¼ÛÖµ (Total Value)
-            plot_bar(3, completed_values, '×ÜÍê³É¼ÛÖµ (Total Value)', '¼ÛÖµ', '%.1f');
+            % å­å›¾3: æ€»å®Œæˆä»·å€¼
+            plot_bar(3, completed_values, 'æ€»å®Œæˆä»·å€¼ (Total Value)', 'ä»·å€¼', '%.1f');
             
-            % ×ÓÍ¼4: ¼ÆËãÊ±¼ä (Time)
-            plot_bar(4, comp_times, '¼ÆËãÊ±¼ä¶Ô±È (Time)', 'Ê±¼ä (s)', '%.2fs');
+            % å­å›¾4: è¿è¡Œæ—¶é—´
+            plot_bar(4, comp_times, 'è¿è¡Œæ—¶é—´å¯¹æ¯” (Time)', 'æ—¶é—´ (s)', '%.2fs');
             
-            % ×ÓÍ¼5: ÁªÃËÊıÁ¿ (# Coalitions)
-            plot_bar(5, coalitions, 'Ö´ĞĞÈÎÎñÊı (# Coalitions)', 'ÊıÁ¿', '%d');
+            % å­å›¾5: è”ç›Ÿæ•°é‡
+            plot_bar(5, coalitions, 'æ‰§è¡Œä»»åŠ¡æ•° (# Coalitions)', 'æ•°é‡', '%d');
             
-            % ×ÓÍ¼6: Æ½¾ùÍê³ÉÂÊ (Avg Rate)
-            plot_bar(6, avg_rates, 'Æ½¾ùÈÎÎñÍê³ÉÂÊ (Avg Rate)', 'Íê³ÉÂÊ (%)', '%.1f%%');
+            % å­å›¾6: å¹³å‡å®Œæˆç‡
+            plot_bar(6, avg_rates, 'å¹³å‡ä»»åŠ¡å®Œæˆç‡ (Avg Rate)', 'å®Œæˆç‡ (%)', '%.1f%%');
             
-            sgtitle('¶àËã·¨ĞÔÄÜÖ¸±ê×ÛºÏ¶Ô±È', 'FontSize', 14, 'FontWeight', 'bold');
+            sgtitle('å¤šç®—æ³•å…³é”®æŒ‡æ ‡ç»¼åˆå¯¹æ¯”', 'FontSize', 14, 'FontWeight', 'bold');
             
-            %% --- 3. ´´½¨À×´ïÍ¼ (Èç¹ûËã·¨ >= 2) ---
+            %% --- 3. ç»˜åˆ¶é›·è¾¾å›¾ï¼ˆè‡³å°‘ä¸¤ä¸ªç®—æ³•ï¼‰ ---
             if valid_count >= 2
-                figure('Name', 'Ëã·¨ĞÔÄÜÀ×´ïÍ¼', 'Position', [150, 150, 800, 600]);
+                figure('Name', 'ç®—æ³•æ€§èƒ½é›·è¾¾å›¾', 'Position', [150, 150, 800, 600]);
                 
-                % ×¼±¸À×´ïÍ¼Êı¾İ£¨¹éÒ»»¯µ½ 0-1£©
+                % å‡†å¤‡é›·è¾¾å›¾æ•°æ®ï¼Œç»Ÿä¸€å½’ä¸€åŒ–åˆ° 0-1
                 radar_data = zeros(valid_count, 5);
                 
-                % Î¬¶È1: ×ÜĞ§ÓÃ (Ô½´óÔ½ºÃ)
+                % ç»´åº¦1: æ€»æ•ˆç”¨ï¼ˆè¶Šå¤§è¶Šå¥½ï¼‰
                 if max(utilities) > 0, radar_data(:, 1) = utilities' / max(utilities); end
                 
-                % Î¬¶È2: ³É±¾ÓÅÊÆ (Ô½Ğ¡Ô½ºÃ -> 1/Cost ¹éÒ»»¯)
-                % ´¦Àí³É±¾Îª0µÄÇé¿ö·ÀÖ¹³ıÁã
+                % ç»´åº¦2: æˆæœ¬æ•ˆç‡ï¼ˆè¶Šå°è¶Šå¥½ -> 1/Cost å½’ä¸€åŒ–ï¼‰
                 safe_costs = costs; safe_costs(safe_costs==0) = 1e-6;
                 inv_costs = 1 ./ safe_costs;
                 if max(inv_costs) > 0, radar_data(:, 2) = inv_costs' / max(inv_costs); end
                 
-                % Î¬¶È3: ×Ü¼ÛÖµ (Ô½´óÔ½ºÃ)
+                % ç»´åº¦3: æ€»ä»·å€¼ï¼ˆè¶Šå¤§è¶Šå¥½ï¼‰
                 if max(completed_values) > 0, radar_data(:, 3) = completed_values' / max(completed_values); end
                 
-                % Î¬¶È4: Æ½¾ùÍê³ÉÂÊ (ÒÑ¾­ÊÇ0-100£¬³ıÒÔ100¼´¿É£¬»òÕß¹éÒ»»¯µ½×î´óÖµ)
+                % ç»´åº¦4: å¹³å‡å®Œæˆç‡
                 radar_data(:, 4) = avg_rates' / 100;
                 
-                % Î¬¶È5: ¼ÆËãËÙ¶È (Ô½¿ìÔ½ºÃ -> 1/Time ¹éÒ»»¯)
+                % ç»´åº¦5: è¿è¡Œé€Ÿåº¦ï¼ˆè¶Šå¿«è¶Šå¥½ -> 1/Time å½’ä¸€åŒ–ï¼‰
                 speeds = 1 ./ (comp_times + 1e-6);
                 if max(speeds) > 0, radar_data(:, 5) = speeds' / max(speeds); end
                 
-                % ±êÇ©
-                radar_labels = {'×ÜĞ§ÓÃ', '³É±¾ÓÅÊÆ(1/Cost)', '×Ü¼ÛÖµ', 'Æ½¾ùÍê³ÉÂÊ', '¼ÆËãËÙ¶È'};
+                % æ ‡ç­¾
+                radar_labels = {'æ€»æ•ˆç”¨', 'æˆæœ¬æ•ˆç‡(1/Cost)', 'æ€»ä»·å€¼', 'å¹³å‡å®Œæˆç‡', 'è¿è¡Œé€Ÿåº¦'};
                 
-                % »æÍ¼Âß¼­
-                angles = linspace(0, 2*pi, 6); % 5¸öµã + ±ÕºÏµã
+                % ç»˜å›¾
+                angles = linspace(0, 2*pi, 6);
                 hold on;
                 for i = 1:valid_count
-                    data_point = [radar_data(i, :), radar_data(i, 1)]; % ±ÕºÏ
+                    data_point = [radar_data(i, :), radar_data(i, 1)];
                     plot(angles, data_point, 'o-', 'LineWidth', 2, ...
                         'Color', colors(i, :), 'MarkerFaceColor', colors(i, :), ...
                         'DisplayName', names_list{i});
                 end
                 
-                % Íø¸ñÓëĞŞÊÎ
+                % èƒŒæ™¯ç½‘æ ¼
                 for r = 0.2:0.2:1, plot(angles, r * ones(size(angles)), ':', 'Color', [0.7 0.7 0.7]); end
                 ax = gca; ax.XTick = angles(1:end-1); ax.XTickLabel = radar_labels; ax.YLim = [0, 1.2];
                 legend('Location', 'northeastoutside');
-                title('Ëã·¨×ÛºÏĞÔÄÜÀ×´ïÍ¼ (¹éÒ»»¯)', 'FontSize', 12, 'FontWeight', 'bold');
+                title('ç®—æ³•ç»¼åˆæ€§èƒ½é›·è¾¾å›¾ï¼ˆå½’ä¸€åŒ–ï¼‰', 'FontSize', 12, 'FontWeight', 'bold');
                 axis equal; grid on; hold off;
             end
             
-            %% --- 4. »æÖÆÀúÊ·Ñİ»¯ÇúÏß (Total Value History) ---
-            % ¼ì²éÊÇ·ñÓĞÀúÊ·Êı¾İ
+            %% --- 4. ç»˜åˆ¶å†å²æ¼”åŒ–æ›²çº¿ ---
             value_histories = {};
             utility_histories = {};
             completion_rate_histories = {};
@@ -581,19 +579,15 @@ classdef PlotClass
                 alg_name = alg_names{i};
                 res = results.(alg_name);
                 
-                % Ö±½Ó¼ì²é rounds ½á¹¹
                 if isfield(res, 'history_data') && isfield(res.history_data, 'rounds')
                     rounds = res.history_data.rounds;
                     if ~isempty(rounds)
-                        % ÀûÓÃ MATLAB ½á¹¹ÌåÊı×éÌáÈ¡ÌØĞÔ: [struct.field]
-                        % ÌáÈ¡×ÜÍê³É¼ÛÖµ
                         if isfield(rounds, 'total_completed_value')
                             vals = [rounds.total_completed_value];
                             value_histories{end+1} = vals;
                         end
                         
-                        % ÌáÈ¡×ÜĞ§ÓÃ (Ò²»­Ò»ÕÅÍ¼)
-                        if isfield(rounds, 'coalition_utility') % ÕâÀïµÄ utility ÊÇ±êÁ¿
+                        if isfield(rounds, 'coalition_utility')
                             utils = [rounds.coalition_utility];
                             utility_histories{end+1} = utils;
                         end
@@ -605,7 +599,7 @@ classdef PlotClass
                                 if isempty(deg)
                                     comp_rates(rr) = NaN;
                                 else
-                                    comp_rates(rr) = mean(deg) * 100; % ×ªÎª°Ù·Ö±È
+                                    comp_rates(rr) = mean(deg) * 100;
                                 end
                             end
                             completion_rate_histories{end+1} = comp_rates;
@@ -618,11 +612,10 @@ classdef PlotClass
                 end
             end
             
-            % »æÖÆ ÀúÊ·Ñİ»¯ÇúÏß (¼ÛÖµ / Ğ§ÓÃ / Íê³É¶È)
             if ~isempty(value_histories) || ~isempty(utility_histories) || ~isempty(completion_rate_histories)
                 total_plots = (~isempty(value_histories)) + (~isempty(utility_histories)) + (~isempty(completion_rate_histories));
                 fig_width = 500 * total_plots;
-                figure('Name', 'ÊÕÁ²ÇúÏß', 'Position', [200, 200, fig_width, 500]);
+                figure('Name', 'å†å²æ¼”åŒ–è¿‡ç¨‹', 'Position', [200, 200, fig_width, 500]);
                 
                 plot_idx = 1;
                 
@@ -632,8 +625,8 @@ classdef PlotClass
                     for k = 1:length(value_histories)
                         plot(value_histories{k}, 'LineWidth', 2, 'Color', hist_colors(k,:), 'DisplayName', hist_names{k});
                     end
-                    xlabel('µü´úÂÖ´Î (Round)'); ylabel('×ÜÍê³É¼ÛÖµ');
-                    title('×ÜÍê³É¼ÛÖµÊÕÁ²ÇúÏß');
+                    xlabel('å¤–å±‚è¿­ä»£ (Round)'); ylabel('æ€»å®Œæˆä»·å€¼');
+                    title('æ€»å®Œæˆä»·å€¼æ¼”åŒ–æ›²çº¿');
                     grid on; legend('Location', 'best'); hold off;
                     plot_idx = plot_idx + 1;
                 end
@@ -644,8 +637,8 @@ classdef PlotClass
                     for k = 1:length(utility_histories)
                         plot(utility_histories{k}, 'LineWidth', 2, 'Color', hist_colors(k,:), 'DisplayName', hist_names{k});
                     end
-                    xlabel('µü´úÂÖ´Î (Round)'); ylabel('È«¾Ö¾»Ğ§ÓÃ');
-                    title('È«¾Ö¾»Ğ§ÓÃÊÕÁ²ÇúÏß');
+                    xlabel('å¤–å±‚è¿­ä»£ (Round)'); ylabel('å…¨å±€æ€»æ•ˆç”¨');
+                    title('å…¨å±€æ€»æ•ˆç”¨æ¼”åŒ–æ›²çº¿');
                     grid on; legend('Location', 'best'); hold off;
                     plot_idx = plot_idx + 1;
                 end
@@ -656,20 +649,19 @@ classdef PlotClass
                     for k = 1:length(completion_rate_histories)
                         plot(completion_rate_histories{k}, 'LineWidth', 2, 'Color', hist_colors(k,:), 'DisplayName', hist_names{k});
                     end
-                    xlabel('µü´úÂÖ´Î (Round)'); ylabel('Æ½¾ùÈÎÎñÍê³É¶È (%)');
-                    title('ÈÎÎñÍê³É¶ÈÊÕÁ²ÇúÏß');
+                    xlabel('å¤–å±‚è¿­ä»£ (Round)'); ylabel('å¹³å‡ä»»åŠ¡å®Œæˆåº¦ (%)');
+                    title('ä»»åŠ¡å®Œæˆåº¦æ¼”åŒ–æ›²çº¿');
                     grid on; legend('Location', 'best'); hold off;
                 end
             end
           
 
-            %% --- 6. ĞÅÄîÆÚÍû¼ÛÖµÊÕÁ²ÇúÏß (ÆÚÍû = ¼ÛÖµ ¡Á ĞÅÄî¸ÅÂÊ)
+            %% --- 6. ç»˜åˆ¶ä»»åŠ¡æœŸæœ›ä»·å€¼æ¼”åŒ–å›¾ï¼ˆæœŸæœ› = ä»·å€¼ Ã— æ¦‚ç‡åˆ†å¸ƒï¼‰
             if has_tasks && ~isempty(type_values)
                 for alg_idx = 1:num_algorithms
                     alg_name = alg_names{alg_idx};
                     res = results.(alg_name);
 
-                    % ¼ì²éĞÅÄîÀúÊ·ÊÇ·ñ´æÔÚ
                     if ~(isfield(res, 'history_data') && isfield(res.history_data, 'rounds') && ~isempty(res.history_data.rounds))
                         continue;
                     end
@@ -680,15 +672,15 @@ classdef PlotClass
 
                     [num_agents, num_tasks, belief_types] = size(rounds(1).beliefs);
                     if isempty(type_values)
-                        type_values = 1:belief_types; % ¶µµ×£¬±ÜÃâÎ¬¶È²»Æ¥Åä
+                        type_values = 1:belief_types;
                     end
-                    % ÈôÎ¬¶È²»Ò»ÖÂ£¬½Ø¶Ï»òÌî³äµ½Æ¥Åä³¤¶È
+                    % è‹¥ç»´åº¦ä¸ä¸€è‡´ï¼Œåˆ™æˆªæ–­æˆ–è¡¥é›¶åˆ°åŒ¹é…é•¿åº¦
                     tv = type_values;
                     if length(tv) > belief_types, tv = tv(1:belief_types); end
                     if length(tv) < belief_types, tv = [tv, zeros(1, belief_types - length(tv))]; end
 
                     num_rounds = length(rounds);
-                    exp_value_mean = zeros(num_tasks, num_rounds); % Ã¿ÈÎÎñ¡¢Ã¿ÂÖµÄÆÚÍû¼ÛÖµ£¨°´»úÆ÷ÈËÆ½¾ù£©
+                    exp_value_mean = zeros(num_tasks, num_rounds);
 
                     for r = 1:num_rounds
                         if ~isfield(rounds(r), 'beliefs') || isempty(rounds(r).beliefs)
@@ -700,26 +692,26 @@ classdef PlotClass
                             if isempty(bmat)
                                 continue;
                             end
-                            exp_agents = bmat * tv(:);           % N x 1
+                            exp_agents = bmat * tv(:); % N x 1
                             exp_value_mean(tsk, r) = mean(exp_agents);
                         end
                     end
 
                     rows = ceil(sqrt(num_tasks));
                     cols = ceil(num_tasks / rows);
-                    figure('Name', ['ĞÅÄîÆÚÍû¼ÛÖµÊÕÁ² - ', res.name], 'Position', [180, 180, 1200, 800]);
+                    figure('Name', ['ä»»åŠ¡æœŸæœ›ä»·å€¼æ¼”åŒ– - ', res.name], 'Position', [180, 180, 1200, 800]);
                     tiledlayout(rows, cols, 'Padding', 'compact', 'TileSpacing', 'compact');
 
                     for tsk = 1:num_tasks
                         nexttile;
                         hold on;
-                        plot(1:num_rounds, exp_value_mean(tsk, :), 'LineWidth', 2, 'Color', [0.2 0.5 0.9], 'DisplayName', 'Æ½¾ùÆÚÍû¼ÛÖµ');
+                        plot(1:num_rounds, exp_value_mean(tsk, :), 'LineWidth', 2, 'Color', [0.2 0.5 0.9], 'DisplayName', 'å¹³å‡æœŸæœ›ä»·å€¼');
                         if isfield(tasks, 'value') && length(tasks) >= tsk
-                            yline(tasks(tsk).value, '--r', 'LineWidth', 1.4, 'DisplayName', 'ÕæÊµ¼ÛÖµ');
+                            yline(tasks(tsk).value, '--r', 'LineWidth', 1.4, 'DisplayName', 'çœŸå®ä»·å€¼');
                         end
-                        xlabel('²©ŞÄÂÖ´Î');
-                        ylabel('ÆÚÍû¼ÛÖµ');
-                        title(sprintf('ÈÎÎñ %d', tsk));
+                        xlabel('å¤–å±‚è¿­ä»£');
+                        ylabel('æœŸæœ›ä»·å€¼');
+                        title(sprintf('ä»»åŠ¡ %d', tsk));
                         grid on;
                         legend('Location', 'southoutside', 'Orientation', 'horizontal');
                         hold off;
@@ -727,10 +719,10 @@ classdef PlotClass
                 end
             end
 
-            fprintf('¶Ô±ÈÍ¼±í»æÖÆÍê³É\n');
+            fprintf('å¯¹æ¯”å›¾ç»˜åˆ¶å®Œæˆã€‚\n');
         end
         
-        %% ¸¨Öúº¯Êı£º»æÖÆµ¥¸öÖù×´×ÓÍ¼
+        %% å±€éƒ¨è¾…åŠ©å‡½æ•°ï¼šç»˜åˆ¶å•ä¸ªæŸ±çŠ¶å›¾
         function local_plot_bar(idx, data, title_str, y_label, fmt, names, colors, count)
             subplot(2, 3, idx);
             b = bar(data);
@@ -744,7 +736,7 @@ classdef PlotClass
             title(title_str);
             grid on;
             
-            % Ìí¼ÓÊıÖµ±êÇ©
+            % æ˜¾ç¤ºæ•°å€¼æ ‡ç­¾
             for k = 1:count
                 text(k, data(k), sprintf(fmt, data(k)), ...
                     'HorizontalAlignment', 'center', 'VerticalAlignment', 'bottom');
