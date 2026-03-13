@@ -224,8 +224,6 @@ Value_Params.Shi_K_stable_max = Shi_K_stable_max;     % 稳定性阈值
 Value_Params.C = 2000; % Shi2024 OCF算法中计算偏好增益的常数 C（根据 ΔE 统计校准，确保合理的增益范围）
 
 
-
-
 % ------------------ 通用参数 ------------------
 Value_Params.seed = SEED;  % Random seed for reproducibility（用于复现实验）
 
