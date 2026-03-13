@@ -47,17 +47,13 @@ for counter = 1:Value_Params.num_rounds
         fprintf('  [SA-Altruistic] Round %d: 初始温度 = %.2f\n', counter, Value_Params.Temperature);
     end
 
-    % --- 初始化 GSU 最优记录 ---
-    % GSU 是全局变量，表示所有智能体总效用之和，因此只需要计算一次，所有智能体共享
-    best_SC = Value_data(1).SC;
-
-    % 构造空SC作为GSU基准，用于初始化状态
+    % --- 初始化 GSU 最优记录（用于禁忌表愿望准则）---
+    % 构造空SC作为基准，计算当前轮起始 SC 的 GSU
     SC_empty = cell(Value_Params.M, 1);
     for m = 1:Value_Params.M
         SC_empty{m} = zeros(Value_Params.N, Value_Params.K);
     end
-    % 计算一次，GSU 的值与 agent_idx 无关，因此任意传一个 agent 即可
-    best_GSU = calculate_local_social_utility(SC_empty, best_SC, 1, agents, tasks, Value_Params, Value_data(1), AddPara);
+    best_GSU = calculate_local_social_utility(SC_empty, Value_data(1).SC, 1, agents, tasks, Value_Params, Value_data(1), AddPara);
 
     %% ==================== 2.25 初始化禁忌表 ====================
     % 禁忌表用于防止算法在局部状态之间反复震荡，从而避免局部循环
@@ -129,24 +125,12 @@ for counter = 1:Value_Params.num_rounds
             Value_data(i).coalitionstru = OCFUtils.build_coalitionstru_from_SC(SC_global, Value_Params, agents);
         end
 
-        % 对构造出的初始解重新计算全局GSU，并更新一次全局最优记录
-        best_SC = SC_global;
+        % 对构造出的初始解重新计算全局GSU，并更新 best_GSU
         best_GSU = calculate_local_social_utility(SC_empty, SC_global, 1, agents, tasks, Value_Params, Value_data(1), AddPara);
     end
 
     %% ==================== 3. SA 内循环（核心搜索过程 - 禁忌增强版） ====================
     inner_loop_history = ResultProcessor.init_inner_loop_history();
-
-    % 记录当前状态的全局效用（上帝视角），用于画图/分析
-    current_utility_global = 0;
-    for j = 1:Value_Params.N
-        current_utility_global = current_utility_global + UtilityEvaluator.calc_agent_total_utility(Value_data(j).SC, agents, tasks, Value_Params, Value_data(j), AddPara);
-    end
-
-    % [新增/修改 1: 每轮搜索开始前，初始化”精英解”，逐步记录目前最好的全局状态]
-    elite_global_utility = current_utility_global;
-    elite_SC = Value_data(1).SC;
-    elite_coalitionstru = Value_data(1).coalitionstru;
 
     % [温度校准用] 累积本轮所有非禁忌劣解的 |ΔE|，用于统计均值以校准 T0
     delta_E_log = [];  % 只在第1轮第1迭代时收集
@@ -228,15 +212,13 @@ for counter = 1:Value_Params.num_rounds
                     tabu_list = update_tabu_list(tabu_list, candidate_hash, tabu_tenure);
                 end
 
-                % 5.3 检查并更新全局 GSU 最优记录
-                % current_GSU 已在步骤3前算好，直接复用，避免重复计算
+                % 5.3 更新 GSU 最优记录（用于禁忌愿望准则）
                 if current_GSU > best_GSU
                     best_GSU = current_GSU;
                     if AddPara.verbose
-                        fprintf('      [Agent %d 更新] 新的全局GSU最优 (GSU=%.2f)\n', ii, best_GSU);
+                        fprintf('      [Agent %d] 新的 GSU 最优 = %.2f\n', ii, best_GSU);
                     end
                 end
-                % 注意：coalitionstru 已在 5.1 广播给全体，因此无需在此重复处理
             end
         end  % end for ii
 
@@ -259,20 +241,10 @@ for counter = 1:Value_Params.num_rounds
             current_utility_global = current_utility_global + UtilityEvaluator.calc_agent_total_utility(final_SC, agents, tasks, Value_Params, Value_data(j), AddPara);
         end
 
-        % 精英保留策略：如果当前轮产生了新的历史最高全局效用，则保存
-        if current_utility_global > elite_global_utility
-            elite_global_utility = current_utility_global;
-            elite_SC = final_SC;
-            elite_coalitionstru = final_coalitionstru;
-            if AddPara.verbose
-                fprintf('    [Elite] 更新！发现本轮迭代历史最优全局效用: %.2f (Iter: %d)\n', elite_global_utility, k_iter);
-            end
-        end
-
         % 记录内循环（退火过程中的每一步）历史信息
         inner_loop_history = ResultProcessor.record_inner_loop_iteration(...
             inner_loop_history, k_iter, ...
-            Value_Params.Temperature, current_utility_global, elite_global_utility, final_SC, Value_Params);
+            Value_Params.Temperature, current_utility_global, current_utility_global, final_SC, Value_Params);
 
         % 判断是否稳定
         if isequal(previous_SC, final_SC)
@@ -294,8 +266,8 @@ for counter = 1:Value_Params.num_rounds
         previous_SC = final_SC;
         
         if AddPara.verbose
-            fprintf('  [SA-Outer] Iter %d: T=%.2f, Utility=%.2f, Best=%.2f\n', ...
-                k_iter, Value_Params.Temperature, current_utility_global, elite_global_utility);
+            fprintf('  [SA-Outer] Iter %d: T=%.2f, Utility=%.2f, BestGSU=%.2f\n', ...
+                k_iter, Value_Params.Temperature, current_utility_global, best_GSU);
         end
         k_iter = k_iter + 1;
     end  % end while
@@ -313,24 +285,10 @@ for counter = 1:Value_Params.num_rounds
             Value_Params.T0_round, 100*exp(-dE_mean/Value_Params.T0_round));
     end
 
-    % [新增/修改 3: 强制在每轮结束时回滚到本轮搜索过程中发现的最优精英解，作为最终输出]
-    if AddPara.verbose
-        fprintf('  [SA-Done] Round %d 退火结束，执行精英解回滚 (Utility: %.2f)\n', counter, elite_global_utility);
-    end
-    final_SC = elite_SC;
-    final_coalitionstru = elite_coalitionstru;
-    for ii = 1:Value_Params.N
-        Value_data(ii).coalitionstru = final_coalitionstru;
-        Value_data(ii).SC = final_SC;
-        Value_data(ii).resources_matrix = OCFUtils.get_agent_resource_matrix(final_SC, ii, Value_Params);
-    end
-    % =========================================================================
-
     % 更新任务执行状态，并计算当前执行时序（Schedule）
     Value_data = update_task_schedule(Value_data, agents, tasks, Value_Params);
 
     %% ==================== 4. 观测与信念更新 ====================
-    % 基于精英解 final_SC 进行观测并更新信念
     [Value_data, summatrix] = AgentOps.collect_observations(Value_data, agents, tasks, Value_Params, summatrix, final_SC);
     Value_data = AgentOps.update_belief_from_observations(Value_data, Value_Params);
 
@@ -338,7 +296,7 @@ for counter = 1:Value_Params.num_rounds
     [coalition_utility, total_global_cost, total_completed_value, task_completion_degrees] = ...
         UtilityEvaluator.evaluate_coalition_metrics(final_SC, agents, tasks, Value_Params, eps_val);
 
-    %% 4.8 信念广播
+    %% 信念广播
     for i = 1:Value_Params.N
         for j = 1:Value_Params.N
             Value_data(i).other{j}.initbelief = Value_data(j).initbelief;
@@ -378,27 +336,13 @@ end
 
 %% ==================== 内部辅助函数 ====================
 
-% 生成联盟结构的哈希值，用于将当前解编码成唯一字符串，便于禁忌表检索
+% 生成联盟结构的哈希值（与 Qi2023 保持一致，使用 mat2str 固定顺序展开，无需排序）
 function hash_str = get_SC_hash(SC, Value_Params)
-hash_parts = {};
-eps_val = 1e-9;
+temp_vec = [];
 for m = 1:Value_Params.M
-    SC_m = SC{m};
-    % 只记录所有非0元素，对应实际资源投放动作
-    [rows, cols] = find(SC_m > eps_val);
-    for idx = 1:length(rows)
-        i = rows(idx); % Agent i
-        k = cols(idx); % Resource k
-        amount = SC_m(i, k);
-        hash_parts{end+1} = sprintf('%d-%d-%d-%.4f', m, i, k, amount);
-    end
+    temp_vec = [temp_vec; SC{m}(:)];
 end
-hash_parts = sort(hash_parts); % 排序保证相同联盟结构生成相同哈希
-if isempty(hash_parts)
-    hash_str = 'EMPTY';
-else
-    hash_str = strjoin_custom(hash_parts, '|');
-end
+hash_str = mat2str(temp_vec);
 end
 
 % 判断是否在禁忌表中
@@ -434,8 +378,7 @@ K = Value_Params.K;
 eps_val = 1e-9;
 current_T = Value_Params.Temperature;
 
-confidence = 0.9;
-if isfield(AddPara, 'resource_confidence'), confidence = AddPara.resource_confidence; end
+confidence = Value_Params.resource_confidence;  % 统一使用 Value_Params.resource_confidence
 
 p_leave = Value_Params.p_leave;  % 离开概率，统一由 Value_Params.p_leave 控制
 

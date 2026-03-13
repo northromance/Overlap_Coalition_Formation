@@ -435,8 +435,7 @@ K = Value_Params.K;
 eps_val = 1e-9;
 current_T = Value_Params.Temperature;
 
-confidence = 0.9;
-if isfield(AddPara, 'resource_confidence'), confidence = AddPara.resource_confidence; end
+confidence = Value_Params.resource_confidence;  % 统一使用 Value_Params.resource_confidence
 
 p_leave = Value_Params.p_leave;  % 离开概率，统一由 Value_Params.p_leave 控制
 

@@ -469,10 +469,7 @@ end
 % 计算任务完成度
 task_completion_degrees = zeros(M, 1);
 total_completed_value = 0;
-confidence = 0.9;
-if isfield(AddPara, 'resource_confidence')
-    confidence = AddPara.resource_confidence;
-end
+confidence = Value_Params.resource_confidence;  % 统一使用 Value_Params.resource_confidence
 
 for j = 1:M
     belief = Value_data(1).initbelief(j, :);

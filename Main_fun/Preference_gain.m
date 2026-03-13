@@ -1,4 +1,8 @@
-function deltaU = Preference_gain(tasks, agents, SC_P, SC_Q, agentID, Value_Params, Value_data)
+function deltaU = Preference_gain(tasks, agents, SC_P, SC_Q, agentID, Value_Params, Value_data, AddPara)
+% AddPara 为可选参数，用于透传给 calc_agent_total_utility（如 verbose 等标志）
+if nargin < 8
+    AddPara.verbose = false;
+end
 % OVERLAP_COALITION_UTILITY [BMBT偏好计算核心]
 % 计算智能体在两个联盟结构(SC_P vs SC_Q)间的效用差值。
 % 
@@ -35,8 +39,8 @@ function deltaU = Preference_gain(tasks, agents, SC_P, SC_Q, agentID, Value_Para
     %% ==================== 2. 计算自身效用差 (Self Utility) ====================
     % u_n(SC_Q) - u_n(SC_P)
     
-    u_n_Q = UtilityEvaluator.calc_agent_total_utility(SC_Q, agents, tasks, Value_Params, Value_data);
-    u_n_P = UtilityEvaluator.calc_agent_total_utility(SC_P, agents, tasks, Value_Params, Value_data);
+    u_n_Q = UtilityEvaluator.calc_agent_total_utility(SC_Q, agents, tasks, Value_Params, Value_data, AddPara);
+    u_n_P = UtilityEvaluator.calc_agent_total_utility(SC_P, agents, tasks, Value_Params, Value_data, AddPara);
     
     delta_self = u_n_Q - u_n_P;
     
@@ -57,8 +61,8 @@ function deltaU = Preference_gain(tasks, agents, SC_P, SC_Q, agentID, Value_Para
             belief_g = get_belief(Value_data, g_id);
             
             % 计算 g 的效用变化
-            u_g_Q = get_agent_util_proxy(g_id, belief_g, SC_Q, agents, tasks, Value_Params);
-            u_g_P = get_agent_util_proxy(g_id, belief_g, SC_P, agents, tasks, Value_Params);
+            u_g_Q = get_agent_util_proxy(g_id, belief_g, SC_Q, agents, tasks, Value_Params, AddPara);
+            u_g_P = get_agent_util_proxy(g_id, belief_g, SC_P, agents, tasks, Value_Params, AddPara);
             
             sum_gain_new = sum_gain_new + (u_g_Q - u_g_P);
         end
@@ -80,8 +84,8 @@ function deltaU = Preference_gain(tasks, agents, SC_P, SC_Q, agentID, Value_Para
             h_id = members(k);
             belief_h = get_belief(Value_data, h_id);
             
-            u_h_P = get_agent_util_proxy(h_id, belief_h, SC_P, agents, tasks, Value_Params);
-            u_h_Q = get_agent_util_proxy(h_id, belief_h, SC_Q, agents, tasks, Value_Params);
+            u_h_P = get_agent_util_proxy(h_id, belief_h, SC_P, agents, tasks, Value_Params, AddPara);
+            u_h_Q = get_agent_util_proxy(h_id, belief_h, SC_Q, agents, tasks, Value_Params, AddPara);
             
             % 计算损失量 (P - Q)
             sum_loss_old = sum_loss_old + (u_h_P - u_h_Q);
@@ -104,8 +108,8 @@ function deltaU = Preference_gain(tasks, agents, SC_P, SC_Q, agentID, Value_Para
             o_id = members(k);
             belief_o = get_belief(Value_data, o_id);
             
-            u_o_Q = get_agent_util_proxy(o_id, belief_o, SC_Q, agents, tasks, Value_Params);
-            u_o_P = get_agent_util_proxy(o_id, belief_o, SC_P, agents, tasks, Value_Params);
+            u_o_Q = get_agent_util_proxy(o_id, belief_o, SC_Q, agents, tasks, Value_Params, AddPara);
+            u_o_P = get_agent_util_proxy(o_id, belief_o, SC_P, agents, tasks, Value_Params, AddPara);
             
             % 计算变化量 (Q - P)
             % 如果延误了，Q < P，这里会累加负值
@@ -142,12 +146,8 @@ function belief = get_belief(Value_data, target_id)
     end
 end
 
-function u = get_agent_util_proxy(target_id, target_belief, SC, agents, tasks, params)
-    % 构造临时数据结构以复用 calc_agent_total_utility
+function u = get_agent_util_proxy(target_id, target_belief, SC, agents, tasks, params, AddPara)
     temp_data.agentID = target_id;
     temp_data.initbelief = target_belief;
-    
-    % 这里假设 calc_agent_total_utility 是你已有的核心计算函数
-    % 它应该能处理 SC 结构，计算 target_id 在该结构下的收益-成本
-    u = UtilityEvaluator.calc_agent_total_utility(SC, agents, tasks, params, temp_data);
+    u = UtilityEvaluator.calc_agent_total_utility(SC, agents, tasks, params, temp_data, AddPara);
 end

@@ -16,7 +16,8 @@
       "Bash(cd \"E:/Overlap_Coalition_Formation/comalg\" && mv Com_Huo2025 alg2_Huo2025 && mv Com_Qi2023 alg3_Qi2023 && mv Com_Shi2024 alg4_Shi2024 && mv SA_TabuEnhance alg7_OCF_SAtabu && echo \"done\" && ls)",
       "Bash(python3 -c \"\nwith open\\('E:/Overlap_Coalition_Formation/comalg/alg7_OCF_SAtabu/OCF_SAtabu_global_main.m', 'rb'\\) as f:\n    raw = f.read\\(300\\)\ntry:\n    raw.decode\\('utf-8'\\)\n    print\\('编码: UTF-8'\\)\nexcept UnicodeDecodeError as e:\n    print\\('不是 UTF-8，错误位置:', e\\)\n    try:\n        raw.decode\\('gbk'\\)\n        print\\('编码: GBK'\\)\n    except:\n        print\\('也不是 GBK'\\)\n\")",
       "Read(//e/Overlap_Coalition_Formation/**)",
-      "Read(//tmp/**)"
+      "Read(//tmp/**)",
+      "Bash(matlab -batch \"run\\('Compare_Algorithms.m'\\)\" 2>&1 | tail -60)"
     ]
   }
 }

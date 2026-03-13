@@ -123,32 +123,26 @@ for round = 1:Value_Params.num_rounds
     % 初始化内循环历史记录
     inner_loop_history = ResultProcessor.init_inner_loop_history();
 
-    % 按照论文 Algorithm 2 的流程：
-    % Loop ∀n ∈ N: 遍历所有智能体
-    %   - UAV n 执行操作（离开、引力计算、交换）
-    %   - 禁忌检查与效用检查
-    %   - Update Boltzmann coefficient Γ(k+1)  <-- 每个智能体操作后立即更新
-    %   - Update TabuSC
-    %   - k = k + 1  <-- 每个智能体操作后立即递增
-    % End loop if k_stable > K_len or k > K_max
+    % 迭代粒度与 OCF 对齐：一次完整的 N-agent 扫描 = 1 次迭代
+    % k_iter / k_stable 在每次完整扫描结束后递增，稳定性判断用 isequal 检查 SC 是否变化
+    % （Qi2023 无温度判断，终止条件仅为 k_iter >= K_max_inner 或 k_stable >= K_len）
 
     while k_iter <= K_max_inner && k_stable <= K_len
 
+        SC_before_sweep = SC_global;  % 记录本次扫描前的 SC（用于稳定性判断）
+
         % 遍历所有智能体（论文中的 Loop ∀n ∈ N）
         for i = 1:N
-            
+
             % ========== A. 离开操作：随机移除部分资源 ==========
             SC_temp = SC_global;
             p_leave = Value_Params.p_leave;  % 离开概率（统一由 Value_Params.p_leave 控制）
             for m = 1:M
                 for k = 1:K
-                    % 只有当资源量大于阈值(eps_val) 且 随机数小于 p_leave 时才执行
                     if SC_temp{m}(i, k) > eps_val && rand < p_leave
-                        % 记录被移走的资源数值
-                        removed_amount = SC_temp{m}(i, k);
                         if AddPara.verbose
                             fprintf('  [离开操作] 智能体 #%-2d 撤出 -> 任务 M=%-2d | 资源 k=%-2d | 数量: %6.2f\n', ...
-                                i, m, k, removed_amount);
+                                i, m, k, SC_temp{m}(i, k));
                         end
                         SC_temp{m}(i, k) = 0;
                     end
@@ -169,67 +163,56 @@ for round = 1:Value_Params.num_rounds
 
             % ========== E. 效用检查与 SC 更新 ==========
             if ~is_tabu
-                % 更新智能体 i 的 Value_data，用于 Preference_gain 计算
                 Value_data(i).SC = SC_new_candidate;
-
-                % 使用 Preference_gain 计算效用差值
-                % Delta U = (Self_Q - Self_P) + Sum(Gain_g) - Sum(Loss_h) + Sum(Diff_o)
-                delta_u = Preference_gain(tasks, agents, SC_global, SC_new_candidate, i, Value_Params, Value_data(i));
+                delta_u = Preference_gain(tasks, agents, SC_global, SC_new_candidate, i, Value_Params, Value_data(i), AddPara);
 
                 if delta_u > 0
-                    % 接受新的联盟结构: SC(k+1) = SC_new
+                    % 接受新的联盟结构：广播给所有智能体
                     SC_global = SC_new_candidate;
-
-                    % 重新计算总效用
-                    current_utility = 0;
                     for j = 1:N
                         Value_data(j).SC = SC_global;
-                        current_utility = current_utility + UtilityEvaluator.calc_agent_total_utility(SC_global, agents, tasks, Value_Params, Value_data(j), AddPara);
                     end
-
-                    % 重置稳定计数器（论文: k_stable = 0）
-                    k_stable = 0;
-                    
-                    % 更新禁忌列表
                     TabuList = update_tabu_list(TabuList, SC_hash, L_tabu);
                 else
-                    % 拒绝新解: SC(k+1) = SC(k)
+                    % 拒绝：回滚智能体 i 的 SC
                     Value_data(i).SC = SC_global;
-                    % 论文: k_stable = k_stable + 1
-                    k_stable = k_stable + 1;
                 end
             end
 
-            % ========== F. 更新 Boltzmann 系数（论文公式28）==========
-            % Γ(k+1) = Γ(k) + k · (Γ_max - Γ(k)) / K_max
-            % 注意：每个智能体操作后立即更新，不是等所有 N 个智能体完成后才更新
-            Gamma = Gamma + k_iter * (Gamma_max - Gamma) / K_max_inner;
+        end  % end for i (完整 N-agent 扫描结束)
 
-            % ========== G. 迭代计数器递增 ==========
-            k_iter = k_iter + 1;
+        % ========== F. 扫描结束后统一更新（per-sweep 粒度，与 OCF 一致）==========
 
-            % ========== H. 记录内循环历史数据 ==========
-            inner_loop_history = ResultProcessor.record_inner_loop_iteration(...
-                inner_loop_history, k_iter - 1, Gamma, ...
-                current_utility, current_utility, SC_global, Value_Params);
+        % F1. 计算本次扫描后的总效用（每次扫描计算一次，而非每次 agent 操作后）
+        current_utility = 0;
+        for j = 1:N
+            current_utility = current_utility + UtilityEvaluator.calc_agent_total_utility(SC_global, agents, tasks, Value_Params, Value_data(j), AddPara);
+        end
 
-            % ========== I. 提前终止检查（论文终止条件）==========
-            if k_iter > K_max_inner || k_stable > K_len
-                if AddPara.verbose
-                    fprintf('[Qi2023] 提前终止: k_iter=%d, k_stable=%d\n', k_iter, k_stable);
-                end
-                break;
-            end
+        % F2. 稳定性判断：本次扫描是否改变了 SC
+        if isequal(SC_before_sweep, SC_global)
+            k_stable = k_stable + 1;
+        else
+            k_stable = 0;
+        end
 
-            % 定期打印日志
-            if mod(k_iter, 10) == 0 && AddPara.verbose
-                fprintf('[Qi2023] 第 %d 轮, 迭代 %d: 效用（期望）= %.4f, 稳定性 = %d, Gamma = %.2f\n', ...
-                    round, k_iter, current_utility, k_stable, Gamma);
-            end
+        % F3. 更新 Boltzmann 系数（每次完整扫描更新一次）
+        % Γ(k+1) = Γ(k) + k · (Γ_max - Γ(k)) / K_max
+        Gamma = Gamma + k_iter * (Gamma_max - Gamma) / K_max_inner;
 
-        end  % end for i (遍历所有智能体)
+        % F4. 迭代计数器递增（per-sweep）
+        k_iter = k_iter + 1;
 
+        % F5. 记录内循环历史数据
+        inner_loop_history = ResultProcessor.record_inner_loop_iteration(...
+            inner_loop_history, k_iter - 1, Gamma, ...
+            current_utility, current_utility, SC_global, Value_Params);
 
+        % F6. 定期打印日志
+        if mod(k_iter, 10) == 0 && AddPara.verbose
+            fprintf('[Qi2023] 第 %d 轮, 迭代 %d: 效用（期望）= %.4f, 稳定性 = %d, Gamma = %.2f\n', ...
+                round, k_iter, current_utility, k_stable, Gamma);
+        end
 
     end  % end while (主循环)
 
@@ -276,6 +259,10 @@ for round = 1:Value_Params.num_rounds
         % 更新 coalitionstru（使用统一的构建函数）
         Value_data(ii).coalitionstru = OCFUtils.build_coalitionstru_from_SC(final_SC,Value_Params, agents);
     end
+
+    % 更新任务执行时序（与 OCF 保持一致，供后续画图/分析使用）
+    % 调用 WorldSim.calc_all_agents_with_global_sync 一次性计算所有智能体时序
+    Value_data = update_task_schedule(Value_data, agents, tasks, Value_Params);
 
     %% 6. 信念广播：智能体之间共享信念
     % 根据开关决定是否广播更新后的信念
@@ -376,11 +363,8 @@ SC_new = SC_current;
 M = Value_Params.M;
 K = Value_Params.K;
 
-% 获取置信度参数
-confidence = 0.9;
-if nargin >= 8 && isfield(AddPara, 'resource_confidence')
-    confidence = AddPara.resource_confidence;
-end
+% 获取置信度参数（统一使用 Value_Params.resource_confidence）
+confidence = Value_Params.resource_confidence;
 
 % 遍历该智能体持有的 K 种资源类型
 for k = 1:K

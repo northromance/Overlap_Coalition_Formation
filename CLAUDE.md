@@ -93,7 +93,7 @@ E_nm_cost  = E_move + E_wait + E_exec
 - 个体视角使用信念分布 `Value_data.initbelief` 和分位数需求
 
 ### 全局时间同步（WorldSim.calc_all_agents_with_global_sync）
-- **在使用他的时候尽量少调用并且其可以返回所有智能体的时间结果因此在计算的时候减少调用**，返回所有智能体的时间结果 `all_agents_results`（containers.Map，键为 agent_id）
+- **在使用他的时候尽量少调用并且其可以返回所有智能体的时间结果因此在计算的时候减少调用**，返回所有智能体的时间结果 `all_agents_results`（struct 数组，下标即 agent_id）
 - 每个 `all_agents_results(i)` 包含：`t_fly_total`, `t_wait_total`, `t_exec_total`, `task_sequence`, `start_times`, `execution_times`
 
 ---
@@ -134,6 +134,10 @@ E_nm_cost  = E_move + E_wait + E_exec
 ### 测试与文档规范
 - **测试文件**统一放在 `tests/` 目录，文件名以 `test_` 开头
 - **算法/模块说明文档**（新建的 `.md` 注释说明）统一放在 `docs/` 目录
+- **操作日志**：每次会话中有代码修改时，在 `docs/` 下创建或追加当天的
+  changelog 文件，命名格式 `changelog_YYYYMMDD.md`。
+  每条记录保持简短：改了哪些文件 + 一句话说明原因，不需要详细展开。
+  当天已有文件则追加，不新建。
 
 
 ## 禁止事项
@@ -148,9 +152,10 @@ E_nm_cost  = E_move + E_wait + E_exec
 ## AddPara（算法接口参数）
 
 通过函数参数传入，不在 Value_Params 中：
-- `AddPara.resource_confidence` — 资源分位置信度（风险规避，当前 0.95）
 - `AddPara.enable_belief_update` — 信念更新开关（true=启用贝叶斯更新）
 - `AddPara.verbose` — 调试输出开关
+
+注：`resource_confidence` 已从 AddPara 移除，统一由 `Value_Params.resource_confidence` 控制。
 
 ---
 

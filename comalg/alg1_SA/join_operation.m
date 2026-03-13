@@ -50,7 +50,7 @@ for r = 1:Value_Params.K
     belief = Value_data.initbelief(target, :);
 
     task_type_demands = Value_Params.task_type_demands;
-    expected_demand = WorldSim.calculate_demand_quantile(belief, task_type_demands, AddPara.resource_confidence);
+    expected_demand = WorldSim.calculate_demand_quantile(belief, task_type_demands, Value_Params.resource_confidence);
     demand_k = expected_demand(r);
 
     curr_alloc = sum(Value_data.SC{target}(:, r));
