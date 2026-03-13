@@ -39,6 +39,8 @@ for counter = 1:Value_Params.num_rounds
     doneflag = 0;
 
     % 分轮温度调度：初始温度随轮次指数衰减
+    % 当 T_decay=1（默认）时，每轮从 T0_round 全温度重启，各轮独立探索；
+    % 若需轮间渐进降温，可将 T_decay 改为 0.9~0.95，届时 T_min_round 作为下界生效
     Value_Params.Temperature = max(Value_Params.T_min_round, ...
         Value_Params.T0_round * Value_Params.T_decay^(counter-1));
     if AddPara.verbose
@@ -141,10 +143,13 @@ for counter = 1:Value_Params.num_rounds
         current_utility_global = current_utility_global + UtilityEvaluator.calc_agent_total_utility(Value_data(j).SC, agents, tasks, Value_Params, Value_data(j), AddPara);
     end
 
-    % [新增/修改 1: 每轮搜索开始前，初始化“精英解”，逐步记录目前最好的全局状态]
+    % [新增/修改 1: 每轮搜索开始前，初始化”精英解”，逐步记录目前最好的全局状态]
     elite_global_utility = current_utility_global;
     elite_SC = Value_data(1).SC;
     elite_coalitionstru = Value_data(1).coalitionstru;
+
+    % [温度校准用] 累积本轮所有非禁忌劣解的 |ΔE|，用于统计均值以校准 T0
+    delta_E_log = [];  % 只在第1轮第1迭代时收集
 
     while(doneflag == 0)
         % --- 3.1 顺序扫描：N个Agent轮流决策 ---
@@ -158,7 +163,8 @@ for counter = 1:Value_Params.num_rounds
 
             % GSU 是全局变量，与 agent_idx 无关，因此当前只算一次，用于同时支持禁忌/非禁忌、接受概率判断
             SC_current = Value_data(ii).SC;
-            current_GSU = calculate_local_social_utility(SC_current, SC_candidate, 1, agents, tasks, Value_Params, Value_data(ii), AddPara);
+            % 一次调用同时得到 delta_E 和 GSU_candidate，避免重复计算 GSU(SC_candidate)
+            [delta_E_altruistic, current_GSU] = global_utility_diff(tasks, agents, SC_current, SC_candidate, ii, Value_Params, Value_data(ii));
 
             accept = false;
 
@@ -179,19 +185,19 @@ for counter = 1:Value_Params.num_rounds
                 % === [全局效用 Metropolis 准则] ===
                 % 如果不在禁忌表中，则按照标准模拟退火准则判断是否接受
 
-                % 计算全局效用差值（Delta Energy）
-                delta_E_altruistic = global_utility_diff(tasks, agents, SC_current, SC_candidate, ii, Value_Params, Value_data(ii));
+                % delta_E_altruistic 已在禁忌判断前统一计算，此处直接复用
                 % 可选打印 delta E，调试时打开日志可观察
                 % fprintf('  [ΔE] Round=%d Iter=%d Agent=%d  delta_E=%.4f  T=%.4f\n', counter, k_iter, ii, delta_E_altruistic, Value_Params.Temperature);
 
                 % === [标准 Metropolis 准则实现] ===
                 if delta_E_altruistic > 1e-4
-                    % 如果是“优解”（社会效用更高或不变），则直接接受
+                    % 如果是”优解”（社会效用更高或不变），则直接接受
                     accept = true;
                 elseif delta_E_altruistic < 0
-                    % 如果是“劣解”，则按照 Metropolis 概率接受
+                    % 如果是”劣解”，则按照 Metropolis 概率接受
                     % dE=0 的情况留给上面分支处理；exp(0/T)=1 会导致等价解总被接受
                     % 这样可以让系统跳出局部最优（Local Optima）
+                    delta_E_log(end+1) = abs(delta_E_altruistic); % 记录劣解 |ΔE| 供温度校准
                     prob = exp(delta_E_altruistic / Value_Params.Temperature);
                     if rand < prob
                         accept = true;
@@ -237,7 +243,7 @@ for counter = 1:Value_Params.num_rounds
         % 模拟退火降温：Temperature = alpha * Temperature
         Value_Params.Temperature = Value_Params.alpha * Value_Params.Temperature;
 
-        % 获取最终共享联盟结构
+        % 广播机制已保证所有 agent 的 SC 同步，取任意 agent 的 SC 均等价，此处取 agent N
         final_SC = Value_data(Value_Params.N).SC;
         final_coalitionstru = Value_data(Value_Params.N).coalitionstru;
 
@@ -293,6 +299,19 @@ for counter = 1:Value_Params.num_rounds
         end
         k_iter = k_iter + 1;
     end  % end while
+
+    % [温度校准] 第1轮结束时输出 |ΔE| 统计，帮助校准 T0_round
+    if counter == 1 && ~isempty(delta_E_log)
+        dE_mean = mean(delta_E_log);
+        dE_med  = median(delta_E_log);
+        dE_p90  = prctile(delta_E_log, 90);
+        fprintf('  [T校准] |ΔE| 统计（劣解，共%d次）: 均值=%.1f  中位=%.1f  90%%分位=%.1f\n', ...
+            numel(delta_E_log), dE_mean, dE_med, dE_p90);
+        fprintf('         建议 T0: 均值接受率30%% → T0=%.0f;  50%% → T0=%.0f\n', ...
+            dE_mean/log(1/0.3), dE_mean/log(2));
+        fprintf('         当前 T0=%.0f，初始接受率≈%.1f%%\n', ...
+            Value_Params.T0_round, 100*exp(-dE_mean/Value_Params.T0_round));
+    end
 
     % [新增/修改 3: 强制在每轮结束时回滚到本轮搜索过程中发现的最优精英解，作为最终输出]
     if AddPara.verbose
@@ -521,7 +540,8 @@ end
 % 计算当前解与候选解之间的全局效用差值 (Preference Gain)
 % delta_E = GSU(SC_candidate) - GSU(SC_current)
 % 即候选联盟结构下所有智能体总效用 减去 当前联盟结构下所有智能体总效用
-function delta_E = global_utility_diff(tasks, agents, SC_current, SC_candidate, agent_idx, Value_Params, Value_data_i) %#ok<INUSL>
+% 同时返回 GSU_candidate 和 GSU_current，供调用方复用，避免重复计算 GSU(SC_candidate)
+function [delta_E, GSU_candidate, GSU_current] = global_utility_diff(tasks, agents, SC_current, SC_candidate, agent_idx, Value_Params, Value_data_i) %#ok<INUSL>
     AddPara_silent.verbose = false;
 
     % 计算候选解下的全局社会效用

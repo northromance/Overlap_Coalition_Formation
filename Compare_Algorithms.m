@@ -31,7 +31,7 @@ M = 10;                         % number of tasks（任务数量）
 K = 6;                          % number of resource types（资源类型数）
 task_values = [800, 1000, 1500];  % three task types（三种不同类型任务的价值）
 num_task_types = length(task_values);
-algorithms_to_run_ids = [7]; 
+algorithms_to_run_ids = [3]; 
 
 % 算法开关：选择要运行的算法 ID
 % 1=SA_Value（早期算法，保留代码但 Compare 中不运行）
@@ -85,18 +85,23 @@ MaxIter = 80;                      %  每轮最大迭代次数
 % 算法 1: SA_Value（模拟退火基础算法）
 % ========================================================================
 
-T0_round = 100;                       % 回合温度调度：初始温度 T_0
-SA_alpha = 0.95;                      % 降温每轮系数
+T0_round = 120;                       % 回合温度调度：初始温度 T_0
+                                      % 校准依据：|ΔE|均值≈202，exp(-202/150)≈0.26（26%接受劣解），探索充足
+                                      % T0=100时仅13%接受率，初期过于保守；T0=200时≈37%，可酌情选择
+SA_alpha = 0.95;                      % 降温每轮系数（轮内：T(80)≈T0×0.017，末温约2.6，接近贪婪）
 SA_Tmin = 0.01;                       % 终止温度
 K_stable_max = 15;                    % 稳定性阈值（连续无改进迭代次数，SA/Fang/Tabu 系列共用）
 
-T_decay = 1;                       % 回合温度调度：衰减系数
-T_min_round = 60;                     % 回合温度调度：温度下界（经delta_E统计校准：均值|ΔE|≈202，此值约保证5%探索概率）
-resource_confidence = 0.7;            % 初始构造阶段需求分位置信度（SA/Fang/Tabu 系列共用）
+T_decay = 0.9;                       % 回合温度调度：衰减系数（=1 表示每轮从 T0_round 全温度重启，各轮独立探索）
+                                   % 若需轮间渐进降温，可改为 0.9~0.95；届时 T_min_round 作为下界生效
+T_min_round = 60;                  % 回合温度调度：温度下界（T_decay=1 时此值不起作用，保留供调优用）
+resource_confidence = 0.7;            % 初始软贪婪构造置信度（驱动 Value_Params.resource_confidence）
+                                      % 0.7：较保守的需求估计 → can_add 较早归零 → 资源分散到更多任务
+                                      % 不应与 AddPara.resource_confidence（SA搜索阶段）合并，二者意图不同
 T_init_construction = 2;            % 初始构造阶段温度（低温近贪婪，SA/Fang/Tabu 系列共用）
 
 % TabuEnhanced专属参数（算法 7: OCF_SAtabu_global）
-tabu_tenure = 10;                     % 禁忌期限
+tabu_tenure = 20;                     % 禁忌期限
 p_leave = 0.3;                        % 离开概率（TabuEnhanced / Qi2023 共用）
 
 
@@ -106,7 +111,7 @@ p_leave = 0.3;                        % 离开概率（TabuEnhanced / Qi2023 共
 % ========================================================================
 % 迭代控制参数
 Qi_L_tabu = 10;                       % 禁忌表长度
-Qi_K_stable_max = 30;                 % 稳定性阈值（连续无改进迭代次数）
+Qi_K_stable_max = 15;                 % 稳定性阈值（连续无改进迭代次数）
 Qi_Gamma_init = 1;                    % 初始 Boltzmann 系数
 Qi_Gamma_max = 100;                   % 最大 Boltzmann 系数
 
@@ -119,7 +124,8 @@ Shi_K_stable_max = 10;                % 稳定性阈值
 %% AddPara (算法接口参数)
 % 为接口统一保留：部分算法需要该结构体
 AddPara.control = 1;
-AddPara.resource_confidence = 0.95;  % 资源分位/置信度（风险规避）
+AddPara.resource_confidence = 0.95;  % SA搜索阶段置信度（风险规避，驱动 calc_gaps + 候选生成）
+                                      % 与初始构造的 resource_confidence(=0.7) 意图不同，不应合并
 AddPara.enable_belief_update = true; % 信念更新开关：true=启用，false=仅使用初始信念
 AddPara.verbose = true;             % 打印调试开关：true=详细输出，false=精简输出
 

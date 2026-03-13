@@ -1,4 +1,4 @@
-function [Value_data, history_data] = OCF_SAtabu_global_main2_fang(agents, tasks, AddPara, Value_Params)
+function [Value_data, history_data] = OCF_SAtabu_global_main2(agents, tasks, AddPara, Value_Params)
 feature('DefaultCharacterSet', 'UTF-8');
 % SA_VALUE_TABUENHANCED_GLOBAL_MAIN 基于全局社会效用的模拟退火-禁忌搜索算法
 %
@@ -176,38 +176,51 @@ for counter = 1:Value_Params.num_rounds
                     end
                 end
             else
-                % === [全局效用 Metropolis 准则] ===
-                % 如果不在禁忌表中，则按照标准模拟退火准则判断是否接受
+                % === [Fang et al. 2026 四分支接受概率公式] ===
+                % P_a(T, CS*, CS') 定义：
+                %   ΔU1 = u_i(CS') - u_i(CS)              : 智能体 i 自身效用变化
+                %   ΔU2 = Σ_{o≠i}[u_o(CS') - u_o(CS)]    : 其余所有智能体效用变化之和
+                %
+                %   Case 1: ΔU1>0 且 ΔU2>0  → P = 1           (双方均受益，确定性接受)
+                %   Case 2: ΔU1≤0 且 ΔU2>0  → P = exp(ΔU1/T)  (自损利他，按个体损失概率接受)
+                %   Case 3: ΔU1>0 且 ΔU2≤0  → P = exp(ΔU2/T)  (自利损他，按他人损失概率接受)
+                %   Case 4: ΔU1≤0 且 ΔU2≤0  → P = exp((ΔU1+ΔU2)/T) (双方均损，按总损失概率接受)
 
-                % 计算全局效用差值（Delta Energy）
-                delta_E_altruistic = global_utility_diff(tasks, agents, SC_current, SC_candidate, ii, Value_Params, Value_data(ii));
-
-                % 计算智能体 ii 自身的个体效用变化（论文偏好条件 1）
+                % --- 计算 ΔU1：智能体 ii 自身效用变化 ---
                 AddPara_silent = AddPara; AddPara_silent.verbose = false;
                 temp_cand_i = Value_data(ii); temp_cand_i.SC = SC_candidate;
                 temp_curr_i = Value_data(ii); temp_curr_i.SC = SC_current;
                 u_ii_cand = UtilityEvaluator.calc_agent_total_utility(SC_candidate, agents, tasks, Value_Params, temp_cand_i, AddPara_silent);
                 u_ii_curr = UtilityEvaluator.calc_agent_total_utility(SC_current,   agents, tasks, Value_Params, temp_curr_i, AddPara_silent);
-                delta_u_ii = u_ii_cand - u_ii_curr;
+                delta_U1 = u_ii_cand - u_ii_curr;
 
-                % === [论文全局利他偏好准则] ===
-                % CS2 >_i CS1 当且仅当:
-                %   条件1: u_i(CS2) > u_i(CS1)                          => delta_u_ii > 0
-                %   条件2: u_i(CS2)-u_i(CS1) > sum_{o≠i}[u_o(CS1)-u_o(CS2)] => delta_GSU > 0
-                % 两个条件同时满足 => 确定性接受
-                if delta_u_ii > 1e-4 && delta_E_altruistic > 1e-4
+                % --- 计算 ΔU2：其余智能体效用变化之和 = delta_GSU - ΔU1 ---
+                delta_U2 = global_utility_diff(tasks, agents, SC_current, SC_candidate, ii, Value_Params, Value_data(ii));
+      
+
+                % --- 四分支概率判断 ---
+                T_cur = Value_Params.Temperature;
+                if delta_U1 > 1e-4 && delta_U2 > 1e-4
+                    % Case 1: 双方均受益 → 确定性接受
                     accept = true;
-                elseif delta_E_altruistic < 0
-                    % 全局效用下降时，按 Metropolis 概率接受（帮助跳出局部最优）
-                    prob = exp(delta_E_altruistic / Value_Params.Temperature);
-                    if rand < prob
-                        accept = true;
-                        if AddPara.verbose
-                            fprintf('      [Agent %d] 概率接受劣解 (个体Δu=%.2f, 全局ΔGSU=%.2f, prob=%.4f)\n', ii, delta_u_ii, delta_E_altruistic, prob);
-                        end
-                    else
-                        accept = false;
-                    end
+                    prob   = 1;
+                elseif delta_U1 <= 1e-4 && delta_U2 > 1e-4
+                    % Case 2: 自损利他 → exp(ΔU1/T)
+                    prob   = exp(delta_U1 / T_cur);
+                    accept = (rand < prob);
+                elseif delta_U1 > 1e-4 && delta_U2 <= 1e-4
+                    % Case 3: 自利损他 → exp(ΔU2/T)
+                    prob   = exp(delta_U2 / T_cur);
+                    accept = (rand < prob);
+                else
+                    % Case 4: 双方均损 → exp((ΔU1+ΔU2)/T) = exp(delta_GSU/T)
+                    prob   = exp((delta_U1+ delta_U2)/ T_cur);
+                    accept = (rand < prob);
+                end
+
+                if AddPara.verbose && accept && prob < 1
+                    fprintf('      [Agent %d] 概率接受 (ΔU1=%.2f, ΔU2=%.2f, prob=%.4f)\n', ...
+                        ii, delta_U1, delta_U2, prob);
                 end
             end
 
