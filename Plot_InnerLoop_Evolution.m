@@ -42,7 +42,7 @@ if nargin == 0
     algorithm_name = 'OCF_SAtabu_global';
 
     % 3. 选择轮次
-    round_number = 2;
+    round_number = 40;
 
     % --- 自动加载逻辑 ---
     if auto_load_latest
