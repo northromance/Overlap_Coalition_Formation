@@ -9,16 +9,14 @@ fprintf('=======================================================================
 
 %% Add paths
 % 添加项目子目录路径，确保 MATLAB 能找到对应算法函数
-% 获取项目根目录（Compare_Algorithms.m 在 Main_fun 子目录中）
-script_dir = fileparts(mfilename('fullpath'));  % 获取脚本所在目录（Main_fun）
-project_root = fileparts(script_dir);            % 获取项目根目录
-addpath(fullfile(project_root, "Overlap_Coalition_Formation\Main_fun"));                    % 框架层：效用/时间/工具函数 + 共享算法辅助函数
-addpath(fullfile(project_root, "Overlap_Coalition_Formation\comalg", "alg1_SA"));           % 算法 1: SA_Value（早期算法，保留代码）
-addpath(fullfile(project_root, "Overlap_Coalition_Formation\comalg", "alg2_Huo2025"));     % 算法 2: Huo2025
-addpath(fullfile(project_root, "Overlap_Coalition_Formation\comalg", "alg3_Qi2023"));      % 算法 3: Qi2023
-addpath(fullfile(project_root, "Overlap_Coalition_Formation\comalg", "alg4_Shi2024"));     % 算法 4: Shi2024
-addpath(fullfile(project_root, "Overlap_Coalition_Formation\comalg", "Com_Fang2025"));     % Fang2025 algorithm（已删除，保留路径避免报错）
-addpath(fullfile(project_root, "Overlap_Coalition_Formation\comalg", "alg7_OCF_SAtabu")); % 算法 7: OCF_SAtabu_global（主算法）
+% Compare_Algorithms.m 位于项目根目录，script_dir 即为项目根目录
+script_dir = fileparts(mfilename('fullpath'));
+addpath(fullfile(script_dir, 'Main_fun'));                         % 框架层：效用/时间/工具函数 + 共享算法辅助函数
+addpath(fullfile(script_dir, 'comalg', 'alg1_SA'));               % 算法 1: SA_Value（早期算法，保留代码）
+addpath(fullfile(script_dir, 'comalg', 'alg2_Huo2025'));          % 算法 2: Huo2025
+addpath(fullfile(script_dir, 'comalg', 'alg3_Qi2023'));           % 算法 3: Qi2023
+addpath(fullfile(script_dir, 'comalg', 'alg4_Shi2024'));          % 算法 4: Shi2024
+addpath(fullfile(script_dir, 'comalg', 'alg7_OCF_SAtabu'));       % 算法 7: OCF_SAtabu_global（主算法）
 
 %% ========================================================================
 %  Scenario configuration (adjust for debugging as needed)
@@ -31,7 +29,7 @@ M = 10;                         % number of tasks（任务数量）
 K = 6;                          % number of resource types（资源类型数）
 task_values = [800, 1000, 1500];  % three task types（三种不同类型任务的价值）
 num_task_types = length(task_values);
-algorithms_to_run_ids = [3,7]; 
+algorithms_to_run_ids = [2,3,7]; 
 
 % 算法开关：选择要运行的算法 ID
 % 1=SA_Value（早期算法，保留代码但 Compare 中不运行）
@@ -77,7 +75,7 @@ resource_exec_time = [50 65 50 60 35 45];
 
 % 通用参数
 obs_times = 50;              % 观测次数（贝叶斯更新等）
-num_rounds = 50;              % 迭代轮数（快速测试: 5轮）
+num_rounds = 5;              % 迭代轮数（快速测试: 5轮）
 
 
 MaxIter = 200;                      %  每轮最大迭代次数

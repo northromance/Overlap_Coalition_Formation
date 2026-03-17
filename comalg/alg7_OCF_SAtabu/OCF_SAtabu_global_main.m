@@ -38,9 +38,10 @@ for counter = 1:Value_Params.num_rounds
     k_stable = 0;
     doneflag = 0;
 
-    % 分轮温度调度：初始温度随轮次指数衰减
-    % 当 T_decay=1（默认）时，每轮从 T0_round 全温度重启，各轮独立探索；
-    % 若需轮间渐进降温，可将 T_decay 改为 0.9~0.95，届时 T_min_round 作为下界生效
+    % 轮间温度调度：
+    %   T0_round * T_decay^(counter-1) 随轮次指数衰减，T_min_round 为每轮初始温度的下界，
+    %   确保即使后期博弈轮次增加，每轮仍有 T_min_round 以上的初始温度（保持最低探索能力）。
+    %   内循环退出条件使用 Tmin（远低于 T_min_round），是内循环降温的终止阈值。
     Value_Params.Temperature = max(Value_Params.T_min_round, ...
         Value_Params.T0_round * Value_Params.T_decay^(counter-1));
     if AddPara.verbose
@@ -137,6 +138,11 @@ for counter = 1:Value_Params.num_rounds
 
     while(doneflag == 0)
         % --- 3.1 顺序扫描：N个Agent轮流决策 ---
+        % 缓存本次迭代的 GSU_current：若 SC_current 在本次 for-ii 扫描中未变化，
+        % 则跳过对 SC_current 的重复 GSU 计算，只算 SC_candidate 的 GSU
+        cached_gsu_current = [];       % 每次 while 迭代重置
+        cached_sc_hash_current = '';   % 对应的 SC 哈希值
+
         for ii = 1:Value_Params.N
             % 步骤1：为当前 ii 智能体生成一个局部候选解（可能撤出某些任务，加入某些任务）
             [SC_candidate, ~] = generate_candidate_solution_tabu(Value_data(ii), agents, tasks, Value_Params, AddPara);
@@ -147,8 +153,17 @@ for counter = 1:Value_Params.num_rounds
 
             % GSU 是全局变量，与 agent_idx 无关，因此当前只算一次，用于同时支持禁忌/非禁忌、接受概率判断
             SC_current = Value_data(ii).SC;
-            % 一次调用同时得到 delta_E 和 GSU_candidate，避免重复计算 GSU(SC_candidate)
-            [delta_E_altruistic, current_GSU] = global_utility_diff(tasks, agents, SC_current, SC_candidate, ii, Value_Params, Value_data(ii));
+            % 缓存优化：若 SC_current 未变化（上一个 agent 未 accept），复用已计算的 GSU_current
+            sc_current_hash = get_SC_hash(SC_current, Value_Params);
+            if strcmp(sc_current_hash, cached_sc_hash_current)
+                % SC_current 未变，传入缓存的 GSU_current，跳过重复计算
+                [delta_E_altruistic, current_GSU, ~] = global_utility_diff(tasks, agents, SC_current, SC_candidate, ii, Value_Params, Value_data(ii), cached_gsu_current);
+            else
+                % SC_current 发生变化（上一个 agent accept）或首次调用，需重新计算
+                [delta_E_altruistic, current_GSU, new_gsu_current] = global_utility_diff(tasks, agents, SC_current, SC_candidate, ii, Value_Params, Value_data(ii));
+                cached_gsu_current = new_gsu_current;
+                cached_sc_hash_current = sc_current_hash;
+            end
 
             accept = false;
 
@@ -219,6 +234,10 @@ for counter = 1:Value_Params.num_rounds
                         fprintf('      [Agent %d] 新的 GSU 最优 = %.2f\n', ii, best_GSU);
                     end
                 end
+
+                % 5.4 更新 GSU_current 缓存：SC_candidate 已成为新的 SC_current
+                cached_gsu_current = current_GSU;
+                cached_sc_hash_current = candidate_hash;
             end
         end  % end for ii
 
@@ -484,10 +503,14 @@ end
 % delta_E = GSU(SC_candidate) - GSU(SC_current)
 % 即候选联盟结构下所有智能体总效用 减去 当前联盟结构下所有智能体总效用
 % 同时返回 GSU_candidate 和 GSU_current，供调用方复用，避免重复计算 GSU(SC_candidate)
-function [delta_E, GSU_candidate, GSU_current] = global_utility_diff(tasks, agents, SC_current, SC_candidate, agent_idx, Value_Params, Value_data_i) %#ok<INUSL>
+% precomputed_GSU_current（可选）：若上一次已算过当前SC的GSU，直接传入跳过重复计算
+function [delta_E, GSU_candidate, GSU_current] = global_utility_diff(tasks, agents, SC_current, SC_candidate, agent_idx, Value_Params, Value_data_i, precomputed_GSU_current) %#ok<INUSL>
+    if nargin < 8
+        precomputed_GSU_current = [];
+    end
     AddPara_silent.verbose = false;
 
-    % 计算候选解下的全局社会效用
+    % 计算候选解下的全局社会效用（始终需要计算）
     GSU_candidate = 0;
     for j = 1:Value_Params.N
         if j == agent_idx
@@ -503,20 +526,24 @@ function [delta_E, GSU_candidate, GSU_current] = global_utility_diff(tasks, agen
         GSU_candidate = GSU_candidate + UtilityEvaluator.calc_agent_total_utility(SC_candidate, agents, tasks, Value_Params, temp_data, AddPara_silent);
     end
 
-    % 计算当前解下的全局社会效用
-    GSU_current = 0;
-    for j = 1:Value_Params.N
-        if j == agent_idx
-            agent_belief = Value_data_i.initbelief;
-        elseif length(Value_data_i.other) >= j && ~isempty(Value_data_i.other{j})
-            agent_belief = Value_data_i.other{j}.initbelief;
-        else
-            agent_belief = Value_data_i.initbelief;
+    % 计算当前解下的全局社会效用（若有缓存则跳过，避免重复计算）
+    if ~isempty(precomputed_GSU_current)
+        GSU_current = precomputed_GSU_current;
+    else
+        GSU_current = 0;
+        for j = 1:Value_Params.N
+            if j == agent_idx
+                agent_belief = Value_data_i.initbelief;
+            elseif length(Value_data_i.other) >= j && ~isempty(Value_data_i.other{j})
+                agent_belief = Value_data_i.other{j}.initbelief;
+            else
+                agent_belief = Value_data_i.initbelief;
+            end
+            temp_data.agentIndex = j;
+            temp_data.initbelief = agent_belief;
+            temp_data.SC = SC_current;
+            GSU_current = GSU_current + UtilityEvaluator.calc_agent_total_utility(SC_current, agents, tasks, Value_Params, temp_data, AddPara_silent);
         end
-        temp_data.agentIndex = j;
-        temp_data.initbelief = agent_belief;
-        temp_data.SC = SC_current;
-        GSU_current = GSU_current + UtilityEvaluator.calc_agent_total_utility(SC_current, agents, tasks, Value_Params, temp_data, AddPara_silent);
     end
 
     % 全局效用差值：正值表示候选解更优，负值表示候选解更差

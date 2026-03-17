@@ -60,6 +60,13 @@ Value_data = WorldSim.init_value_data(agents, tasks, Value_Params);
 SC_global = cell(M, 1);
 for m = 1:M, SC_global{m} = zeros(N, K); end
 
+% 初始化 other 字段（用初始信念填充），确保第1轮 Preference_gain 调用时不走兜底逻辑
+for i = 1:N
+    for j = 1:N
+        Value_data(i).other{j}.initbelief = Value_data(j).initbelief;
+    end
+end
+
 if AddPara.verbose
     fprintf('[Qi2023] 开始PGG-TS算法，共%d轮...\n', Value_Params.num_rounds);
 end
@@ -264,13 +271,10 @@ for round = 1:Value_Params.num_rounds
     % 调用 WorldSim.calc_all_agents_with_global_sync 一次性计算所有智能体时序
     Value_data = update_task_schedule(Value_data, agents, tasks, Value_Params);
 
-    %% 6. 信念广播：智能体之间共享信念
-    % 根据开关决定是否广播更新后的信念
-    if enable_belief_update
-        for i = 1:N
-            for j = 1:N
-                Value_data(i).other{j}.initbelief = Value_data(j).initbelief;
-            end
+    %% 6. 信念广播：智能体之间共享信念（无论是否更新信念，均广播，确保 Preference_gain 使用正确的 other 字段）
+    for i = 1:N
+        for j = 1:N
+            Value_data(i).other{j}.initbelief = Value_data(j).initbelief;
         end
     end
 

@@ -17,7 +17,9 @@
       "Bash(python3 -c \"\nwith open\\('E:/Overlap_Coalition_Formation/comalg/alg7_OCF_SAtabu/OCF_SAtabu_global_main.m', 'rb'\\) as f:\n    raw = f.read\\(300\\)\ntry:\n    raw.decode\\('utf-8'\\)\n    print\\('编码: UTF-8'\\)\nexcept UnicodeDecodeError as e:\n    print\\('不是 UTF-8，错误位置:', e\\)\n    try:\n        raw.decode\\('gbk'\\)\n        print\\('编码: GBK'\\)\n    except:\n        print\\('也不是 GBK'\\)\n\")",
       "Read(//e/Overlap_Coalition_Formation/**)",
       "Read(//tmp/**)",
-      "Bash(matlab -batch \"run\\('Compare_Algorithms.m'\\)\" 2>&1 | tail -60)"
+      "Bash(matlab -batch \"run\\('Compare_Algorithms.m'\\)\" 2>&1 | tail -60)",
+      "Bash(ls -la \"E:/Overlap_Coalition_Formation/Main_fun/\" 2>/dev/null | grep -E '\\\\.m$')",
+      "Bash(ls -la \"E:/Overlap_Coalition_Formation/comalg/alg7_OCF_SAtabu/\" 2>/dev/null | grep -E '\\\\.m$')"
     ]
   }
 }

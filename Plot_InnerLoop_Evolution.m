@@ -39,10 +39,10 @@ if nargin == 0
 
     % 2. 选择算法
     % 可选值: 'OCF_SAtabu_global', 'Qi2023', 7, 3, 'alg1', 'alg2'
-    algorithm_name = 'OCF_SAtabu_global';
+    algorithm_name = 'Huo2025';
 
     % 3. 选择轮次
-    round_number = 40;
+    round_number = 1;
 
     % --- 自动加载逻辑 ---
     if auto_load_latest
@@ -211,12 +211,16 @@ end
 fprintf('正在绘制第 %d/%d 轮的内循环演化过程...\n', round_number, num_rounds);
 fprintf('  - 迭代次数: %d\n', length(inner_loop.iteration));
 
-is_qi = contains(lower(selected_alg_name), 'qi');
+is_qi   = contains(lower(selected_alg_name), 'qi');
 is_tabu = contains(lower(selected_alg_name), 'tabu') || contains(lower(selected_alg_name), 'ocf_satabu');
+is_huo  = contains(lower(selected_alg_name), 'huo');
 
 if is_qi
     fprintf('  - 初始Gamma: %.2f\n', inner_loop.temperature(1));
     fprintf('  - 最终Gamma: %.2f\n', inner_loop.temperature(end));
+elseif is_huo
+    fprintf('  - 初始k_stable: %d\n', round(inner_loop.temperature(1)));
+    fprintf('  - 最终k_stable: %d\n', round(inner_loop.temperature(end)));
 else
     fprintf('  - 初始温度: %.2f\n', inner_loop.temperature(1));
     fprintf('  - 最终温度: %.2f\n', inner_loop.temperature(end));
@@ -230,7 +234,7 @@ fprintf('  - 最优效用: %.2f\n', inner_loop.best_utility(end));
 fig = figure('Name', sprintf('%s - Round %d - Inner Loop Evolution', selected_alg_name, round_number), ...
     'Position', [100, 100, 1400, 900]);
 
-%% 子图1: 温度/Gamma变化
+%% 子图1: 温度/Gamma/k_stable变化
 subplot(2, 2, 1);
 plot(inner_loop.iteration, inner_loop.temperature, 'b-', 'LineWidth', 2);
 grid on;
@@ -240,6 +244,9 @@ xlabel('迭代次数 (Iteration)', 'FontSize', 11);
 if is_qi
     ylabel('Gamma系数 (Boltzmann Coefficient)', 'FontSize', 11);
     title_str = sprintf('Gamma增长曲线 (初始=%.1f)', inner_loop.temperature(1));
+elseif is_huo
+    ylabel('稳定性计数 k\_stable', 'FontSize', 11);
+    title_str = '稳定性计数变化 (Huo2025 贪婪搜索)';
 elseif is_tabu
     ylabel('温度 (Temperature)', 'FontSize', 11);
     if isfield(data, 'Value_Params') && isfield(data.Value_Params, 'alpha')
@@ -270,6 +277,11 @@ if is_qi
     text(inner_loop.iteration(1), inner_loop.temperature(1), sprintf('  Γ₀=%.2f', inner_loop.temperature(1)), ...
         'FontSize', 10, 'Color', 'r', 'VerticalAlignment', 'bottom');
     text(inner_loop.iteration(end), inner_loop.temperature(end), sprintf('  Γ_f=%.2f', inner_loop.temperature(end)), ...
+        'FontSize', 10, 'Color', 'g', 'VerticalAlignment', 'top');
+elseif is_huo
+    text(inner_loop.iteration(1), inner_loop.temperature(1), sprintf('  k_s=%d', round(inner_loop.temperature(1))), ...
+        'FontSize', 10, 'Color', 'r', 'VerticalAlignment', 'bottom');
+    text(inner_loop.iteration(end), inner_loop.temperature(end), sprintf('  k_s=%d', round(inner_loop.temperature(end))), ...
         'FontSize', 10, 'Color', 'g', 'VerticalAlignment', 'top');
 else
     text(inner_loop.iteration(1), inner_loop.temperature(1), sprintf('  T₀=%.2f', inner_loop.temperature(1)), ...
@@ -338,6 +350,8 @@ if is_qi
     title('效用变化分析 (禁忌搜索)', 'FontSize', 12, 'FontWeight', 'bold');
 elseif is_tabu
     title('效用变化分析 (SA+Tabu混合)', 'FontSize', 12, 'FontWeight', 'bold');
+elseif is_huo
+    title('效用变化分析 (贪婪搜索)', 'FontSize', 12, 'FontWeight', 'bold');
 else
     title('效用变化分析 (SA接受劣解)', 'FontSize', 12, 'FontWeight', 'bold');
 end
@@ -355,6 +369,11 @@ if is_qi
         'BackgroundColor', 'white', 'EdgeColor', 'black');
 elseif is_tabu
     text(0.05, 0.95, sprintf('效用提升: %d次\n接受劣解: %d次\n禁忌拒绝: 见log\n无变化: %d次', ...
+        num_accept_better, num_accept_worse, num_no_change), ...
+        'Units', 'normalized', 'FontSize', 10, 'VerticalAlignment', 'top', ...
+        'BackgroundColor', 'white', 'EdgeColor', 'black');
+elseif is_huo
+    text(0.05, 0.95, sprintf('效用提升: %d次\n效用下降: %d次\n无变化: %d次', ...
         num_accept_better, num_accept_worse, num_no_change), ...
         'Units', 'normalized', 'FontSize', 10, 'VerticalAlignment', 'top', ...
         'BackgroundColor', 'white', 'EdgeColor', 'black');
@@ -393,6 +412,8 @@ fprintf('迭代次数: %d\n', length(inner_loop.iteration));
 
 if is_qi
     fprintf('Gamma范围: %.2f → %.2f\n', inner_loop.temperature(1), inner_loop.temperature(end));
+elseif is_huo
+    fprintf('k_stable范围: %d → %d\n', round(inner_loop.temperature(1)), round(inner_loop.temperature(end)));
 else
     fprintf('温度范围: %.2f → %.2f\n', inner_loop.temperature(1), inner_loop.temperature(end));
 end
@@ -410,6 +431,10 @@ elseif is_tabu
     fprintf('效用提升: %d次 (%.1f%%)\n', num_accept_better, 100*num_accept_better/length(utility_delta));
     fprintf('接受劣解(SA): %d次 (%.1f%%)\n', num_accept_worse, 100*num_accept_worse/length(utility_delta));
     fprintf('(注: 禁忌拒绝次数需查看详细日志)\n');
+elseif is_huo
+    fprintf('效用提升: %d次 (%.1f%%)\n', num_accept_better, 100*num_accept_better/length(utility_delta));
+    fprintf('效用下降: %d次 (%.1f%%)\n', num_accept_worse, 100*num_accept_worse/length(utility_delta));
+    fprintf('(注: Huo2025为贪婪搜索，不主动接受劣解)\n');
 else
     fprintf('接受优解: %d次 (%.1f%%)\n', num_accept_better, 100*num_accept_better/length(utility_delta));
     fprintf('接受劣解: %d次 (%.1f%%)\n', num_accept_worse, 100*num_accept_worse/length(utility_delta));

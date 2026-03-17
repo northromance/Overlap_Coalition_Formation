@@ -13,8 +13,8 @@
 clear; clc; close all;
 
 % Resolve paths from this script's location (independent of MATLAB current folder)
+% Plot_Results.m 位于项目根目录，script_dir 即为项目根目录
 script_dir = fileparts(mfilename('fullpath'));
-project_root = fileparts(script_dir);
 
 %% ==================== 配置区 ====================
 
@@ -23,7 +23,7 @@ project_root = fileparts(script_dir);
 auto_load_latest = true;
 
 % 选项 B: 手动指定文件（当 auto_load_latest = false 时使用）
-result_file = fullfile(project_root, 'results', 'comparison_results_seed2456_20260203_164611.mat');
+result_file = fullfile(script_dir, 'results', 'comparison_results_seed2456_20260203_164611.mat');
 
 % 2. 画图配置
 plot_config = struct();
@@ -45,7 +45,6 @@ figure_dpi = 300;                   % 分辨率
 if auto_load_latest
     % 优先从当前目录的 results 文件夹查找，如果不存在则查找上级目录
     results_dirs = {
-        fullfile(project_root, 'results');
         fullfile(script_dir, 'results')
     };
     mat_files = [];
@@ -111,8 +110,8 @@ if plot_config.print_stats
             fprintf('  运行时间: %.4f 秒\n', stats.computation_time);
         end
 
-        if isfield(stats, 'task_completion_rate')
-            fprintf('  任务完成率: %.2f%%\n', stats.task_completion_rate * 100);
+        if isfield(stats, 'avg_task_completion')
+            fprintf('  平均任务完成率: %.2f%%\n', stats.avg_task_completion * 100);
         end
     end
 
