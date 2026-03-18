@@ -39,10 +39,11 @@ if nargin == 0
 
     % 2. 选择算法
     % 可选值: 'OCF_SAtabu_global', 'Qi2023', 7, 3, 'alg1', 'alg2'
-    algorithm_name = 'Huo2025';
+    % algorithm_name = 'OCF_SAtabu_global';
+    algorithm_name = 'Qi2023';
 
     % 3. 选择轮次
-    round_number = 1;
+    round_number = 10;
 
     % --- 自动加载逻辑 ---
     if auto_load_latest
@@ -231,8 +232,14 @@ fprintf('  - 最终效用: %.2f\n', inner_loop.current_utility(end));
 fprintf('  - 最优效用: %.2f\n', inner_loop.best_utility(end));
 
 %% 创建图形窗口
+% 读取图形尺寸（若结果文件中有 Value_Params.fig_size_inner 则使用，否则用默认值）
+if isfield(data, 'Value_Params') && isfield(data.Value_Params, 'fig_size_inner')
+    inner_fig_size = data.Value_Params.fig_size_inner;
+else
+    inner_fig_size = [100, 100, 900, 600];
+end
 fig = figure('Name', sprintf('%s - Round %d - Inner Loop Evolution', selected_alg_name, round_number), ...
-    'Position', [100, 100, 1400, 900]);
+    'Position', inner_fig_size);
 
 %% 子图1: 温度/Gamma/k_stable变化
 subplot(2, 2, 1);

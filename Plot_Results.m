@@ -27,12 +27,15 @@ result_file = fullfile(script_dir, 'results', 'comparison_results_seed2456_20260
 
 % 2. 画图配置
 plot_config = struct();
-plot_config.comparison = true;      % 算法对比图（多子图）
+plot_config.comparison = true;      % 算法对比图（2行3列柱状图）
+plot_config.radar     = true;       % 雷达图（需至少2个算法）
+plot_config.history   = true;       % 历史演化曲线（效用/价值/完成率）
+plot_config.belief    = true;       % 任务期望价值演化图
 plot_config.allocation = true;      % 算法资源分配图
 plot_config.animation = false;      % 执行动画（耗时）
 plot_config.environment = false;    % 环境图
 plot_config.print_stats = true;     % 打印统计信息
-plot_config.iterations = true;      % 迭代次数图（新增）
+plot_config.iterations = true;      % 迭代次数图
 
 % 3. 图形保存配置
 save_figures = false;               % 是否保存图片
@@ -125,7 +128,7 @@ if plot_config.comparison
     fprintf('正在绘制算法对比图...\n');
 
     PlotClass.plot_algorithm_comparison(results, comparison_stats, ...
-        length(fieldnames(results)), tasks, Value_Params, WORLD);
+        length(fieldnames(results)), tasks, Value_Params, WORLD, plot_config);
 
     if save_figures
         saveas(gcf, sprintf('results/comparison_%s', scenario_info.timestamp), figure_format);

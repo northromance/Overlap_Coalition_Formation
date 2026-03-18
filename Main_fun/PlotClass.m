@@ -5,24 +5,29 @@
     methods(Static)
         function plot_SA_allocation(Value_data, tasks, Value_Params, varargin)
             % plot_SA_allocation 绘制 SA 算法资源分配详情柱状图
-            
+
             alg_display_name = 'SA_Value';
             if ~isempty(varargin) && ~isempty(varargin{1})
                 alg_display_name = char(varargin{1});
             end
             fprintf('正在绘制 %s 资源分配详情图...\n', alg_display_name);
-            
+
             % 1. 读取数据
-            SC = Value_data(1).SC; 
-            
+            SC = Value_data(1).SC;
+
             N = Value_Params.N;
             M = Value_Params.M;
             K = Value_Params.K;
-            
+
             % 2. 创建图窗
+            if isfield(Value_Params, 'fig_size_alloc')
+                alloc_fig_size = Value_Params.fig_size_alloc;
+            else
+                alloc_fig_size = [100, 100, 900, 600];
+            end
             figure('Name', sprintf('%s Resource Allocation Detail', alg_display_name), ...
                    'NumberTitle', 'off', 'Color', 'w', ...
-                   'Position', [100, 100, 1200, 800]);
+                   'Position', alloc_fig_size);
             
             rows = ceil(sqrt(M));
             cols = ceil(M / rows);
@@ -198,7 +203,7 @@
             
             % --- 2. 初始化图形界面 ---
             fig_anim = figure('Name', 'Dynamic Execution Output', 'Color', 'w', ...
-                'Position', [100, 100, 1400, 700]); 
+                'Position', [100, 100, 900, 500]);
             
             % 颜色定义
             agent_colors = lines(N);
@@ -423,8 +428,17 @@
         end
         
         
-        function plot_algorithm_comparison(results, comparison_stats, num_algorithms, tasks, Value_Params, WORLD)
+        function plot_algorithm_comparison(results, comparison_stats, num_algorithms, tasks, Value_Params, WORLD, plot_config)
             % PLOT_ALGORITHM_COMPARISON 绘制算法对比图
+
+            % 默认开关（向后兼容：不传 plot_config 时全部开启）
+            if nargin < 7 || isempty(plot_config)
+                plot_config = struct('comparison', true, 'radar', true, 'history', true, 'belief', true);
+            end
+            if ~isfield(plot_config, 'comparison'), plot_config.comparison = true; end
+            if ~isfield(plot_config, 'radar'),      plot_config.radar      = true; end
+            if ~isfield(plot_config, 'history'),    plot_config.history    = true; end
+            if ~isfield(plot_config, 'belief'),     plot_config.belief     = true; end
             
             alg_names = fieldnames(results);
 
@@ -496,7 +510,15 @@
             end
             
             %% --- 2. 绘制综合柱状对比图 (2行3列) ---
-            figure('Name', '算法性能综合对比', 'Position', [100, 100, 1400, 900]);
+            if ~plot_config.comparison
+                fprintf('跳过综合对比图（plot_config.comparison=false）\n');
+            else
+            if isfield(Value_Params, 'fig_size_main')
+                main_fig_size = Value_Params.fig_size_main;
+            else
+                main_fig_size = [100, 100, 900, 600];
+            end
+            figure('Name', '算法性能综合对比', 'Position', main_fig_size);
             
             % 子图绘制函数
             plot_bar = @(idx, data, title_str, y_label, fmt) ...
@@ -521,10 +543,16 @@
             plot_bar(6, avg_rates, '平均任务完成率 (Avg Rate)', '完成率 (%)', '%.1f%%');
             
             sgtitle('多算法关键指标综合对比', 'FontSize', 14, 'FontWeight', 'bold');
-            
+            end % if plot_config.comparison
+
             %% --- 3. 绘制雷达图（至少两个算法） ---
-            if valid_count >= 2
-                figure('Name', '算法性能雷达图', 'Position', [150, 150, 800, 600]);
+            if plot_config.radar && valid_count >= 2
+                if isfield(Value_Params, 'fig_size_radar')
+                    radar_fig_size = Value_Params.fig_size_radar;
+                else
+                    radar_fig_size = [150, 150, 600, 450];
+                end
+                figure('Name', '算法性能雷达图', 'Position', radar_fig_size);
                 
                 % 准备雷达图数据，统一归一化到 0-1
                 radar_data = zeros(valid_count, 5);
@@ -612,10 +640,18 @@
                 end
             end
             
-            if ~isempty(value_histories) || ~isempty(utility_histories) || ~isempty(completion_rate_histories)
+            if plot_config.history && (~isempty(value_histories) || ~isempty(utility_histories) || ~isempty(completion_rate_histories))
                 total_plots = (~isempty(value_histories)) + (~isempty(utility_histories)) + (~isempty(completion_rate_histories));
-                fig_width = 500 * total_plots;
-                figure('Name', '历史演化过程', 'Position', [200, 200, fig_width, 500]);
+                if isfield(Value_Params, 'fig_size_history')
+                    hist_w = Value_Params.fig_size_history(3);
+                    hist_h = Value_Params.fig_size_history(4);
+                    hist_l = Value_Params.fig_size_history(1);
+                    hist_b = Value_Params.fig_size_history(2);
+                else
+                    hist_w = 400; hist_h = 350; hist_l = 200; hist_b = 200;
+                end
+                fig_width = hist_w * total_plots;
+                figure('Name', '历史演化过程', 'Position', [hist_l, hist_b, fig_width, hist_h]);
                 
                 plot_idx = 1;
                 
@@ -657,7 +693,7 @@
           
 
             %% --- 6. 绘制任务期望价值演化图（期望 = 价值 × 概率分布）
-            if has_tasks && ~isempty(type_values)
+            if plot_config.belief && has_tasks && ~isempty(type_values)
                 for alg_idx = 1:num_algorithms
                     alg_name = alg_names{alg_idx};
                     res = results.(alg_name);
@@ -699,7 +735,12 @@
 
                     rows = ceil(sqrt(num_tasks));
                     cols = ceil(num_tasks / rows);
-                    figure('Name', ['任务期望价值演化 - ', res.name], 'Position', [180, 180, 1200, 800]);
+                    if isfield(Value_Params, 'fig_size_belief')
+                        belief_fig_size = Value_Params.fig_size_belief;
+                    else
+                        belief_fig_size = [180, 180, 900, 600];
+                    end
+                    figure('Name', ['任务期望价值演化 - ', res.name], 'Position', belief_fig_size);
                     tiledlayout(rows, cols, 'Padding', 'compact', 'TileSpacing', 'compact');
 
                     for tsk = 1:num_tasks

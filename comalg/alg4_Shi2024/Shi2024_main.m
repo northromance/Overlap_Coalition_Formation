@@ -30,8 +30,8 @@ K = Value_Params.K;
 tol = 1e-9;
 num_rounds = Value_Params.num_rounds;
 
-% 信念更新开关
-enable_belief_update = false;
+% 信念更新开关（默认开启，与 Qi2023/OCF_SAtabu 对齐）
+enable_belief_update = true;
 if isfield(AddPara, 'enable_belief_update')
     enable_belief_update = AddPara.enable_belief_update;
 end
@@ -158,8 +158,8 @@ for i = 1:N
 end
 
 % 全局统计
-total_utility = calc_global_utility(SC, agents, tasks, Value_Params, Value_data, AddPara);
 if AddPara.verbose
+    [total_utility, ~, ~, ~] = UtilityEvaluator.evaluate_coalition_metrics(SC, agents, tasks, Value_Params, tol);
     fprintf('\nGlobal Total Utility: %.2f\n', total_utility);
     fprintf('Total Rounds: %d\n', num_rounds);
 end
@@ -232,8 +232,8 @@ for j = 1:N
         end
     end
 
-    % 加入最佳任务
-    if best_task > 0 && best_utility > 0
+    % 加入最佳任务（只要可行任务存在即加入，允许负效用，后续迭代可通过Quit退出）
+    if best_task > 0
         SC{best_task}(j, :) = agents(j).resources';
         if AddPara.verbose
             fprintf('  Agent %d joins Task %d (utility: %.2f, energy: %.2f)\n', ...
@@ -252,10 +252,12 @@ function [SC, k_iter] = optimize_coalitions(N, M, SC, agents, tasks, Value_Param
 % 迭代优化联盟结构 (解耦式：基于单种资源的细粒度调度)
 k_iter = 0;  % 内循环迭代计数器
 k_stable = 0;  % 稳定性计数器
-max_iterations = Value_Params.max_inner_iter;      
-K_len = Value_Params.Shi_K_stable_max;             
+max_iterations = Value_Params.max_inner_iter;
+K_len = Value_Params.Shi_K_stable_max;
 K_resources = Value_Params.K; % 获取资源种类总数
 L_tabu = Value_Params.Qi_L_tabu;           % 禁忌表长度（与 Qi2023 共用参数）
+Gamma = Value_Params.Qi_Gamma_init;        % Boltzmann 系数（每轮重置，与 Qi2023 对齐）
+Gamma_max = Value_Params.Qi_Gamma_max;     % Boltzmann 系数上限
 
 % 探索阶段使用静默模式，避免大量"试错"日志淹没有效信息
 AddPara_silent = AddPara;
@@ -270,10 +272,33 @@ while k_iter < max_iterations && k_stable < K_len
     if AddPara.verbose
         fprintf('  Iteration %d:\n', k_iter);
     end
-    
-    %% Phase 1: Quit/Transfer (利他偏好增益判断，单种资源粒度)
+
+    %% 遍历每个智能体：随机退出 + Transfer + Join 合并在同一循环，接受后立即广播
     for j = 1:N
-        Value_data(j).SC = SC;  % 确保信念数据同步
+        Value_data(j).SC = SC;
+
+        % --- 随机退出操作（与 Qi2023 对齐）：以 p_leave 概率随机撤出部分资源 ---
+        p_leave = Value_Params.p_leave;
+        SC_after_leave = SC;
+        for m = 1:M
+            for k = 1:K_resources
+                if SC_after_leave{m}(j, k) > tol && rand < p_leave
+                    if AddPara.verbose
+                        fprintf('    Agent %d: Leave Task %d [Res %d]\n', j, m, k);
+                    end
+                    SC_after_leave{m}(j, k) = 0;
+                end
+            end
+        end
+        % 退出操作只影响本智能体的概率计算基准，不直接更新全局 SC
+        Value_data(j).SC = SC_after_leave;
+
+        % 预计算概率分布（基于退出后的 SC）
+        [~, resource_gap] = calc_gaps(Value_data(j), Value_Params, AddPara);
+        probs_j = Qi2023_Select_probs(Value_data(j), agents, tasks, Value_Params, resource_gap, Gamma);
+        Value_data(j).SC = SC;  % 恢复为全局 SC，Transfer/Join 基于真实当前状态评估
+
+        % --- Transfer：对当前已参与的每个任务的每种资源，尝试转移到另一个任务 ---
         task_list = OCFUtils.get_agent_tasks_fast(SC, j, tol);
         task_list = task_list(task_list <= M);
 
@@ -281,109 +306,89 @@ while k_iter < max_iterations && k_stable < K_len
             task_p = task_list(task_idx);
 
             for k = 1:K_resources
-                if SC{task_p}(j, k) > tol
-                    SC_quit = SC;
-                    SC_quit{task_p}(j, k) = 0;
+                if SC{task_p}(j, k) <= tol, continue; end
 
-                    % 【Transfer 独立评估】以当前 SC 为基准，遍历所有目标任务
-                    best_transfer_task = -1;
-                    best_transfer_gain = 0;  % 必须严格 > 0 才接受
+                SC_quit = SC;
+                SC_quit{task_p}(j, k) = 0;
 
-                    for i_trans = 1:M
-                        if i_trans == task_p, continue; end
-                        if SC_quit{i_trans}(j, k) > tol, continue; end
-
-                        SC_temp = SC_quit;
-                        SC_temp{i_trans}(j, k) = agents(j).resources(k);
-
-                        [isFeasible_trans, ~, ~] = validate_feasibility(Value_data, agents, tasks, Value_Params, j, SC_temp, true, AddPara_silent);
-                        if isFeasible_trans
-                            % 利他偏好增益：SC(当前) → SC_temp(转移后)
-                            gain_transfer = Preference_gain(tasks, agents, SC, SC_temp, j, Value_Params, Value_data(j));
-                            if gain_transfer > best_transfer_gain
-                                best_transfer_gain = gain_transfer;
-                                best_transfer_task = i_trans;
-                            end
-                        end
+                % 按概率采样目标任务（排除当前任务和已有资源k的任务）
+                prob_k = probs_j(k, :);
+                prob_k(task_p) = 0;
+                for i_excl = 1:M
+                    if SC_quit{i_excl}(j, k) > tol
+                        prob_k(i_excl) = 0;
                     end
+                end
 
-                    % 计算单纯退出的利他增益
-                    gain_quit = Preference_gain(tasks, agents, SC, SC_quit, j, Value_Params, Value_data(j));
+                target_task = sample_from_probs(prob_k);
+                if target_task <= 0, continue; end
 
-                    % 结算优先级：Transfer > Quit > 不动（禁忌检查）
-                    if best_transfer_task > 0
-                        SC_cand = SC_quit;
-                        SC_cand{best_transfer_task}(j, k) = agents(j).resources(k);
-                        SC_hash = get_SC_hash(SC_cand);
-                        if ~is_in_tabu(SC_hash, TabuList)
-                            if AddPara.verbose
-                                fprintf('    Agent %d: Transfer Task %d->%d [Res %d] (gain=%.4f)\n', j, task_p, best_transfer_task, k, best_transfer_gain);
-                            end
-                            SC = SC_cand;
-                            Value_data(j).SC = SC;
-                            TabuList = update_tabu_list(TabuList, SC_hash, L_tabu);
+                SC_cand = SC_quit;
+                SC_cand{target_task}(j, k) = agents(j).resources(k);
+
+                [isFeasible_trans, ~, ~] = validate_feasibility(Value_data, agents, tasks, Value_Params, j, SC_cand, true, AddPara_silent);
+                if ~isFeasible_trans, continue; end
+
+                gain_transfer = Preference_gain(tasks, agents, SC, SC_cand, j, Value_Params, Value_data(j));
+                if gain_transfer > 0
+                    SC_hash = get_SC_hash(SC_cand);
+                    if ~is_in_tabu(SC_hash, TabuList)
+                        if AddPara.verbose
+                            fprintf('    Agent %d: Transfer Task %d->%d [Res %d] (gain=%.4f)\n', j, task_p, target_task, k, gain_transfer);
                         end
-                    elseif gain_quit > 0
-                        SC_hash = get_SC_hash(SC_quit);
-                        if ~is_in_tabu(SC_hash, TabuList)
-                            if AddPara.verbose
-                                fprintf('    Agent %d: Quit Task %d [Res %d] (gain=%.4f)\n', j, task_p, k, gain_quit);
-                            end
-                            SC = SC_quit;
-                            Value_data(j).SC = SC;
-                            TabuList = update_tabu_list(TabuList, SC_hash, L_tabu);
+                        SC = SC_cand;
+                        for ii = 1:N
+                            Value_data(ii).SC = SC;
                         end
+                        TabuList = update_tabu_list(TabuList, SC_hash, L_tabu);
+                        % 更新概率（SC 已变，重新计算）
+                        [~, resource_gap] = calc_gaps(Value_data(j), Value_Params, AddPara);
+                        probs_j = Qi2023_Select_probs(Value_data(j), agents, tasks, Value_Params, resource_gap, Gamma);
                     end
-                    % else: 保持不动
                 end
             end
         end
-    end
 
-    %% Phase 2: Join 新任务 (利他偏好增益判断，概率加权任务顺序)
-    for j = 1:N
-        Value_data(j).SC = SC;
-
-        % 计算资源缺口与概率分布
-        [~, resource_gap] = calc_gaps(Value_data(j), Value_Params, AddPara);
-        T_explore = Value_Params.T0_round;
-        probs = SA_Select_probs(Value_data(j), agents, tasks, Value_Params, resource_gap, T_explore);
-
+        % --- Join：对每种资源，尝试加入一个新任务 ---
         for k = 1:K_resources
             if agents(j).resources(k) <= tol, continue; end
 
-            % 确定性概率降序排列
-            prob_k = probs(k, :);
-            [~, task_order] = sort(-(prob_k * (M + 1) + (M:-1:1)));
+            % 按概率采样目标任务（排除已有资源k的任务）
+            prob_k = probs_j(k, :);
+            for i_excl = 1:M
+                if SC{i_excl}(j, k) >= tol
+                    prob_k(i_excl) = 0;
+                end
+            end
 
-            for i_idx = 1:M
-                i = task_order(i_idx);
-                if SC{i}(j, k) >= tol, continue; end  % 资源已投入，跳过
+            target_task = sample_from_probs(prob_k);
+            if target_task <= 0, continue; end
 
-                SC_join = SC;
-                SC_join{i}(j, k) = agents(j).resources(k);
+            SC_join = SC;
+            SC_join{target_task}(j, k) = agents(j).resources(k);
 
-                [isFeasible, ~, cost_data] = validate_feasibility(Value_data, agents, tasks, Value_Params, j, SC_join, true, AddPara_silent);
-                if ~isFeasible, continue; end
+            [isFeasible, ~, cost_data] = validate_feasibility(Value_data, agents, tasks, Value_Params, j, SC_join, true, AddPara_silent);
+            if ~isFeasible, continue; end
 
-                % 利他偏好增益：SC(当前) → SC_join(加入后)
-                gain_join = Preference_gain(tasks, agents, SC, SC_join, j, Value_Params, Value_data(j));
-                if gain_join > 0
-                    SC_hash = get_SC_hash(SC_join);
-                    if ~is_in_tabu(SC_hash, TabuList)
-                        if AddPara.verbose
-                            fprintf('    Agent %d: Join Task %d [Res %d] (gain=%.4f, energy=%.2f)\n', ...
-                                j, i, k, gain_join, cost_data.requiredEnergy);
-                        end
-                        SC{i}(j, k) = agents(j).resources(k);
-                        Value_data(j).SC = SC;
-                        TabuList = update_tabu_list(TabuList, SC_hash, L_tabu);
+            gain_join = Preference_gain(tasks, agents, SC, SC_join, j, Value_Params, Value_data(j));
+            if gain_join > 0
+                SC_hash = get_SC_hash(SC_join);
+                if ~is_in_tabu(SC_hash, TabuList)
+                    if AddPara.verbose
+                        fprintf('    Agent %d: Join Task %d [Res %d] (gain=%.4f, energy=%.2f)\n', ...
+                            j, target_task, k, gain_join, cost_data.requiredEnergy);
                     end
+                    SC = SC_join;
+                    for ii = 1:N
+                        Value_data(ii).SC = SC;
+                    end
+                    TabuList = update_tabu_list(TabuList, SC_hash, L_tabu);
                 end
             end
         end
-    end
-    
+
+    end  % end for j
+
     %% 检查收敛和稳定性
     if isequal_SC(SC, SC_prev_iter)
         k_stable = k_stable + 1;
@@ -398,6 +403,41 @@ while k_iter < max_iterations && k_stable < K_len
         end
     else
         k_stable = 0;  % 有改进，重置计数器
+    end
+
+    % 更新 Boltzmann 系数（与 Qi2023 对齐）
+    % Γ(k+1) = Γ(k) + k · (Γ_max - Γ(k)) / K_max
+    Gamma = Gamma + k_iter * (Gamma_max - Gamma) / max_iterations;
+    if AddPara.verbose
+        fprintf('  Gamma updated: %.4f\n', Gamma);
+    end
+end
+end
+
+
+function idx = sample_from_probs(prob_vec)
+% 按概率向量采样返回一个任务索引，概率全零时返回 0
+total = sum(prob_vec);
+if total <= 1e-12
+    idx = 0;
+    return;
+end
+prob_vec = prob_vec / total;
+r = rand();
+cumulative = 0;
+idx = 0;
+for i = 1:length(prob_vec)
+    cumulative = cumulative + prob_vec(i);
+    if r <= cumulative
+        idx = i;
+        return;
+    end
+end
+% 浮点误差兜底：返回最后一个非零项
+for i = length(prob_vec):-1:1
+    if prob_vec(i) > 0
+        idx = i;
+        return;
     end
 end
 end
@@ -451,48 +491,14 @@ end
 
 
 function history_data = record_round_data(history_data, round, SC, Value_data, agents, tasks, Value_Params, AddPara, summatrix, tol)
-% 记录每轮的历史数据
+% 记录每轮的历史数据（口径与 Qi2023/OCF 对齐，统一用 evaluate_coalition_metrics）
 
-N = Value_Params.N;
-M = Value_Params.M;
-K = Value_Params.K;
+% 使用上帝视角统一计算效用、成本、完成度（真实需求）
+[total_utility, total_global_cost, total_completed_value, task_completion_degrees] = ...
+    UtilityEvaluator.evaluate_coalition_metrics(SC, agents, tasks, Value_Params, tol);
 
-% 计算全局效用和成本
-total_utility = calc_global_utility(SC, agents, tasks, Value_Params, Value_data, AddPara);
-total_global_cost = 0;
-
-for i = 1:N
-    agent_cost = calc_agent_cost(i, SC, agents, tasks, Value_Params, tol);
-    total_global_cost = total_global_cost + agent_cost;
-end
-
-% 计算任务完成度
-task_completion_degrees = zeros(M, 1);
-total_completed_value = 0;
-confidence = Value_Params.resource_confidence;  % 统一使用 Value_Params.resource_confidence
-
-for j = 1:M
-    belief = Value_data(1).initbelief(j, :);
-    demand = WorldSim.calculate_demand_quantile(belief, Value_Params.task_type_demands, confidence);
-    participants = OCFUtils.get_participants(SC, j, tol);
-    if ~isempty(participants)
-        total_resources = sum(SC{j}(participants, :), 1);
-        D_C = WorldSim.calc_task_completion_degree(total_resources, demand, K);
-        task_completion_degrees(j) = D_C;
-        if D_C > tol
-            total_completed_value = total_completed_value + tasks(j).value * D_C;
-        end
-    end
-end
-
-% 构建 coalitionstru（使用统一的构建函数）
+% 构建 coalitionstru
 final_coalitionstru = OCFUtils.build_coalitionstru_from_SC(SC, Value_Params, agents);
-
-% 记录信念
-belief_snapshot = zeros(N, M, Value_Params.task_type);
-for i = 1:N
-    belief_snapshot(i, :, :) = Value_data(i).initbelief(1:M, :);
-end
 
 % 使用 ResultProcessor 记录
 history_data = ResultProcessor.record_history_data(history_data, round, Value_data, Value_Params, ...
@@ -507,40 +513,3 @@ end
 end
 
 
-function total_utility = calc_global_utility(SC, agents, tasks, Value_Params, Value_data, AddPara)
-% 计算全局总效用
-
-N = Value_Params.N;
-total_utility = 0;
-
-for i = 1:N
-    agent_utility = UtilityEvaluator.calc_agent_total_utility(SC, agents, tasks, Value_Params, Value_data(i), AddPara);
-    total_utility = total_utility + agent_utility;
-end
-
-end
-
-
-function cost = calc_agent_cost(agent_id, SC, agents, tasks, Value_Params, tol)
-% 计算智能体的总成本
-
-task_list = OCFUtils.get_agent_tasks_fast(SC, agent_id, tol);
-task_list = task_list(task_list <= Value_Params.M);
-
-if isempty(task_list)
-    cost = 0;
-    return;
-end
-
-ordered_tasks = OCFUtils.sort_tasks_by_priority(task_list, tasks);
-
-[t_fly, t_wait, t_exec] = WorldSim.calc_with_global_sync(...
-    agent_id, ordered_tasks, agents, tasks, Value_Params, SC, tol);
-
-alpha_fly = agents(agent_id).fuel;
-alpha_wait = agents(agent_id).wait_fuel;
-beta = agents(agent_id).beta;
-
-cost = alpha_fly * t_fly + alpha_wait * t_wait + beta * t_exec;
-
-end
