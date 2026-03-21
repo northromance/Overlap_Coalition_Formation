@@ -16,6 +16,14 @@ clear; clc; close all;
 % Plot_Results.m 位于项目根目录，script_dir 即为项目根目录
 script_dir = fileparts(mfilename('fullpath'));
 
+% 添加项目子目录到 MATLAB 路径
+addpath(fullfile(script_dir, 'Main_fun'));
+addpath(fullfile(script_dir, 'comalg', 'alg1_SA'));
+addpath(fullfile(script_dir, 'comalg', 'alg2_Huo2025'));
+addpath(fullfile(script_dir, 'comalg', 'alg3_Qi2023'));
+addpath(fullfile(script_dir, 'comalg', 'alg4_Shi2024'));
+addpath(fullfile(script_dir, 'comalg', 'alg7_OCF_SAtabu'));
+
 %% ==================== 配置区 ====================
 
 % 1. 选择要加载的结果文件

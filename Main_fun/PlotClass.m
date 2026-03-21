@@ -659,31 +659,34 @@
                     subplot(1, total_plots, plot_idx);
                     hold on;
                     for k = 1:length(value_histories)
-                        plot(value_histories{k}, 'LineWidth', 2, 'Color', hist_colors(k,:), 'DisplayName', hist_names{k});
+                        vals = value_histories{k};
+                        plot(0:length(vals), [0, vals], 'LineWidth', 2, 'Color', hist_colors(k,:), 'DisplayName', hist_names{k});
                     end
                     xlabel('外层迭代 (Round)'); ylabel('总完成价值');
                     title('总完成价值演化曲线');
                     grid on; legend('Location', 'best'); hold off;
                     plot_idx = plot_idx + 1;
                 end
-                
+
                 if ~isempty(utility_histories)
                     subplot(1, total_plots, plot_idx);
                     hold on;
                     for k = 1:length(utility_histories)
-                        plot(utility_histories{k}, 'LineWidth', 2, 'Color', hist_colors(k,:), 'DisplayName', hist_names{k});
+                        utils = utility_histories{k};
+                        plot(0:length(utils), [0, utils], 'LineWidth', 2, 'Color', hist_colors(k,:), 'DisplayName', hist_names{k});
                     end
                     xlabel('外层迭代 (Round)'); ylabel('全局总效用');
                     title('全局总效用演化曲线');
                     grid on; legend('Location', 'best'); hold off;
                     plot_idx = plot_idx + 1;
                 end
-                
+
                 if ~isempty(completion_rate_histories)
                     subplot(1, total_plots, plot_idx);
                     hold on;
                     for k = 1:length(completion_rate_histories)
-                        plot(completion_rate_histories{k}, 'LineWidth', 2, 'Color', hist_colors(k,:), 'DisplayName', hist_names{k});
+                        rates = completion_rate_histories{k};
+                        plot(0:length(rates), [0, rates], 'LineWidth', 2, 'Color', hist_colors(k,:), 'DisplayName', hist_names{k});
                     end
                     xlabel('外层迭代 (Round)'); ylabel('平均任务完成度 (%)');
                     title('任务完成度演化曲线');

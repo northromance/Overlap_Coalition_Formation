@@ -87,7 +87,7 @@ for round = 1:num_rounds
 
         % 更新 resources_matrix
         for j = 1:M
-            Value_data(i).resources_matrix(j, :) = SC{j}(i, :);
+            Value_data(i).resources_matrix(j, :) = SC{j}(i, :); % 第j个任务 然后第i个智能体分配了多少
         end
 
         % 更新 coalitionstru（使用统一的构建函数）
@@ -273,42 +273,40 @@ while k_iter < max_iterations && k_stable < K_len
         fprintf('  Iteration %d:\n', k_iter);
     end
 
-    %% 遍历每个智能体：随机退出 + Transfer + Join 合并在同一循环，接受后立即广播
+    %% 遍历每个智能体：Leave + Transfer + Join 在工作副本上完成，最终增益门控后广播（与 Qi2023 对齐）
     for j = 1:N
         Value_data(j).SC = SC;
+        SC_working = SC;  % agent j 的工作副本，三步操作均在此副本上累积
 
-        % --- 随机退出操作（与 Qi2023 对齐）：以 p_leave 概率随机撤出部分资源 ---
+        % --- A. 随机退出操作：修改工作副本，不广播 ---
         p_leave = Value_Params.p_leave;
-        SC_after_leave = SC;
         for m = 1:M
             for k = 1:K_resources
-                if SC_after_leave{m}(j, k) > tol && rand < p_leave
+                if SC_working{m}(j, k) > tol && rand < p_leave
                     if AddPara.verbose
                         fprintf('    Agent %d: Leave Task %d [Res %d]\n', j, m, k);
                     end
-                    SC_after_leave{m}(j, k) = 0;
+                    SC_working{m}(j, k) = 0;
                 end
             end
         end
-        % 退出操作只影响本智能体的概率计算基准，不直接更新全局 SC
-        Value_data(j).SC = SC_after_leave;
 
-        % 预计算概率分布（基于退出后的 SC）
+        % --- B. 预计算概率分布（基于退出后的工作副本）---
+        Value_data(j).SC = SC_working;
         [~, resource_gap] = calc_gaps(Value_data(j), Value_Params, AddPara);
         probs_j = Qi2023_Select_probs(Value_data(j), agents, tasks, Value_Params, resource_gap, Gamma);
-        Value_data(j).SC = SC;  % 恢复为全局 SC，Transfer/Join 基于真实当前状态评估
 
-        % --- Transfer：对当前已参与的每个任务的每种资源，尝试转移到另一个任务 ---
-        task_list = OCFUtils.get_agent_tasks_fast(SC, j, tol);
+        % --- C. Transfer：在工作副本上操作，增益与工作副本比较，不广播 ---
+        task_list = OCFUtils.get_agent_tasks_fast(SC_working, j, tol);
         task_list = task_list(task_list <= M);
 
         for task_idx = 1:length(task_list)
             task_p = task_list(task_idx);
 
             for k = 1:K_resources
-                if SC{task_p}(j, k) <= tol, continue; end
+                if SC_working{task_p}(j, k) <= tol, continue; end
 
-                SC_quit = SC;
+                SC_quit = SC_working;
                 SC_quit{task_p}(j, k) = 0;
 
                 % 按概率采样目标任务（排除当前任务和已有资源k的任务）
@@ -329,19 +327,19 @@ while k_iter < max_iterations && k_stable < K_len
                 [isFeasible_trans, ~, ~] = validate_feasibility(Value_data, agents, tasks, Value_Params, j, SC_cand, true, AddPara_silent);
                 if ~isFeasible_trans, continue; end
 
-                gain_transfer = Preference_gain(tasks, agents, SC, SC_cand, j, Value_Params, Value_data(j));
+                % 增益基准：工作副本（含 Leave 累积状态）
+                Value_data(j).SC = SC_working;
+                gain_transfer = Preference_gain(tasks, agents, SC_working, SC_cand, j, Value_Params, Value_data(j));
                 if gain_transfer > 0
                     SC_hash = get_SC_hash(SC_cand);
                     if ~is_in_tabu(SC_hash, TabuList)
                         if AddPara.verbose
                             fprintf('    Agent %d: Transfer Task %d->%d [Res %d] (gain=%.4f)\n', j, task_p, target_task, k, gain_transfer);
                         end
-                        SC = SC_cand;
-                        for ii = 1:N
-                            Value_data(ii).SC = SC;
-                        end
+                        SC_working = SC_cand;  % 更新工作副本，不广播
                         TabuList = update_tabu_list(TabuList, SC_hash, L_tabu);
-                        % 更新概率（SC 已变，重新计算）
+                        % 重新计算概率（工作副本已变）
+                        Value_data(j).SC = SC_working;
                         [~, resource_gap] = calc_gaps(Value_data(j), Value_Params, AddPara);
                         probs_j = Qi2023_Select_probs(Value_data(j), agents, tasks, Value_Params, resource_gap, Gamma);
                     end
@@ -349,14 +347,14 @@ while k_iter < max_iterations && k_stable < K_len
             end
         end
 
-        % --- Join：对每种资源，尝试加入一个新任务 ---
+        % --- D. Join：在工作副本上操作，增益与工作副本比较，不广播 ---
         for k = 1:K_resources
             if agents(j).resources(k) <= tol, continue; end
 
             % 按概率采样目标任务（排除已有资源k的任务）
             prob_k = probs_j(k, :);
             for i_excl = 1:M
-                if SC{i_excl}(j, k) >= tol
+                if SC_working{i_excl}(j, k) >= tol
                     prob_k(i_excl) = 0;
                 end
             end
@@ -364,13 +362,15 @@ while k_iter < max_iterations && k_stable < K_len
             target_task = sample_from_probs(prob_k);
             if target_task <= 0, continue; end
 
-            SC_join = SC;
+            SC_join = SC_working;
             SC_join{target_task}(j, k) = agents(j).resources(k);
 
             [isFeasible, ~, cost_data] = validate_feasibility(Value_data, agents, tasks, Value_Params, j, SC_join, true, AddPara_silent);
             if ~isFeasible, continue; end
 
-            gain_join = Preference_gain(tasks, agents, SC, SC_join, j, Value_Params, Value_data(j));
+            % 增益基准：工作副本（含 Leave + Transfer 累积状态）
+            Value_data(j).SC = SC_working;
+            gain_join = Preference_gain(tasks, agents, SC_working, SC_join, j, Value_Params, Value_data(j));
             if gain_join > 0
                 SC_hash = get_SC_hash(SC_join);
                 if ~is_in_tabu(SC_hash, TabuList)
@@ -378,13 +378,24 @@ while k_iter < max_iterations && k_stable < K_len
                         fprintf('    Agent %d: Join Task %d [Res %d] (gain=%.4f, energy=%.2f)\n', ...
                             j, target_task, k, gain_join, cost_data.requiredEnergy);
                     end
-                    SC = SC_join;
-                    for ii = 1:N
-                        Value_data(ii).SC = SC;
-                    end
+                    SC_working = SC_join;  % 更新工作副本，不广播
                     TabuList = update_tabu_list(TabuList, SC_hash, L_tabu);
                 end
             end
+        end
+
+        % --- E. 最终增益门控：SC_working 整体优于本轮初始 SC 才接受广播（与 Qi2023 step D 对齐）---
+        % 对比基准是 agent j 本轮开始时的 SC（SC_working 初始化自此，Leave/Transfer/Join 前未变）
+        Value_data(j).SC = SC_working;
+        final_gain = Preference_gain(tasks, agents, SC, SC_working, j, Value_Params, Value_data(j));
+        if final_gain > 0
+            SC = SC_working;
+            for ii = 1:N
+                Value_data(ii).SC = SC;
+            end
+        else
+            % 拒绝：整体不优于起始状态，SC 不变，只恢复 agent j 的视图
+            Value_data(j).SC = SC;
         end
 
     end  % end for j

@@ -38,12 +38,13 @@ if nargin == 0
     manual_result_file = 'results/comparison_N6_M10_Qi+OCFSAtabu_20260313_213738.mat';
 
     % 2. 选择算法
-    % 可选值: 'OCF_SAtabu_global', 'Qi2023', 7, 3, 'alg1', 'alg2'
+    % 可选值: 'OCF_SAtabu_global', 'Qi2023', 'Huo2025', 7, 3, 2, 'alg1', 'alg2'
     % algorithm_name = 'OCF_SAtabu_global';
-    algorithm_name = 'Qi2023';
+    % algorithm_name = 'Huo2025';
+    algorithm_name = 'Huo2025';
 
     % 3. 选择轮次
-    round_number = 10;
+    round_number = 5;
 
     % --- 自动加载逻辑 ---
     if auto_load_latest
@@ -253,7 +254,24 @@ if is_qi
     title_str = sprintf('Gamma增长曲线 (初始=%.1f)', inner_loop.temperature(1));
 elseif is_huo
     ylabel('稳定性计数 k\_stable', 'FontSize', 11);
-    title_str = '稳定性计数变化 (Huo2025 贪婪搜索)';
+    % 判断退出原因：震荡截止 / 达到 K_stable_max / 跑满 MaxIter
+    n_iter = length(inner_loop.iteration);
+    k_stable_final = round(inner_loop.temperature(end));
+    if isfield(data, 'Value_Params')
+        vp = data.Value_Params;
+        hit_stable  = isfield(vp, 'K_stable_max')    && k_stable_final >= vp.K_stable_max;
+        hit_maxiter = isfield(vp, 'max_inner_iter')  && n_iter >= vp.max_inner_iter;
+    else
+        hit_stable = false; hit_maxiter = false;
+    end
+    if ~hit_stable && ~hit_maxiter
+        exit_reason = '震荡检测提前退出';
+    elseif hit_stable
+        exit_reason = sprintf('收敛 (k\\_stable=%d)', k_stable_final);
+    else
+        exit_reason = sprintf('跑满 MaxIter=%d', n_iter);
+    end
+    title_str = sprintf('稳定性计数变化 (Huo2025) — %s', exit_reason);
 elseif is_tabu
     ylabel('温度 (Temperature)', 'FontSize', 11);
     if isfield(data, 'Value_Params') && isfield(data.Value_Params, 'alpha')
