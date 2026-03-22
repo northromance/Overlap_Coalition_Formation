@@ -35,7 +35,7 @@ for k = 1:numel(teammates)
         isFeasible = false;
         info.reason = 'teammates_would_become_infeasible';
         info.affected_agents = teammates(k);
-        if AddPara.verbose
+        if AddPara.verbose >= 3
             fprintf('      [队友检查] Agent %d 不可行: %s\n', teammates(k), info_t.reason);
         end
         return;

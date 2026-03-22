@@ -10,6 +10,7 @@ function [Value_data, history_data] = Huo2025_main(agents, tasks, AddPara, Value
 %   agents       - 智能体结构体数组
 %   tasks        - 任务结构体数组
 %   AddPara      - 附加参数（enable_belief_update, verbose）
+%                  verbose: 0=静默 1=轮次进度 2=迭代进度 3=详细
 %   Value_Params - 全局参数
 %
 % 输出:
@@ -84,14 +85,14 @@ for i = 1:N
     end
 end
 
-if AddPara.verbose
+if AddPara.verbose >= 1
     fprintf('[Huo2025] 初始化完成：N=%d, M=%d, K=%d, 轮数=%d\n', N, M, K, Value_Params.num_rounds);
 end
 
 %% ==================== 2. 主循环：多轮博弈与演化 ====================
 for counter = 1:Value_Params.num_rounds
 
-    if AddPara.verbose
+    if AddPara.verbose >= 1
         fprintf('[Huo2025] === 第 %d/%d 轮 ===\n', counter, Value_Params.num_rounds);
     end
 
@@ -139,7 +140,7 @@ for counter = 1:Value_Params.num_rounds
 
         k_iter = k_iter + 1;
 
-        if AddPara.verbose && mod(k_iter, 10) == 0
+        if AddPara.verbose >= 2 && mod(k_iter, 10) == 0
             fprintf('[Huo2025]   迭代 %d: 效用=%.4f, k_stable=%d\n', k_iter, iter_utility, k_stable);
         end
 
@@ -148,7 +149,7 @@ for counter = 1:Value_Params.num_rounds
         end
     end
 
-    if AddPara.verbose
+    if AddPara.verbose >= 2
         converge_reason = '稳定';
         if k_iter >= Value_Params.max_inner_iter, converge_reason = '达到最大迭代'; end
         fprintf('[Huo2025] 第 %d 轮收敛（%s），迭代次数=%d，最终效用=%.4f\n', ...
@@ -188,16 +189,16 @@ end % End of For (Rounds)
 Value_data = update_task_schedule(Value_data, agents, tasks, Value_Params);
 
 %% ==================== 3. 最终一致性检查 ====================
-if AddPara.verbose
+if AddPara.verbose >= 2
     fprintf('\n[Huo2025] 执行最终一致性检查...\n');
 end
-[is_valid, error_log] = check_coalition_consistency(Value_data, agents, tasks, Value_Params, 'Non-OCF', AddPara.verbose);
+[is_valid, error_log] = check_coalition_consistency(Value_data, agents, tasks, Value_Params, 'Non-OCF', AddPara.verbose >= 2);
 
 if ~is_valid
     warning('[Huo2025] 联盟一致性检查发现 %d 处问题，请查看上方日志！', length(error_log));
     history_data.consistency_errors = error_log;
 else
-    if AddPara.verbose
+    if AddPara.verbose >= 2
         fprintf('[Huo2025] 所有一致性检查通过！\n');
     end
 end

@@ -67,7 +67,7 @@ for j = 1:M
 
     % 禁忌检查
     if huo_is_in_tabu(huo_get_SC_hash(SC_cand), TabuList)
-        if isfield(AddPara, 'verbose') && AddPara.verbose
+        if isfield(AddPara, 'verbose') && AddPara.verbose >= 3
             fprintf('  [Value_order] Agent %d 候选任务%d 被禁忌跳过\n', agent_idx, j);
         end
         continue;
@@ -99,12 +99,12 @@ if best_task ~= cur_task
     SC_global = best_SC;
     moved     = true;
     TabuList  = huo_update_tabu(TabuList, huo_get_SC_hash(SC_global), L_tabu);
-    if isfield(AddPara, 'verbose') && AddPara.verbose
+    if isfield(AddPara, 'verbose') && AddPara.verbose >= 3
         fprintf('  [Value_order] Agent %d 迁移 任务%d -> 任务%d，效用增量=%.4f\n', ...
             agent_idx, cur_task, best_task, best_delta);
     end
 else
-    if isfield(AddPara, 'verbose') && AddPara.verbose
+    if isfield(AddPara, 'verbose') && AddPara.verbose >= 3
         fprintf('  [Value_order] Agent %d 保持任务%d不变（无正增量）\n', agent_idx, cur_task);
     end
 end

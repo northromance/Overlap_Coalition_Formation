@@ -12,13 +12,14 @@ function [Value_data, history_data] = Shi2024_main(agents, tasks, AddPara, Value
 %   agents       - 智能体结构体数组
 %   tasks        - 任务结构体数组
 %   AddPara      - 附加参数（包含信念更新开关）
+%                  verbose: 0=静默 1=轮次进度 2=迭代进度 3=详细
 %   Value_Params - 全局参数
 %
 % 输出:
 %   Value_data   - 最终的智能体数据结构
 %   history_data - 历史数据记录
 
-if AddPara.verbose
+if AddPara.verbose >= 1
     fprintf('\n=== Shi2024 OCF Algorithm Start ===\n');
 end
 if isfield(Value_Params, 'seed'), rng(Value_Params.seed); end
@@ -36,7 +37,7 @@ if isfield(AddPara, 'enable_belief_update')
     enable_belief_update = AddPara.enable_belief_update;
 end
 
-if AddPara.verbose
+if AddPara.verbose >= 2
     fprintf('Belief update: %s\n', mat2str(enable_belief_update));
     fprintf('Agents: %d, Tasks: %d, Resources: %d, Rounds: %d\n', N, M, K, num_rounds);
 end
@@ -62,20 +63,20 @@ summatrix = zeros(M, Value_Params.task_type);
 
 %% 多轮迭代
 for round = 1:num_rounds
-    if AddPara.verbose
-        fprintf('\n========== Round %d/%d ==========\n', round, num_rounds);
+    if AddPara.verbose >= 1
+        fprintf('\n[Shi2024] === 第 %d/%d 轮 ===\n', round, num_rounds);
     end
 
     %% Step 1: 联盟形成
     if round == 1
         % 第一轮：初始化策略
-        if AddPara.verbose
+        if AddPara.verbose >= 2
             fprintf('--- Initial Coalition Formation ---\n');
         end
         [SC, k_iter] = initial_coalition_formation(N, M, SC, agents, tasks, Value_Params, Value_data, AddPara, tol);
     else
         % 后续轮：迭代优化
-        if AddPara.verbose
+        if AddPara.verbose >= 2
             fprintf('--- Coalition Optimization ---\n');
         end
         [SC, k_iter] = optimize_coalitions(N, M, SC, agents, tasks, Value_Params, Value_data, AddPara, tol);
@@ -108,14 +109,14 @@ for round = 1:num_rounds
     %% Step 4: 信念更新
     if enable_belief_update && round < num_rounds
         Value_data = AgentOps.update_belief_from_observations(Value_data, Value_Params);
-        if AddPara.verbose
+        if AddPara.verbose >= 2
             fprintf('Beliefs updated for next round.\n');
         end
     end
 end
 
 %% 最终结果处理
-if AddPara.verbose
+if AddPara.verbose >= 2
     fprintf('\n=== Final Results ===\n');
 end
 
@@ -148,7 +149,7 @@ for i = 1:N
             + beta * all_agents_results(i).t_exec_total;
         Value_data(i).task_schedule.total_energy = E_total;
 
-        if AddPara.verbose
+        if AddPara.verbose >= 3
             fprintf('Agent %d: Tasks=%d, Utility=%.2f, Energy=%.2f\n', ...
                 i, length(task_list), ...
                 UtilityEvaluator.calc_agent_total_utility(SC, agents, tasks, Value_Params, Value_data(i), AddPara), ...
@@ -158,29 +159,29 @@ for i = 1:N
 end
 
 % 全局统计
-if AddPara.verbose
+if AddPara.verbose >= 2
     [total_utility, ~, ~, ~] = UtilityEvaluator.evaluate_coalition_metrics(SC, agents, tasks, Value_Params, tol);
     fprintf('\nGlobal Total Utility: %.2f\n', total_utility);
     fprintf('Total Rounds: %d\n', num_rounds);
 end
 
 %% 最终一致性检查（使用统一的检查函数）
-if AddPara.verbose
+if AddPara.verbose >= 2
     fprintf('\n[Shi2024] 执行最终一致性检查...\n');
 end
-[is_valid, error_log] = check_coalition_consistency(Value_data, agents, tasks, Value_Params, 'OCF', AddPara.verbose);
+[is_valid, error_log] = check_coalition_consistency(Value_data, agents, tasks, Value_Params, 'OCF', AddPara.verbose >= 2);
 
 if ~is_valid
     warning('[Shi2024] 联盟一致性检查发现 %d 处问题，请查看上方日志！', length(error_log));
     % 将错误日志保存到历史数据中以便后续分析
     history_data.consistency_errors = error_log;
 else
-    if AddPara.verbose
-        fprintf('✅ [Shi2024] 所有一致性检查通过！\n');
+    if AddPara.verbose >= 2
+        fprintf('[Shi2024] 所有一致性检查通过！\n');
     end
 end
 
-if AddPara.verbose
+if AddPara.verbose >= 1
     fprintf('\n=== Shi2024 OCF Algorithm End ===\n\n');
 end
 
@@ -235,7 +236,7 @@ for j = 1:N
     % 加入最佳任务（只要可行任务存在即加入，允许负效用，后续迭代可通过Quit退出）
     if best_task > 0
         SC{best_task}(j, :) = agents(j).resources';
-        if AddPara.verbose
+        if AddPara.verbose >= 3
             fprintf('  Agent %d joins Task %d (utility: %.2f, energy: %.2f)\n', ...
                 j, best_task, best_utility, best_cost_data.requiredEnergy);
         end
@@ -261,15 +262,16 @@ Gamma_max = Value_Params.Qi_Gamma_max;     % Boltzmann 系数上限
 
 % 探索阶段使用静默模式，避免大量"试错"日志淹没有效信息
 AddPara_silent = AddPara;
-AddPara_silent.verbose = false;
+AddPara_silent.verbose = 0;
 
-% 禁忌表（跨迭代累积，避免重复访问相同 SC 状态）
-TabuList = {};
+% 禁忌表：containers.Map（O(1) 查找）+ FIFO 队列（限制表长）
+tabu_map = containers.Map('KeyType','double','ValueType','logical');
+tabu_queue = {};  % 按插入顺序记录 key，用于 FIFO 淘汰
 
 while k_iter < max_iterations && k_stable < K_len
     k_iter = k_iter + 1;
     SC_prev_iter = SC;
-    if AddPara.verbose
+    if AddPara.verbose >= 2
         fprintf('  Iteration %d:\n', k_iter);
     end
 
@@ -283,7 +285,7 @@ while k_iter < max_iterations && k_stable < K_len
         for m = 1:M
             for k = 1:K_resources
                 if SC_working{m}(j, k) > tol && rand < p_leave
-                    if AddPara.verbose
+                    if AddPara.verbose >= 3
                         fprintf('    Agent %d: Leave Task %d [Res %d]\n', j, m, k);
                     end
                     SC_working{m}(j, k) = 0;
@@ -332,15 +334,17 @@ while k_iter < max_iterations && k_stable < K_len
                 gain_transfer = Preference_gain(tasks, agents, SC_working, SC_cand, j, Value_Params, Value_data(j));
                 if gain_transfer > 0
                     SC_hash = get_SC_hash(SC_cand);
-                    if ~is_in_tabu(SC_hash, TabuList)
-                        if AddPara.verbose
+                    if ~is_in_tabu(SC_hash, tabu_map)
+                        if AddPara.verbose >= 3
                             fprintf('    Agent %d: Transfer Task %d->%d [Res %d] (gain=%.4f)\n', j, task_p, target_task, k, gain_transfer);
                         end
                         SC_working = SC_cand;  % 更新工作副本，不广播
-                        TabuList = update_tabu_list(TabuList, SC_hash, L_tabu);
-                        % 重新计算概率（工作副本已变）
+                        tabu_queue = update_tabu_list(tabu_map, tabu_queue, SC_hash, L_tabu);
+                        % 【优化5】增量更新 resource_gap（替代全量 calc_gaps）
+                        % Transfer: task_p 释放资源k，target_task 获得资源k
+                        resource_gap(task_p, k) = resource_gap(task_p, k) + agents(j).resources(k);
+                        resource_gap(target_task, k) = resource_gap(target_task, k) - agents(j).resources(k);
                         Value_data(j).SC = SC_working;
-                        [~, resource_gap] = calc_gaps(Value_data(j), Value_Params, AddPara);
                         probs_j = Qi2023_Select_probs(Value_data(j), agents, tasks, Value_Params, resource_gap, Gamma);
                     end
                 end
@@ -373,13 +377,13 @@ while k_iter < max_iterations && k_stable < K_len
             gain_join = Preference_gain(tasks, agents, SC_working, SC_join, j, Value_Params, Value_data(j));
             if gain_join > 0
                 SC_hash = get_SC_hash(SC_join);
-                if ~is_in_tabu(SC_hash, TabuList)
-                    if AddPara.verbose
+                if ~is_in_tabu(SC_hash, tabu_map)
+                    if AddPara.verbose >= 3
                         fprintf('    Agent %d: Join Task %d [Res %d] (gain=%.4f, energy=%.2f)\n', ...
                             j, target_task, k, gain_join, cost_data.requiredEnergy);
                     end
                     SC_working = SC_join;  % 更新工作副本，不广播
-                    TabuList = update_tabu_list(TabuList, SC_hash, L_tabu);
+                    tabu_queue = update_tabu_list(tabu_map, tabu_queue, SC_hash, L_tabu);
                 end
             end
         end
@@ -403,11 +407,11 @@ while k_iter < max_iterations && k_stable < K_len
     %% 检查收敛和稳定性
     if isequal_SC(SC, SC_prev_iter)
         k_stable = k_stable + 1;
-        if AddPara.verbose
+        if AddPara.verbose >= 2
             fprintf('  No change in iteration %d (stable count: %d/%d).\n', k_iter, k_stable, K_len);
         end
         if k_stable >= K_len
-            if AddPara.verbose
+            if AddPara.verbose >= 2
                 fprintf('  Converged after %d iterations (stability threshold reached).\n', k_iter);
             end
             break;
@@ -419,7 +423,7 @@ while k_iter < max_iterations && k_stable < K_len
     % 更新 Boltzmann 系数（与 Qi2023 对齐）
     % Γ(k+1) = Γ(k) + k · (Γ_max - Γ(k)) / K_max
     Gamma = Gamma + k_iter * (Gamma_max - Gamma) / max_iterations;
-    if AddPara.verbose
+    if AddPara.verbose >= 3
         fprintf('  Gamma updated: %.4f\n', Gamma);
     end
 end
@@ -470,33 +474,36 @@ end
 end
 
 
-function hash_str = get_SC_hash(SC)
-% GET_SC_HASH 计算联盟结构的哈希字符串，用于禁忌检查
-temp_vec = [];
-for m = 1:length(SC)
-    temp_vec = [temp_vec; SC{m}(:)]; %#ok<AGROW>
+function h = get_SC_hash(SC)
+% 【优化2】快速数值哈希（替代 mat2str，约快 50 倍）
+% 返回 double 标量，配合 containers.Map 使用
+h = 0;
+M = length(SC);
+for m = 1:M
+    mat = SC{m};
+    n = numel(mat);
+    h = h + sum(mat(:) .* (m * 1e5 + (1:n)'));
 end
-hash_str = mat2str(temp_vec);
 end
 
 
-function is_in = is_in_tabu(sc_hash, tabu_list)
-% IS_IN_TABU 检查当前 SC 状态是否在禁忌表中
-is_in = false;
-for i = 1:length(tabu_list)
-    if strcmp(sc_hash, tabu_list{i})
-        is_in = true;
-        return;
+function is_in = is_in_tabu(sc_hash, tabu_map)
+% 【优化3】O(1) 哈希查找（替代 O(L) 线性字符串比较）
+is_in = isKey(tabu_map, sc_hash);
+end
+
+
+function tabu_queue = update_tabu_list(tabu_map, tabu_queue, sc_hash, L_tabu)
+% 【优化3】containers.Map + FIFO 队列：插入 O(1)，淘汰 O(1)
+% tabu_map 为 handle 对象，原地修改无需返回；tabu_queue 为 value 类型需返回
+if ~isKey(tabu_map, sc_hash)
+    tabu_map(sc_hash) = true;
+    tabu_queue{end+1} = sc_hash;
+    if length(tabu_queue) > L_tabu
+        oldest = tabu_queue{1};
+        tabu_queue(1) = [];
+        remove(tabu_map, oldest);
     end
-end
-end
-
-
-function tabu_list = update_tabu_list(tabu_list, sc_hash, L_tabu)
-% UPDATE_TABU_LIST 更新禁忌表（FIFO 队列，超出长度时移除最旧条目）
-tabu_list{end+1} = sc_hash;
-if length(tabu_list) > L_tabu
-    tabu_list(1) = [];
 end
 end
 
@@ -516,8 +523,8 @@ history_data = ResultProcessor.record_history_data(history_data, round, Value_da
     SC, final_coalitionstru, total_utility, total_global_cost, ...
     total_completed_value, task_completion_degrees, summatrix);
 
-if AddPara.verbose
-    fprintf('  Round %d: Utility=%.2f, Cost=%.2f, Completed=%.2f\n', ...
+if AddPara.verbose >= 1
+    fprintf('  [Shi2024] 第 %d 轮: Utility=%.2f, Cost=%.2f, Completed=%.2f\n', ...
         round, total_utility, total_global_cost, total_completed_value);
 end
 

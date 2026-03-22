@@ -29,15 +29,12 @@ M = 10;                         % number of tasks（任务数量）
 K = 6;                          % number of resource types（资源类型数）
 task_values = [800, 1000, 1500];  % three task types（三种不同类型任务的价值）
 num_task_types = length(task_values);
-algorithms_to_run_ids = [4]; % 要运行的算法 ID 列表（根据 all_algorithms 中的 id 字段选择）
+algorithms_to_run_ids = [2,3,4,7]; % 要运行的算法 ID 列表（根据 all_algorithms 中的 id 字段选择）
 
 % 算法开关：选择要运行的算法 ID
 % 1=SA_Value（早期算法，保留代码但 Compare 中不运行）
 % 2=Huo2025, 3=Qi2023, 4=Shi2024
 % 7=OCF_SAtabu_global（主算法，SA+TabuEnhanced+全局社会效用）
-
-% 比较非重叠联盟算法 + 信念更新机制
-% 比较重叠联盟算法Qi2023 + 信念更新机制 
 
 %% Display/save options（显示与保存选项）
 save_results = true;    % 是否保存结果到 MAT 文件
@@ -83,7 +80,7 @@ resource_exec_time = [50 65 50 60 35 45];
 
 % 通用参数
 obs_times = 50;              % 观测次数（贝叶斯更新等）
-num_rounds = 20;              % 迭代轮数（快速测试: 5轮）
+num_rounds = 100;              % 迭代轮数（快速测试: 5轮）
 
 
 MaxIter = 100;                      %  每轮最大迭代次数
@@ -114,14 +111,14 @@ p_leave = 0.3;                        % 离开概率（TabuEnhanced / Qi2023 共
 % ========================================================================
 % 迭代控制参数
 Qi_L_tabu = 10;                       % 禁忌表长度
-Qi_K_stable_max = 15;                 % 稳定性阈值（连续无改进迭代次数）
+Qi_K_stable_max = 10;                 % 稳定性阈值（连续无改进迭代次数）
 Qi_Gamma_init = 1;                    % 初始 Boltzmann 系数
 Qi_Gamma_max = 50;                   % 最大 Boltzmann 系数
 
 % ========================================================================
 % 算法 5: Shi2024（动态重叠联盟形成算法）
 % ========================================================================
-Shi_K_stable_max = 15;                % 稳定性阈值
+Shi_K_stable_max = 10;                % 稳定性阈值
 
 
 %% AddPara (算法接口参数)
@@ -129,7 +126,8 @@ Shi_K_stable_max = 15;                % 稳定性阈值
 AddPara.control = 1;
 % resource_confidence 统一由 Value_Params.resource_confidence 控制，AddPara 中已移除
 AddPara.enable_belief_update = true; % 信念更新开关：true=启用，false=仅使用初始信念
-AddPara.verbose = true;             % 打印调试开关：true=详细输出，false=精简输出
+% verbose 打印级别：0=静默  1=轮次进度（第几轮/第几个算法）  2=迭代进度（每轮第几次迭代）  3=详细（智能体操作）
+AddPara.verbose = 1;
 
 %% ========================================================================
 %  Scenario initialization
@@ -288,6 +286,9 @@ results = struct();
 enabled_algorithms = {};
 enabled_count = 0;
 
+total_alg_count = sum(cellfun(@(a) ismember(a.id, algorithms_to_run_ids), all_algorithms));
+total_tic = tic;  % 整体计时器
+
 for i = 1:length(all_algorithms)
     alg = all_algorithms{i};
     % 若当前算法不在运行列表中，则跳过
@@ -298,14 +299,11 @@ for i = 1:length(all_algorithms)
     enabled_algorithms{enabled_count} = alg;
     
     fprintf('----------------------------------------\n');
-    fprintf('Running: [%d] %s\n', alg.id, alg.name);
+    fprintf('Running [%d/%d]: [%d] %s\n', enabled_count, total_alg_count, alg.id, alg.name);
     fprintf('----------------------------------------\n');
     
     try
         rng(SEED);  % 关键：重置随机种子，保证每个算法内部随机一致，公平对比
-        
-        % 设置当前算法的verbose级别
-        
         tic;
         % 统一算法接口：(agents, tasks, AddPara, Value_Params)
         [Value_data, history_data] = alg.func(agents, tasks, AddPara, Value_Params);
@@ -319,7 +317,6 @@ for i = 1:length(all_algorithms)
         results.(sprintf('alg%d', enabled_count)).color = alg.color;
         
         fprintf('OK %s done (%.2f s)\n\n', alg.name, comp_time);
-        
     catch ME
         % 某算法失败：记录错误但不中断脚本
         fprintf('X %s failed (失败):\n', alg.name);
@@ -336,6 +333,25 @@ end
 fprintf('========================================================================\n');
 fprintf('                    All runs finished (所有运行结束)\n');
 fprintf('========================================================================\n\n');
+
+total_time = toc(total_tic);
+
+% 打印各算法耗时汇总
+fprintf('算法耗时汇总:\n');
+fprintf('%-25s | %10s\n', 'Algorithm', 'Time(s)');
+fprintf('%s\n', repmat('-', 1, 40));
+for i = 1:enabled_count
+    t = results.(sprintf('alg%d', i)).computation_time;
+    name = results.(sprintf('alg%d', i)).name;
+    if isnan(t)
+        fprintf('%-25s | %10s\n', name, 'ERROR');
+    else
+        fprintf('%-25s | %10.2f\n', name, t);
+    end
+end
+fprintf('%s\n', repmat('-', 1, 40));
+fprintf('%-25s | %10.2f\n', 'Total', total_time);
+fprintf('\n');
 
 %% Compare results
 % 对比各算法指标：效用、成本、联盟数量、时间；并可绘图/保存

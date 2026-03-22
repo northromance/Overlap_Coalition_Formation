@@ -2,8 +2,10 @@ function [Value_data, history_data] = OCF_SAtabu_global_main(agents, tasks, AddP
 feature('DefaultCharacterSet', 'UTF-8');
 % SA_VALUE_TABUENHANCED_GLOBAL_MAIN 基于全局社会效用的模拟退火-禁忌搜索算法
 %
+% verbose 级别：0=静默 1=轮次进度 2=迭代进度 3=详细
+%
 % === [核心修改说明 - 全局社会效用（GSU）版本] ===
-% 本版本引入了全局最优偏好机制，核心思想为“全局社会效用”：
+% 本版本引入了全局最优偏好机制，核心思想为"全局社会效用"：
 %
 %   1. Metropolis 准则：基于 Preference_gain 而非全局效用差值
 %      - delta_E = SC_candidate 的全局社会效用 - SC_current 的全局社会效用
@@ -44,7 +46,10 @@ for counter = 1:Value_Params.num_rounds
     %   内循环退出条件使用 Tmin（远低于 T_min_round），是内循环降温的终止阈值。
     Value_Params.Temperature = max(Value_Params.T_min_round, ...
         Value_Params.T0_round * Value_Params.T_decay^(counter-1));
-    if AddPara.verbose
+    if AddPara.verbose >= 1
+        fprintf('  [OCF_SAtabu] 第 %d/%d 轮, T=%.2f\n', counter, Value_Params.num_rounds, Value_Params.Temperature);
+    end
+    if AddPara.verbose >= 2
         fprintf('  [SA-Altruistic] Round %d: 初始温度 = %.2f\n', counter, Value_Params.Temperature);
     end
 
@@ -59,14 +64,14 @@ for counter = 1:Value_Params.num_rounds
     %% ==================== 2.25 初始化禁忌表 ====================
     % 禁忌表用于防止算法在局部状态之间反复震荡，从而避免局部循环
     tabu_list = {};
-    if AddPara.verbose
+    if AddPara.verbose >= 3
         fprintf('  [Tabu] 禁忌长度 = %d\n', tabu_tenure);
     end
 
     %% ==================== 2.3 第一轮执行：构造初始解 (Soft Greedy) ====================
-    % 在第1轮，为了加快收敛速度，使用带温度控制的“软贪婪”策略构造一个质量较好的初始联盟结构
+    % 在第1轮，为了加快收敛速度，使用带温度控制的"软贪婪"策略构造一个质量较好的初始联盟结构
     if counter == 1
-        if AddPara.verbose
+        if AddPara.verbose >= 2
             fprintf('  [SA] 第1轮，使用软贪婪策略构造初始联盟结构 (Soft Greedy)...\n');
         end
         SC_global = Value_data(1).SC;
@@ -171,12 +176,12 @@ for counter = 1:Value_Params.num_rounds
                 % === [GSU 愿望准则：当前候选解的全局效用超过历史最优时，允许突破禁忌强制接受] ===
                 if current_GSU > best_GSU
                     accept = true;
-                    if AddPara.verbose
+                    if AddPara.verbose >= 3
                         fprintf('      [Agent %d] GSU愿望准则触发，接受禁忌解 (GSU=%.2f > 历史=%.2f)\n', ...
                             ii, current_GSU, best_GSU);
                     end
                 else
-                    if AddPara.verbose
+                    if AddPara.verbose >= 3
                         fprintf('      [Agent %d] 拒绝禁忌解 (GSU=%.2f)\n', ii, current_GSU);
                     end
                 end
@@ -190,17 +195,17 @@ for counter = 1:Value_Params.num_rounds
 
                 % === [标准 Metropolis 准则实现] ===
                 if delta_E_altruistic > 1e-4
-                    % 如果是”优解”（社会效用更高或不变），则直接接受
+                    % 如果是"优解"（社会效用更高或不变），则直接接受
                     accept = true;
                 elseif delta_E_altruistic < 0
-                    % 如果是”劣解”，则按照 Metropolis 概率接受
+                    % 如果是"劣解"，则按照 Metropolis 概率接受
                     % dE=0 的情况留给上面分支处理；exp(0/T)=1 会导致等价解总被接受
                     % 这样可以让系统跳出局部最优（Local Optima）
                     delta_E_log(end+1) = abs(delta_E_altruistic); % 记录劣解 |ΔE| 供温度校准
                     prob = exp(delta_E_altruistic / Value_Params.Temperature);
                     if rand < prob
                         accept = true;
-                        if AddPara.verbose
+                        if AddPara.verbose >= 3
                             fprintf('      [Agent %d] 概率接受劣解 (全局ΔE=%.2f, prob=%.4f)\n', ii, delta_E_altruistic, prob);
                         end
                     else
@@ -230,7 +235,7 @@ for counter = 1:Value_Params.num_rounds
                 % 5.3 更新 GSU 最优记录（用于禁忌愿望准则）
                 if current_GSU > best_GSU
                     best_GSU = current_GSU;
-                    if AddPara.verbose
+                    if AddPara.verbose >= 3
                         fprintf('      [Agent %d] 新的 GSU 最优 = %.2f\n', ii, best_GSU);
                     end
                 end
@@ -283,8 +288,8 @@ for counter = 1:Value_Params.num_rounds
 
         % 更新上一轮状态
         previous_SC = final_SC;
-        
-        if AddPara.verbose
+
+        if AddPara.verbose >= 2
             fprintf('  [SA-Outer] Iter %d: T=%.2f, Utility=%.2f, BestGSU=%.2f\n', ...
                 k_iter, Value_Params.Temperature, current_utility_global, best_GSU);
         end
@@ -292,7 +297,7 @@ for counter = 1:Value_Params.num_rounds
     end  % end while
 
     % [温度校准] 第1轮结束时输出 |ΔE| 统计，帮助校准 T0_round
-    if counter == 1 && ~isempty(delta_E_log)
+    if counter == 1 && ~isempty(delta_E_log) && AddPara.verbose >= 2
         dE_mean = mean(delta_E_log);
         dE_med  = median(delta_E_log);
         dE_p90  = prctile(delta_E_log, 90);
@@ -338,16 +343,16 @@ for counter = 1:Value_Params.num_rounds
 end
 
 %% ==================== 6. 最终结果一致性检查 ====================
-if AddPara.verbose
+if AddPara.verbose >= 2
     fprintf('\n[SA_Value_Altruistic] 执行结束，进行一致性检查...\n');
 end
 % OCF 一致性检查，确保最终联盟分配没有违反资源容量、任务调度等约束
-[is_valid, error_log] = check_coalition_consistency(Value_data, agents, tasks, Value_Params, 'OCF', AddPara.verbose);
+[is_valid, error_log] = check_coalition_consistency(Value_data, agents, tasks, Value_Params, 'OCF', AddPara.verbose >= 2);
 if ~is_valid
     warning('[SA_Value_Altruistic] 一致性检查发现 %d 个问题', length(error_log));
     history_data.consistency_errors = error_log;
 else
-    if AddPara.verbose
+    if AddPara.verbose >= 2
         fprintf('  [SA_Value_Altruistic] 所有一致性检查通过。\n');
     end
 end
@@ -406,7 +411,7 @@ SC_temp = Value_data_i.SC;
 for m = 1:M
     for k = 1:K
         if SC_temp{m}(agent_idx, k) > eps_val && rand < p_leave
-            if AddPara.verbose
+            if AddPara.verbose >= 3
                 fprintf('      [-] [移除] Agent #%-2d 从 任务 M=%-2d 撤出 资源 k=%-2d | 数量: %.2f\n', ...
                     agent_idx, m, k, SC_temp{m}(agent_idx, k));
             end
@@ -428,7 +433,7 @@ task_type_demands = Value_Params.task_type_demands;
 for k = 1:K
     total_capacity = agents(agent_idx).resources(k);
     if total_capacity <= eps_val, continue; end
-    
+
     % 按概率选择目标任务（封装在 OCFUtils.sample_task_from_probs 中）
     selected_task = OCFUtils.sample_task_from_probs(probs(k, :), M);
     if isempty(selected_task), continue; end
@@ -440,30 +445,30 @@ for k = 1:K
     belief = Value_data_i.initbelief(selected_task, :);
     expected_demand = WorldSim.calculate_demand_quantile(belief, task_type_demands, confidence);
     can_add = max(0, expected_demand(k) - curr_alloc);
-    
+
     if can_add > eps_val
         SC_candidate_temp = SC_new;
         SC_candidate_temp{selected_task}(agent_idx, k) = total_capacity; % 全量投放
-        
+
         % 封装成全体状态数组
         Value_data_array = repmat(Value_data_i, Value_Params.N, 1);
         for j = 1:Value_Params.N
             Value_data_array(j).agentIndex = j;
             Value_data_array(j).SC = SC_candidate_temp;
         end
-        
+
         % 调用可行性检查
         [isFeasible, info, ~] = validate_feasibility(Value_data_array, agents, tasks, ...
             Value_Params, agent_idx, SC_candidate_temp, true, AddPara);
-            
+
         if isFeasible
             SC_new = SC_candidate_temp;
-            if AddPara.verbose
+            if AddPara.verbose >= 3
                 fprintf('      [+] [加入] Agent #%-2d 向 任务 M=%-2d 投入 资源 k=%-2d | 数量: %.2f\n', ...
                     agent_idx, selected_task, k, total_capacity);
             end
         else
-            if AddPara.verbose
+            if AddPara.verbose >= 3
                 fprintf('      [x] [拒绝] Agent #%-2d 向 任务 M=%-2d 投入 资源 k=%-2d 失败 | 原因: %s\n', ...
                     agent_idx, selected_task, k, info.reason);
             end
@@ -508,7 +513,7 @@ function [delta_E, GSU_candidate, GSU_current] = global_utility_diff(tasks, agen
     if nargin < 8
         precomputed_GSU_current = [];
     end
-    AddPara_silent.verbose = false;
+    AddPara_silent.verbose = 0;
 
     % 计算候选解下的全局社会效用（始终需要计算）
     GSU_candidate = 0;

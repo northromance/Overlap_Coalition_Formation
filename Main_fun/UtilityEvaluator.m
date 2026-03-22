@@ -164,7 +164,13 @@
             ordered_tasks = OCFUtils.sort_tasks_by_priority(task_list, tasks);
 
             % 计算全局同步信息（获取所有任务的同步时间和执行时长）
-            all_agents_results = WorldSim.calc_all_agents_with_global_sync(agents, tasks, Value_Params, SC, tol);
+            % 【优化】persistent 缓存：SC 未变时直接复用，避免同一迭代内重复调用
+            persistent cached_SC_util cached_results_util;
+            if isempty(cached_SC_util) || ~isequal(SC, cached_SC_util)
+                cached_results_util = WorldSim.calc_all_agents_with_global_sync(agents, tasks, Value_Params, SC, tol);
+                cached_SC_util = SC;
+            end
+            all_agents_results = cached_results_util;
             agent_result = all_agents_results(agent_id);
 
             % 初始化当前位置为智能体起始位置
