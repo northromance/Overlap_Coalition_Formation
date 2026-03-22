@@ -329,24 +329,19 @@ while k_iter < max_iterations && k_stable < K_len
                 [isFeasible_trans, ~, ~] = validate_feasibility(Value_data, agents, tasks, Value_Params, j, SC_cand, true, AddPara_silent);
                 if ~isFeasible_trans, continue; end
 
-                % 增益基准：工作副本（含 Leave 累积状态）
-                Value_data(j).SC = SC_working;
-                gain_transfer = Preference_gain(tasks, agents, SC_working, SC_cand, j, Value_Params, Value_data(j));
-                if gain_transfer > 0
-                    SC_hash = get_SC_hash(SC_cand);
-                    if ~is_in_tabu(SC_hash, tabu_map)
-                        if AddPara.verbose >= 3
-                            fprintf('    Agent %d: Transfer Task %d->%d [Res %d] (gain=%.4f)\n', j, task_p, target_task, k, gain_transfer);
-                        end
-                        SC_working = SC_cand;  % 更新工作副本，不广播
-                        tabu_queue = update_tabu_list(tabu_map, tabu_queue, SC_hash, L_tabu);
-                        % 【优化5】增量更新 resource_gap（替代全量 calc_gaps）
-                        % Transfer: task_p 释放资源k，target_task 获得资源k
-                        resource_gap(task_p, k) = resource_gap(task_p, k) + agents(j).resources(k);
-                        resource_gap(target_task, k) = resource_gap(target_task, k) - agents(j).resources(k);
-                        Value_data(j).SC = SC_working;
-                        probs_j = Qi2023_Select_probs(Value_data(j), agents, tasks, Value_Params, resource_gap, Gamma);
+                % 直接接受可行候选（跳过 Preference_gain，由最终门控统一评估）
+                SC_hash = get_SC_hash(SC_cand);
+                if ~is_in_tabu(SC_hash, tabu_map)
+                    if AddPara.verbose >= 3
+                        fprintf('    Agent %d: Transfer Task %d->%d [Res %d]\n', j, task_p, target_task, k);
                     end
+                    SC_working = SC_cand;  % 更新工作副本，不广播
+                    tabu_queue = update_tabu_list(tabu_map, tabu_queue, SC_hash, L_tabu);
+                    % 增量更新 resource_gap（替代全量 calc_gaps）
+                    resource_gap(task_p, k) = resource_gap(task_p, k) + agents(j).resources(k);
+                    resource_gap(target_task, k) = resource_gap(target_task, k) - agents(j).resources(k);
+                    Value_data(j).SC = SC_working;
+                    probs_j = Qi2023_Select_probs(Value_data(j), agents, tasks, Value_Params, resource_gap, Gamma);
                 end
             end
         end
@@ -369,22 +364,17 @@ while k_iter < max_iterations && k_stable < K_len
             SC_join = SC_working;
             SC_join{target_task}(j, k) = agents(j).resources(k);
 
-            [isFeasible, ~, cost_data] = validate_feasibility(Value_data, agents, tasks, Value_Params, j, SC_join, true, AddPara_silent);
+            [isFeasible, ~, ~] = validate_feasibility(Value_data, agents, tasks, Value_Params, j, SC_join, true, AddPara_silent);
             if ~isFeasible, continue; end
 
-            % 增益基准：工作副本（含 Leave + Transfer 累积状态）
-            Value_data(j).SC = SC_working;
-            gain_join = Preference_gain(tasks, agents, SC_working, SC_join, j, Value_Params, Value_data(j));
-            if gain_join > 0
-                SC_hash = get_SC_hash(SC_join);
-                if ~is_in_tabu(SC_hash, tabu_map)
-                    if AddPara.verbose >= 3
-                        fprintf('    Agent %d: Join Task %d [Res %d] (gain=%.4f, energy=%.2f)\n', ...
-                            j, target_task, k, gain_join, cost_data.requiredEnergy);
-                    end
-                    SC_working = SC_join;  % 更新工作副本，不广播
-                    tabu_queue = update_tabu_list(tabu_map, tabu_queue, SC_hash, L_tabu);
+            % 直接接受可行候选（跳过 Preference_gain，由最终门控统一评估）
+            SC_hash = get_SC_hash(SC_join);
+            if ~is_in_tabu(SC_hash, tabu_map)
+                if AddPara.verbose >= 3
+                    fprintf('    Agent %d: Join Task %d [Res %d]\n', j, target_task, k);
                 end
+                SC_working = SC_join;  % 更新工作副本，不广播
+                tabu_queue = update_tabu_list(tabu_map, tabu_queue, SC_hash, L_tabu);
             end
         end
 
