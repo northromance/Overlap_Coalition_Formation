@@ -1,65 +1,49 @@
 clear; clc;
 feature('DefaultCharacterSet', 'UTF-8');
 
-%% ===== 实验 B：变 M 规模（图1c/1d）=====
-% 固定 N=10, K=6，遍历不同 M 值
+%% =========================================================================
+%  实验 B：变 M 规模（Batch_VaryM）
+%
+%  画图用途：
+%    图1c — 最终联盟效用 vs M（各算法对比）
+%    图1d — 最终平均任务完成度 vs M
+%    收敛曲线图 — convergence_utility/cost/completion vs 轮次
+%
+%  保存数据（results/batch/varyM/N{N}_M{min}-{max}_K{K}_S{nSeeds}_{ts}.mat）：
+%    scale_M_results{mi, si}  — 二维 cell [M数量 × seed数量]
+%      .M / .seed / .success / .error
+%      .algs.(算法名).final_utility        最终联盟效用（图1c 的值）
+%      .algs.(算法名).final_cost           最终全局成本（图1d 的值）
+%      .algs.(算法名).final_completion     最终平均任务完成度
+%      .algs.(算法名).convergence_utility  [num_rounds×1] 每轮效用收敛曲线
+%      .algs.(算法名).convergence_cost     [num_rounds×1] 每轮成本曲线
+%      .algs.(算法名).convergence_completion [num_rounds×1] 每轮完成度曲线
+%      .algs.(算法名).computation_time     算法运行耗时（秒）
+%    scale_config — 本次实验参数快照
+%
+%  注：单次可视化请运行 Single_Viz.m
+%% =========================================================================
 
-%% ===== 批量实验配置 =====
-SEEDS             = 1001:1:1020;                  % 20 个随机种子
-M_VALUES          = [5, 8, 10, 12, 15, 18, 20];   % 7 种任务规模
-N                 = 10;                            % 智能体数（固定）
-K                 = 6;                             % 资源种类（固定）
+%% ===== 路径初始化（须在 Exp_Params 之前）=====
+script_dir = fileparts(mfilename('fullpath'));
+root_dir   = fileparts(script_dir);
+
+%% ===== 加载共享参数 =====
+run(fullfile(script_dir, 'Exp_Params.m'));
+
+%% ===== 实验专属配置 =====
+SEEDS             = 1001:1:1020;
+M_VALUES          = [5, 8, 10, 12, 15, 18, 20];
+N                 = 10;   % 固定智能体数
+K                 = 6;    % 固定资源种类数
 algorithms_to_run_ids = [2, 3, 4, 7];
 
+%% ===== 附加控制参数 =====
 AddPara.verbose              = 0;
 AddPara.enable_belief_update = true;
 AddPara.control              = 1;
 
-% ---------- 通用超参 ----------
-num_rounds      = 100;
-MaxIter         = 100;
-obs_times       = 50;
-task_values     = [800, 1000, 1500];
-num_task_types  = length(task_values);
-
-T0_round            = 100;
-SA_alpha            = 0.9;
-SA_Tmin             = 0.01;
-T_decay             = 0.8;
-T_min_round         = 2;
-T_init_construction = 2;
-resource_confidence = 0.7;
-K_stable_max        = 10;
-tabu_tenure         = 20;
-p_leave             = 0.3;
-Qi_L_tabu           = 10;
-Qi_K_stable_max     = 10;
-Qi_Gamma_init       = 1;
-Qi_Gamma_max        = 50;
-Shi_K_stable_max    = 10;
-
-% 场景参数
-WORLD_XMIN = 0; WORLD_XMAX = 100;
-WORLD_YMIN = 0; WORLD_YMAX = 100;
-WORLD_ZMIN = 0; WORLD_ZMAX = 0;
-agent_velocity       = 2;
-agent_detprob_min    = 0.95;
-agent_detprob_max    = 1.0;
-agent_Emax_min       = 300;
-agent_Emax_range     = 50;
-agent_fuel           = 1;
-agent_wait_fuel      = 0.5;
-agent_beta           = 1;
-min_resource_value   = 0;
-max_resource_value   = 4;
-task_type1_demand_max = 4;
-task_type2_demand_max = 6;
-task_type3_demand_max = 8;
-resource_exec_time   = [50 65 50 60 35 45];
-
-%% ===== 路径初始化 =====
-script_dir = fileparts(mfilename('fullpath'));
-root_dir   = fileparts(script_dir);
+%% ===== 路径加入 =====
 addpath(fullfile(root_dir, 'Main_fun'));
 addpath(fullfile(root_dir, 'comalg', 'alg1_SA'));
 addpath(fullfile(root_dir, 'comalg', 'alg2_Huo2025'));
@@ -69,9 +53,7 @@ addpath(fullfile(root_dir, 'comalg', 'alg7_OCF_SAtabu'));
 
 %% ===== 输出目录 =====
 results_dir = fullfile(root_dir, 'results', 'batch', 'varyM');
-if ~exist(results_dir, 'dir')
-    mkdir(results_dir);
-end
+if ~exist(results_dir, 'dir'), mkdir(results_dir); end
 
 %% ===== 算法注册表 =====
 all_algorithms = {
@@ -105,9 +87,12 @@ fprintf('  算法     = [%s]\n', strjoin(alg_names, ', '));
 fprintf('  轮数     = %d   内层迭代 = %d\n', num_rounds, MaxIter);
 fprintf('========================================================================\n\n');
 
-%% ===== 主循环 =====
+%% ===== 结果容器 =====
 scale_M_results = cell(length(M_VALUES), length(SEEDS));
 
+%% =========================================================================
+%  主循环：先遍历 M，再遍历 seed
+%% =========================================================================
 for mi = 1:length(M_VALUES)
     M = M_VALUES(mi);
 
@@ -123,6 +108,7 @@ for mi = 1:length(M_VALUES)
         end
         fprintf('[%3d/%3d] M=%2d seed=%d ...%s\n', done, total_runs, M, seed, eta_str);
 
+        entry = struct();
         entry.M       = M;
         entry.seed    = seed;
         entry.success = false;
@@ -130,13 +116,12 @@ for mi = 1:length(M_VALUES)
         entry.algs    = struct();
 
         try
-            %% -- 构建场景 --
-            rng('default');
-            rng(seed);
+            %% -- 构建随机场景 --
+            rng('default'); rng(seed);
 
-            WORLD.XMIN = WORLD_XMIN; WORLD.XMAX = WORLD_XMAX;
-            WORLD.YMIN = WORLD_YMIN; WORLD.YMAX = WORLD_YMAX;
-            WORLD.ZMIN = WORLD_ZMIN; WORLD.ZMAX = WORLD_ZMAX;
+            WORLD.XMIN  = WORLD_XMIN;  WORLD.XMAX = WORLD_XMAX;
+            WORLD.YMIN  = WORLD_YMIN;  WORLD.YMAX = WORLD_YMAX;
+            WORLD.ZMIN  = WORLD_ZMIN;  WORLD.ZMAX = WORLD_ZMAX;
             WORLD.value = task_values;
 
             task_type_demands = zeros(num_task_types, K);
@@ -155,8 +140,8 @@ for mi = 1:length(M_VALUES)
             for j = 1:M
                 tasks(j).id       = j;
                 tasks(j).priority = task_priorities(j);
-                tasks(j).x        = round(rand() * (WORLD.XMAX - WORLD.XMIN) + WORLD.XMIN);
-                tasks(j).y        = round(rand() * (WORLD.YMAX - WORLD.YMIN) + WORLD.YMIN);
+                tasks(j).x = round(rand() * (WORLD.XMAX - WORLD.XMIN) + WORLD.XMIN);
+                tasks(j).y = round(rand() * (WORLD.YMAX - WORLD.YMIN) + WORLD.YMIN);
                 tasks(j).type     = randi(num_task_types, 1, 1);
                 tasks(j).value    = WORLD.value(tasks(j).type);
                 tasks(j).resource_demand      = task_type_demands(tasks(j).type, :);
@@ -169,8 +154,8 @@ for mi = 1:length(M_VALUES)
             for i = 1:N
                 agents(i).id        = i;
                 agents(i).vel       = agent_velocity;
-                agents(i).x         = round(rand() * (WORLD.XMAX - WORLD.XMIN) + WORLD_XMIN);
-                agents(i).y         = round(rand() * (WORLD.YMAX - WORLD.YMIN) + WORLD_YMIN);
+                agents(i).x = round(rand() * (WORLD.XMAX - WORLD.XMIN) + WORLD_XMIN);
+                agents(i).y = round(rand() * (WORLD.YMAX - WORLD.YMIN) + WORLD_YMIN);
                 agents(i).detprob   = agent_detprob_min + (agent_detprob_max - agent_detprob_min) * rand();
                 agents(i).resources = randi([min_resource_value, max_resource_value], K, 1);
                 agents(i).Emax      = agent_Emax_min + agent_Emax_range * rand();
@@ -180,29 +165,15 @@ for mi = 1:length(M_VALUES)
             end
 
             Value_Params = OCFUtils.init_value_params(N, M, K, num_task_types, task_type_demands, ...
-                SA_alpha, SA_Tmin, K_stable_max, obs_times, num_rounds);
-            Value_Params.K_stable_max        = K_stable_max;
-            Value_Params.max_inner_iter      = MaxIter;
-            Value_Params.T0_round            = T0_round;
-            Value_Params.T_decay             = T_decay;
-            Value_Params.T_min_round         = T_min_round;
-            Value_Params.resource_confidence = resource_confidence;
-            Value_Params.T_init_construction = T_init_construction;
-            Value_Params.tabu_tenure         = tabu_tenure;
-            Value_Params.p_leave             = p_leave;
-            Value_Params.Qi_L_tabu           = Qi_L_tabu;
-            Value_Params.Qi_K_stable_max     = Qi_K_stable_max;
-            Value_Params.Qi_Gamma_init       = Qi_Gamma_init;
-            Value_Params.Qi_Gamma_max        = Qi_Gamma_max;
-            Value_Params.Shi_K_stable_max    = Shi_K_stable_max;
-            Value_Params.C                   = 2000;
-            Value_Params.seed                = seed;
+                OCF_alpha, OCF_Tmin, OCF_K_stable_max, obs_times, num_rounds);
+            Value_Params = OCFUtils.apply_experiment_params(Value_Params, Common_Params, Algorithm_Params, seed);
 
-            %% -- 各算法执行 --
+            %% -- 运行所有启用算法 --
             for ai = 1:num_algs
                 alg   = enabled_algorithms{ai};
                 aname = alg.name;
 
+                alg_entry = struct();
                 alg_entry.computation_time       = NaN;
                 alg_entry.convergence_utility    = nan(num_rounds, 1);
                 alg_entry.convergence_cost       = nan(num_rounds, 1);
@@ -226,7 +197,6 @@ for mi = 1:length(M_VALUES)
                         td = history_data.rounds(r).task_completion_degrees;
                         alg_entry.convergence_completion(r) = mean(td);
                     end
-
                     alg_entry.final_utility    = alg_entry.convergence_utility(num_r);
                     alg_entry.final_cost       = alg_entry.convergence_cost(num_r);
                     alg_entry.final_completion = alg_entry.convergence_completion(num_r);
@@ -255,7 +225,7 @@ total_elapsed = toc(total_tic);
 fprintf('\n全部完成，总耗时 %.1f s (%.1f min)\n', total_elapsed, total_elapsed / 60);
 
 %% ===== 保存 .mat =====
-% 命名格式：N{N}_M{min}-{max}_K{K}_S{nSeeds}_{timestamp}.mat
+scale_config = struct();
 scale_config.M_values       = M_VALUES;
 scale_config.N              = N;
 scale_config.K              = K;
@@ -274,7 +244,7 @@ fprintf('保存至: %s\n', filename);
 save(filename, 'scale_M_results', 'scale_config', '-v7.3');
 fprintf('保存完成。\n\n');
 
-%% ===== 快速完整性检查 =====
+%% ===== 完整性检查 =====
 fprintf('--- 完整性检查 ---\n');
 success_count = 0;
 fail_count    = 0;
@@ -291,6 +261,7 @@ for mi2 = 1:length(M_VALUES)
 end
 fprintf('成功: %d / %d  失败: %d\n', success_count, total_runs, fail_count);
 
+%% ===== 打印各算法最终效用均值（按 M）=====
 fprintf('\n--- 各算法最终效用均值（按 M 规模）---\n');
 header = sprintf('%-6s', 'M');
 for ai = 1:num_algs

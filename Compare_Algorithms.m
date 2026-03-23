@@ -29,7 +29,7 @@ M = 10;                         % number of tasks（任务数量）
 K = 6;                          % number of resource types（资源类型数）
 task_values = [800, 1000, 1500];  % three task types（三种不同类型任务的价值）
 num_task_types = length(task_values);
-algorithms_to_run_ids = [2,3,4,7]; % 要运行的算法 ID 列表（根据 all_algorithms 中的 id 字段选择）
+algorithms_to_run_ids = [4]; % 要运行的算法 ID 列表（根据 all_algorithms 中的 id 字段选择）
 
 % 算法开关：选择要运行的算法 ID
 % 1=SA_Value（早期算法，保留代码但 Compare 中不运行）
@@ -80,7 +80,7 @@ resource_exec_time = [50 65 50 60 35 45];
 
 % 通用参数
 obs_times = 50;              % 观测次数（贝叶斯更新等）
-num_rounds = 100;              % 迭代轮数（快速测试: 5轮）
+num_rounds = 3;              % 迭代轮数（快速测试: 5轮）
 
 
 MaxIter = 100;                      %  每轮最大迭代次数
@@ -119,6 +119,42 @@ Qi_Gamma_max = 50;                   % 最大 Boltzmann 系数
 % 算法 5: Shi2024（动态重叠联盟形成算法）
 % ========================================================================
 Shi_K_stable_max = 10;                % 稳定性阈值
+
+% ===== 算法前缀命名映射（供 Value_Params 统一注入）=====
+Huo_L_tabu = Qi_L_tabu;
+Huo_K_stable_max = K_stable_max;
+
+Qi_p_leave = p_leave;
+
+Shi_L_tabu = Qi_L_tabu;
+Shi_Gamma_init = Qi_Gamma_init;
+Shi_Gamma_max = Qi_Gamma_max;
+Shi_p_leave = p_leave;
+
+OCF_T0_round = T0_round;
+OCF_alpha = SA_alpha;
+OCF_Tmin = SA_Tmin;
+OCF_T_decay = T_decay;
+OCF_T_min_round = T_min_round;
+OCF_T_init_construction = T_init_construction;
+OCF_K_stable_max = K_stable_max;
+OCF_tabu_tenure = tabu_tenure;
+OCF_p_leave = p_leave;
+
+Common_Params = struct();
+Common_Params.max_inner_iter      = MaxIter;
+Common_Params.resource_confidence = resource_confidence;
+
+Algorithm_Params = struct();
+Algorithm_Params.Huo = struct('L_tabu', Huo_L_tabu, 'K_stable_max', Huo_K_stable_max);
+Algorithm_Params.Qi = struct('L_tabu', Qi_L_tabu, 'K_stable_max', Qi_K_stable_max, ...
+    'Gamma_init', Qi_Gamma_init, 'Gamma_max', Qi_Gamma_max, 'p_leave', Qi_p_leave);
+Algorithm_Params.Shi = struct('L_tabu', Shi_L_tabu, 'K_stable_max', Shi_K_stable_max, ...
+    'Gamma_init', Shi_Gamma_init, 'Gamma_max', Shi_Gamma_max, 'p_leave', Shi_p_leave);
+Algorithm_Params.OCF = struct('T0_round', OCF_T0_round, 'alpha', OCF_alpha, ...
+    'Tmin', OCF_Tmin, 'T_decay', OCF_T_decay, 'T_min_round', OCF_T_min_round, ...
+    'T_init_construction', OCF_T_init_construction, 'K_stable_max', OCF_K_stable_max, ...
+    'tabu_tenure', OCF_tabu_tenure, 'p_leave', OCF_p_leave);
 
 
 %% AddPara (算法接口参数)
@@ -199,7 +235,7 @@ for i = 1:N
 end
 
 % Algorithm shared params（各算法通用参数）
-Value_Params = OCFUtils.init_value_params(N, M, K, num_task_types, task_type_demands, SA_alpha, SA_Tmin, K_stable_max, ...
+Value_Params = OCFUtils.init_value_params(N, M, K, num_task_types, task_type_demands, OCF_alpha, OCF_Tmin, OCF_K_stable_max, ...
     obs_times, num_rounds);
 
 %% ========================================================================
@@ -227,13 +263,13 @@ Value_Params.Qi_Gamma_max = Qi_Gamma_max;             % 最大 Boltzmann 系数
 
 % ------------------ Shi2024算法参数 ------------------
 Value_Params.Shi_K_stable_max = Shi_K_stable_max;     % 稳定性阈值
-Value_Params.C = 2000; % Shi2024 OCF算法中计算偏好增益的常数 C（根据 ΔE 统计校准，确保合理的增益范围）
 
 
 % ------------------ 通用参数 ------------------
 Value_Params.seed = SEED;  % Random seed for reproducibility（用于复现实验）
 
 % ------------------ 图形尺寸参数 ------------------
+Value_Params = OCFUtils.apply_experiment_params(Value_Params, Common_Params, Algorithm_Params, SEED);
 Value_Params.fig_size_main    = fig_size_main;
 Value_Params.fig_size_radar   = fig_size_radar;
 Value_Params.fig_size_history = fig_size_history;

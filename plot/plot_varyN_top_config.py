@@ -67,6 +67,7 @@ PLOT_GLOBAL = {
     'linewidth': 1.8,
     'markersize': 7,
     'capsize': 1,
+    'show_errorbar_varyN': False,   # ← 新增：False=只画均值线，True=画均值±std
 
     # 字体与版式
     'xlabel_fontsize': 11,
@@ -470,18 +471,26 @@ def plot_fig1a(N_values, alg_names, metrics, save_path):
         st = ALG_STYLE.get(aname, DEFAULT_STYLE)
         mu = np.nanmean(metrics[aname]['utility'], axis=1)
         std = np.nanstd(metrics[aname]['utility'], axis=1)
-        ax.errorbar(
-            N_values, mu, yerr=std,
-            color=st['color'], marker=st['marker'], ls=st['ls'],
-            lw=PLOT_GLOBAL['linewidth'], ms=PLOT_GLOBAL['markersize'],
-            capsize=PLOT_GLOBAL['capsize'],
-            label=st['label'], zorder=3,
-        )
+
+        if PLOT_GLOBAL.get('show_errorbar_varyN', True):
+            ax.errorbar(
+                N_values, mu, yerr=std,
+                color=st['color'], marker=st['marker'], ls=st['ls'],
+                lw=PLOT_GLOBAL['linewidth'], ms=PLOT_GLOBAL['markersize'],
+                capsize=PLOT_GLOBAL['capsize'],
+                label=st['label'], zorder=3,
+            )
+        else:
+            ax.plot(
+                N_values, mu,
+                color=st['color'], marker=st['marker'], ls=st['ls'],
+                lw=PLOT_GLOBAL['linewidth'], ms=PLOT_GLOBAL['markersize'],
+                label=st['label'], zorder=3,
+            )
 
     apply_axis_controls(ax, cfg, n_values=N_values)
     apply_common_style(ax, cfg, title=cfg.get('title'))
     finalize_and_save(fig, save_path)
-
 
 def plot_fig1b(N_values, alg_names, metrics, save_path):
     """图1b：变N完成度（mean ± std 折线图）"""
@@ -492,18 +501,26 @@ def plot_fig1b(N_values, alg_names, metrics, save_path):
         st = ALG_STYLE.get(aname, DEFAULT_STYLE)
         mu = np.nanmean(metrics[aname]['completion'], axis=1)
         std = np.nanstd(metrics[aname]['completion'], axis=1)
-        ax.errorbar(
-            N_values, mu, yerr=std,
-            color=st['color'], marker=st['marker'], ls=st['ls'],
-            lw=PLOT_GLOBAL['linewidth'], ms=PLOT_GLOBAL['markersize'],
-            capsize=PLOT_GLOBAL['capsize'],
-            label=st['label'], zorder=3,
-        )
+
+        if PLOT_GLOBAL.get('show_errorbar_varyN', True):
+            ax.errorbar(
+                N_values, mu, yerr=std,
+                color=st['color'], marker=st['marker'], ls=st['ls'],
+                lw=PLOT_GLOBAL['linewidth'], ms=PLOT_GLOBAL['markersize'],
+                capsize=PLOT_GLOBAL['capsize'],
+                label=st['label'], zorder=3,
+            )
+        else:
+            ax.plot(
+                N_values, mu,
+                color=st['color'], marker=st['marker'], ls=st['ls'],
+                lw=PLOT_GLOBAL['linewidth'], ms=PLOT_GLOBAL['markersize'],
+                label=st['label'], zorder=3,
+            )
 
     apply_axis_controls(ax, cfg, n_values=N_values)
     apply_common_style(ax, cfg, title=cfg.get('title'))
     finalize_and_save(fig, save_path)
-
 
 def plot_fig2c(mean_curves, num_rounds, n_target, alg_names, save_path):
     """图2c：效用收敛曲线（对指定N均值化）"""

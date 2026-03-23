@@ -399,6 +399,42 @@ end
 
         end
 
+        function Value_Params = apply_experiment_params(Value_Params, Common_Params, Algorithm_Params, seed)
+            % APPLY_EXPERIMENT_PARAMS 将 Exp_Params 的公共参数/算法专属参数统一注入 Value_Params
+
+            Value_Params.max_inner_iter      = Common_Params.max_inner_iter;
+            Value_Params.resource_confidence = Common_Params.resource_confidence;
+
+            Value_Params.Huo_L_tabu          = Algorithm_Params.Huo.L_tabu;
+            Value_Params.Huo_K_stable_max    = Algorithm_Params.Huo.K_stable_max;
+
+            Value_Params.Qi_L_tabu           = Algorithm_Params.Qi.L_tabu;
+            Value_Params.Qi_K_stable_max     = Algorithm_Params.Qi.K_stable_max;
+            Value_Params.Qi_Gamma_init       = Algorithm_Params.Qi.Gamma_init;
+            Value_Params.Qi_Gamma_max        = Algorithm_Params.Qi.Gamma_max;
+            Value_Params.Qi_p_leave          = Algorithm_Params.Qi.p_leave;
+
+            Value_Params.Shi_L_tabu          = Algorithm_Params.Shi.L_tabu;
+            Value_Params.Shi_K_stable_max    = Algorithm_Params.Shi.K_stable_max;
+            Value_Params.Shi_Gamma_init      = Algorithm_Params.Shi.Gamma_init;
+            Value_Params.Shi_Gamma_max       = Algorithm_Params.Shi.Gamma_max;
+            Value_Params.Shi_p_leave         = Algorithm_Params.Shi.p_leave;
+
+            Value_Params.OCF_T0_round            = Algorithm_Params.OCF.T0_round;
+            Value_Params.OCF_alpha               = Algorithm_Params.OCF.alpha;
+            Value_Params.OCF_Tmin                = Algorithm_Params.OCF.Tmin;
+            Value_Params.OCF_T_decay             = Algorithm_Params.OCF.T_decay;
+            Value_Params.OCF_T_min_round         = Algorithm_Params.OCF.T_min_round;
+            Value_Params.OCF_T_init_construction = Algorithm_Params.OCF.T_init_construction;
+            Value_Params.OCF_K_stable_max        = Algorithm_Params.OCF.K_stable_max;
+            Value_Params.OCF_tabu_tenure         = Algorithm_Params.OCF.tabu_tenure;
+            Value_Params.OCF_p_leave             = Algorithm_Params.OCF.p_leave;
+
+            if nargin >= 4 && ~isempty(seed)
+                Value_Params.seed = seed;
+            end
+        end
+
         function coalitionstru = build_coalitionstru_from_SC(SC, Value_Params, agents)
             % BUILD_COALITIONSTRU_FROM_SC 根据 N*K 资源矩阵反推联盟结构
             % 输入:

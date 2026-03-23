@@ -11,7 +11,7 @@ function [SC_global, moved, TabuList] = Value_order(agents, tasks, SC_global, ag
 %   SC_global    - 当前全局联盟结构（M×1 cell，每格 N×K 矩阵）
 %   agent_idx    - 当前决策智能体的索引（= agentID）
 %   Value_data_i - 该智能体的状态（含信念 initbelief）
-%   Value_Params - 全局参数（Qi_L_tabu 控制禁忌表长度）
+%   Value_Params - 全局参数（Huo_L_tabu 控制禁忌表长度）
 %   AddPara      - 附加参数
 %   TabuList     - 当前禁忌表（cell array of hash strings）
 %
@@ -23,7 +23,7 @@ function [SC_global, moved, TabuList] = Value_order(agents, tasks, SC_global, ag
 M   = Value_Params.M;
 tol = 1e-9;
 moved  = false;
-L_tabu = Value_Params.Qi_L_tabu;
+L_tabu = Value_Params.Huo_L_tabu;
 
 %% 1. 找当前任务
 cur_task = M + 1;

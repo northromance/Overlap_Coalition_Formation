@@ -1,66 +1,45 @@
 clear; clc;
 feature('DefaultCharacterSet', 'UTF-8');
 
-%% ===== 实验 D：消融实验（图4）=====
-% 固定 M=10, K=6，遍历不同 N 值
-% 只运行 OCF_SAtabu (算法 7)
-% 两种条件：belief_on (enable_belief_update=true) / belief_off (=false)
+%% =========================================================================
+%  实验 D：消融实验（Batch_Ablation）
+%
+%  画图用途：
+%    图4 — 消融对比：belief_on vs belief_off 的最终效用 vs N 折线图
+%          （验证信念更新机制对算法性能的贡献）
+%
+%  保存数据（results/batch/ablation/N{min}-{max}_M{M}_K{K}_S{nSeeds}_{ts}.mat）：
+%    ablation_results{ni, si, ci}  — 三维 cell [N数量 × seed数量 × 条件数]
+%      .N / .seed / .belief_on / .success / .error
+%      .convergence_utility   [num_rounds×1] 每轮联盟效用收敛曲线
+%      .final_utility         最终联盟效用（图4 的纵轴值）
+%      .computation_time      算法运行耗时（秒）
+%    ablation_config — 本次实验参数快照
+%
+%  注：本实验仅运行算法 7（OCF_SAtabu），两种条件共享同一随机场景
+%% =========================================================================
 
-%% ===== 实验配置 =====
+%% ===== 路径初始化（须在 Exp_Params 之前）=====
+script_dir = fileparts(mfilename('fullpath'));
+root_dir   = fileparts(script_dir);
+
+%% ===== 加载共享参数 =====
+run(fullfile(script_dir, 'Exp_Params.m'));
+
+%% ===== 实验专属配置 =====
 SEEDS      = 1001:1:1020;
 N_VALUES   = [4, 6, 8, 10, 12, 16, 20];
 M          = 10;
 K          = 6;
 CONDITIONS = {'belief_on', 'belief_off'};
 
-% ---------- 通用超参 ----------
-num_rounds      = 100;
-MaxIter         = 100;
-obs_times       = 50;
-task_values     = [800, 1000, 1500];
-num_task_types  = length(task_values);
-
-T0_round            = 100;
-SA_alpha            = 0.9;
-SA_Tmin             = 0.01;
-T_decay             = 0.8;
-T_min_round         = 2;
-T_init_construction = 2;
-resource_confidence = 0.7;
-K_stable_max        = 10;
-tabu_tenure         = 20;
-p_leave             = 0.3;
-
-% 场景参数
-WORLD_XMIN = 0; WORLD_XMAX = 100;
-WORLD_YMIN = 0; WORLD_YMAX = 100;
-WORLD_ZMIN = 0; WORLD_ZMAX = 0;
-agent_velocity       = 2;
-agent_detprob_min    = 0.95;
-agent_detprob_max    = 1.0;
-agent_Emax_min       = 300;
-agent_Emax_range     = 50;
-agent_fuel           = 1;
-agent_wait_fuel      = 0.5;
-agent_beta           = 1;
-min_resource_value   = 0;
-max_resource_value   = 4;
-task_type1_demand_max = 4;
-task_type2_demand_max = 6;
-task_type3_demand_max = 8;
-resource_exec_time   = [50 65 50 60 35 45];
-
-%% ===== 路径初始化 =====
-script_dir = fileparts(mfilename('fullpath'));
-root_dir   = fileparts(script_dir);
+%% ===== 路径加入 =====
 addpath(fullfile(root_dir, 'Main_fun'));
 addpath(fullfile(root_dir, 'comalg', 'alg7_OCF_SAtabu'));
 
 %% ===== 输出目录 =====
 results_dir = fullfile(root_dir, 'results', 'batch', 'ablation');
-if ~exist(results_dir, 'dir')
-    mkdir(results_dir);
-end
+if ~exist(results_dir, 'dir'), mkdir(results_dir); end
 
 %% ===== 进度计数 =====
 num_cond   = length(CONDITIONS);
@@ -78,24 +57,26 @@ fprintf('  条件     = [%s]\n', strjoin(CONDITIONS, ', '));
 fprintf('  轮数     = %d   内层迭代 = %d\n', num_rounds, MaxIter);
 fprintf('========================================================================\n\n');
 
-%% ===== 主循环 =====
+%% ===== 结果容器 =====
 ablation_results = cell(length(N_VALUES), length(SEEDS), num_cond);
 
+%% =========================================================================
+%  主循环：遍历 N、seed，同一场景对两种条件各跑一次
+%% =========================================================================
 for ni = 1:length(N_VALUES)
     N = N_VALUES(ni);
 
     for si = 1:length(SEEDS)
         seed = SEEDS(si);
 
-        %% -- 构建场景（同一(N,seed)两种条件共享）--
+        %% -- 构建场景（两种条件共享同一随机场景）--
         scene_ok = false;
         try
-            rng('default');
-            rng(seed);
+            rng('default'); rng(seed);
 
-            WORLD.XMIN = WORLD_XMIN; WORLD.XMAX = WORLD_XMAX;
-            WORLD.YMIN = WORLD_YMIN; WORLD.YMAX = WORLD_YMAX;
-            WORLD.ZMIN = WORLD_ZMIN; WORLD.ZMAX = WORLD_ZMAX;
+            WORLD.XMIN  = WORLD_XMIN;  WORLD.XMAX = WORLD_XMAX;
+            WORLD.YMIN  = WORLD_YMIN;  WORLD.YMAX = WORLD_YMAX;
+            WORLD.ZMIN  = WORLD_ZMIN;  WORLD.ZMAX = WORLD_ZMAX;
             WORLD.value = task_values;
 
             task_type_demands = zeros(num_task_types, K);
@@ -114,8 +95,8 @@ for ni = 1:length(N_VALUES)
             for j = 1:M
                 tasks(j).id       = j;
                 tasks(j).priority = task_priorities(j);
-                tasks(j).x        = round(rand() * (WORLD.XMAX - WORLD.XMIN) + WORLD.XMIN);
-                tasks(j).y        = round(rand() * (WORLD.YMAX - WORLD.YMIN) + WORLD.YMIN);
+                tasks(j).x = round(rand() * (WORLD.XMAX - WORLD.XMIN) + WORLD.XMIN);
+                tasks(j).y = round(rand() * (WORLD.YMAX - WORLD.YMIN) + WORLD.YMIN);
                 tasks(j).type     = randi(num_task_types, 1, 1);
                 tasks(j).value    = WORLD.value(tasks(j).type);
                 tasks(j).resource_demand      = task_type_demands(tasks(j).type, :);
@@ -128,8 +109,8 @@ for ni = 1:length(N_VALUES)
             for i = 1:N
                 agents(i).id        = i;
                 agents(i).vel       = agent_velocity;
-                agents(i).x         = round(rand() * (WORLD.XMAX - WORLD.XMIN) + WORLD_XMIN);
-                agents(i).y         = round(rand() * (WORLD.YMAX - WORLD.YMIN) + WORLD_YMIN);
+                agents(i).x = round(rand() * (WORLD.XMAX - WORLD.XMIN) + WORLD_XMIN);
+                agents(i).y = round(rand() * (WORLD.YMAX - WORLD.YMIN) + WORLD_YMIN);
                 agents(i).detprob   = agent_detprob_min + (agent_detprob_max - agent_detprob_min) * rand();
                 agents(i).resources = randi([min_resource_value, max_resource_value], K, 1);
                 agents(i).Emax      = agent_Emax_min + agent_Emax_range * rand();
@@ -139,23 +120,8 @@ for ni = 1:length(N_VALUES)
             end
 
             Value_Params_base = OCFUtils.init_value_params(N, M, K, num_task_types, task_type_demands, ...
-                SA_alpha, SA_Tmin, K_stable_max, obs_times, num_rounds);
-            Value_Params_base.K_stable_max        = K_stable_max;
-            Value_Params_base.max_inner_iter      = MaxIter;
-            Value_Params_base.T0_round            = T0_round;
-            Value_Params_base.T_decay             = T_decay;
-            Value_Params_base.T_min_round         = T_min_round;
-            Value_Params_base.resource_confidence = resource_confidence;
-            Value_Params_base.T_init_construction = T_init_construction;
-            Value_Params_base.tabu_tenure         = tabu_tenure;
-            Value_Params_base.p_leave             = p_leave;
-            Value_Params_base.Qi_L_tabu           = 10;
-            Value_Params_base.Qi_K_stable_max     = 10;
-            Value_Params_base.Qi_Gamma_init       = 1;
-            Value_Params_base.Qi_Gamma_max        = 50;
-            Value_Params_base.Shi_K_stable_max    = 10;
-            Value_Params_base.C                   = 2000;
-            Value_Params_base.seed                = seed;
+                OCF_alpha, OCF_Tmin, OCF_K_stable_max, obs_times, num_rounds);
+            Value_Params_base = OCFUtils.apply_experiment_params(Value_Params_base, Common_Params, Algorithm_Params, seed);
 
             scene_ok = true;
         catch ME_scene
@@ -176,6 +142,7 @@ for ni = 1:length(N_VALUES)
             fprintf('[%3d/%3d] N=%2d seed=%d cond=%s ...%s\n', ...
                 done, total_runs, N, seed, cond_name, eta_str);
 
+            entry = struct();
             entry.N         = N;
             entry.seed      = seed;
             entry.belief_on = (ci == 1);
@@ -190,7 +157,7 @@ for ni = 1:length(N_VALUES)
 
             try
                 AddPara_run.verbose              = 0;
-                AddPara_run.enable_belief_update = (ci == 1);  % 消融开关
+                AddPara_run.enable_belief_update = (ci == 1);  % 消融开关：ci=1开启，ci=2关闭
                 AddPara_run.control              = 1;
 
                 rng(seed);
@@ -203,7 +170,6 @@ for ni = 1:length(N_VALUES)
                 for r = 1:num_r
                     convergence_utility(r) = history_data.rounds(r).coalition_utility;
                 end
-
                 entry.convergence_utility = convergence_utility;
                 entry.final_utility       = convergence_utility(num_r);
                 entry.success             = true;
@@ -222,14 +188,14 @@ total_elapsed = toc(total_tic);
 fprintf('\n全部完成，总耗时 %.1f s (%.1f min)\n', total_elapsed, total_elapsed / 60);
 
 %% ===== 保存 .mat =====
-% 命名格式：N{min}-{max}_M{M}_K{K}_S{nSeeds}_{timestamp}.mat
-ablation_config.N_values    = N_VALUES;
-ablation_config.M           = M;
-ablation_config.K           = K;
-ablation_config.seeds       = SEEDS;
-ablation_config.conditions  = CONDITIONS;
-ablation_config.num_rounds  = num_rounds;
-ablation_config.timestamp   = datestr(now, 'yyyymmdd_HHMMSS');
+ablation_config = struct();
+ablation_config.N_values   = N_VALUES;
+ablation_config.M          = M;
+ablation_config.K          = K;
+ablation_config.seeds      = SEEDS;
+ablation_config.conditions = CONDITIONS;
+ablation_config.num_rounds = num_rounds;
+ablation_config.timestamp  = datestr(now, 'yyyymmdd_HHMMSS');
 
 timestamp = ablation_config.timestamp;
 filename  = fullfile(results_dir, sprintf('N%d-%d_M%d_K%d_S%d_%s.mat', ...
@@ -239,7 +205,7 @@ fprintf('保存至: %s\n', filename);
 save(filename, 'ablation_results', 'ablation_config', '-v7.3');
 fprintf('保存完成。\n\n');
 
-%% ===== 快速完整性检查 =====
+%% ===== 完整性检查 =====
 fprintf('--- 完整性检查 ---\n');
 success_count = 0;
 fail_count    = 0;
@@ -263,6 +229,7 @@ for ni2 = 1:length(N_VALUES)
 end
 fprintf('成功: %d / %d  失败: %d\n', success_count, total_runs, fail_count);
 
+%% ===== 打印消融对比均值表 =====
 fprintf('\n--- 消融对比：各 N 规模最终效用均值 ---\n');
 header = sprintf('%-6s', 'N');
 for ci2 = 1:num_cond

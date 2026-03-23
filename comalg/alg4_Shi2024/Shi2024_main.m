@@ -31,7 +31,7 @@ K = Value_Params.K;
 tol = 1e-9;
 num_rounds = Value_Params.num_rounds;
 
-% 信念更新开关（默认开启，与 Qi2023/OCF_SAtabu 对齐）
+% 信念更新开关（默认开启，与 Qi2023/OCF_SAtabu 对齐）C
 enable_belief_update = true;
 if isfield(AddPara, 'enable_belief_update')
     enable_belief_update = AddPara.enable_belief_update;
@@ -253,12 +253,12 @@ function [SC, k_iter] = optimize_coalitions(N, M, SC, agents, tasks, Value_Param
 % 迭代优化联盟结构 (解耦式：基于单种资源的细粒度调度)
 k_iter = 0;  % 内循环迭代计数器
 k_stable = 0;  % 稳定性计数器
-max_iterations = Value_Params.max_inner_iter;
-K_len = Value_Params.Shi_K_stable_max;
-K_resources = Value_Params.K; % 获取资源种类总数
-L_tabu = Value_Params.Qi_L_tabu;           % 禁忌表长度（与 Qi2023 共用参数）
-Gamma = Value_Params.Qi_Gamma_init;        % Boltzmann 系数（每轮重置，与 Qi2023 对齐）
-Gamma_max = Value_Params.Qi_Gamma_max;     % Boltzmann 系数上限
+    max_iterations = Value_Params.max_inner_iter;
+    K_len = Value_Params.Shi_K_stable_max;
+    K_resources = Value_Params.K; % 获取资源种类总数
+    L_tabu = Value_Params.Shi_L_tabu;          % Shi2024 禁忌表长度
+    Gamma = Value_Params.Shi_Gamma_init;       % Shi2024 Boltzmann 系数（每轮重置）
+    Gamma_max = Value_Params.Shi_Gamma_max;    % Shi2024 Boltzmann 系数上限
 
 % 探索阶段使用静默模式，避免大量"试错"日志淹没有效信息
 AddPara_silent = AddPara;
@@ -281,7 +281,7 @@ while k_iter < max_iterations && k_stable < K_len
         SC_working = SC;  % agent j 的工作副本，三步操作均在此副本上累积
 
         % --- A. 随机退出操作：修改工作副本，不广播 ---
-        p_leave = Value_Params.p_leave;
+        p_leave = Value_Params.Shi_p_leave;
         for m = 1:M
             for k = 1:K_resources
                 if SC_working{m}(j, k) > tol && rand < p_leave

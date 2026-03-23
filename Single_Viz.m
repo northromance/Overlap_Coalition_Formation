@@ -22,16 +22,47 @@ obs_times       = 50;
 task_values     = [800, 1000, 1500];
 num_task_types  = length(task_values);
 
-T0_round            = 100;
-SA_alpha            = 0.9;
-SA_Tmin             = 0.01;
-T_decay             = 0.8;
-T_min_round         = 2;
-T_init_construction = 2;
 resource_confidence = 0.7;
-K_stable_max        = 10;
-tabu_tenure         = 20;
-p_leave             = 0.3;
+
+Huo_L_tabu       = 10;
+Huo_K_stable_max = 10;
+
+Qi_L_tabu       = 10;
+Qi_K_stable_max = 10;
+Qi_Gamma_init   = 1;
+Qi_Gamma_max    = 50;
+Qi_p_leave      = 0.3;
+
+Shi_L_tabu       = 10;
+Shi_K_stable_max = 10;
+Shi_Gamma_init   = 1;
+Shi_Gamma_max    = 50;
+Shi_p_leave      = 0.3;
+
+OCF_T0_round            = 100;
+OCF_alpha               = 0.9;
+OCF_Tmin                = 0.01;
+OCF_T_decay             = 0.8;
+OCF_T_min_round         = 2;
+OCF_T_init_construction = 2;
+OCF_K_stable_max        = 10;
+OCF_tabu_tenure         = 20;
+OCF_p_leave             = 0.3;
+
+Common_Params = struct();
+Common_Params.max_inner_iter      = MaxIter;
+Common_Params.resource_confidence = resource_confidence;
+
+Algorithm_Params = struct();
+Algorithm_Params.Huo = struct('L_tabu', Huo_L_tabu, 'K_stable_max', Huo_K_stable_max);
+Algorithm_Params.Qi = struct('L_tabu', Qi_L_tabu, 'K_stable_max', Qi_K_stable_max, ...
+    'Gamma_init', Qi_Gamma_init, 'Gamma_max', Qi_Gamma_max, 'p_leave', Qi_p_leave);
+Algorithm_Params.Shi = struct('L_tabu', Shi_L_tabu, 'K_stable_max', Shi_K_stable_max, ...
+    'Gamma_init', Shi_Gamma_init, 'Gamma_max', Shi_Gamma_max, 'p_leave', Shi_p_leave);
+Algorithm_Params.OCF = struct('T0_round', OCF_T0_round, 'alpha', OCF_alpha, ...
+    'Tmin', OCF_Tmin, 'T_decay', OCF_T_decay, 'T_min_round', OCF_T_min_round, ...
+    'T_init_construction', OCF_T_init_construction, 'K_stable_max', OCF_K_stable_max, ...
+    'tabu_tenure', OCF_tabu_tenure, 'p_leave', OCF_p_leave);
 
 WORLD_XMIN = 0; WORLD_XMAX = 100;
 WORLD_YMIN = 0; WORLD_YMAX = 100;
@@ -116,23 +147,8 @@ for i = 1:N
 end
 
 Value_Params = OCFUtils.init_value_params(N, M, K, num_task_types, task_type_demands, ...
-    SA_alpha, SA_Tmin, K_stable_max, obs_times, num_rounds);
-Value_Params.K_stable_max        = K_stable_max;
-Value_Params.max_inner_iter      = MaxIter;
-Value_Params.T0_round            = T0_round;
-Value_Params.T_decay             = T_decay;
-Value_Params.T_min_round         = T_min_round;
-Value_Params.resource_confidence = resource_confidence;
-Value_Params.T_init_construction = T_init_construction;
-Value_Params.tabu_tenure         = tabu_tenure;
-Value_Params.p_leave             = p_leave;
-Value_Params.Qi_L_tabu           = 10;
-Value_Params.Qi_K_stable_max     = 10;
-Value_Params.Qi_Gamma_init       = 1;
-Value_Params.Qi_Gamma_max        = 50;
-Value_Params.Shi_K_stable_max    = 10;
-Value_Params.C                   = 2000;
-Value_Params.seed                = SEED;
+    OCF_alpha, OCF_Tmin, OCF_K_stable_max, obs_times, num_rounds);
+Value_Params = OCFUtils.apply_experiment_params(Value_Params, Common_Params, Algorithm_Params, SEED);
 
 %% ===== 运行算法 =====
 fprintf('运行 OCF_SAtabu...\n');

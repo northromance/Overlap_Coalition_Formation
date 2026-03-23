@@ -144,7 +144,7 @@ for counter = 1:Value_Params.num_rounds
             fprintf('[Huo2025]   迭代 %d: 效用=%.4f, k_stable=%d\n', k_iter, iter_utility, k_stable);
         end
 
-        if k_stable >= Value_Params.K_stable_max || k_iter >= Value_Params.max_inner_iter
+        if k_stable >= Value_Params.Huo_K_stable_max || k_iter >= Value_Params.max_inner_iter
             break;
         end
     end
