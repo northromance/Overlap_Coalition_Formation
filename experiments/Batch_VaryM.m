@@ -32,16 +32,16 @@ root_dir   = fileparts(script_dir);
 run(fullfile(script_dir, 'Exp_Params.m'));
 
 %% ===== 实验专属配置 =====
-SEEDS             = 1001:1:1020;
-M_VALUES          = [5, 8, 10, 12, 15, 18, 20];
-N                 = 10;   % 固定智能体数
-K                 = 6;    % 固定资源种类数
-algorithms_to_run_ids = [2, 3, 4, 7];
+cfg = Exp_Config.VaryM;
+SEEDS = cfg.SEEDS;
+M_VALUES = cfg.M_VALUES;
+N = cfg.N;
+K = cfg.K;
+algorithms_to_run_ids = cfg.algorithms_to_run_ids;
+num_rounds = Exp_Config.Common.num_rounds;
 
 %% ===== 附加控制参数 =====
-AddPara.verbose              = 0;
-AddPara.enable_belief_update = true;
-AddPara.control              = 1;
+AddPara = cfg.AddPara;
 
 %% ===== 路径加入 =====
 addpath(fullfile(root_dir, 'Main_fun'));

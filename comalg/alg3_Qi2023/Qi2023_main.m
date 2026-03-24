@@ -67,14 +67,14 @@ for i = 1:N
     end
 end
 
-if AddPara.verbose >= 1
+if AddPara.verbose >= 2
     fprintf('[Qi2023] 开始PGG-TS算法，共%d轮...\n', Value_Params.num_rounds);
 end
 
 %% 主循环：多轮迭代（每轮包括：联盟形成 → 观测 → 信念更新）
 for round = 1:Value_Params.num_rounds
 
-    if AddPara.verbose >= 1
+    if AddPara.verbose >= 2
         fprintf('[Qi2023] === 第 %d/%d 轮 ===\n', round, Value_Params.num_rounds);
     end
 
@@ -292,6 +292,11 @@ for round = 1:Value_Params.num_rounds
         SC_global, coalitionstru, coalition_utility, total_cost, ...
         total_completed_value, task_completion_degrees, summatrix);
 
+    if AddPara.verbose >= 1
+        fprintf('[Qi2023] 第 %d/%d 轮: Utility=%.2f, Cost=%.2f, Completed=%.2f\n', ...
+            round, Value_Params.num_rounds, coalition_utility, total_cost, total_completed_value);
+    end
+
     % --- 记录内循环历史数据 ---
     history_data.inner_loop{round} = inner_loop_history;
 
@@ -299,13 +304,13 @@ for round = 1:Value_Params.num_rounds
     history_data.k_iter_per_round{round} = k_iter;
 end
 
-if AddPara.verbose >= 1
+if AddPara.verbose >= 2
     fprintf('[Qi2023] 算法完成 %d 轮。\n', Value_Params.num_rounds);
 end
 
 %% 最终数据同步：确保所有智能体的数据结构完全一致
 if AddPara.verbose >= 2
-    fprintf('\n[Qi2023] 执行最终数据同步...\n');
+    fprintf('[Qi2023] 执行最终数据同步...\n');
 end
 for ii = 1:N
     Value_data(ii).SC = SC_global;
@@ -336,7 +341,7 @@ end
 
 %% 最终一致性检查（使用统一的检查函数）
 if AddPara.verbose >= 2
-    fprintf('\n[Qi2023] 执行最终一致性检查...\n');
+    fprintf('[Qi2023] 执行最终一致性检查...\n');
 end
 [is_valid, error_log] = check_coalition_consistency(Value_data, agents, tasks, Value_Params, 'OCF', AddPara.verbose >= 2);
 

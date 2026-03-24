@@ -32,6 +32,22 @@ tabu_tenure = Value_Params.OCF_tabu_tenure; % 禁忌长度
 Value_data = WorldSim.init_value_data(agents, tasks, Value_Params);
 [Value_data, summatrix] = WorldSim.init_observe_belief_neighbor(Value_data, Value_Params.N, Value_Params.M, Value_Params);
 
+% 若外部指定了初始信念矩阵（用于 Batch_Belief 异质信念实验），则覆盖默认均匀先验
+% AddPara.init_belief: N×T 矩阵，第 i 行为智能体 i 对任务类型的初始概率分布
+if isfield(AddPara, 'init_belief') && ~isempty(AddPara.init_belief)
+    init_b = AddPara.init_belief;   % N×T
+    N_b = Value_Params.N;
+    M_b = Value_Params.M;
+    for i_b = 1:N_b
+        Value_data(i_b).initbelief(1:M_b, :) = repmat(init_b(i_b, :), M_b, 1);
+    end
+    for i_b = 1:N_b
+        for j_b = 1:N_b
+            Value_data(i_b).other{j_b}.initbelief = Value_data(j_b).initbelief;
+        end
+    end
+end
+
 %% ==================== 2. 外循环（轮次迭代） ====================
 for counter = 1:Value_Params.num_rounds
     %% 2.2 SA 初始化
@@ -46,9 +62,7 @@ for counter = 1:Value_Params.num_rounds
     %   内循环退出条件使用 Tmin（远低于 T_min_round），是内循环降温的终止阈值。
     Value_Params.Temperature = max(Value_Params.OCF_T_min_round, ...
         Value_Params.OCF_T0_round * Value_Params.OCF_T_decay^(counter-1));
-    if AddPara.verbose >= 1
-        fprintf('  [OCF_SAtabu] 第 %d/%d 轮, T=%.2f\n', counter, Value_Params.num_rounds, Value_Params.Temperature);
-    end
+    round_temperature = Value_Params.Temperature;
     if AddPara.verbose >= 2
         fprintf('  [SA-Altruistic] Round %d: 初始温度 = %.2f\n', counter, Value_Params.Temperature);
     end
@@ -340,20 +354,26 @@ for counter = 1:Value_Params.num_rounds
 
     % 记录该轮全局社会效用（GSU）最优值，便于后续分析
     history_data.best_GSU{counter} = best_GSU;
+
+    if AddPara.verbose >= 1
+        fprintf('[OCF_SAtabu] 第 %d/%d 轮: T=%.2f, Utility=%.2f, Cost=%.2f, Completed=%.2f\n', ...
+            counter, Value_Params.num_rounds, round_temperature, ...
+            coalition_utility, total_global_cost, total_completed_value);
+    end
 end
 
 %% ==================== 6. 最终结果一致性检查 ====================
 if AddPara.verbose >= 2
-    fprintf('\n[SA_Value_Altruistic] 执行结束，进行一致性检查...\n');
+    fprintf('[OCF_SAtabu] 执行结束，进行一致性检查...\n');
 end
 % OCF 一致性检查，确保最终联盟分配没有违反资源容量、任务调度等约束
 [is_valid, error_log] = check_coalition_consistency(Value_data, agents, tasks, Value_Params, 'OCF', AddPara.verbose >= 2);
 if ~is_valid
-    warning('[SA_Value_Altruistic] 一致性检查发现 %d 个问题', length(error_log));
+    warning('[OCF_SAtabu] 一致性检查发现 %d 个问题', length(error_log));
     history_data.consistency_errors = error_log;
 else
     if AddPara.verbose >= 2
-        fprintf('  [SA_Value_Altruistic] 所有一致性检查通过。\n');
+        fprintf('[OCF_SAtabu] 所有一致性检查通过。\n');
     end
 end
 end

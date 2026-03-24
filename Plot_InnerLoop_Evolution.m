@@ -41,10 +41,10 @@ if nargin == 0
     % 可选值: 'OCF_SAtabu_global', 'Qi2023', 'Huo2025', 7, 3, 2, 'alg1', 'alg2'
     % algorithm_name = 'OCF_SAtabu_global';
     % algorithm_name = 'Huo2025';
-    algorithm_name = 'Huo2025';
+    algorithm_name = 'OCF_SAtabu_global';
 
     % 3. 选择轮次
-    round_number = 5;
+    round_number = 3;
 
     % --- 自动加载逻辑 ---
     if auto_load_latest

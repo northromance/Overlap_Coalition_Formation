@@ -85,14 +85,14 @@ for i = 1:N
     end
 end
 
-if AddPara.verbose >= 1
+if AddPara.verbose >= 2
     fprintf('[Huo2025] 初始化完成：N=%d, M=%d, K=%d, 轮数=%d\n', N, M, K, Value_Params.num_rounds);
 end
 
 %% ==================== 2. 主循环：多轮博弈与演化 ====================
 for counter = 1:Value_Params.num_rounds
 
-    if AddPara.verbose >= 1
+    if AddPara.verbose >= 2
         fprintf('[Huo2025] === 第 %d/%d 轮 ===\n', counter, Value_Params.num_rounds);
     end
 
@@ -180,6 +180,11 @@ for counter = 1:Value_Params.num_rounds
     [coalition_utility, Rcost, total_completed_value, task_completion_degrees] = ...
         UtilityEvaluator.evaluate_coalition_metrics(Final_SC, agents, tasks, Value_Params, 1e-9);
 
+    if AddPara.verbose >= 1
+        fprintf('[Huo2025] 第 %d/%d 轮: Utility=%.2f, Cost=%.2f, Completed=%.2f\n', ...
+            counter, Value_Params.num_rounds, coalition_utility, Rcost, total_completed_value);
+    end
+
     history_data = ResultProcessor.record_history_data(history_data, counter, Value_data, Value_Params, ...
         Final_SC, final_coalitionstru, coalition_utility, Rcost, total_completed_value, task_completion_degrees, summatrix);
 
@@ -190,7 +195,7 @@ Value_data = update_task_schedule(Value_data, agents, tasks, Value_Params);
 
 %% ==================== 3. 最终一致性检查 ====================
 if AddPara.verbose >= 2
-    fprintf('\n[Huo2025] 执行最终一致性检查...\n');
+    fprintf('[Huo2025] 执行最终一致性检查...\n');
 end
 [is_valid, error_log] = check_coalition_consistency(Value_data, agents, tasks, Value_Params, 'Non-OCF', AddPara.verbose >= 2);
 

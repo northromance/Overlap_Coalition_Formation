@@ -6,9 +6,13 @@
 % 实验专属参数（SEEDS、N_VALUES、algorithms_to_run_ids 等）仍在各脚本中单独设置。
 
 %% ===== 通用超参数 =====
-num_rounds = 100;   % 外循环轮数（正式运行值；测试时在各脚本中覆盖此变量）
-MaxIter    = 100;   % 每轮最大内层迭代次数
+num_rounds = 50;   % 外循环轮数（正式运行值；测试时在各脚本中覆盖此变量）
+MaxIter    = 80;   % 每轮最大内层迭代次数
 obs_times  = 50;    % 效用/观测统计参数（传入 OCFUtils.init_value_params）
+xp_Config = struct();
+Exp_Config.Common = struct();
+Exp_Config.Common.num_rounds = num_rounds;
+Exp_Config.Common.SEEDS = 2458; % 随机种子列表（3 个种子，正式运行值；测试时在各脚本中覆盖此变量）
 
 %% ===== 任务价值与类型 =====
 task_values    = [800, 1000, 1500];   % 三类任务的基础奖励价值
@@ -25,22 +29,22 @@ Huo_K_stable_max = 10;   % Huo2025 稳定性阈值
 Qi_L_tabu       = 10;   % Qi2023 禁忌表长度
 Qi_K_stable_max = 10;   % Qi2023 稳定性阈值
 Qi_Gamma_init   = 1;    % Qi2023 初始 Boltzmann 系数
-Qi_Gamma_max    = 50;   % Qi2023 最大 Boltzmann 系数
+Qi_Gamma_max    = 40;   % Qi2023 最大 Boltzmann 系数
 Qi_p_leave      = 0.3;  % Qi2023 离开概率
 
 %% ===== Shi2024 专属参数 =====
 Shi_L_tabu       = 10;   % Shi2024 禁忌表长度
 Shi_K_stable_max = 10;   % Shi2024 稳定性阈值
 Shi_Gamma_init   = 1;    % Shi2024 初始 Boltzmann 系数
-Shi_Gamma_max    = 50;   % Shi2024 最大 Boltzmann 系数
+Shi_Gamma_max    = 40;   % Shi2024 最大 Boltzmann 系数
 Shi_p_leave      = 0.3;  % Shi2024 离开概率
 
 %% ===== OCF_SAtabu 专属参数 =====
 OCF_T0_round            = 100;   % OCF_SAtabu 每轮开始时的初始温度
-OCF_alpha               = 0.9;   % OCF_SAtabu 轮内退火冷却率
+OCF_alpha               = 0.95;   % OCF_SAtabu 轮内退火冷却率
 OCF_Tmin                = 0.01;  % OCF_SAtabu 轮内最低温度
-OCF_T_decay             = 0.8;   % OCF_SAtabu 轮间温度衰减系数
-OCF_T_min_round         = 2;     % OCF_SAtabu 每轮初始温度下界
+OCF_T_decay             = 0.9;   % OCF_SAtabu 轮间温度衰减系数
+OCF_T_min_round         = 20;     % OCF_SAtabu 每轮初始温度下界
 OCF_T_init_construction = 2;     % OCF_SAtabu 初始构造温度
 OCF_K_stable_max        = 10;    % OCF_SAtabu 稳定性阈值
 OCF_tabu_tenure         = 20;    % OCF_SAtabu 禁忌期限
@@ -105,3 +109,67 @@ task_type3_demand_max = 8;   % 类型3任务各维资源需求上限（高价值
 %% ===== 各资源类型的执行时间（K=6 维）=====
 % resource_exec_time(k) = 第 k 类资源执行所需时间
 resource_exec_time = [50, 65, 50, 60, 35, 45];
+
+%% ===== 实验脚本专属配置（集中放在文件末尾）=====
+
+% Batch_VaryN
+Exp_Config.VaryN.SEEDS = Exp_Config.Common.SEEDS;
+Exp_Config.VaryN.N_VALUES = [4, 6, 8, 10, 12];
+Exp_Config.VaryN.M = 10;
+Exp_Config.VaryN.K = 6;
+Exp_Config.VaryN.algorithms_to_run_ids = [2, 3, 4, 7];
+Exp_Config.VaryN.AddPara = struct( ...
+    'verbose', 1, ...
+    'enable_belief_update', true, ...
+    'control', 1);
+
+% Batch_VaryM
+Exp_Config.VaryM.SEEDS = Exp_Config.Common.SEEDS;
+Exp_Config.VaryM.M_VALUES = [8,10,12];
+Exp_Config.VaryM.N = 6;
+Exp_Config.VaryM.K = 6;
+Exp_Config.VaryM.algorithms_to_run_ids = [3, 4, 7];
+Exp_Config.VaryM.AddPara = struct( ...
+    'verbose', 1, ...
+    'enable_belief_update', true, ...
+    'control', 1);
+
+% Batch_Belief
+Exp_Config.Belief.SEEDS = Exp_Config.Common.SEEDS;
+Exp_Config.Belief.N = 10;
+Exp_Config.Belief.M = 10;
+Exp_Config.Belief.K = 6;
+Exp_Config.Belief.CONDITIONS = {'uniform', 'heterogeneous'};
+% uniform: 所有智能体使用相同均匀先验 [1/3, 1/3, 1/3]
+% heterogeneous: 每个智能体偏向低/中/高价值中的某一类，并带少量随机扰动
+Exp_Config.Belief.belief_uniform = ones(1, num_task_types) / num_task_types;
+Exp_Config.Belief.belief_heterogeneous_profiles = [ ...
+    0.82, 0.13, 0.05; ...
+    0.15, 0.70, 0.15; ...
+    0.05, 0.13, 0.82];
+Exp_Config.Belief.belief_heterogeneous_main_prob_range = [0.72, 0.88];
+Exp_Config.Belief.AddPara = struct( ...
+    'verbose', 0, ...
+    'enable_belief_update', true, ...
+    'control', 1);
+
+% Batch_Ablation
+Exp_Config.Ablation.SEEDS = Exp_Config.Common.SEEDS;
+Exp_Config.Ablation.N_VALUES = [4, 6, 8, 10, 12, 16, 20];
+Exp_Config.Ablation.M = 10;
+Exp_Config.Ablation.K = 6;
+Exp_Config.Ablation.CONDITIONS = {'belief_on', 'belief_off'};
+Exp_Config.Ablation.AddPara = struct( ...
+    'verbose', 0, ...
+    'enable_belief_update', true, ...
+    'control', 1);
+
+% Single_Viz
+Exp_Config.SingleViz.SEED = Exp_Config.Common.SEEDS(1);
+Exp_Config.SingleViz.N = 10;
+Exp_Config.SingleViz.M = 10;
+Exp_Config.SingleViz.K = 6;
+Exp_Config.SingleViz.AddPara = struct( ...
+    'verbose', 1, ...
+    'enable_belief_update', true, ...
+    'control', 1);

@@ -27,11 +27,14 @@ root_dir   = fileparts(script_dir);
 run(fullfile(script_dir, 'Exp_Params.m'));
 
 %% ===== 实验专属配置 =====
-SEEDS      = 1001:1:1020;
-N_VALUES   = [4, 6, 8, 10, 12, 16, 20];
-M          = 10;
-K          = 6;
-CONDITIONS = {'belief_on', 'belief_off'};
+cfg = Exp_Config.Ablation;
+SEEDS = cfg.SEEDS;
+N_VALUES = cfg.N_VALUES;
+M = cfg.M;
+K = cfg.K;
+CONDITIONS = cfg.CONDITIONS;
+AddPara_base = cfg.AddPara;
+num_rounds = Exp_Config.Common.num_rounds;
 
 %% ===== 路径加入 =====
 addpath(fullfile(root_dir, 'Main_fun'));
@@ -156,9 +159,8 @@ for ni = 1:length(N_VALUES)
             end
 
             try
-                AddPara_run.verbose              = 0;
+                AddPara_run = AddPara_base;
                 AddPara_run.enable_belief_update = (ci == 1);  % 消融开关：ci=1开启，ci=2关闭
-                AddPara_run.control              = 1;
 
                 rng(seed);
                 tic;

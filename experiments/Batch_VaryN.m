@@ -16,8 +16,10 @@ feature('DefaultCharacterSet', 'UTF-8');
 %      .algs.(算法名).final_utility        最终联盟效用（图1a 的值）
 %      .algs.(算法名).final_cost           最终全局成本（图1b 的值）
 %      .algs.(算法名).final_completion     最终平均任务完成度
+%      .algs.(算法名).final_completed_value 最终总完成价值
 %      .algs.(算法名).convergence_utility  [num_rounds×1] 每轮效用收敛曲线
 %      .algs.(算法名).convergence_cost     [num_rounds×1] 每轮成本曲线
+%      .algs.(算法名).convergence_completed_value [num_rounds×1] 每轮总完成价值曲线
 %      .algs.(算法名).convergence_completion [num_rounds×1] 每轮完成度曲线
 %      .algs.(算法名).computation_time     算法运行耗时（秒）
 %    scale_config — 本次实验参数快照
@@ -33,19 +35,16 @@ root_dir   = fileparts(script_dir);
 run(fullfile(script_dir, 'Exp_Params.m'));
 
 %% ===== 实验专属配置 =====
-% 测试时用小规模，正式运行时注释掉 "测试用" 行，启用 "正式" 行
-SEEDS             = 1001:1:1006;              % 测试用；正式改成 1001:1:1020
-N_VALUES          = [4, 6, 8, 10];           % 测试用；正式改成 [4,6,8,10,12,16,20]
-M                 = 10;                       % 固定任务数
-K                 = 6;                        % 固定资源种类数
-algorithms_to_run_ids = [2, 3, 4, 7];
-
-% 覆盖 Exp_Params 中的 num_rounds（测试模式）；正式运行删除此行
-num_rounds = 3;
+cfg = Exp_Config.VaryN;
+SEEDS = cfg.SEEDS;
+N_VALUES = cfg.N_VALUES;
+M = cfg.M;
+K = cfg.K;
+algorithms_to_run_ids = cfg.algorithms_to_run_ids;
+num_rounds = Exp_Config.Common.num_rounds;
 
 %% ===== 附加控制参数 =====
-AddPara.verbose              = 1;
-AddPara.enable_belief_update = true;
+AddPara = cfg.AddPara;
 
 %% ===== 路径加入 =====
 addpath(fullfile(root_dir, 'Main_fun'));
@@ -185,9 +184,11 @@ for ni = 1:length(N_VALUES)
                 alg_entry.computation_time       = NaN;
                 alg_entry.convergence_utility    = nan(num_rounds, 1);
                 alg_entry.convergence_cost       = nan(num_rounds, 1);
+                alg_entry.convergence_completed_value = nan(num_rounds, 1);
                 alg_entry.convergence_completion = nan(num_rounds, 1);
                 alg_entry.final_utility          = NaN;
                 alg_entry.final_cost             = NaN;
+                alg_entry.final_completed_value  = NaN;
                 alg_entry.final_completion       = NaN;
                 alg_entry.success                = false;
                 alg_entry.error                  = '';
@@ -202,11 +203,13 @@ for ni = 1:length(N_VALUES)
                     for r = 1:num_r
                         alg_entry.convergence_utility(r)    = history_data.rounds(r).coalition_utility;
                         alg_entry.convergence_cost(r)       = history_data.rounds(r).total_global_cost;
+                        alg_entry.convergence_completed_value(r) = history_data.rounds(r).total_completed_value;
                         td = history_data.rounds(r).task_completion_degrees;
                         alg_entry.convergence_completion(r) = mean(td);
                     end
                     alg_entry.final_utility    = alg_entry.convergence_utility(num_r);
                     alg_entry.final_cost       = alg_entry.convergence_cost(num_r);
+                    alg_entry.final_completed_value = alg_entry.convergence_completed_value(num_r);
                     alg_entry.final_completion = alg_entry.convergence_completion(num_r);
                     alg_entry.success          = true;
 

@@ -34,15 +34,15 @@ root_dir   = fileparts(script_dir);
 run(fullfile(script_dir, 'Exp_Params.m'));
 
 %% ===== 实验专属配置 =====
-SEED = 1001;
-N    = 10;
-M    = 10;
-K    = 6;
+cfg = Exp_Config.SingleViz;
+SEED = cfg.SEED;
+N = cfg.N;
+M = cfg.M;
+K = cfg.K;
+num_rounds = Exp_Config.Common.num_rounds;
 
 %% ===== 附加控制参数 =====
-AddPara.verbose              = 1;
-AddPara.enable_belief_update = true;
-AddPara.control              = 1;
+AddPara = cfg.AddPara;
 
 %% ===== 路径加入 =====
 addpath(fullfile(root_dir, 'Main_fun'));

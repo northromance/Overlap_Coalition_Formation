@@ -29,21 +29,23 @@ root_dir   = fileparts(script_dir);
 run(fullfile(script_dir, 'Exp_Params.m'));
 
 %% ===== 实验专属配置 =====
-SEEDS      = 1001:1:1010;
-N          = 10;
-M          = 10;
-K          = 6;
-CONDITIONS = {'uniform', 'optimistic', 'pessimistic'};
+cfg = Exp_Config.Belief;
+SEEDS = cfg.SEEDS;
+N = cfg.N;
+M = cfg.M;
+K = cfg.K;
+CONDITIONS = cfg.CONDITIONS;
+num_rounds = Exp_Config.Common.num_rounds;
 
-% 三种初始信念分布模板（对应 3 种任务类型：value=800/1000/1500）
-belief_uniform     = ones(1, num_task_types) / num_task_types;  % [1/3, 1/3, 1/3]
-belief_optimistic  = [0.1, 0.1, 0.8];  % 偏向高价值类型（type3, value=1500）
-belief_pessimistic = [0.8, 0.1, 0.1];  % 偏向低价值类型（type1, value=800）
+% 初始信念分布模板
+% uniform: 所有智能体均匀先验 [1/T, ..., 1/T]（条件共用）
+% heterogeneous: 每智能体偏向低/中/高价值中的某一类（在主循环内按 seed 生成 N×T 矩阵）
+belief_uniform = cfg.belief_uniform;   % [1/T, 1/T, 1/T]
+belief_heter_profiles = cfg.belief_heterogeneous_profiles;
+belief_heter_main_prob_range = cfg.belief_heterogeneous_main_prob_range;
 
 %% ===== 附加控制参数 =====
-AddPara.verbose              = 0;
-AddPara.enable_belief_update = true;
-AddPara.control              = 1;
+AddPara = cfg.AddPara;
 
 %% ===== 路径加入 =====
 addpath(fullfile(root_dir, 'Main_fun'));
@@ -149,13 +151,60 @@ for ci = 1:num_cond
 
             % 提取真实任务类型（用于 Python 端计算信念误差）
             true_task_types = zeros(M, 1);
+            true_task_values = zeros(M, 1);
             for j = 1:M
-                true_task_types(j) = tasks_local(j).type;
+                true_task_types(j)  = tasks_local(j).type;
+                true_task_values(j) = tasks_local(j).value;
+            end
+
+            %% -- 按条件构造初始信念矩阵并注入 AddPara --
+            % init_belief_matrix: N×T，每行为一个智能体的初始信念分布
+            AddPara_run = AddPara;
+            switch cond_name
+                case 'uniform'
+                    % 所有智能体相同：均匀分布 [1/T, 1/T, 1/T]
+                    init_b = repmat(belief_uniform, N, 1);  % N×T
+                    AddPara_run.init_belief = init_b;
+
+                case 'heterogeneous'
+                    % 每个智能体显式偏向低/中/高价值中的某一类，并保留少量随机扰动
+                    rng(seed + 9999);   % 独立子种子，不干扰场景生成
+                    pref_types = repmat(1:num_task_types, 1, ceil(N / num_task_types));
+                    pref_types = pref_types(1:N);
+                    pref_types = pref_types(randperm(N));
+                    init_b = zeros(N, num_task_types);
+
+                    for i_agent = 1:N
+                        pref_t = pref_types(i_agent);
+                        base_profile = belief_heter_profiles(pref_t, :);
+
+                        p_main = belief_heter_main_prob_range(1) + ...
+                            (belief_heter_main_prob_range(2) - belief_heter_main_prob_range(1)) * rand();
+
+                        other_idx = setdiff(1:num_task_types, pref_t);
+                        other_raw = rand(1, numel(other_idx));
+                        other_raw = other_raw / sum(other_raw) * (1 - p_main);
+
+                        agent_b = zeros(1, num_task_types);
+                        agent_b(pref_t) = p_main;
+                        agent_b(other_idx) = other_raw;
+
+                        % 与模板做轻微混合，保证同一偏好组也不是完全重合
+                        mix_w = 0.75 + 0.15 * rand();
+                        agent_b = mix_w * agent_b + (1 - mix_w) * base_profile;
+                        init_b(i_agent, :) = agent_b / sum(agent_b);
+                    end
+
+                    AddPara_run.init_belief = init_b;
+
+                otherwise
+                    init_b = repmat(belief_uniform, N, 1);
+                    AddPara_run.init_belief = init_b;
             end
 
             %% -- 运行 OCF_SAtabu --
             rng(seed);
-            [~, history_data] = OCF_SAtabu_global_main(agents_local, tasks_local, AddPara, Value_Params);
+            [~, history_data] = OCF_SAtabu_global_main(agents_local, tasks_local, AddPara_run, Value_Params);
 
             %% -- 提取 belief_history [num_rounds × N × M × task_type] --
             num_r = length(history_data.rounds);
@@ -172,6 +221,8 @@ for ci = 1:num_cond
             end
 
             entry.true_task_types     = true_task_types;
+            entry.true_task_values    = true_task_values;   % [M×1] 各任务真实价值
+            entry.init_belief_matrix  = init_b;             % [N×T] 本条件的初始信念矩阵
             entry.belief_history      = belief_history;
             entry.convergence_utility = convergence_utility;
             entry.success             = true;
@@ -198,8 +249,6 @@ belief_config.seeds              = SEEDS;
 belief_config.task_type_values   = task_values;
 belief_config.num_rounds         = num_rounds;
 belief_config.belief_uniform     = belief_uniform;
-belief_config.belief_optimistic  = belief_optimistic;
-belief_config.belief_pessimistic = belief_pessimistic;
 belief_config.timestamp          = datestr(now, 'yyyymmdd_HHMMSS');
 
 timestamp = belief_config.timestamp;

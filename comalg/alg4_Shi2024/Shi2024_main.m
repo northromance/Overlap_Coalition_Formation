@@ -19,8 +19,8 @@ function [Value_data, history_data] = Shi2024_main(agents, tasks, AddPara, Value
 %   Value_data   - 最终的智能体数据结构
 %   history_data - 历史数据记录
 
-if AddPara.verbose >= 1
-    fprintf('\n=== Shi2024 OCF Algorithm Start ===\n');
+if AddPara.verbose >= 2
+    fprintf('[Shi2024] 算法开始\n');
 end
 if isfield(Value_Params, 'seed'), rng(Value_Params.seed); end
 
@@ -63,8 +63,8 @@ summatrix = zeros(M, Value_Params.task_type);
 
 %% 多轮迭代
 for round = 1:num_rounds
-    if AddPara.verbose >= 1
-        fprintf('\n[Shi2024] === 第 %d/%d 轮 ===\n', round, num_rounds);
+    if AddPara.verbose >= 2
+        fprintf('[Shi2024] === 第 %d/%d 轮 ===\n', round, num_rounds);
     end
 
     %% Step 1: 联盟形成
@@ -117,7 +117,7 @@ end
 
 %% 最终结果处理
 if AddPara.verbose >= 2
-    fprintf('\n=== Final Results ===\n');
+    fprintf('[Shi2024] Final Results\n');
 end
 
 % 计算每个智能体的最终效用和成本
@@ -161,13 +161,13 @@ end
 % 全局统计
 if AddPara.verbose >= 2
     [total_utility, ~, ~, ~] = UtilityEvaluator.evaluate_coalition_metrics(SC, agents, tasks, Value_Params, tol);
-    fprintf('\nGlobal Total Utility: %.2f\n', total_utility);
+    fprintf('Global Total Utility: %.2f\n', total_utility);
     fprintf('Total Rounds: %d\n', num_rounds);
 end
 
 %% 最终一致性检查（使用统一的检查函数）
 if AddPara.verbose >= 2
-    fprintf('\n[Shi2024] 执行最终一致性检查...\n');
+    fprintf('[Shi2024] 执行最终一致性检查...\n');
 end
 [is_valid, error_log] = check_coalition_consistency(Value_data, agents, tasks, Value_Params, 'OCF', AddPara.verbose >= 2);
 
@@ -181,8 +181,8 @@ else
     end
 end
 
-if AddPara.verbose >= 1
-    fprintf('\n=== Shi2024 OCF Algorithm End ===\n\n');
+if AddPara.verbose >= 2
+    fprintf('[Shi2024] 算法结束\n');
 end
 
 end
@@ -514,8 +514,8 @@ history_data = ResultProcessor.record_history_data(history_data, round, Value_da
     total_completed_value, task_completion_degrees, summatrix);
 
 if AddPara.verbose >= 1
-    fprintf('  [Shi2024] 第 %d 轮: Utility=%.2f, Cost=%.2f, Completed=%.2f\n', ...
-        round, total_utility, total_global_cost, total_completed_value);
+    fprintf('[Shi2024] 第 %d/%d 轮: Utility=%.2f, Cost=%.2f, Completed=%.2f\n', ...
+        round, Value_Params.num_rounds, total_utility, total_global_cost, total_completed_value);
 end
 
 end

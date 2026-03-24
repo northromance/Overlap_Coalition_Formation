@@ -22,7 +22,10 @@
       "Bash(ls -la \"E:/Overlap_Coalition_Formation/comalg/alg7_OCF_SAtabu/\" 2>/dev/null | grep -E '\\\\.m$')",
       "Bash(ls -la /e/Overlap_Coalition_Formation/Main_fun/ | grep -E \"\\\\.m$\")",
       "Bash(cat >> \"E:/Overlap_Coalition_Formation/docs/changelog_20260321.md\" << 'EOF'\n\n## Shi2024 性能优化（2026-03-21）\n\n- `Main_fun/UtilityEvaluator.m` — `calc_agent_total_utility` 内加 `persistent` 缓存，同一 SC 下 `calc_all_agents_with_global_sync` 只调用一次（解决 Preference_gain 链式重复调用问题，约 20x 加速）\n- `comalg/alg4_Shi2024/Shi2024_main.m` — `get_SC_hash` 替换为快速数值哈希（替代 `mat2str`，约 50x 加速）；`TabuList` 改为 `containers.Map + FIFO 队列`（O\\(1\\) 查找替代 O\\(L\\) 线性搜索）；Transfer 接受后改为增量更新 `resource_gap`（替代全量 `calc_gaps`）\nEOF)",
-      "Bash(echo \"\" >> \"E:/Overlap_Coalition_Formation/docs/changelog_20260322.md\" && cat >> \"E:/Overlap_Coalition_Formation/docs/changelog_20260322.md\" << 'EOF'\n## Shi2024 Transfer/Join 阶段去除 Preference_gain（2026-03-22）\n\n- `comalg/alg4_Shi2024/Shi2024_main.m` — Transfer（C段）和 Join（D段）不再调用 Preference_gain，改为可行性通过即直接接受到工作副本；Preference_gain 仅在最终门控（E段）调用一次，与 Qi2023 结构对齐。预期每 agent 每迭代调用次数从 ~67 次降至 1 次（约 67 倍加速）。\nEOF)"
+      "Bash(echo \"\" >> \"E:/Overlap_Coalition_Formation/docs/changelog_20260322.md\" && cat >> \"E:/Overlap_Coalition_Formation/docs/changelog_20260322.md\" << 'EOF'\n## Shi2024 Transfer/Join 阶段去除 Preference_gain（2026-03-22）\n\n- `comalg/alg4_Shi2024/Shi2024_main.m` — Transfer（C段）和 Join（D段）不再调用 Preference_gain，改为可行性通过即直接接受到工作副本；Preference_gain 仅在最终门控（E段）调用一次，与 Qi2023 结构对齐。预期每 agent 每迭代调用次数从 ~67 次降至 1 次（约 67 倍加速）。\nEOF)",
+      "Bash(cd \"E:/Overlap_Coalition_Formation\" && python plot/debug_belief.py 2>&1)",
+      "Bash(cd \"E:/Overlap_Coalition_Formation\" && python plot/plot_belief.py \"E:/Overlap_Coalition_Formation/results/batch/belief/N10_M10_K6_S1_20260324_174351.mat\" 2>&1 | head -80)",
+      "Bash(cd \"E:/Overlap_Coalition_Formation\" && python -c \"\nimport os, glob\nfigs = glob.glob\\('E:/Overlap_Coalition_Formation/figures/paper/fig2*.png'\\)\nfor f in sorted\\(figs\\):\n    print\\(f\\)\n\" 2>&1)"
     ]
   }
 }

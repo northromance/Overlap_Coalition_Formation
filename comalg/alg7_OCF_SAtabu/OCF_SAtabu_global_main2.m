@@ -41,7 +41,8 @@ for counter = 1:Value_Params.num_rounds
     % 分轮温度调度：初始温度随轮次指数衰减
     Value_Params.Temperature = max(Value_Params.OCF_T_min_round, ...
         Value_Params.OCF_T0_round * Value_Params.OCF_T_decay^(counter-1));
-    if AddPara.verbose
+    round_temperature = Value_Params.Temperature;
+    if AddPara.verbose >= 2
         fprintf('  [SA-Altruistic] Round %d: 初始温度 = %.2f\n', counter, Value_Params.Temperature);
     end
 
@@ -60,14 +61,14 @@ for counter = 1:Value_Params.num_rounds
     %% ==================== 2.25 初始化禁忌表 ====================
     % 禁忌表用于防止算法在局部状态之间反复震荡，从而避免局部循环
     tabu_list = {};
-    if AddPara.verbose
+    if AddPara.verbose >= 3
         fprintf('  [Tabu] 禁忌长度 = %d\n', tabu_tenure);
     end
 
     %% ==================== 2.3 第一轮执行：构造初始解 (Soft Greedy) ====================
     % 在第1轮，为了加快收敛速度，使用带温度控制的“软贪婪”策略构造一个质量较好的初始联盟结构
     if counter == 1
-        if AddPara.verbose
+        if AddPara.verbose >= 2
             fprintf('  [SA] 第1轮，使用软贪婪策略构造初始联盟结构 (Soft Greedy)...\n');
         end
         SC_global = Value_data(1).SC;
@@ -166,12 +167,12 @@ for counter = 1:Value_Params.num_rounds
                 % === [GSU 愿望准则：当前候选解的全局效用超过历史最优时，允许突破禁忌强制接受] ===
                 if current_GSU > best_GSU
                     accept = true;
-                    if AddPara.verbose
+                    if AddPara.verbose >= 3
                         fprintf('      [Agent %d] GSU愿望准则触发，接受禁忌解 (GSU=%.2f > 历史=%.2f)\n', ...
                             ii, current_GSU, best_GSU);
                     end
                 else
-                    if AddPara.verbose
+                    if AddPara.verbose >= 3
                         fprintf('      [Agent %d] 拒绝禁忌解 (GSU=%.2f)\n', ii, current_GSU);
                     end
                 end
@@ -218,7 +219,7 @@ for counter = 1:Value_Params.num_rounds
                     accept = (rand < prob);
                 end
 
-                if AddPara.verbose && accept && prob < 1
+                if AddPara.verbose >= 3 && accept && prob < 1
                     fprintf('      [Agent %d] 概率接受 (ΔU1=%.2f, ΔU2=%.2f, prob=%.4f)\n', ...
                         ii, delta_U1, delta_U2, prob);
                 end
@@ -246,7 +247,7 @@ for counter = 1:Value_Params.num_rounds
                 % current_GSU 已在步骤3前算好，直接复用，避免重复计算
                 if current_GSU > best_GSU
                     best_GSU = current_GSU;
-                    if AddPara.verbose
+                    if AddPara.verbose >= 3
                         fprintf('      [Agent %d 更新] 新的全局GSU最优 (GSU=%.2f)\n', ii, best_GSU);
                     end
                 end
@@ -278,7 +279,7 @@ for counter = 1:Value_Params.num_rounds
             elite_global_utility = current_utility_global;
             elite_SC = final_SC;
             elite_coalitionstru = final_coalitionstru;
-            if AddPara.verbose
+            if AddPara.verbose >= 3
                 fprintf('    [Elite] 更新！发现本轮迭代历史最优全局效用: %.2f (Iter: %d)\n', elite_global_utility, k_iter);
             end
         end
@@ -307,7 +308,7 @@ for counter = 1:Value_Params.num_rounds
         % 更新上一轮状态
         previous_SC = final_SC;
         
-        if AddPara.verbose
+        if AddPara.verbose >= 2
             fprintf('  [SA-Outer] Iter %d: T=%.2f, Utility=%.2f, Best=%.2f\n', ...
                 k_iter, Value_Params.Temperature, current_utility_global, elite_global_utility);
         end
@@ -315,7 +316,7 @@ for counter = 1:Value_Params.num_rounds
     end  % end while
 
     % [新增/修改 3: 强制在每轮结束时回滚到本轮搜索过程中发现的最优精英解，作为最终输出]
-    if AddPara.verbose
+    if AddPara.verbose >= 2
         fprintf('  [SA-Done] Round %d 退火结束，执行精英解回滚 (Utility: %.2f)\n', counter, elite_global_utility);
     end
     final_SC = elite_SC;
@@ -359,20 +360,26 @@ for counter = 1:Value_Params.num_rounds
 
     % 记录该轮全局社会效用（GSU）最优值，便于后续分析
     history_data.best_GSU{counter} = best_GSU;
+
+    if AddPara.verbose >= 1
+        fprintf('[OCF_SAtabu] 第 %d/%d 轮: T=%.2f, Utility=%.2f, Cost=%.2f, Completed=%.2f\n', ...
+            counter, Value_Params.num_rounds, round_temperature, ...
+            coalition_utility, total_global_cost, total_completed_value);
+    end
 end
 
 %% ==================== 6. 最终结果一致性检查 ====================
-if AddPara.verbose
-    fprintf('\n[SA_Value_Altruistic] 执行结束，进行一致性检查...\n');
+if AddPara.verbose >= 2
+    fprintf('[OCF_SAtabu] 执行结束，进行一致性检查...\n');
 end
 % OCF 一致性检查，确保最终联盟分配没有违反资源容量、任务调度等约束
-[is_valid, error_log] = check_coalition_consistency(Value_data, agents, tasks, Value_Params, 'OCF', AddPara.verbose);
+[is_valid, error_log] = check_coalition_consistency(Value_data, agents, tasks, Value_Params, 'OCF', AddPara.verbose >= 2);
 if ~is_valid
-    warning('[SA_Value_Altruistic] 一致性检查发现 %d 个问题', length(error_log));
+    warning('[OCF_SAtabu] 一致性检查发现 %d 个问题', length(error_log));
     history_data.consistency_errors = error_log;
 else
-    if AddPara.verbose
-        fprintf('  [SA_Value_Altruistic] 所有一致性检查通过。\n');
+    if AddPara.verbose >= 2
+        fprintf('[OCF_SAtabu] 所有一致性检查通过。\n');
     end
 end
 end
@@ -444,7 +451,7 @@ SC_temp = Value_data_i.SC;
 for m = 1:M
     for k = 1:K
         if SC_temp{m}(agent_idx, k) > eps_val && rand < p_leave
-            if AddPara.verbose
+            if AddPara.verbose >= 3
                 fprintf('      [-] [移除] Agent #%-2d 从 任务 M=%-2d 撤出 资源 k=%-2d | 数量: %.2f\n', ...
                     agent_idx, m, k, SC_temp{m}(agent_idx, k));
             end
@@ -496,12 +503,12 @@ for k = 1:K
             
         if isFeasible
             SC_new = SC_candidate_temp;
-            if AddPara.verbose
+            if AddPara.verbose >= 3
                 fprintf('      [+] [加入] Agent #%-2d 向 任务 M=%-2d 投入 资源 k=%-2d | 数量: %.2f\n', ...
                     agent_idx, selected_task, k, total_capacity);
             end
         else
-            if AddPara.verbose
+            if AddPara.verbose >= 3
                 fprintf('      [x] [拒绝] Agent #%-2d 向 任务 M=%-2d 投入 资源 k=%-2d 失败 | 原因: %s\n', ...
                     agent_idx, selected_task, k, info.reason);
             end
