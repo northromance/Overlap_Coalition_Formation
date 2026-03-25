@@ -164,7 +164,7 @@ for ni = 1:length(N_VALUES)
 
                 rng(seed);
                 tic;
-                [~, history_data] = OCF_SAtabu_global_main(agents, tasks, AddPara_run, Value_Params_base);
+                [final_Value_data, history_data] = OCF_SAtabu_global_main(agents, tasks, AddPara_run, Value_Params_base);
                 entry.computation_time = toc;
 
                 num_r = length(history_data.rounds);
@@ -172,9 +172,41 @@ for ni = 1:length(N_VALUES)
                 for r = 1:num_r
                     convergence_utility(r) = history_data.rounds(r).coalition_utility;
                 end
-                entry.convergence_utility = convergence_utility;
-                entry.final_utility       = convergence_utility(num_r);
-                entry.success             = true;
+                entry.convergence_utility   = convergence_utility;
+                entry.final_utility         = convergence_utility(num_r);
+                % 提取最终轮平均任务完成率
+                final_degrees = history_data.rounds(num_r).task_completion_degrees;
+                entry.final_task_completion = mean(final_degrees);
+                entry.success               = true;
+
+                %% ===== 打印最终信念 & 需求估计摘要 =====
+                td  = Value_Params_base.task_type_demands;  % num_types × K
+                conf = Value_Params_base.resource_confidence;
+                belief_agent1 = final_Value_data(1).initbelief;  % M × num_types（所有agent广播后一致）
+
+                fprintf('\n  ┌─ [%s] N=%d seed=%d  最终信念/需求估计 ─────────────────────────\n', ...
+                    cond_name, N, seed);
+                fprintf('  │ %-5s │ %-18s │ est_type(prob) │ true_type │ match │ 估计需求 vs 真实需求\n', ...
+                    '任务', '信念分布[t1 t2 t3]');
+                fprintf('  │%s\n', repmat('─', 1, 80));
+
+                n_match = 0;
+                for m_p = 1:M
+                    b = belief_agent1(m_p, :);
+                    [max_p, est_t] = max(b);
+                    true_t = tasks(m_p).type;
+                    hit = (est_t == true_t);
+                    n_match = n_match + hit;
+                    est_d  = WorldSim.calculate_demand_quantile(b, td, conf);
+                    true_d = tasks(m_p).resource_demand;
+                    hit_str = '';
+                    if hit, hit_str = '✓'; else, hit_str = '✗'; end
+                    fprintf('  │ T%-3d  │ [%s] │   %d(%.0f%%)   │     %d     │  %s    │ [%s] vs [%s]\n', ...
+                        m_p, num2str(b, '%5.2f'), est_t, max_p*100, true_t, hit_str, ...
+                        num2str(est_d, '%3.0f'), num2str(true_d, '%3.0f'));
+                end
+                fprintf('  │ 命中率: %d/%d = %.0f%%\n', n_match, M, 100*n_match/M);
+                fprintf('  └─────────────────────────────────────────────────────────────────\n\n');
 
             catch ME_run
                 entry.error = ME_run.message;

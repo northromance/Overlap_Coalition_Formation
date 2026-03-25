@@ -7,15 +7,15 @@
 
 %% ===== 通用超参数 =====
 num_rounds = 50;   % 外循环轮数（正式运行值；测试时在各脚本中覆盖此变量）
-MaxIter    = 80;   % 每轮最大内层迭代次数
+MaxIter    = 50;   % 每轮最大内层迭代次数
 obs_times  = 50;    % 效用/观测统计参数（传入 OCFUtils.init_value_params）
 xp_Config = struct();
 Exp_Config.Common = struct();
 Exp_Config.Common.num_rounds = num_rounds;
-Exp_Config.Common.SEEDS = 2458; % 随机种子列表（3 个种子，正式运行值；测试时在各脚本中覆盖此变量）
+Exp_Config.Common.SEEDS = 2476:1:2477; % 随机种子列表（21 个种子，正式运行值；测试时在各脚本中覆盖此变量）
 
 %% ===== 任务价值与类型 =====
-task_values    = [800, 1000, 1500];   % 三类任务的基础奖励价值
+task_values    = [500, 1000, 2000];   % 三类任务的基础奖励价值
 num_task_types = length(task_values); % 任务类型总数（= 3）
 
 %% ===== 公共算法参数 =====
@@ -102,8 +102,8 @@ min_resource_value = 0;   % 每维资源能力最小值
 max_resource_value = 4;   % 每维资源能力最大值
 
 %% ===== 任务资源需求模板参数 =====
-task_type1_demand_max = 4;   % 类型1任务各维资源需求上限（低价值任务）
-task_type2_demand_max = 6;   % 类型2任务各维资源需求上限（中等任务）
+task_type1_demand_max = 2;   % 类型1任务各维资源需求上限（低价值任务）
+task_type2_demand_max = 5;   % 类型2任务各维资源需求上限（中等任务）
 task_type3_demand_max = 8;   % 类型3任务各维资源需求上限（高价值任务）
 
 %% ===== 各资源类型的执行时间（K=6 维）=====
@@ -149,18 +149,18 @@ Exp_Config.Belief.belief_heterogeneous_profiles = [ ...
     0.05, 0.13, 0.82];
 Exp_Config.Belief.belief_heterogeneous_main_prob_range = [0.72, 0.88];
 Exp_Config.Belief.AddPara = struct( ...
-    'verbose', 0, ...
+    'verbose', 1, ...
     'enable_belief_update', true, ...
     'control', 1);
 
 % Batch_Ablation
 Exp_Config.Ablation.SEEDS = Exp_Config.Common.SEEDS;
-Exp_Config.Ablation.N_VALUES = [4, 6, 8, 10, 12, 16, 20];
+Exp_Config.Ablation.N_VALUES = [10];
 Exp_Config.Ablation.M = 10;
 Exp_Config.Ablation.K = 6;
 Exp_Config.Ablation.CONDITIONS = {'belief_on', 'belief_off'};
 Exp_Config.Ablation.AddPara = struct( ...
-    'verbose', 0, ...
+    'verbose', 1, ...
     'enable_belief_update', true, ...
     'control', 1);
 

@@ -25,6 +25,14 @@ if isfield(Value_Params, 'seed')
 end
 
 %% ==================== 1. 初始化阶段 ====================
+% 读取信念更新开关（消融实验用）
+enable_belief_update = true;  % 默认启用
+if isfield(AddPara, 'enable_belief_update')
+    enable_belief_update = AddPara.enable_belief_update;
+end
+if AddPara.verbose >= 2
+    fprintf('[OCF_SAtabu] 信念更新开关: %s\n', mat2str(enable_belief_update));
+end
 eps_val = 1e-6;          % 浮点数比较容差
 history_data = struct();
 tabu_tenure = Value_Params.OCF_tabu_tenure; % 禁忌长度
@@ -327,19 +335,21 @@ for counter = 1:Value_Params.num_rounds
     Value_data = update_task_schedule(Value_data, agents, tasks, Value_Params);
 
     %% ==================== 4. 观测与信念更新 ====================
-    [Value_data, summatrix] = AgentOps.collect_observations(Value_data, agents, tasks, Value_Params, summatrix, final_SC);
-    Value_data = AgentOps.update_belief_from_observations(Value_data, Value_Params);
+    if enable_belief_update
+        [Value_data, summatrix] = AgentOps.collect_observations(Value_data, agents, tasks, Value_Params, summatrix, final_SC);
+        Value_data = AgentOps.update_belief_from_observations(Value_data, Value_Params);
+
+        %% 信念广播
+        for i = 1:Value_Params.N
+            for j = 1:Value_Params.N
+                Value_data(i).other{j}.initbelief = Value_data(j).initbelief;
+            end
+        end
+    end
 
     %% ==================== 5. 计算联盟效用（上帝视角） ====================
     [coalition_utility, total_global_cost, total_completed_value, task_completion_degrees] = ...
         UtilityEvaluator.evaluate_coalition_metrics(final_SC, agents, tasks, Value_Params, eps_val);
-
-    %% 信念广播
-    for i = 1:Value_Params.N
-        for j = 1:Value_Params.N
-            Value_data(i).other{j}.initbelief = Value_data(j).initbelief;
-        end
-    end
 
     % --- 记录每轮运行关键历史数据，用于后续画图分析 ---
     history_data = ResultProcessor.record_history_data(history_data, counter, Value_data, Value_Params, ...
