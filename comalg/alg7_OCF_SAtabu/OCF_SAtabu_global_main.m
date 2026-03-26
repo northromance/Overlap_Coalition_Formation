@@ -40,9 +40,29 @@ tabu_tenure = Value_Params.OCF_tabu_tenure; % 禁忌长度
 Value_data = WorldSim.init_value_data(agents, tasks, Value_Params);
 [Value_data, summatrix] = WorldSim.init_observe_belief_neighbor(Value_data, Value_Params.N, Value_Params.M, Value_Params);
 
-% 若外部指定了初始信念矩阵（用于 Batch_Belief 异质信念实验），则覆盖默认均匀先验
-% AddPara.init_belief: N×T 矩阵，第 i 行为智能体 i 对任务类型的初始概率分布
-if isfield(AddPara, 'init_belief') && ~isempty(AddPara.init_belief)
+% 若外部指定了初始信念，则覆盖默认均匀先验
+% AddPara.init_belief_tensor: N×M×T，任务级先验
+% AddPara.init_belief: N×T，智能体级共享先验（兼容旧逻辑）
+if isfield(AddPara, 'init_belief_tensor') && ~isempty(AddPara.init_belief_tensor)
+    init_b_tensor = AddPara.init_belief_tensor;   % N×M×T
+    N_b = Value_Params.N;
+    M_b = Value_Params.M;
+    T_b = Value_Params.task_type;
+    sz_b = size(init_b_tensor);
+    if numel(sz_b) ~= 3 || sz_b(1) ~= N_b || sz_b(2) ~= M_b || sz_b(3) ~= T_b
+        error('OCF_SAtabu:initBeliefTensorSize', ...
+            'AddPara.init_belief_tensor must be [%d x %d x %d], got [%s].', ...
+            N_b, M_b, T_b, num2str(sz_b));
+    end
+    for i_b = 1:N_b
+        Value_data(i_b).initbelief(1:M_b, :) = reshape(init_b_tensor(i_b, 1:M_b, 1:T_b), [M_b, T_b]);
+    end
+    for i_b = 1:N_b
+        for j_b = 1:N_b
+            Value_data(i_b).other{j_b}.initbelief = Value_data(j_b).initbelief;
+        end
+    end
+elseif isfield(AddPara, 'init_belief') && ~isempty(AddPara.init_belief)
     init_b = AddPara.init_belief;   % N×T
     N_b = Value_Params.N;
     M_b = Value_Params.M;

@@ -14,6 +14,9 @@ feature('DefaultCharacterSet', 'UTF-8');
 %      .seed                  随机种子
 %      .success / .error
 %      .true_task_types       [M×1] 各任务的真实类型（1/2/3），用于计算信念误差
+%      .init_belief_mode      round-0 先验模式（shared_agent_prior / task_specific_prior）
+%      .init_belief_matrix    [N×T] 兼容摘要；heterogeneous 下为对任务维均值后的摘要
+%      .init_belief_tensor    [N×M×T] round-0 权威先验张量
 %      .belief_history        [num_rounds × N × M × task_type] 每轮每智能体对每任务的信念分布
 %      .convergence_utility   [num_rounds×1] 每轮联盟效用收敛曲线
 %    belief_config — 本次实验参数快照
@@ -42,7 +45,8 @@ num_rounds = Exp_Config.Common.num_rounds;
 % heterogeneous: 每智能体偏向低/中/高价值中的某一类（在主循环内按 seed 生成 N×T 矩阵）
 belief_uniform = cfg.belief_uniform;   % [1/T, 1/T, 1/T]
 belief_heter_profiles = cfg.belief_heterogeneous_profiles;
-belief_heter_main_prob_range = cfg.belief_heterogeneous_main_prob_range;
+belief_heter_task_main_prob_range = cfg.heter_task_main_prob_range;
+belief_heter_task_mix_range = cfg.heter_task_mix_range;
 
 %% ===== 附加控制参数 =====
 AddPara = cfg.AddPara;
@@ -117,48 +121,73 @@ for ci = 1:num_cond
             end
 
             %% -- 按条件构造初始信念矩阵并注入 AddPara --
-            % init_belief_matrix: N×T，每行为一个智能体的初始信念分布
+            % init_belief_matrix: N×T，兼容摘要
+            % init_belief_tensor: N×M×T，round-0 权威先验
             AddPara_run = AddPara;
+            init_b = [];
+            init_b_tensor = [];
+            init_b_mode = '';
             switch cond_name
                 case 'uniform'
                     % 所有智能体相同：均匀分布 [1/T, 1/T, 1/T]
                     init_b = repmat(belief_uniform, N, 1);  % N×T
+                    init_b_tensor = repmat(reshape(init_b, [N, 1, num_task_types]), 1, M, 1);
                     AddPara_run.init_belief = init_b;
+                    AddPara_run.init_belief_tensor = init_b_tensor;
+                    init_b_mode = 'shared_agent_prior';
 
                 case 'heterogeneous'
-                    % 每个智能体显式偏向低/中/高价值中的某一类，并保留少量随机扰动
+                    % 每个任务先根据真实类型生成弱偏向先验，再与智能体偏好模板混合
                     rng(seed + 9999);   % 独立子种子，不干扰场景生成
                     pref_types = repmat(1:num_task_types, 1, ceil(N / num_task_types));
                     pref_types = pref_types(1:N);
                     pref_types = pref_types(randperm(N));
-                    init_b = zeros(N, num_task_types);
+                    agent_profiles = zeros(N, num_task_types);
+                    task_anchor = zeros(M, num_task_types);
+                    init_b_tensor = zeros(N, M, num_task_types);
 
                     for i_agent = 1:N
                         pref_t = pref_types(i_agent);
                         base_profile = belief_heter_profiles(pref_t, :);
-
-                        p_main = belief_heter_main_prob_range(1) + ...
-                            (belief_heter_main_prob_range(2) - belief_heter_main_prob_range(1)) * rand();
-
-                        other_idx = setdiff(1:num_task_types, pref_t);
-                        other_raw = rand(1, numel(other_idx));
-                        other_raw = other_raw / sum(other_raw) * (1 - p_main);
-
-                        agent_b = zeros(1, num_task_types);
-                        agent_b(pref_t) = p_main;
-                        agent_b(other_idx) = other_raw;
-
-                        % 与模板做轻微混合，保证同一偏好组也不是完全重合
-                        mix_w = 0.75 + 0.15 * rand();
-                        agent_b = mix_w * agent_b + (1 - mix_w) * base_profile;
-                        init_b(i_agent, :) = agent_b / sum(agent_b);
+                        agent_profiles(i_agent, :) = base_profile / sum(base_profile);
                     end
 
-                    AddPara_run.init_belief = init_b;
+                    for m_task = 1:M
+                        true_t = true_task_types(m_task);
+                        p_main = belief_heter_task_main_prob_range(1) + ...
+                            (belief_heter_task_main_prob_range(2) - belief_heter_task_main_prob_range(1)) * rand();
+
+                        anchor = zeros(1, num_task_types);
+                        anchor(true_t) = p_main;
+
+                        other_idx = setdiff(1:num_task_types, true_t);
+                        other_raw = rand(1, numel(other_idx));
+                        other_raw = other_raw / sum(other_raw) * (1 - p_main);
+                        anchor(other_idx) = other_raw;
+                        task_anchor(m_task, :) = anchor / sum(anchor);
+                    end
+
+                    for i_agent = 1:N
+                        agent_profile = agent_profiles(i_agent, :);
+                        for m_task = 1:M
+                            mix_task = belief_heter_task_mix_range(1) + ...
+                                (belief_heter_task_mix_range(2) - belief_heter_task_mix_range(1)) * rand();
+                            belief_vec = mix_task * task_anchor(m_task, :) + ...
+                                (1 - mix_task) * agent_profile;
+                            init_b_tensor(i_agent, m_task, :) = belief_vec / sum(belief_vec);
+                        end
+                    end
+
+                    init_b = reshape(mean(init_b_tensor, 2), [N, num_task_types]);
+                    AddPara_run.init_belief_tensor = init_b_tensor;
+                    init_b_mode = 'task_specific_prior';
 
                 otherwise
                     init_b = repmat(belief_uniform, N, 1);
+                    init_b_tensor = repmat(reshape(init_b, [N, 1, num_task_types]), 1, M, 1);
                     AddPara_run.init_belief = init_b;
+                    AddPara_run.init_belief_tensor = init_b_tensor;
+                    init_b_mode = 'shared_agent_prior';
             end
 
             %% -- 运行 OCF_SAtabu --
@@ -181,7 +210,9 @@ for ci = 1:num_cond
 
             entry.true_task_types     = true_task_types;
             entry.true_task_values    = true_task_values;   % [M×1] 各任务真实价值
+            entry.init_belief_mode    = init_b_mode;
             entry.init_belief_matrix  = init_b;             % [N×T] 本条件的初始信念矩阵
+            entry.init_belief_tensor  = init_b_tensor;      % [N×M×T] round-0 权威先验
             entry.belief_history      = belief_history;
             entry.convergence_utility = convergence_utility;
             entry.success             = true;
@@ -208,6 +239,9 @@ belief_config.seeds              = SEEDS;
 belief_config.task_type_values   = task_values;
 belief_config.num_rounds         = num_rounds;
 belief_config.belief_uniform     = belief_uniform;
+belief_config.belief_heterogeneous_profiles = belief_heter_profiles;
+belief_config.heter_task_main_prob_range = belief_heter_task_main_prob_range;
+belief_config.heter_task_mix_range = belief_heter_task_mix_range;
 belief_config.timestamp          = datestr(now, 'yyyymmdd_HHMMSS');
 
 timestamp = belief_config.timestamp;

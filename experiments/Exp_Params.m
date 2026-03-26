@@ -89,8 +89,8 @@ WORLD_ZMIN = 0;   WORLD_ZMAX = 0;
 
 %% ===== 智能体基础属性 =====
 agent_velocity    = 2;      % 速度（统一）
-agent_detprob_min = 0.95;   % 探测/感知概率下限
-agent_detprob_max = 1.0;    % 探测/感知概率上限
+agent_detprob_min = 0.85;   % 探测/感知概率下限
+agent_detprob_max = 1;    % 探测/感知概率上限
 agent_Emax_min    = 300;    % 最大能量下限
 agent_Emax_range  = 50;     % 最大能量随机浮动范围
 agent_fuel        = 1;      % 飞行燃料消耗系数 varpi（= agents.fuel）
@@ -172,7 +172,8 @@ Exp_Config.Belief.belief_heterogeneous_profiles = [ ...
     0.82, 0.13, 0.05; ...
     0.15, 0.70, 0.15; ...
     0.05, 0.13, 0.82];
-Exp_Config.Belief.belief_heterogeneous_main_prob_range = [0.72, 0.88];
+Exp_Config.Belief.heter_task_main_prob_range = [0.45, 0.60];
+Exp_Config.Belief.heter_task_mix_range = [0.75, 0.90];
 Exp_Config.Belief.AddPara = struct( ...
     'verbose', 1, ...
     'enable_belief_update', true, ...
