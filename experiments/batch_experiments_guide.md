@@ -8,11 +8,11 @@
 
 | 脚本 | 实验代号 | 覆盖图表 | 输出文件 | 预估耗时 |
 |------|----------|----------|----------|----------|
-| `Batch_VaryN.m` | Exp-A | 图1a/1b + 图2c + 图3 | `varyN_N4-20_S20_*.mat` | ~2–3h |
+| `Batch_VaryN.m` | Exp-A | 图1a/1b + 图2c | `varyN_N4-20_S20_*.mat` | ~2–3h |
 | `Batch_VaryM.m` | Exp-B | 图1c/1d | `varyM_M5-20_S20_*.mat` | ~2–3h |
 | `Batch_Belief.m` | Exp-C | 图2a/2b | `belief_*.mat` | ~30min |
 | `Batch_Ablation.m` | Exp-D | 图4全部 | `ablation_*.mat` | ~1–2h |
-| `Single_Viz.m` | Exp-E | 图5全部 | `visualize_*.mat` | ~2min |
+| `Single_Viz.m` | Exp-E | 图3a + 图5全部 | `visualize_*.mat` | ~2min |
 
 所有输出文件保存在 `results/batch/`，文件名含时间戳，格式为 `-v7.3`（支持大文件）。
 
@@ -27,9 +27,9 @@
 | 1c | 变M效用 | M值 | final_utility（mean±std） | `scale_M_results{mi,si}.algs.AlgName.final_utility` | Batch_VaryM |
 | 1d | 变M完成度 | M值 | final_completion（mean±std） | `scale_M_results{mi,si}.algs.AlgName.final_completion` | Batch_VaryM |
 | 2a | 信念误差 | 轮次 | KL/L1误差（per agent） | `belief_results{ci,si}.belief_history` + `true_task_types` | Batch_Belief |
-| 2b | 鲁棒性 | 轮次 | 期望价值预测 | `belief_results{ci,si}.belief_history`（3种条件） | Batch_Belief |
+| 2b | 鲁棒性 | 轮次 | 期望价值预测 | `belief_results{ci,si}.belief_history`（2种条件） | Batch_Belief |
 | 2c | 效用演化 | 轮次 | convergence_utility | `scale_N_results{ni,si}.algs.AlgName.convergence_utility` | Batch_VaryN |
-| 3a | 内循环 | 内层iter | 系统效用 | `scale_N_results{ni,si}.algs.OCF_SAtabu.inner_loop_r50` | Batch_VaryN |
+| 3a | 内循环 | 内层iter | 系统效用 | `viz_data.inner_loop_history` | Single_Viz |
 | 4a | 消融演化 | 轮次 | convergence_utility | `ablation_results{ni,si,ci}.convergence_utility` | Batch_Ablation |
 | 4b | 消融散点 | seed | final_utility | `ablation_results{ni,si,ci}.final_utility` | Batch_Ablation |
 | 5a | 分配矩阵 | 任务 | 智能体 | `viz_data.final_SC` | Single_Viz |
@@ -48,7 +48,6 @@
 N_VALUES = [4, 6, 8, 10, 12, 16, 20];  % 7 种规模
 SEEDS    = 1001:1020;                   % 20 个种子
 algorithms_to_run_ids = [2, 3, 4, 7];  % Huo2025 / Qi2023 / Shi2024 / OCF_SAtabu
-INNER_LOOP_ROUND = 50;                 % 保存第50轮内循环轨迹（用于图3）
 ```
 
 **输出变量**：
@@ -60,28 +59,21 @@ scale_N_results{ni, si}           % cell(7, 20)
     .final_utility          % scalar
     .final_cost             % scalar
     .final_completion       % scalar
-    .convergence_utility    % [100×1]（不足100轮的后缀为NaN）
-    .convergence_cost       % [100×1]
-    .convergence_completion % [100×1]
+    .final_completed_value  % scalar
+    .convergence_utility    % [num_rounds×1]（不足轮数的后缀为NaN）
+    .convergence_cost       % [num_rounds×1]
+    .convergence_completion % [num_rounds×1]
+    .convergence_completed_value % [num_rounds×1]
     .computation_time       % scalar（秒）
-    .inner_loop_r50         % struct（仅 OCF_SAtabu 有有效内容）
-      .iteration            % [iter×1]
-      .temperature          % [iter×1]
-      .current_utility      % [iter×1]
-      .best_utility         % [iter×1]
-      .num_coalitions       % [iter×1]
 
 scale_config
   .N_values, .M, .K, .seeds
   .alg_ids, .alg_names
   .num_rounds, .max_inner_iter
-  .inner_loop_round         % = 50
   .timestamp
 ```
 
-> **注意**：`inner_loop_r50` 对 Huo2025 / Qi2023 / Shi2024 也会尝试提取，
-> 但这三个算法是否记录 `inner_loop` 取决于其自身实现，字段可能为空 struct。
-> 若算法轮次不足50轮，则自动取最后一轮的内循环数据。
+> **图3a（内循环轨迹）** 改由 `Single_Viz.m` 单批次运行提供，不在此批量文件中保存。
 
 ---
 
@@ -104,15 +96,17 @@ scale_M_results{mi, si}           % cell(7, 20)
   .M, .seed, .success, .error
   .algs.(AlgName):
     .final_utility, .final_completion
+    .final_completed_value          % scalar，最终轮总完成价值
     .convergence_utility    % [100×1]
     .convergence_cost, .convergence_completion
+    .convergence_completed_value    % [100×1]，每轮总完成价值曲线
     .computation_time
 
 scale_config
   .M_values, .N, .K, .seeds, ...
 ```
 
-> 此实验不保存内循环轨迹（图3仅需变N实验数据）。
+> 此实验不保存内循环轨迹（图3a 由 Single_Viz 单批次运行提供）。
 
 ---
 
@@ -123,24 +117,23 @@ scale_config
 **参数配置**：
 ```matlab
 SEEDS      = 1001:1010;                          % 10 个种子
-CONDITIONS = {'uniform', 'optimistic', 'pessimistic'};
+CONDITIONS = {'uniform', 'heterogeneous'};
 N=10, M=10, K=6
 % 仅运行 OCF_SAtabu (算法 7)
 ```
 
-**三种初始信念**：
+**两种初始信念**：
 
-| 条件 | 分布（type1 / type2 / type3） | 含义 |
-|------|-------------------------------|------|
-| `uniform` | [1/3, 1/3, 1/3] | 默认均匀先验 |
-| `optimistic` | [0.1, 0.1, 0.8] | 偏向高价值任务（value=1500） |
-| `pessimistic` | [0.8, 0.1, 0.1] | 偏向低价值任务（value=800） |
+| 条件 | 分布 | 含义 |
+|------|------|------|
+| `uniform` | [1/3, 1/3, 1/3] | 默认均匀先验，所有智能体相同 |
+| `heterogeneous` | 每智能体偏向低/中/高价值中某一类，带随机扰动 | 3种偏好 profile（低/中/高价值），见 `belief_heterogeneous_profiles` |
 
 **输出变量**：
 
 ```
-belief_results{ci, si}             % cell(3, 10)
-  .condition        % 'uniform' / 'optimistic' / 'pessimistic'
+belief_results{ci, si}             % cell(2, 10)
+  .condition        % 'uniform' / 'heterogeneous'
   .seed
   .true_task_types  % [M×1] integer，tasks(j).type，用于计算信念误差
   .belief_history   % [num_rounds × N × M × task_type]
@@ -150,8 +143,8 @@ belief_results{ci, si}             % cell(3, 10)
 
 belief_config
   .conditions, .N, .M, .K, .seeds
-  .task_type_values    % = [800, 1000, 1500]
-  .belief_uniform, .belief_optimistic, .belief_pessimistic
+  .task_type_values    % = [500, 1000, 2000]
+  .belief_uniform, .belief_heterogeneous_profiles
   .num_rounds, .timestamp
 ```
 
@@ -179,7 +172,7 @@ tv = np.array(task_values)
 expected_value = np.einsum('rnmt,t->rnm', belief_history, tv)  # [R, N, M]
 ```
 
-> **已知限制**：当前算法接口（`OCF_SAtabu_global_main`）内部会重新调用 `WorldSim.init_value_data` 以均匀先验初始化信念，三种条件的差异**目前未注入算法内部**。若需精确控制初始信念条件，需修改算法接口以支持传入预设 `Value_data`。`belief_history` 当前反映的是均匀初始化后的演化结果。
+> **已知限制**：当前算法接口（`OCF_SAtabu_global_main`）内部会重新调用 `WorldSim.init_value_data` 以均匀先验初始化信念，两种条件的差异**目前未注入算法内部**。若需精确控制初始信念条件，需修改算法接口以支持传入预设 `Value_data`。`belief_history` 当前反映的是均匀初始化后的演化结果。
 
 ---
 
@@ -323,7 +316,7 @@ SEEDS    = 1001:1003;
 M_VALUES = [5, 8];
 
 % Batch_Belief.m 小规模测试
-SEEDS = 1001;   % 单个种子，3种条件
+SEEDS = 1001;   % 单个种子，2种条件
 
 % Batch_Ablation.m 小规模测试
 SEEDS    = 1001:1003;
@@ -336,8 +329,8 @@ N_VALUES = [5];
 
 | 脚本 | 检查内容 |
 |------|----------|
-| `Batch_VaryN` | `scale_N_results{1,1}.algs.OCF_SAtabu.inner_loop_r50.iteration` 是否为非空向量 |
-| `Batch_Belief` | `belief_results{1,1}.belief_history` 尺寸是否为 `[100 × 10 × 10 × 3]` |
+| `Batch_VaryN` | `scale_N_results{1,1}.algs.OCF_SAtabu.final_utility` 是否为有限数 |
+| `Batch_Belief` | `belief_results{1,1}.belief_history` 尺寸是否为 `[num_rounds × N × M × task_type]` |
 | `Batch_Ablation` | `ablation_results{1,1,1}.belief_on == true` 且 `{1,1,2}.belief_on == false` |
 | `Single_Viz` | `viz_data.timing(1).task_sequence` 非空；`sum(cellfun(@(s) any(s(:)>1e-9), viz_data.final_SC))` > 0 |
 
@@ -347,10 +340,8 @@ N_VALUES = [5];
 
 1. **NaN 填充**：收敛曲线长度为 `num_rounds`（=100），若算法提前收敛，后缀保持 `NaN`。Python 端读取时使用 `np.nanmean` 或前向填充（`ffill`）处理。
 
-2. **内循环轨迹**：`inner_loop_r50` 仅对 `OCF_SAtabu` 有完整数据（该算法在每一轮结束时记录 `history_data.inner_loop{r}`）。其他算法若无此记录则字段为空 struct，Python 端需做 `None` 判断。
+2. **信念条件注入**：`Batch_Belief.m` 当前版本运行时使用算法内部的均匀初始化。若需精确注入 `heterogeneous` 初始信念，需修改 `OCF_SAtabu_global_main` 接口，支持外部传入 `Value_data`（已用 TODO 注释标注）。
 
-3. **信念条件注入**：`Batch_Belief.m` 当前版本运行时使用算法内部的均匀初始化。若需精确注入 `optimistic` / `pessimistic` 初始信念，需修改 `OCF_SAtabu_global_main` 接口，支持外部传入 `Value_data`（已用 TODO 注释标注）。
+3. **随机种子**：场景生成用 `rng(seed)`，每个算法运行前再次 `rng(seed)` 重置，保证不同算法在完全相同的随机场景下公平对比。
 
-4. **随机种子**：场景生成用 `rng(seed)`，每个算法运行前再次 `rng(seed)` 重置，保证不同算法在完全相同的随机场景下公平对比。
-
-5. **文件大小**：使用 `-v7.3` 格式（HDF5），支持超过 2GB 的变量。Python 使用 `scipy.io.loadmat` 或 `h5py` 读取。
+4. **文件大小**：使用 `-v7.3` 格式（HDF5），支持超过 2GB 的变量。Python 使用 `scipy.io.loadmat` 或 `h5py` 读取。

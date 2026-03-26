@@ -23,13 +23,14 @@ plot_belief.py
   - 图2c 的子图网格布局、哪个 seed 用于单 seed 展示
 """
 
+import copy
+import glob
 import os
 import sys
-import glob
-import copy
-import numpy as np
+import warnings
+
 import matplotlib.pyplot as plt
-import matplotlib.ticker as mticker
+import numpy as np
 
 try:
     import mat73
@@ -149,6 +150,55 @@ FIGURE_CONFIG = {
 
 os.makedirs(FIGURES_DIR, exist_ok=True)
 
+AGENT_TRACE_STYLE = dict(color='#B7B7B7', lw=0.9, alpha=0.55, label='Agent traces')
+MIN_SEEDS_FOR_CI = 10
+CONV_THRESHOLD = 0.05
+CONV_STREAK = 3
+
+PLOT_GLOBAL.update({
+    'summary_figsize': (10.6, 4.4),
+    'rep_figsize_per_panel': (4.1, 3.9),
+    'appendix_cell_size': (4.1, 3.0),
+    'thin_linewidth': 1.0,
+    'agent_mean_linewidth': 2.3,
+    'thin_alpha': 0.22,
+    'marker': 'o',
+    'markersize': 4.2,
+    'subtitle_fontsize': 11,
+    'appendix_legend_fontsize': 8,
+})
+
+FIGURE_CONFIG.update({
+    'summary_left': {
+        'show_title': True,
+        'title': '(a) Avg. L1 Belief Error',
+        'xlabel': 'Round',
+        'ylabel': 'Avg. L1 belief error',
+        'bottom_zero': True,
+    },
+    'summary_right': {
+        'show_title': True,
+        'title': '(b) Avg. Relative Value Error',
+        'xlabel': 'Round',
+        'ylabel': 'Avg. relative value error',
+        'bottom_zero': True,
+    },
+    'representative': {
+        'show_title': True,
+        'title': 'Fig. 2b - Representative Task Convergence',
+        'xlabel': 'Round',
+        'ylabel': 'Expected task value',
+        'bottom_zero': False,
+    },
+    'appendix_new': {
+        'show_title': True,
+        'title': 'Fig. 2c - Agent-level Trajectories on Representative Tasks',
+        'xlabel': 'Round',
+        'ylabel': 'Expected task value',
+        'bottom_zero': False,
+    },
+})
+
 
 # ══════════════════════════════════════════════════════════════════════════════
 # 工具函数
@@ -182,12 +232,12 @@ def find_mat_file(argv):
     return chosen
 
 
-def to_scalar(val):
+def to_scalar(val, default=np.nan):
     """将 mat73 返回的各种标量形式统一成 Python float。"""
     if val is None:
-        return np.nan
+        return default
     arr = np.asarray(val, dtype=float).ravel()
-    return float(arr[0]) if len(arr) > 0 else np.nan
+    return float(arr[0]) if len(arr) > 0 else default
 
 
 def to_1d(val, length=None):
@@ -768,11 +818,633 @@ def plot_fig2c_per_condition(cond_name, ev_data, true_val, num_rounds, save_path
     finalize_and_save(fig, save_path, tight_layout_rect=(0.0, 0.0, 1.0, 0.965))
 
 
+def entry_success(entry):
+    succ = entry.get('success', False)
+    return bool(succ is True or to_scalar(succ) == 1.0)
+
+
+def entry_seed(entry, fallback_seed):
+    return int(round(to_scalar(entry.get('seed'), default=float(fallback_seed))))
+
+
+def nanmean(arr, axis=None):
+    with warnings.catch_warnings():
+        warnings.simplefilter('ignore', category=RuntimeWarning)
+        return np.nanmean(arr, axis=axis)
+
+
+def nanstd(arr, axis=None):
+    with warnings.catch_warnings():
+        warnings.simplefilter('ignore', category=RuntimeWarning)
+        return np.nanstd(arr, axis=axis)
+
+
+def ffill_1d(arr):
+    out = np.asarray(arr, dtype=float).copy()
+    mask = np.isnan(out)
+    valid = np.where(~mask)[0]
+    if len(valid) == 0:
+        return out
+    first = valid[0]
+    out[:first] = out[first]
+    for idx in range(first + 1, len(out)):
+        if np.isnan(out[idx]):
+            out[idx] = out[idx - 1]
+    return out
+
+
+def pad_first_axis(arr, length, fill_value=np.nan):
+    arr = np.asarray(arr, dtype=float)
+    if arr.shape[0] >= length:
+        return arr[:length]
+    pad_shape = (length - arr.shape[0],) + arr.shape[1:]
+    pad = np.full(pad_shape, fill_value, dtype=float)
+    return np.concatenate([arr, pad], axis=0)
+
+
+def align_task_values(task_values, n_types):
+    out = np.zeros(n_types, dtype=float)
+    vals = np.asarray(task_values, dtype=float).ravel()
+    out[:min(n_types, len(vals))] = vals[:n_types]
+    return out
+
+
+def true_task_values_from_entry(entry, true_types, task_values, n_tasks):
+    raw = entry.get('true_task_values')
+    if raw is not None:
+        vals = np.asarray(raw, dtype=float).ravel()
+        if len(vals) >= n_tasks:
+            return vals[:n_tasks]
+
+    mapped = np.full(n_tasks, np.nan, dtype=float)
+    for m, task_type in enumerate(true_types[:n_tasks]):
+        if 0 <= task_type < len(task_values):
+            mapped[m] = task_values[task_type]
+    return mapped
+
+
+def process_belief_entry(entry, cond_name, seed_value, num_points, task_values):
+    bh_raw = entry.get('belief_history')
+    tt_raw = entry.get('true_task_types')
+    init_b_raw = entry.get('init_belief_matrix')
+    if bh_raw is None or tt_raw is None:
+        return None
+
+    try:
+        bh = np.asarray(bh_raw, dtype=float)
+    except Exception:
+        return None
+
+    if bh.ndim != 4:
+        return None
+
+    _, n_agents, n_tasks, n_types = bh.shape
+    round0 = build_round0_belief(init_b_raw, n_agents, n_tasks, n_types)
+    beliefs = np.concatenate([round0[np.newaxis, :, :, :], bh], axis=0)
+    beliefs = pad_first_axis(beliefs, num_points, fill_value=np.nan)
+
+    aligned_task_values = align_task_values(task_values, n_types)
+    true_types = np.asarray(tt_raw, dtype=int).ravel()[:n_tasks] - 1
+    true_onehot = np.zeros((n_tasks, n_types), dtype=float)
+    for m, task_type in enumerate(true_types):
+        if 0 <= task_type < n_types:
+            true_onehot[m, task_type] = 1.0
+
+    true_values = true_task_values_from_entry(entry, true_types, aligned_task_values, n_tasks)
+    denom = true_values.copy()
+    denom[denom <= 0] = np.nan
+
+    diff = beliefs - true_onehot[np.newaxis, np.newaxis, :, :]
+    l1 = np.nansum(np.abs(diff), axis=3)
+    v_hat = np.tensordot(beliefs, aligned_task_values, axes=([3], [0]))
+    rel_abs_err = np.abs(v_hat - true_values[np.newaxis, np.newaxis, :]) / denom[np.newaxis, np.newaxis, :]
+    signed_bias = (v_hat - true_values[np.newaxis, np.newaxis, :]) / denom[np.newaxis, np.newaxis, :]
+
+    return {
+        'condition': cond_name,
+        'seed': seed_value,
+        'beliefs': beliefs,
+        'l1': l1,
+        'v_hat': v_hat,
+        'rel_abs_err': rel_abs_err,
+        'signed_bias': signed_bias,
+        'true_values': true_values,
+        'num_agents': n_agents,
+        'num_tasks': n_tasks,
+        'num_types': n_types,
+    }
+
+
+def collect_condition_entries(results, config):
+    conditions = parse_conditions(config)
+    num_rounds = int(to_scalar(config.get('num_rounds', 100)))
+    num_points = num_rounds + 1
+    task_values = np.asarray(config.get('task_type_values', [500, 1000, 2000]), dtype=float).ravel()
+
+    cond_entries = {cond: [] for cond in conditions}
+    skipped = 0
+
+    for ci, si, entry in iter_belief_results(results):
+        if not entry or not entry_success(entry):
+            continue
+
+        cond_name = entry_condition_name(entry)
+        if cond_name is None or cond_name not in cond_entries:
+            cond_name = conditions[ci] if ci < len(conditions) else None
+        if cond_name is None or cond_name not in cond_entries:
+            skipped += 1
+            continue
+
+        seed_value = entry_seed(entry, fallback_seed=si)
+        processed = process_belief_entry(entry, cond_name, seed_value, num_points, task_values)
+        if processed is None:
+            skipped += 1
+            continue
+        cond_entries[cond_name].append(processed)
+
+    for cond in conditions:
+        cond_entries[cond] = sorted(cond_entries[cond], key=lambda x: x['seed'])
+
+    return conditions, num_rounds, task_values, cond_entries, skipped
+
+
+def compute_curve_stats(curves):
+    if len(curves) == 0:
+        return {
+            'curves': np.empty((0, 0), dtype=float),
+            'mean': np.array([], dtype=float),
+            'std': np.array([], dtype=float),
+            'ci95': np.array([], dtype=float),
+            'n_seed': 0,
+        }
+
+    mat = np.vstack(curves).astype(float)
+    mean = nanmean(mat, axis=0)
+    std = nanstd(mat, axis=0)
+    n_valid = np.sum(np.isfinite(mat), axis=0)
+    ci95 = np.full(mean.shape, np.nan, dtype=float)
+    mask = n_valid > 1
+    ci95[mask] = 1.96 * std[mask] / np.sqrt(n_valid[mask])
+    return {
+        'curves': mat,
+        'mean': mean,
+        'std': std,
+        'ci95': ci95,
+        'n_seed': mat.shape[0],
+    }
+
+
+def build_summary_data(cond_entries):
+    summary = {}
+    for cond, entries in cond_entries.items():
+        l1_curves = [nanmean(entry['l1'], axis=(1, 2)) for entry in entries]
+        rel_curves = [nanmean(entry['rel_abs_err'], axis=(1, 2)) for entry in entries]
+        summary[cond] = {
+            'l1': compute_curve_stats(l1_curves),
+            'rel': compute_curve_stats(rel_curves),
+            'n_seed': len(entries),
+        }
+    return summary
+
+
+def select_reference_seed(cond_entries, conditions, seed_idx):
+    seed_sets = []
+    for cond in conditions:
+        entries = cond_entries.get(cond, [])
+        if not entries:
+            return None, {}
+        seed_sets.append({entry['seed'] for entry in entries})
+
+    common_seeds = sorted(set.intersection(*seed_sets)) if seed_sets else []
+    if not common_seeds:
+        return None, {}
+
+    actual_idx = min(seed_idx, len(common_seeds) - 1)
+    seed_value = common_seeds[actual_idx]
+    ref_entries = {}
+    for cond in conditions:
+        for entry in cond_entries[cond]:
+            if entry['seed'] == seed_value:
+                ref_entries[cond] = entry
+                break
+    return seed_value, ref_entries
+
+
+def first_convergence_round(abs_bias_curve, threshold=CONV_THRESHOLD, streak=CONV_STREAK, fail_round=None):
+    arr = np.asarray(abs_bias_curve, dtype=float).ravel()
+    for start in range(0, max(len(arr) - streak + 1, 0)):
+        window = arr[start:start + streak]
+        if np.all(np.isfinite(window) & (window < threshold)):
+            return start
+    return fail_round if fail_round is not None else len(arr) - 1
+
+
+def unique_keep_order(seq):
+    seen = set()
+    out = []
+    for item in seq:
+        if item in seen:
+            continue
+        seen.add(item)
+        out.append(item)
+    return out
+
+
+def select_representative_tasks(reference_entries, conditions, num_rounds):
+    if not reference_entries:
+        return [], {}, np.array([], dtype=float)
+
+    first_entry = reference_entries[conditions[0]]
+    n_tasks = first_entry['num_tasks']
+    true_values = first_entry['true_values'][:n_tasks]
+    conv_by_cond = {}
+
+    for cond in conditions:
+        entry = reference_entries.get(cond)
+        if entry is None:
+            continue
+        mean_bias = nanmean(entry['signed_bias'], axis=1)
+        conv = np.full(n_tasks, num_rounds + 1, dtype=float)
+        for task_idx in range(n_tasks):
+            conv[task_idx] = first_convergence_round(
+                np.abs(mean_bias[:, task_idx]),
+                threshold=CONV_THRESHOLD,
+                streak=CONV_STREAK,
+                fail_round=num_rounds + 1,
+            )
+        conv_by_cond[cond] = conv
+
+    if not conv_by_cond:
+        return [], {}, true_values
+
+    difficulty = np.full(n_tasks, -np.inf, dtype=float)
+    for task_idx in range(n_tasks):
+        vals = [conv_by_cond[cond][task_idx] for cond in conv_by_cond]
+        difficulty[task_idx] = np.nanmax(vals)
+
+    order = np.argsort(difficulty)[::-1]
+    if n_tasks == 1:
+        selected = [int(order[0])]
+        role_map = {int(order[0]): 'representative'}
+    elif n_tasks == 2:
+        selected = unique_keep_order([int(order[0]), int(order[-1])])
+        role_labels = ['hardest', 'easiest'][:len(selected)]
+        role_map = {task_idx: role_labels[i] for i, task_idx in enumerate(selected)}
+    else:
+        selected = unique_keep_order([int(order[0]), int(order[len(order) // 2]), int(order[-1])])
+        role_labels = ['hardest', 'median', 'easiest'][:len(selected)]
+        role_map = {task_idx: role_labels[i] for i, task_idx in enumerate(selected)}
+
+    return selected, role_map, true_values
+
+
+def apply_axes_style(ax, xlabel, ylabel, title=None, bottom_zero=False):
+    ax.set_xlabel(xlabel, fontsize=PLOT_GLOBAL['xlabel_fontsize'])
+    ax.set_ylabel(ylabel, fontsize=PLOT_GLOBAL['ylabel_fontsize'])
+    if title:
+        ax.set_title(title, fontsize=PLOT_GLOBAL['title_fontsize'], pad=PLOT_GLOBAL['title_pad'])
+    ax.tick_params(labelsize=PLOT_GLOBAL['tick_fontsize'])
+    if PLOT_GLOBAL['show_grid']:
+        ax.grid(
+            True,
+            linestyle=PLOT_GLOBAL['grid_linestyle'],
+            linewidth=PLOT_GLOBAL['grid_linewidth'],
+            alpha=PLOT_GLOBAL['grid_alpha'],
+        )
+    if PLOT_GLOBAL['hide_top_spine']:
+        ax.spines['top'].set_visible(False)
+    if PLOT_GLOBAL['hide_right_spine']:
+        ax.spines['right'].set_visible(False)
+    if bottom_zero:
+        ymin, ymax = ax.get_ylim()
+        ax.set_ylim(bottom=0.0, top=ymax)
+
+
+def get_markevery(num_points):
+    if num_points <= 12:
+        return 1
+    return max(1, int(np.ceil(num_points / 10)))
+
+
+def plot_policy_curve(ax, rounds, stats, style):
+    mean = ffill_1d(stats['mean'])
+    if np.all(np.isnan(mean)):
+        return
+
+    if stats['n_seed'] < MIN_SEEDS_FOR_CI:
+        for curve in stats['curves']:
+            seed_curve = ffill_1d(curve)
+            if np.all(np.isnan(seed_curve)):
+                continue
+            ax.plot(
+                rounds,
+                seed_curve,
+                color=style['color'],
+                ls=style['ls'],
+                lw=PLOT_GLOBAL['thin_linewidth'],
+                alpha=PLOT_GLOBAL['thin_alpha'],
+                zorder=1,
+            )
+    else:
+        ci = ffill_1d(stats['ci95'])
+        if not np.all(np.isnan(ci)):
+            ax.fill_between(
+                rounds,
+                mean - ci,
+                mean + ci,
+                color=style['color'],
+                alpha=PLOT_GLOBAL['band_alpha'],
+                linewidth=0.0,
+                zorder=1,
+            )
+
+    ax.plot(
+        rounds,
+        mean,
+        color=style['color'],
+        ls=style['ls'],
+        lw=PLOT_GLOBAL['linewidth'],
+        marker=PLOT_GLOBAL['marker'],
+        markersize=PLOT_GLOBAL['markersize'],
+        markevery=get_markevery(len(rounds)),
+        markerfacecolor='white',
+        markeredgewidth=1.0,
+        label=f"{style['label']} (n={stats['n_seed']})",
+        zorder=3,
+    )
+
+
+def compute_y_limits(curves, extra_values=None, lower_zero=False):
+    vals = []
+    for curve in curves:
+        arr = np.asarray(curve, dtype=float).ravel()
+        vals.extend(arr[np.isfinite(arr)].tolist())
+    if extra_values is not None:
+        arr = np.asarray(extra_values, dtype=float).ravel()
+        vals.extend(arr[np.isfinite(arr)].tolist())
+
+    if not vals:
+        return (0.0, 1.0) if lower_zero else (-1.0, 1.0)
+
+    ymin = min(vals)
+    ymax = max(vals)
+    if lower_zero:
+        ymin = 0.0
+    if ymax <= ymin:
+        ymax = ymin + 1.0
+    pad = 0.08 * (ymax - ymin)
+    return ymin - (0.0 if lower_zero else pad), ymax + pad
+
+
+def plot_summary_figure(conditions, num_rounds, summary_data, save_path):
+    rounds = np.arange(0, num_rounds + 1)
+    fig, axes = plt.subplots(1, 2, figsize=PLOT_GLOBAL['summary_figsize'], squeeze=False)
+    axes = axes.ravel()
+
+    panel_specs = [
+        ('summary_left', 'l1'),
+        ('summary_right', 'rel'),
+    ]
+
+    for ax, (cfg_key, metric_key) in zip(axes, panel_specs):
+        cfg = merge_figure_config(cfg_key)
+        for cond in conditions:
+            stats = summary_data.get(cond, {}).get(metric_key)
+            if stats is None or stats['n_seed'] == 0:
+                continue
+            plot_policy_curve(ax, rounds, stats, COND_STYLE.get(cond, DEFAULT_COND_STYLE))
+
+        ax.set_xlim(0, num_rounds)
+        apply_axes_style(
+            ax,
+            cfg['xlabel'],
+            cfg['ylabel'],
+            title=cfg['title'],
+            bottom_zero=cfg.get('bottom_zero', False),
+        )
+
+    handles, labels = axes[0].get_legend_handles_labels()
+    if handles:
+        fig.legend(
+            handles,
+            labels,
+            loc='upper center',
+            ncol=max(1, len(labels)),
+            fontsize=PLOT_GLOBAL['legend_fontsize'],
+            framealpha=PLOT_GLOBAL['legend_framealpha'],
+            edgecolor=PLOT_GLOBAL['legend_edgecolor'],
+        )
+    finalize_and_save(fig, save_path, tight_layout_rect=(0.0, 0.0, 1.0, 0.92))
+
+
+def plot_representative_tasks(reference_entries, conditions, selected_tasks, role_map, true_values,
+                              num_rounds, save_path, reference_seed):
+    if not selected_tasks:
+        print('  Skip representative-task figure: no valid task selected.')
+        return
+
+    rounds = np.arange(0, num_rounds + 1)
+    ncols = len(selected_tasks)
+    fig, axes = plt.subplots(
+        1,
+        ncols,
+        figsize=(PLOT_GLOBAL['rep_figsize_per_panel'][0] * ncols, PLOT_GLOBAL['rep_figsize_per_panel'][1]),
+        squeeze=False,
+        sharey=True,
+    )
+    axes = axes.ravel()
+
+    all_curves = []
+    for task_idx in selected_tasks:
+        for cond in conditions:
+            entry = reference_entries.get(cond)
+            if entry is None:
+                continue
+            all_curves.append(nanmean(entry['v_hat'][:, :, task_idx], axis=1))
+    y_limits = compute_y_limits(all_curves, extra_values=true_values[selected_tasks], lower_zero=False)
+
+    for ax, task_idx in zip(axes, selected_tasks):
+        for cond in conditions:
+            entry = reference_entries.get(cond)
+            if entry is None:
+                continue
+            mean_curve = ffill_1d(nanmean(entry['v_hat'][:, :, task_idx], axis=1))
+            st = COND_STYLE.get(cond, DEFAULT_COND_STYLE)
+            ax.plot(
+                rounds,
+                mean_curve,
+                color=st['color'],
+                ls=st['ls'],
+                lw=PLOT_GLOBAL['linewidth'],
+                marker=PLOT_GLOBAL['marker'],
+                markersize=PLOT_GLOBAL['markersize'],
+                markevery=get_markevery(len(rounds)),
+                markerfacecolor='white',
+                markeredgewidth=1.0,
+                label=st['label'],
+                zorder=3,
+            )
+
+        true_val = true_values[task_idx]
+        if np.isfinite(true_val):
+            ax.axhline(
+                true_val,
+                color=TRUE_VALUE_STYLE['color'],
+                ls=TRUE_VALUE_STYLE['ls'],
+                lw=TRUE_VALUE_STYLE['lw'],
+                label=TRUE_VALUE_STYLE['label'],
+                zorder=2,
+            )
+
+        role = role_map.get(task_idx, 'selected')
+        ax.set_xlim(0, num_rounds)
+        ax.set_ylim(*y_limits)
+        apply_axes_style(
+            ax,
+            FIGURE_CONFIG['representative']['xlabel'],
+            FIGURE_CONFIG['representative']['ylabel'] if ax is axes[0] else '',
+            title=f"{role.title()} | T{task_idx + 1} | V={true_val:.0f}",
+            bottom_zero=False,
+        )
+
+    handles, labels = axes[0].get_legend_handles_labels()
+    if handles:
+        fig.legend(
+            handles,
+            labels,
+            loc='upper center',
+            bbox_to_anchor=(0.5, 1.00),
+            ncol=max(1, len(labels)),
+            fontsize=PLOT_GLOBAL['legend_fontsize'],
+            framealpha=PLOT_GLOBAL['legend_framealpha'],
+            edgecolor=PLOT_GLOBAL['legend_edgecolor'],
+        )
+    fig.suptitle(
+        f"{FIGURE_CONFIG['representative']['title']}  [reference seed = {reference_seed}]",
+        fontsize=PLOT_GLOBAL['subtitle_fontsize'],
+        y=1.07,
+    )
+    finalize_and_save(fig, save_path, tight_layout_rect=(0.0, 0.0, 1.0, 0.88))
+
+
+def plot_appendix_agent_examples(reference_entries, conditions, selected_tasks, role_map, true_values,
+                                 num_rounds, save_path, reference_seed):
+    if not selected_tasks:
+        print('  Skip appendix figure: no valid task selected.')
+        return
+
+    appendix_tasks = unique_keep_order(
+        [selected_tasks[0], selected_tasks[-1]] if len(selected_tasks) > 1 else [selected_tasks[0]]
+    )
+    avail_conditions = [cond for cond in conditions if cond in reference_entries]
+    if not avail_conditions:
+        print('  Skip appendix figure: no reference entries available.')
+        return
+
+    rounds = np.arange(0, num_rounds + 1)
+    nrows = len(avail_conditions)
+    ncols = len(appendix_tasks)
+    fig, axes = plt.subplots(
+        nrows,
+        ncols,
+        figsize=(PLOT_GLOBAL['appendix_cell_size'][0] * ncols, PLOT_GLOBAL['appendix_cell_size'][1] * nrows),
+        squeeze=False,
+        sharex=True,
+        sharey=True,
+    )
+
+    all_curves = []
+    for cond in avail_conditions:
+        entry = reference_entries[cond]
+        for task_idx in appendix_tasks:
+            all_curves.extend(entry['v_hat'][:, :, task_idx].T)
+    y_limits = compute_y_limits(all_curves, extra_values=true_values[appendix_tasks], lower_zero=False)
+
+    for row, cond in enumerate(avail_conditions):
+        entry = reference_entries[cond]
+        st = COND_STYLE.get(cond, DEFAULT_COND_STYLE)
+        for col, task_idx in enumerate(appendix_tasks):
+            ax = axes[row][col]
+            n_agents = entry['v_hat'].shape[1]
+            for agent_idx in range(n_agents):
+                agent_curve = ffill_1d(entry['v_hat'][:, agent_idx, task_idx])
+                ax.plot(
+                    rounds,
+                    agent_curve,
+                    color=AGENT_TRACE_STYLE['color'],
+                    lw=AGENT_TRACE_STYLE['lw'],
+                    alpha=AGENT_TRACE_STYLE['alpha'],
+                    label=AGENT_TRACE_STYLE['label'] if (row == 0 and col == 0 and agent_idx == 0) else '_nolegend_',
+                    zorder=1,
+                )
+
+            mean_curve = ffill_1d(nanmean(entry['v_hat'][:, :, task_idx], axis=1))
+            ax.plot(
+                rounds,
+                mean_curve,
+                color=st['color'],
+                ls=st['ls'],
+                lw=PLOT_GLOBAL['agent_mean_linewidth'],
+                marker=PLOT_GLOBAL['marker'],
+                markersize=PLOT_GLOBAL['markersize'] - 0.4,
+                markevery=get_markevery(len(rounds)),
+                markerfacecolor='white',
+                markeredgewidth=1.0,
+                label=st['label'] if (row == 0 and col == 0) else '_nolegend_',
+                zorder=3,
+            )
+
+            true_val = true_values[task_idx]
+            if np.isfinite(true_val):
+                ax.axhline(
+                    true_val,
+                    color=TRUE_VALUE_STYLE['color'],
+                    ls=TRUE_VALUE_STYLE['ls'],
+                    lw=TRUE_VALUE_STYLE['lw'],
+                    label=TRUE_VALUE_STYLE['label'] if (row == 0 and col == 0) else '_nolegend_',
+                    zorder=2,
+                )
+
+            ax.set_xlim(0, num_rounds)
+            ax.set_ylim(*y_limits)
+            title = f"{role_map.get(task_idx, 'selected').title()} | T{task_idx + 1} | V={true_val:.0f}"
+            if row == 0:
+                ax.set_title(title, fontsize=PLOT_GLOBAL['subtitle_fontsize'], pad=PLOT_GLOBAL['title_pad'])
+
+            ylabel = f"{st['label']}\nExpected value" if col == 0 else ''
+            apply_axes_style(
+                ax,
+                FIGURE_CONFIG['appendix_new']['xlabel'],
+                ylabel,
+                title=None,
+                bottom_zero=False,
+            )
+
+    handles, labels = axes[0][0].get_legend_handles_labels()
+    if handles:
+        fig.legend(
+            handles,
+            labels,
+            loc='upper center',
+            bbox_to_anchor=(0.5, 1.00),
+            ncol=max(1, len(labels)),
+            fontsize=PLOT_GLOBAL['appendix_legend_fontsize'],
+            framealpha=PLOT_GLOBAL['legend_framealpha'],
+            edgecolor=PLOT_GLOBAL['legend_edgecolor'],
+        )
+    fig.suptitle(
+        f"{FIGURE_CONFIG['appendix_new']['title']}  [reference seed = {reference_seed}]",
+        fontsize=PLOT_GLOBAL['subtitle_fontsize'],
+        y=1.07,
+    )
+    finalize_and_save(fig, save_path, tight_layout_rect=(0.0, 0.0, 1.0, 0.88))
+
+
 # ══════════════════════════════════════════════════════════════════════════════
 # 主程序
 # ══════════════════════════════════════════════════════════════════════════════
 
-def main():
+def legacy_main():
     mat_path = find_mat_file(sys.argv)
 
     print("\n加载数据...")
@@ -833,6 +1505,88 @@ def main():
 
     print("\n完成。图窗已弹出，关闭后程序退出。")
     plt.show()
+
+
+def main():
+    mat_path = find_mat_file(sys.argv)
+
+    print("\nLoading data...")
+    raw = mat73.loadmat(mat_path)
+    results = raw['belief_results']
+    config = raw['belief_config']
+
+    conditions = parse_conditions(config)
+    num_rounds = int(to_scalar(config.get('num_rounds', 100)))
+    nC, nS = get_belief_shape(results)
+
+    print(f"  conditions = {conditions}")
+    print(f"  num_rounds = {num_rounds} (+ round 0)")
+    print(f"  raw shape  = {nC} x {nS} (condition x seed)")
+
+    basename = os.path.splitext(os.path.basename(mat_path))[0]
+    parts = basename.split('_')
+    ts = '_'.join(parts[-2:]) if len(parts) >= 2 else 'ts'
+
+    print("\nExtracting valid entries...")
+    conditions, num_rounds, task_values, cond_entries, skipped = collect_condition_entries(results, config)
+    print(f"  task_values = {task_values.tolist()}")
+    for cond in conditions:
+        seeds = [entry['seed'] for entry in cond_entries[cond]]
+        print(f"  {cond}: {len(seeds)} successful seed(s) -> {seeds}")
+    if skipped > 0:
+        print(f"  skipped invalid entries = {skipped}")
+
+    print(f"\nPlotting -> {FIGURES_DIR}")
+    summary_data = build_summary_data(cond_entries)
+    plot_summary_figure(
+        conditions,
+        num_rounds,
+        summary_data,
+        os.path.join(FIGURES_DIR, f'fig2a_summary_belief_{ts}.png'),
+    )
+
+    reference_seed, reference_entries = select_reference_seed(cond_entries, conditions, FIG2C_SEED_IDX)
+    if reference_seed is None:
+        print("  No common successful seed across all conditions. Skip task-level figures.")
+    else:
+        print(f"  reference seed for task-level figures = {reference_seed}")
+        selected_tasks, role_map, true_values = select_representative_tasks(reference_entries, conditions, num_rounds)
+        if selected_tasks:
+            print(
+                "  representative tasks = "
+                + ", ".join(
+                    f"T{task_idx + 1}({role_map.get(task_idx, 'selected')}, V={true_values[task_idx]:.0f})"
+                    for task_idx in selected_tasks
+                )
+            )
+
+        plot_representative_tasks(
+            reference_entries,
+            conditions,
+            selected_tasks,
+            role_map,
+            true_values,
+            num_rounds,
+            os.path.join(FIGURES_DIR, f'fig2b_representative_tasks_{ts}.png'),
+            reference_seed=reference_seed,
+        )
+        plot_appendix_agent_examples(
+            reference_entries,
+            conditions,
+            selected_tasks,
+            role_map,
+            true_values,
+            num_rounds,
+            os.path.join(FIGURES_DIR, f'fig2c_agent_examples_{ts}.png'),
+            reference_seed=reference_seed,
+        )
+
+    backend = plt.get_backend().lower()
+    if 'agg' in backend:
+        print("\nDone. Non-interactive backend detected; skip plt.show().")
+    else:
+        print("\nDone. Close the figure windows to exit.")
+        plt.show()
 
 
 if __name__ == '__main__':

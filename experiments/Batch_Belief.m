@@ -10,7 +10,7 @@ feature('DefaultCharacterSet', 'UTF-8');
 %
 %  保存数据（results/batch/belief/N{N}_M{M}_K{K}_S{nSeeds}_{ts}.mat）：
 %    belief_results{ci, si}  — 二维 cell [条件数 × seed数量]
-%      .condition             初始信念条件名称（'uniform'/'optimistic'/'pessimistic'）
+%      .condition             初始信念条件名称（'uniform'/'heterogeneous'）
 %      .seed                  随机种子
 %      .success / .error
 %      .true_task_types       [M×1] 各任务的真实类型（1/2/3），用于计算信念误差
@@ -98,52 +98,11 @@ for ci = 1:num_cond
 
         try
             %% -- 构建随机场景 --
-            rng('default'); rng(seed);
-
-            WORLD.XMIN  = WORLD_XMIN;  WORLD.XMAX = WORLD_XMAX;
-            WORLD.YMIN  = WORLD_YMIN;  WORLD.YMAX = WORLD_YMAX;
-            WORLD.ZMIN  = WORLD_ZMIN;  WORLD.ZMAX = WORLD_ZMAX;
-            WORLD.value = task_values;
-
-            task_type_demands = zeros(num_task_types, K);
-            task_type_demands(1, :) = randi([0, task_type1_demand_max], 1, K);
-            task_type_demands(2, :) = randi([0, task_type2_demand_max], 1, K);
-            task_type_demands(3, :) = randi([0, task_type3_demand_max], 1, K);
-
-            task_type_duration_by_resource = zeros(num_task_types, K);
-            for t = 1:num_task_types
-                needed = task_type_demands(t, :) > 0;
-                task_type_duration_by_resource(t, needed) = resource_exec_time(needed);
-            end
-
-            task_priorities = randperm(M);
-            tasks_local = struct();
-            for j = 1:M
-                tasks_local(j).id       = j;
-                tasks_local(j).priority = task_priorities(j);
-                tasks_local(j).x = round(rand() * (WORLD.XMAX - WORLD.XMIN) + WORLD.XMIN);
-                tasks_local(j).y = round(rand() * (WORLD.YMAX - WORLD.YMIN) + WORLD.YMIN);
-                tasks_local(j).type     = randi(num_task_types, 1, 1);
-                tasks_local(j).value    = WORLD.value(tasks_local(j).type);
-                tasks_local(j).resource_demand      = task_type_demands(tasks_local(j).type, :);
-                tasks_local(j).duration_by_resource = task_type_duration_by_resource(tasks_local(j).type, :);
-                tasks_local(j).duration = max(tasks_local(j).duration_by_resource);
-                tasks_local(j).WORLD    = WORLD;
-            end
-
-            agents_local = struct();
-            for i = 1:N
-                agents_local(i).id        = i;
-                agents_local(i).vel       = agent_velocity;
-                agents_local(i).x = round(rand() * (WORLD.XMAX - WORLD.XMIN) + WORLD_XMIN);
-                agents_local(i).y = round(rand() * (WORLD.YMAX - WORLD.YMIN) + WORLD_YMIN);
-                agents_local(i).detprob   = agent_detprob_min + (agent_detprob_max - agent_detprob_min) * rand();
-                agents_local(i).resources = randi([min_resource_value, max_resource_value], K, 1);
-                agents_local(i).Emax      = agent_Emax_min + agent_Emax_range * rand();
-                agents_local(i).fuel      = agent_fuel;
-                agents_local(i).wait_fuel = agent_wait_fuel;
-                agents_local(i).beta      = agent_beta;
-            end
+            scenario_cfg = Exp_Config.ScenarioCfg;
+            scenario_cfg.N = N;
+            scenario_cfg.M = M;
+            scenario_cfg.K = K;
+            [WORLD, tasks_local, agents_local, task_type_demands] = build_scenario(seed, scenario_cfg); %#ok<ASGLU>
 
             Value_Params = OCFUtils.init_value_params(N, M, K, num_task_types, task_type_demands, ...
                 OCF_alpha, OCF_Tmin, OCF_K_stable_max, obs_times, num_rounds);

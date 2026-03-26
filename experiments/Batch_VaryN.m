@@ -59,12 +59,7 @@ results_dir = fullfile(root_dir, 'results', 'batch', 'varyN');
 if ~exist(results_dir, 'dir'), mkdir(results_dir); end
 
 %% ===== 算法注册表 =====
-all_algorithms = {
-    struct('id', 2, 'name', 'Huo2025',    'func', @Huo2025_main);
-    struct('id', 3, 'name', 'Qi2023',     'func', @Qi2023_main);
-    struct('id', 4, 'name', 'Shi2024',    'func', @Shi2024_main);
-    struct('id', 7, 'name', 'OCF_SAtabu', 'func', @OCF_SAtabu_global_main);
-};
+all_algorithms = get_all_algorithms();
 
 enabled_algorithms = {};
 for i = 1:length(all_algorithms)
@@ -122,53 +117,11 @@ for ni = 1:length(N_VALUES)
 
         try
             %% -- 构建随机场景 --
-            rng('default'); rng(seed);
-
-            WORLD = struct();
-            WORLD.XMIN  = WORLD_XMIN;  WORLD.XMAX = WORLD_XMAX;
-            WORLD.YMIN  = WORLD_YMIN;  WORLD.YMAX = WORLD_YMAX;
-            WORLD.ZMIN  = WORLD_ZMIN;  WORLD.ZMAX = WORLD_ZMAX;
-            WORLD.value = task_values;
-
-            task_type_demands = zeros(num_task_types, K);
-            task_type_demands(1, :) = randi([0, task_type1_demand_max], 1, K);
-            task_type_demands(2, :) = randi([0, task_type2_demand_max], 1, K);
-            task_type_demands(3, :) = randi([0, task_type3_demand_max], 1, K);
-
-            task_type_duration_by_resource = zeros(num_task_types, K);
-            for t = 1:num_task_types
-                needed = task_type_demands(t, :) > 0;
-                task_type_duration_by_resource(t, needed) = resource_exec_time(needed);
-            end
-
-            task_priorities = randperm(M);
-            tasks = struct();
-            for j = 1:M
-                tasks(j).id       = j;
-                tasks(j).priority = task_priorities(j);
-                tasks(j).x = round(rand() * (WORLD.XMAX - WORLD.XMIN) + WORLD.XMIN);
-                tasks(j).y = round(rand() * (WORLD.YMAX - WORLD.YMIN) + WORLD.YMIN);
-                tasks(j).type     = randi(num_task_types, 1, 1);
-                tasks(j).value    = WORLD.value(tasks(j).type);
-                tasks(j).resource_demand      = task_type_demands(tasks(j).type, :);
-                tasks(j).duration_by_resource = task_type_duration_by_resource(tasks(j).type, :);
-                tasks(j).duration = max(tasks(j).duration_by_resource);
-                tasks(j).WORLD    = WORLD;
-            end
-
-            agents = struct();
-            for i = 1:N
-                agents(i).id        = i;
-                agents(i).vel       = agent_velocity;
-                agents(i).x = round(rand() * (WORLD.XMAX - WORLD.XMIN) + WORLD_XMIN);
-                agents(i).y = round(rand() * (WORLD.YMAX - WORLD.YMIN) + WORLD_YMIN);
-                agents(i).detprob   = agent_detprob_min + (agent_detprob_max - agent_detprob_min) * rand();
-                agents(i).resources = randi([min_resource_value, max_resource_value], K, 1);
-                agents(i).Emax      = agent_Emax_min + agent_Emax_range * rand();
-                agents(i).fuel      = agent_fuel;
-                agents(i).wait_fuel = agent_wait_fuel;
-                agents(i).beta      = agent_beta;
-            end
+            scenario_cfg = Exp_Config.ScenarioCfg;
+            scenario_cfg.N = N;
+            scenario_cfg.M = M;
+            scenario_cfg.K = K;
+            [WORLD, tasks, agents, task_type_demands] = build_scenario(seed, scenario_cfg); %#ok<ASGLU>
 
             Value_Params = OCFUtils.init_value_params( ...
                 N, M, K, num_task_types, task_type_demands, ...

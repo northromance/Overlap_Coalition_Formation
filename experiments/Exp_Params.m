@@ -110,6 +110,30 @@ task_type3_demand_max = 8;   % 类型3任务各维资源需求上限（高价值
 % resource_exec_time(k) = 第 k 类资源执行所需时间
 resource_exec_time = [50, 65, 50, 60, 35, 45];
 
+%% ===== 统一场景配置（被 build_scenario 使用，N/M/K 由调用方按需覆盖）=====
+Exp_Config.ScenarioCfg.num_task_types        = num_task_types;
+Exp_Config.ScenarioCfg.task_values           = task_values;
+Exp_Config.ScenarioCfg.task_type1_demand_max = task_type1_demand_max;
+Exp_Config.ScenarioCfg.task_type2_demand_max = task_type2_demand_max;
+Exp_Config.ScenarioCfg.task_type3_demand_max = task_type3_demand_max;
+Exp_Config.ScenarioCfg.resource_exec_time    = resource_exec_time;
+Exp_Config.ScenarioCfg.WORLD_XMIN = WORLD_XMIN;
+Exp_Config.ScenarioCfg.WORLD_XMAX = WORLD_XMAX;
+Exp_Config.ScenarioCfg.WORLD_YMIN = WORLD_YMIN;
+Exp_Config.ScenarioCfg.WORLD_YMAX = WORLD_YMAX;
+Exp_Config.ScenarioCfg.WORLD_ZMIN = WORLD_ZMIN;
+Exp_Config.ScenarioCfg.WORLD_ZMAX = WORLD_ZMAX;
+Exp_Config.ScenarioCfg.agent_velocity     = agent_velocity;
+Exp_Config.ScenarioCfg.agent_detprob_min  = agent_detprob_min;
+Exp_Config.ScenarioCfg.agent_detprob_max  = agent_detprob_max;
+Exp_Config.ScenarioCfg.agent_Emax_min     = agent_Emax_min;
+Exp_Config.ScenarioCfg.agent_Emax_range   = agent_Emax_range;
+Exp_Config.ScenarioCfg.agent_fuel         = agent_fuel;
+Exp_Config.ScenarioCfg.agent_wait_fuel    = agent_wait_fuel;
+Exp_Config.ScenarioCfg.agent_beta         = agent_beta;
+Exp_Config.ScenarioCfg.min_resource_value = min_resource_value;
+Exp_Config.ScenarioCfg.max_resource_value = max_resource_value;
+
 %% ===== 实验脚本专属配置（集中放在文件末尾）=====
 
 % Batch_VaryN
@@ -117,6 +141,7 @@ Exp_Config.VaryN.SEEDS = Exp_Config.Common.SEEDS;
 Exp_Config.VaryN.N_VALUES = [4, 6, 8, 10, 12];
 Exp_Config.VaryN.M = 10;
 Exp_Config.VaryN.K = 6;
+Exp_Config.VaryN.inner_loop_round = 50;   % 保存第 N 轮内循环轨迹（用于图3a）
 Exp_Config.VaryN.algorithms_to_run_ids = [2, 3, 4, 7];
 Exp_Config.VaryN.AddPara = struct( ...
     'verbose', 1, ...

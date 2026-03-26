@@ -70,6 +70,9 @@ classdef WorldSim
 
 
         function all_agents_results = calc_all_agents_with_global_sync(agents, tasks, Value_Params, SC, tol)
+            if nargin < 5 || isempty(tol)
+                tol = 1e-6;
+            end
             %CALC_ALL_AGENTS_WITH_GLOBAL_SYNC 在“全局同步执行”假设下一次性计算所有智能体的飞行/等待/执行时间
             %
             % 核心思想：

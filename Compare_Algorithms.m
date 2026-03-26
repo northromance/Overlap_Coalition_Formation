@@ -180,59 +180,32 @@ fprintf('  - rounds: %d\n\n', num_rounds);
 
 tic;
 
-% pro =rand(1, 10);  % 已删：在前面调用 rand() 可能导致不可复现
-rng('default');      % 重置随机数发生器到默认状态
-rng(SEED);           % 设置固定随机种子
+% 构建场景参数结构体（从脚本顶部现有参数直接组装，不依赖 Exp_Params）
+scenario_cfg = struct();
+scenario_cfg.N = N;
+scenario_cfg.M = M;
+scenario_cfg.K = K;
+scenario_cfg.num_task_types        = num_task_types;
+scenario_cfg.task_values           = task_values;
+scenario_cfg.task_type1_demand_max = task_type1_demand_max;
+scenario_cfg.task_type2_demand_max = task_type2_demand_max;
+scenario_cfg.task_type3_demand_max = task_type3_demand_max;
+scenario_cfg.resource_exec_time    = resource_exec_time;
+scenario_cfg.WORLD_XMIN = WORLD_XMIN;  scenario_cfg.WORLD_XMAX = WORLD_XMAX;
+scenario_cfg.WORLD_YMIN = WORLD_YMIN;  scenario_cfg.WORLD_YMAX = WORLD_YMAX;
+scenario_cfg.WORLD_ZMIN = WORLD_ZMIN;  scenario_cfg.WORLD_ZMAX = WORLD_ZMAX;
+scenario_cfg.agent_velocity     = agent_velocity;
+scenario_cfg.agent_detprob_min  = agent_detprob_min;
+scenario_cfg.agent_detprob_max  = agent_detprob_max;
+scenario_cfg.agent_Emax_min     = agent_Emax_min;
+scenario_cfg.agent_Emax_range   = agent_Emax_range;
+scenario_cfg.agent_fuel         = agent_fuel;
+scenario_cfg.agent_wait_fuel    = agent_wait_fuel;
+scenario_cfg.agent_beta         = agent_beta;
+scenario_cfg.min_resource_value = min_resource_value;
+scenario_cfg.max_resource_value = max_resource_value;
 
-% Build WORLD struct（构造 WORLD 结构体）
-WORLD.XMIN = WORLD_XMIN; WORLD.XMAX = WORLD_XMAX;
-WORLD.YMIN = WORLD_YMIN; WORLD.YMAX = WORLD_YMAX;
-WORLD.ZMIN = WORLD_ZMIN; WORLD.ZMAX = WORLD_ZMAX;
-WORLD.value = task_values;
-
-% Task type demands（不同任务类型的资源需求模板）
-task_type_demands = zeros(num_task_types, K);
-task_type_demands(1, :) = randi([0, task_type1_demand_max], 1, K); % 低需求
-task_type_demands(2, :) = randi([0, task_type2_demand_max], 1, K); % 中需求
-task_type_demands(3, :) = randi([0, task_type3_demand_max], 1, K); % 高需求
-
-% Task durations by resource（不同任务类型在各资源上的执行时间）
-task_type_duration_by_resource = zeros(num_task_types, K);
-for t = 1:num_task_types
-    needed = task_type_demands(t, :) > 0; % 找出该类型任务需要哪些资源
-    task_type_duration_by_resource(t, needed) = resource_exec_time(needed);
-end
-
-% Tasks Generation（生成 M 个任务）
-task_priorities = randperm(M);
-for j = 1:M
-    tasks(j).id = j;
-    tasks(j).priority = task_priorities(j);
-    tasks(j).x = round(rand(1) * (WORLD.XMAX - WORLD.XMIN) + WORLD.XMIN);
-    tasks(j).y = round(rand(1) * (WORLD.YMAX - WORLD.YMIN) + WORLD.YMIN);
-    tasks(j).type = randi(num_task_types, 1, 1); % 任务类型
-    tasks(j).value = WORLD.value(tasks(j).type);
-    tasks(j).resource_demand = task_type_demands(tasks(j).type, :);
-    tasks(j).duration_by_resource = task_type_duration_by_resource(tasks(j).type, :);
-    
-    % 任务持续时间：取所需资源执行时间的最大值（以最耗时资源为准）
-    tasks(j).duration = max(tasks(j).duration_by_resource);
-    tasks(j).WORLD = WORLD;
-end
-
-% Agents Generation（生成 N 个智能体）
-for i = 1:N
-    agents(i).id = i;
-    agents(i).vel = agent_velocity;
-    agents(i).x = round(rand(1) * (WORLD.XMAX - WORLD.XMIN) + WORLD_XMIN);
-    agents(i).y = round(rand(1) * (WORLD.YMAX - WORLD_YMIN) + WORLD_YMIN);
-    agents(i).detprob = agent_detprob_min + (agent_detprob_max - agent_detprob_min) * rand();
-    agents(i).resources = randi([min_resource_value, max_resource_value], K, 1); % 资源能力
-    agents(i).Emax = agent_Emax_min + agent_Emax_range * rand();
-    agents(i).fuel = agent_fuel;
-    agents(i).wait_fuel = agent_wait_fuel;
-    agents(i).beta = agent_beta;
-end
+[WORLD, tasks, agents, task_type_demands] = build_scenario(SEED, scenario_cfg);
 
 % Algorithm shared params（各算法通用参数）
 Value_Params = OCFUtils.init_value_params(N, M, K, num_task_types, task_type_demands, OCF_alpha, OCF_Tmin, OCF_K_stable_max, ...
@@ -292,14 +265,7 @@ fprintf('Scenario initialized (%.2f s)\n\n', init_time);
 
 %% Define algorithms
 % 定义算法：ID、名称、主函数句柄、文件夹、绘图颜色
-all_algorithms = {
-    % 对比基线算法
-    struct('id', 2, 'name', 'Huo2025',          'func', @Huo2025_main,          'folder', 'comalg/alg2_Huo2025',    'color', [0.8, 0.2, 0.2]); % Huo2025
-    struct('id', 3, 'name', 'Qi2023',           'func', @Qi2023_main,           'folder', 'comalg/alg3_Qi2023',     'color', [0.2, 0.8, 0.2]); % Qi2023
-    struct('id', 4, 'name', 'Shi2024',          'func', @Shi2024_main,          'folder', 'comalg/alg4_Shi2024',    'color', [0.8, 0.4, 0.2]); % Shi2024 OCF
-    % 主算法
-    struct('id', 7, 'name', 'OCF_SAtabu_global', 'func', @OCF_SAtabu_global_main, 'folder', 'comalg/alg7_OCF_SAtabu', 'color', [0.2, 0.8, 0.6]); % 主算法：SA+TabuEnhanced+全局社会效用
-    };
+all_algorithms = get_all_algorithms();
 
 fprintf('Available algorithms (可用算法):\n');
 for i = 1:length(all_algorithms)
