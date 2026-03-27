@@ -5,7 +5,7 @@ feature('DefaultCharacterSet', 'UTF-8');
 %  实验 C：信念演化（Batch_Belief）
 %
 %  画图用途：
-%    图2a — 信念误差（belief error）随轮次的收敛曲线（3种初始信念条件对比）
+%    图2a — 信念误差（belief error）随轮次的收敛曲线（不同初始信念条件对比）
 %    图2b — 信念分布演化热图（某一任务/智能体的信念概率分布随轮次变化）
 %
 %  保存数据（results/batch/belief/N{N}_M{M}_K{K}_S{nSeeds}_{ts}.mat）：
@@ -13,7 +13,7 @@ feature('DefaultCharacterSet', 'UTF-8');
 %      .condition             初始信念条件名称（'uniform'/'heterogeneous'）
 %      .seed                  随机种子
 %      .success / .error
-%      .true_task_types       [M×1] 各任务的真实类型（1/2/3），用于计算信念误差
+%      .true_task_types       [M×1] 各任务的真实类型（1..T），用于计算信念误差
 %      .init_belief_mode      round-0 先验模式（shared_agent_prior / task_specific_prior）
 %      .init_belief_matrix    [N×T] 兼容摘要；heterogeneous 下为对任务维均值后的摘要
 %      .init_belief_tensor    [N×M×T] round-0 权威先验张量
@@ -39,14 +39,35 @@ M = cfg.M;
 K = cfg.K;
 CONDITIONS = cfg.CONDITIONS;
 num_rounds = Exp_Config.Common.num_rounds;
+task_values = cfg.task_values(:).';
+num_task_types = numel(task_values);
+task_type_demand_max = cfg.task_type_demand_max(:).';
 
 % 初始信念分布模板
 % uniform: 所有智能体均匀先验 [1/T, ..., 1/T]（条件共用）
-% heterogeneous: 每智能体偏向低/中/高价值中的某一类（在主循环内按 seed 生成 N×T 矩阵）
-belief_uniform = cfg.belief_uniform;   % [1/T, 1/T, 1/T]
-belief_heter_profiles = cfg.belief_heterogeneous_profiles;
-belief_heter_task_main_prob_range = cfg.heter_task_main_prob_range;
-belief_heter_task_mix_range = cfg.heter_task_mix_range;
+% heterogeneous: 每个 agent-task 直接随机采样一个任务类型概率分布
+belief_uniform = cfg.belief_uniform;
+belief_random_dirichlet_alpha = cfg.belief_random_dirichlet_alpha(:).';
+
+if numel(task_type_demand_max) ~= num_task_types
+    error('Batch_Belief:taskTypeDemandMaxSize', ...
+        'cfg.task_type_demand_max must have %d elements, got %d.', ...
+        num_task_types, numel(task_type_demand_max));
+end
+if numel(belief_uniform) ~= num_task_types
+    error('Batch_Belief:uniformBeliefSize', ...
+        'cfg.belief_uniform must have %d elements, got %d.', ...
+        num_task_types, numel(belief_uniform));
+end
+if numel(belief_random_dirichlet_alpha) ~= num_task_types
+    error('Batch_Belief:randomAlphaSize', ...
+        'cfg.belief_random_dirichlet_alpha must have %d elements, got %d.', ...
+        num_task_types, numel(belief_random_dirichlet_alpha));
+end
+if any(belief_random_dirichlet_alpha <= 0)
+    error('Batch_Belief:randomAlphaPositive', ...
+        'cfg.belief_random_dirichlet_alpha must be strictly positive.');
+end
 
 %% ===== 附加控制参数 =====
 AddPara = cfg.AddPara;
@@ -106,6 +127,9 @@ for ci = 1:num_cond
             scenario_cfg.N = N;
             scenario_cfg.M = M;
             scenario_cfg.K = K;
+            scenario_cfg.num_task_types = num_task_types;
+            scenario_cfg.task_values = task_values;
+            scenario_cfg.task_type_demand_max = task_type_demand_max;
             [WORLD, tasks_local, agents_local, task_type_demands] = build_scenario(seed, scenario_cfg); %#ok<ASGLU>
 
             Value_Params = OCFUtils.init_value_params(N, M, K, num_task_types, task_type_demands, ...
@@ -129,7 +153,7 @@ for ci = 1:num_cond
             init_b_mode = '';
             switch cond_name
                 case 'uniform'
-                    % 所有智能体相同：均匀分布 [1/T, 1/T, 1/T]
+                    % 所有智能体相同：均匀分布 [1/T, ..., 1/T]
                     init_b = repmat(belief_uniform, N, 1);  % N×T
                     init_b_tensor = repmat(reshape(init_b, [N, 1, num_task_types]), 1, M, 1);
                     AddPara_run.init_belief = init_b;
@@ -137,43 +161,13 @@ for ci = 1:num_cond
                     init_b_mode = 'shared_agent_prior';
 
                 case 'heterogeneous'
-                    % 每个任务先根据真实类型生成弱偏向先验，再与智能体偏好模板混合
+                    % 每个 agent-task 直接随机采样一个任务类型概率分布，不再显式依赖真实类型
                     rng(seed + 9999);   % 独立子种子，不干扰场景生成
-                    pref_types = repmat(1:num_task_types, 1, ceil(N / num_task_types));
-                    pref_types = pref_types(1:N);
-                    pref_types = pref_types(randperm(N));
-                    agent_profiles = zeros(N, num_task_types);
-                    task_anchor = zeros(M, num_task_types);
                     init_b_tensor = zeros(N, M, num_task_types);
 
                     for i_agent = 1:N
-                        pref_t = pref_types(i_agent);
-                        base_profile = belief_heter_profiles(pref_t, :);
-                        agent_profiles(i_agent, :) = base_profile / sum(base_profile);
-                    end
-
-                    for m_task = 1:M
-                        true_t = true_task_types(m_task);
-                        p_main = belief_heter_task_main_prob_range(1) + ...
-                            (belief_heter_task_main_prob_range(2) - belief_heter_task_main_prob_range(1)) * rand();
-
-                        anchor = zeros(1, num_task_types);
-                        anchor(true_t) = p_main;
-
-                        other_idx = setdiff(1:num_task_types, true_t);
-                        other_raw = rand(1, numel(other_idx));
-                        other_raw = other_raw / sum(other_raw) * (1 - p_main);
-                        anchor(other_idx) = other_raw;
-                        task_anchor(m_task, :) = anchor / sum(anchor);
-                    end
-
-                    for i_agent = 1:N
-                        agent_profile = agent_profiles(i_agent, :);
                         for m_task = 1:M
-                            mix_task = belief_heter_task_mix_range(1) + ...
-                                (belief_heter_task_mix_range(2) - belief_heter_task_mix_range(1)) * rand();
-                            belief_vec = mix_task * task_anchor(m_task, :) + ...
-                                (1 - mix_task) * agent_profile;
+                            belief_vec = OCFUtils.drchrnd(belief_random_dirichlet_alpha, 1);
                             init_b_tensor(i_agent, m_task, :) = belief_vec / sum(belief_vec);
                         end
                     end
@@ -236,12 +230,12 @@ belief_config.N                  = N;
 belief_config.M                  = M;
 belief_config.K                  = K;
 belief_config.seeds              = SEEDS;
+belief_config.num_task_types     = num_task_types;
 belief_config.task_type_values   = task_values;
+belief_config.task_type_demand_max = task_type_demand_max;
 belief_config.num_rounds         = num_rounds;
 belief_config.belief_uniform     = belief_uniform;
-belief_config.belief_heterogeneous_profiles = belief_heter_profiles;
-belief_config.heter_task_main_prob_range = belief_heter_task_main_prob_range;
-belief_config.heter_task_mix_range = belief_heter_task_mix_range;
+belief_config.belief_random_dirichlet_alpha = belief_random_dirichlet_alpha;
 belief_config.timestamp          = datestr(now, 'yyyymmdd_HHMMSS');
 
 timestamp = belief_config.timestamp;

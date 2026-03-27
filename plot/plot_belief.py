@@ -448,8 +448,52 @@ def normalize_init_belief(init_b_raw, n_agents, n_types):
     return fixed / row_sums
 
 
-def build_round0_belief(init_b_raw, n_agents, n_tasks, n_types):
-    """Expand per-agent initial priors to per-agent-per-task beliefs at round 0."""
+def normalize_init_belief_tensor(init_b_raw, n_agents, n_tasks, n_types):
+    """Normalize stored init_belief_tensor to shape [N, M, T]."""
+    if init_b_raw is None:
+        return None
+
+    try:
+        init_b = np.asarray(init_b_raw, dtype=float)
+    except Exception:
+        return None
+
+    init_b = np.squeeze(init_b)
+    if init_b.ndim != 3:
+        return None
+
+    if init_b.shape == (n_agents, n_tasks, n_types):
+        tensor = init_b
+    elif init_b.shape == (n_tasks, n_agents, n_types):
+        tensor = np.transpose(init_b, (1, 0, 2))
+    elif init_b.shape == (n_agents, n_types, n_tasks):
+        tensor = np.transpose(init_b, (0, 2, 1))
+    elif init_b.shape == (n_tasks, n_types, n_agents):
+        tensor = np.transpose(init_b, (2, 0, 1))
+    elif init_b.shape == (n_types, n_agents, n_tasks):
+        tensor = np.transpose(init_b, (1, 2, 0))
+    elif init_b.shape == (n_types, n_tasks, n_agents):
+        tensor = np.transpose(init_b, (2, 1, 0))
+    else:
+        return None
+
+    fixed = np.full((n_agents, n_tasks, n_types), 1.0 / max(n_types, 1), dtype=float)
+    rows = min(n_agents, tensor.shape[0])
+    tasks = min(n_tasks, tensor.shape[1])
+    cols = min(n_types, tensor.shape[2])
+    fixed[:rows, :tasks, :cols] = tensor[:rows, :tasks, :cols]
+    fixed = np.clip(fixed, 0.0, None)
+    row_sums = fixed.sum(axis=2, keepdims=True)
+    row_sums[row_sums <= 0] = 1.0
+    return fixed / row_sums
+
+
+def build_round0_belief(init_b_raw, init_b_tensor_raw, n_agents, n_tasks, n_types):
+    """Expand stored initial priors to per-agent-per-task beliefs at round 0."""
+    init_b_tensor = normalize_init_belief_tensor(init_b_tensor_raw, n_agents, n_tasks, n_types)
+    if init_b_tensor is not None:
+        return init_b_tensor
+
     init_b = normalize_init_belief(init_b_raw, n_agents, n_types)
     return np.repeat(init_b[:, np.newaxis, :], n_tasks, axis=1)
 
@@ -494,6 +538,7 @@ def extract_belief_curves(results, config):
         bh_raw = entry.get('belief_history')
         tt_raw = entry.get('true_task_types')
         init_b_raw = entry.get('init_belief_matrix')
+        init_b_tensor_raw = entry.get('init_belief_tensor')
         if bh_raw is None or tt_raw is None:
             continue
 
@@ -510,7 +555,7 @@ def extract_belief_curves(results, config):
             if 0 <= t < T_dim:
                 true_onehot[m, t] = 1.0
 
-        round0_belief = build_round0_belief(init_b_raw, N_dim, M_dim, T_dim)   # [N,M,T]
+        round0_belief = build_round0_belief(init_b_raw, init_b_tensor_raw, N_dim, M_dim, T_dim)   # [N,M,T]
 
         diff     = bh - true_onehot[np.newaxis, np.newaxis, :, :]  # [R,N,M,T]
         l1       = np.sum(np.abs(diff), axis=3)                     # [R,N,M]
@@ -589,6 +634,7 @@ def extract_per_agent_data(results, config, conditions, seed_idx=0):
         tt_raw = entry.get('true_task_types')
         tv_raw = entry.get('true_task_values')
         init_b_raw = entry.get('init_belief_matrix')
+        init_b_tensor_raw = entry.get('init_belief_tensor')
         if bh_raw is None or tt_raw is None:
             print(f"  [fig2c 警告] ci={ci} si={si} ({cond_name}): "
                   f"belief_history 或 true_task_types 为空，跳过。")
@@ -607,7 +653,7 @@ def extract_per_agent_data(results, config, conditions, seed_idx=0):
             continue
 
         print(f"  [fig2c] ci={ci} si={si} ({cond_name}): belief_history shape={bh.shape}")
-        cond_entries[cond_name].append((bh, tt_raw, tv_raw, init_b_raw))
+        cond_entries[cond_name].append((bh, tt_raw, tv_raw, init_b_raw, init_b_tensor_raw))
 
     # 第二遍：按 seed_idx（若越界则取最后一个）提取目标条目
     per_agent: dict[str, dict] = {}
@@ -623,10 +669,10 @@ def extract_per_agent_data(results, config, conditions, seed_idx=0):
             print(f"  [fig2c] 条件 '{cond}': seed_idx={seed_idx} 超出范围"
                   f"（共 {len(entries)} 个成功 seed），使用最后一个 (idx={actual_idx})。")
 
-        bh, tt_raw, tv_raw, init_b_raw = entries[actual_idx]
+        bh, tt_raw, tv_raw, init_b_raw, init_b_tensor_raw = entries[actual_idx]
         R, N_dim, M_dim, T_dim = bh.shape
 
-        round0_belief = build_round0_belief(init_b_raw, N_dim, M_dim, T_dim)  # [N,M,T]
+        round0_belief = build_round0_belief(init_b_raw, init_b_tensor_raw, N_dim, M_dim, T_dim)  # [N,M,T]
         ev = np.tensordot(bh, task_values, axes=([3], [0]))   # [R, N, M]
         ev0 = np.tensordot(round0_belief, task_values, axes=([2], [0]))[np.newaxis, :, :]  # [1,N,M]
         ev = np.concatenate([ev0, ev], axis=0)
@@ -887,6 +933,7 @@ def process_belief_entry(entry, cond_name, seed_value, num_points, task_values):
     bh_raw = entry.get('belief_history')
     tt_raw = entry.get('true_task_types')
     init_b_raw = entry.get('init_belief_matrix')
+    init_b_tensor_raw = entry.get('init_belief_tensor')
     if bh_raw is None or tt_raw is None:
         return None
 
@@ -899,7 +946,7 @@ def process_belief_entry(entry, cond_name, seed_value, num_points, task_values):
         return None
 
     _, n_agents, n_tasks, n_types = bh.shape
-    round0 = build_round0_belief(init_b_raw, n_agents, n_tasks, n_types)
+    round0 = build_round0_belief(init_b_raw, init_b_tensor_raw, n_agents, n_tasks, n_types)
     beliefs = np.concatenate([round0[np.newaxis, :, :, :], bh], axis=0)
     beliefs = pad_first_axis(beliefs, num_points, fill_value=np.nan)
 

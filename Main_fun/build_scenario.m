@@ -10,9 +10,8 @@ function [WORLD, tasks, agents, task_type_demands] = build_scenario(seed, cfg)
 %            N, M, K                           维度
 %            num_task_types                    任务类型数
 %            task_values                       [1×num_task_types] 各类型任务价值
-%            task_type1_demand_max             类型1任务各维资源需求上限
-%            task_type2_demand_max             类型2任务各维资源需求上限
-%            task_type3_demand_max             类型3任务各维资源需求上限
+%            task_type_demand_max              [1×num_task_types] 各类型任务资源需求上限
+%            （兼容旧字段 task_type1_demand_max / task_type2_demand_max / task_type3_demand_max）
 %            resource_exec_time                [1×K] 各资源类型的执行时间
 %            WORLD_XMIN, WORLD_XMAX            环境 X 轴范围
 %            WORLD_YMIN, WORLD_YMAX            环境 Y 轴范围
@@ -40,18 +39,49 @@ N              = cfg.N;
 M              = cfg.M;
 K              = cfg.K;
 num_task_types = cfg.num_task_types;
+task_values     = cfg.task_values(:).';
+
+if numel(task_values) ~= num_task_types
+    error('build_scenario:taskValuesSize', ...
+        'cfg.task_values must have %d elements, got %d.', ...
+        num_task_types, numel(task_values));
+end
+
+if isfield(cfg, 'task_type_demand_max') && ~isempty(cfg.task_type_demand_max)
+    demand_max_by_type = cfg.task_type_demand_max(:).';
+else
+    demand_max_by_type = zeros(1, num_task_types);
+    for t = 1:num_task_types
+        field_name = sprintf('task_type%d_demand_max', t);
+        if ~isfield(cfg, field_name)
+            error('build_scenario:missingDemandField', ...
+                'Missing cfg.%s for task type %d.', field_name, t);
+        end
+        demand_max_by_type(t) = cfg.(field_name);
+    end
+end
+
+if isscalar(demand_max_by_type) && num_task_types > 1
+    demand_max_by_type = repmat(demand_max_by_type, 1, num_task_types);
+end
+
+if numel(demand_max_by_type) ~= num_task_types
+    error('build_scenario:demandMaxSize', ...
+        'cfg.task_type_demand_max must have %d elements, got %d.', ...
+        num_task_types, numel(demand_max_by_type));
+end
 
 %% Build WORLD struct
 WORLD.XMIN  = cfg.WORLD_XMIN;  WORLD.XMAX = cfg.WORLD_XMAX;
 WORLD.YMIN  = cfg.WORLD_YMIN;  WORLD.YMAX = cfg.WORLD_YMAX;
 WORLD.ZMIN  = cfg.WORLD_ZMIN;  WORLD.ZMAX = cfg.WORLD_ZMAX;
-WORLD.value = cfg.task_values;
+WORLD.value = task_values;
 
 %% Task type demands（不同任务类型的资源需求模板）
 task_type_demands = zeros(num_task_types, K);
-task_type_demands(1, :) = randi([0, cfg.task_type1_demand_max], 1, K);
-task_type_demands(2, :) = randi([0, cfg.task_type2_demand_max], 1, K);
-task_type_demands(3, :) = randi([0, cfg.task_type3_demand_max], 1, K);
+for t = 1:num_task_types
+    task_type_demands(t, :) = randi([0, demand_max_by_type(t)], 1, K);
+end
 
 %% Task durations by resource（各任务类型在各资源上的执行时间）
 task_type_duration_by_resource = zeros(num_task_types, K);

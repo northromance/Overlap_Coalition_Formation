@@ -34,8 +34,11 @@ TYPE_COLORS = {
     1: "#4878CF",
     2: "#6ACC65",
     3: "#D65F5F",
+    4: "#EE854A",
+    5: "#C4AD66",
+    6: "#956CB4",
 }
-FALLBACK_COLORS = ["#4878CF", "#6ACC65", "#D65F5F", "#B47CC7", "#C4AD66"]
+FALLBACK_COLORS = ["#4878CF", "#6ACC65", "#D65F5F", "#EE854A", "#C4AD66", "#956CB4"]
 NON_INTERACTIVE_BACKEND_MARKERS = (
     "agg",
     "pdf",
@@ -53,7 +56,7 @@ PLOT_STYLE = {
     "figsize": (7.2, 4.8),
     "linewidth": 2.1,
     "ref_linewidth": 1.2,
-    "band_alpha": 0.18,
+    "band_alpha": 0.35,
     "marker": "o",
     "markersize": 4.2,
     "grid_linestyle": "--",
@@ -350,8 +353,8 @@ def aggregate_condition(entries, task_type_values):
 
             samples = v_hat[:, :, task_mask].reshape(v_hat.shape[0], -1)
             center = np.nanmean(samples, axis=1)
-            low = np.nanpercentile(samples, 25, axis=1)
-            high = np.nanpercentile(samples, 75, axis=1)
+            low = np.nanpercentile(samples, 10, axis=1)
+            high = np.nanpercentile(samples, 90, axis=1)
 
             stats_by_type.setdefault(type_id, []).append(
                 {

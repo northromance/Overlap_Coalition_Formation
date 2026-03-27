@@ -89,7 +89,7 @@ WORLD_ZMIN = 0;   WORLD_ZMAX = 0;
 
 %% ===== 智能体基础属性 =====
 agent_velocity    = 2;      % 速度（统一）
-agent_detprob_min = 0.85;   % 探测/感知概率下限
+agent_detprob_min = 0.75;   % 探测/感知概率下限
 agent_detprob_max = 1;    % 探测/感知概率上限
 agent_Emax_min    = 300;    % 最大能量下限
 agent_Emax_range  = 50;     % 最大能量随机浮动范围
@@ -105,6 +105,7 @@ max_resource_value = 4;   % 每维资源能力最大值
 task_type1_demand_max = 2;   % 类型1任务各维资源需求上限（低价值任务）
 task_type2_demand_max = 5;   % 类型2任务各维资源需求上限（中等任务）
 task_type3_demand_max = 8;   % 类型3任务各维资源需求上限（高价值任务）
+task_type_demand_max  = [task_type1_demand_max, task_type2_demand_max, task_type3_demand_max];
 
 %% ===== 各资源类型的执行时间（K=6 维）=====
 % resource_exec_time(k) = 第 k 类资源执行所需时间
@@ -113,6 +114,7 @@ resource_exec_time = [50, 65, 50, 60, 35, 45];
 %% ===== 统一场景配置（被 build_scenario 使用，N/M/K 由调用方按需覆盖）=====
 Exp_Config.ScenarioCfg.num_task_types        = num_task_types;
 Exp_Config.ScenarioCfg.task_values           = task_values;
+Exp_Config.ScenarioCfg.task_type_demand_max  = task_type_demand_max;
 Exp_Config.ScenarioCfg.task_type1_demand_max = task_type1_demand_max;
 Exp_Config.ScenarioCfg.task_type2_demand_max = task_type2_demand_max;
 Exp_Config.ScenarioCfg.task_type3_demand_max = task_type3_demand_max;
@@ -165,15 +167,19 @@ Exp_Config.Belief.N = 10;
 Exp_Config.Belief.M = 10;
 Exp_Config.Belief.K = 6;
 Exp_Config.Belief.CONDITIONS = {'uniform', 'heterogeneous'};
-% uniform: 所有智能体使用相同均匀先验 [1/3, 1/3, 1/3]
-% heterogeneous: 每个智能体偏向低/中/高价值中的某一类，并带少量随机扰动
-Exp_Config.Belief.belief_uniform = ones(1, num_task_types) / num_task_types;
-Exp_Config.Belief.belief_heterogeneous_profiles = [ ...
-    0.82, 0.13, 0.05; ...
-    0.15, 0.70, 0.15; ...
-    0.05, 0.13, 0.82];
-Exp_Config.Belief.heter_task_main_prob_range = [0.45, 0.60];
-Exp_Config.Belief.heter_task_mix_range = [0.75, 0.90];
+Exp_Config.Belief.task_values = [500, 800, 1100, 1400, 1700, 2000];  % 6类任务的真实价值档位（从低到高）
+Exp_Config.Belief.task_type_demand_max = [2, 3, 4, 5, 6, 8];         % 与6类任务一一对应的资源需求上限，通常数值越大任务越“重”
+belief_num_types = numel(Exp_Config.Belief.task_values);             % T=6，用于统一生成 belief 向量/矩阵维度
+% uniform: 所有智能体使用相同均匀先验 [1/T, ..., 1/T]
+% heterogeneous: 对每个 agent-task 直接随机采样一个任务类型概率分布并注入
+Exp_Config.Belief.belief_uniform = ones(1, belief_num_types) / belief_num_types;  % 完全无偏好先验
+Exp_Config.Belief.belief_random_dirichlet_alpha = 0.35 * ones(1, belief_num_types);
+% belief_random_dirichlet_alpha:
+%   heterogeneous 条件下，对每个 agent-task 的初始 belief 直接从 Dirichlet(alpha) 随机采样。
+%   alpha < 1  -> 更尖锐、更容易出现“明显偏向某一类型”的随机初始信念
+%   alpha = 1  -> 在概率单纯形上近似均匀随机
+%   alpha > 1  -> 更平缓、更接近均匀分布
+%   当前设为 0.35，是为了让初始 belief 更随机、更极端，而不是刻意靠近真实类型。
 Exp_Config.Belief.AddPara = struct( ...
     'verbose', 1, ...
     'enable_belief_update', true, ...
