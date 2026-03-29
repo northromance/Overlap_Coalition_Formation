@@ -29,7 +29,7 @@ M = 10;                         % number of tasks（任务数量）
 K = 6;                          % number of resource types（资源类型数）
 task_values = [800, 1000, 1500];  % three task types（三种不同类型任务的价值）
 num_task_types = length(task_values);
-algorithms_to_run_ids = [3,7]; % 要运行的算法 ID 列表（根据 all_algorithms 中的 id 字段选择）
+algorithms_to_run_ids = [4]; % 要运行的算法 ID 列表（根据 all_algorithms 中的 id 字段选择）
 
 % 算法开关：选择要运行的算法 ID
 % 1=SA_Value（早期算法，保留代码但 Compare 中不运行）
@@ -80,10 +80,10 @@ resource_exec_time = [50 65 50 60 35 45];
 
 % 通用参数
 obs_times = 50;              % 观测次数（贝叶斯更新等）
-num_rounds = 50;              % 迭代轮数（快速测试: 5轮）
+num_rounds = 80;              % 迭代轮数（快速测试: 5轮）
 
 
-MaxIter = 200;                      %  每轮最大迭代次数
+MaxIter = 100;                      %  每轮最大迭代次数
 % ========================================================================
 % 算法 1: SA_Value（模拟退火基础算法）
 % ========================================================================
@@ -97,14 +97,14 @@ K_stable_max = 10;                    % 稳定性阈值（连续无改进迭代�
 
 T_decay = 0.95;                       % 回合温度调度：衰减系数（=1 表示每轮从 T0_round 全温度重启，各轮独立探索）
                                    % 若需轮间渐进降温，可改为 0.9~0.95；届时 T_min_round 作为下界生效
-T_min_round = 30;                  % 回合温度调度：温度下界（T_decay=1 时此值不起作用，保留供调优用）
+T_min_round = 5;                  % 回合温度调度：温度下界（T_decay=1 时此值不起作用，保留供调优用）
 resource_confidence = 0.7;           % 资源需求置信度（统一用于初始构造 + 搜索阶段 + 效用评估）
                                       % 所有算法均通过 Value_Params.resource_confidence 读取
 T_init_construction = 2;            % 初始构造阶段温度（低温近贪婪，SA/Fang/Tabu 系列共用）
 
 % TabuEnhanced专属参数（算法 7: OCF_SAtabu_global）
 tabu_tenure = 20;                     % 禁忌期限
-p_leave = 0.3;                        % 离开概率（TabuEnhanced / Qi2023 共用）
+p_leave = 0.5;                        % 离开概率（TabuEnhanced / Qi2023 共用）
 
 % ========================================================================
 % 算法 4: Qi2023（基于禁忌搜索的重叠联盟形成算法）

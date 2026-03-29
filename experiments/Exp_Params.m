@@ -6,13 +6,13 @@
 % 实验专属参数（SEEDS、N_VALUES、algorithms_to_run_ids 等）仍在各脚本中单独设置。
 
 %% ===== 通用超参数 =====
-num_rounds = 50;   % 外循环轮数（正式运行值；测试时在各脚本中覆盖此变量）
-MaxIter    = 50;   % 每轮最大内层迭代次数
+num_rounds = 80;   % 外循环轮数（正式运行值；测试时在各脚本中覆盖此变量）
+MaxIter    = 100;   % 每轮最大内层迭代次数
 obs_times  = 50;    % 效用/观测统计参数（传入 OCFUtils.init_value_params）
 xp_Config = struct();
 Exp_Config.Common = struct();
 Exp_Config.Common.num_rounds = num_rounds;
-Exp_Config.Common.SEEDS = 2476:1:2477; % 随机种子列表（21 个种子，正式运行值；测试时在各脚本中覆盖此变量）
+Exp_Config.Common.SEEDS = 2476:1:2496; % 随机种子列表（21 个种子，正式运行值；测试时在各脚本中覆盖此变量）
 
 %% ===== 任务价值与类型 =====
 task_values    = [500, 1000, 2000];   % 三类任务的基础奖励价值
@@ -30,24 +30,24 @@ Qi_L_tabu       = 10;   % Qi2023 禁忌表长度
 Qi_K_stable_max = 10;   % Qi2023 稳定性阈值
 Qi_Gamma_init   = 1;    % Qi2023 初始 Boltzmann 系数
 Qi_Gamma_max    = 40;   % Qi2023 最大 Boltzmann 系数
-Qi_p_leave      = 0.3;  % Qi2023 离开概率
+Qi_p_leave      = 0.4;  % Qi2023 离开概率
 
 %% ===== Shi2024 专属参数 =====
 Shi_L_tabu       = 10;   % Shi2024 禁忌表长度
 Shi_K_stable_max = 10;   % Shi2024 稳定性阈值
 Shi_Gamma_init   = 1;    % Shi2024 初始 Boltzmann 系数
 Shi_Gamma_max    = 40;   % Shi2024 最大 Boltzmann 系数
-Shi_p_leave      = 0.3;  % Shi2024 离开概率
+Shi_p_leave      = 0.4;  % Shi2024 离开概率
 
 %% ===== OCF_SAtabu 专属参数 =====
 OCF_T0_round            = 100;   % OCF_SAtabu 每轮开始时的初始温度
 OCF_alpha               = 0.95;   % OCF_SAtabu 轮内退火冷却率
 OCF_Tmin                = 0.01;  % OCF_SAtabu 轮内最低温度
-OCF_T_decay             = 0.9;   % OCF_SAtabu 轮间温度衰减系数
-OCF_T_min_round         = 20;     % OCF_SAtabu 每轮初始温度下界
+OCF_T_decay             = 0.95;   % OCF_SAtabu 轮间温度衰减系数
+OCF_T_min_round         = 5;     % OCF_SAtabu 每轮初始温度下界
 OCF_T_init_construction = 2;     % OCF_SAtabu 初始构造温度
 OCF_K_stable_max        = 10;    % OCF_SAtabu 稳定性阈值
-OCF_tabu_tenure         = 20;    % OCF_SAtabu 禁忌期限
+OCF_tabu_tenure         = 10;    % OCF_SAtabu 禁忌期限
 OCF_p_leave             = 0.3;   % OCF_SAtabu 离开概率
 
 %% ===== 统一注入结构 =====
@@ -140,7 +140,7 @@ Exp_Config.ScenarioCfg.max_resource_value = max_resource_value;
 
 % Batch_VaryN
 Exp_Config.VaryN.SEEDS = Exp_Config.Common.SEEDS;
-Exp_Config.VaryN.N_VALUES = [4, 6, 8, 10, 12];
+Exp_Config.VaryN.N_VALUES = [4, 6, 8, 10, 12, 14, 16];
 Exp_Config.VaryN.M = 10;
 Exp_Config.VaryN.K = 6;
 Exp_Config.VaryN.inner_loop_round = 50;   % 保存第 N 轮内循环轨迹（用于图3a）
