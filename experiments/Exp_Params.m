@@ -12,7 +12,7 @@ obs_times  = 50;    % 效用/观测统计参数（传入 OCFUtils.init_value_par
 xp_Config = struct();
 Exp_Config.Common = struct();
 Exp_Config.Common.num_rounds = num_rounds;
-Exp_Config.Common.SEEDS = 2476:1:2496; % 随机种子列表（21 个种子，正式运行值；测试时在各脚本中覆盖此变量）
+Exp_Config.Common.SEEDS = 2476:1:2486; % 随机种子列表（21 个种子，正式运行值；测试时在各脚本中覆盖此变量）
 
 %% ===== 任务价值与类型 =====
 task_values    = [500, 1000, 2000];   % 三类任务的基础奖励价值

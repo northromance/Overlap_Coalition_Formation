@@ -31,6 +31,7 @@ import warnings
 
 import matplotlib.pyplot as plt
 import numpy as np
+from plot_style_helper import PlotStyleHelper
 
 try:
     import mat73
@@ -199,6 +200,9 @@ FIGURE_CONFIG.update({
     },
 })
 
+STYLE_HELPER = PlotStyleHelper(PLOT_GLOBAL, FIGURES_DIR)
+STYLE_HELPER_NO_LEGEND = PlotStyleHelper(dict(PLOT_GLOBAL, show_legend=False), FIGURES_DIR)
+
 
 # ══════════════════════════════════════════════════════════════════════════════
 # 工具函数
@@ -340,68 +344,19 @@ def merge_figure_config(fig_key, **kwargs):
 
 def apply_common_style(ax, cfg, title=None, legend_fontsize=None):
     """统一处理坐标轴标签、标题、网格、图例和边框。"""
-    ax.set_xlabel(cfg['xlabel'], fontsize=PLOT_GLOBAL['xlabel_fontsize'])
-    ax.set_ylabel(cfg['ylabel'], fontsize=PLOT_GLOBAL['ylabel_fontsize'])
-
-    if cfg.get('show_title', True) and title:
-        ax.set_title(
-            title,
-            fontsize=PLOT_GLOBAL['title_fontsize'],
-            pad=PLOT_GLOBAL['title_pad'],
-        )
-
-    if PLOT_GLOBAL['show_grid']:
-        ax.grid(
-            True,
-            linestyle=PLOT_GLOBAL['grid_linestyle'],
-            linewidth=PLOT_GLOBAL['grid_linewidth'],
-            alpha=PLOT_GLOBAL['grid_alpha'],
-        )
-
-    ax.tick_params(labelsize=PLOT_GLOBAL['tick_fontsize'])
-
-    if PLOT_GLOBAL['show_legend']:
-        ax.legend(
-            fontsize=legend_fontsize or PLOT_GLOBAL['legend_fontsize'],
-            framealpha=PLOT_GLOBAL['legend_framealpha'],
-            edgecolor=PLOT_GLOBAL['legend_edgecolor'],
-        )
-
-    if PLOT_GLOBAL['hide_top_spine']:
-        ax.spines['top'].set_visible(False)
-    if PLOT_GLOBAL['hide_right_spine']:
-        ax.spines['right'].set_visible(False)
+    legend_kwargs = None
+    if legend_fontsize is not None:
+        legend_kwargs = {'fontsize': legend_fontsize}
+    STYLE_HELPER.apply_common_style(ax, cfg=cfg, title=title, legend_kwargs=legend_kwargs)
 
 
 def apply_axis_controls(ax, cfg):
     """统一处理 xlim / ylim / xticks / yticks / 底部从 0 开始等。"""
-    if cfg.get('xticks') is not None:
-        ax.set_xticks(cfg['xticks'])
-    if cfg.get('yticks') is not None:
-        ax.set_yticks(cfg['yticks'])
-
-    if cfg.get('xlim') is not None:
-        ax.set_xlim(*cfg['xlim'])
-    if cfg.get('ylim') is not None:
-        ax.set_ylim(*cfg['ylim'])
-
-    if cfg.get('bottom_zero', False):
-        ymin, ymax = ax.get_ylim()
-        ax.set_ylim(bottom=0, top=ymax)
+    STYLE_HELPER.apply_axis_controls(ax, cfg=cfg)
 
 
 def finalize_and_save(fig, save_path, tight_layout_rect=None):
-    if PLOT_GLOBAL['tight_layout']:
-        if tight_layout_rect is None:
-            fig.tight_layout()
-        else:
-            fig.tight_layout(rect=tight_layout_rect)
-    fig.savefig(
-        save_path,
-        dpi=PLOT_GLOBAL['save_dpi'],
-        bbox_inches=PLOT_GLOBAL['save_bbox_inches'],
-    )
-    print(f"  ✓ {save_path}")
+    STYLE_HELPER.finalize_and_save(fig, save_path, tight_layout_rect=tight_layout_rect)
 
 
 def ffill(arr):
@@ -1146,22 +1101,12 @@ def select_representative_tasks(reference_entries, conditions, num_rounds):
 
 
 def apply_axes_style(ax, xlabel, ylabel, title=None, bottom_zero=False):
-    ax.set_xlabel(xlabel, fontsize=PLOT_GLOBAL['xlabel_fontsize'])
-    ax.set_ylabel(ylabel, fontsize=PLOT_GLOBAL['ylabel_fontsize'])
-    if title:
-        ax.set_title(title, fontsize=PLOT_GLOBAL['title_fontsize'], pad=PLOT_GLOBAL['title_pad'])
-    ax.tick_params(labelsize=PLOT_GLOBAL['tick_fontsize'])
-    if PLOT_GLOBAL['show_grid']:
-        ax.grid(
-            True,
-            linestyle=PLOT_GLOBAL['grid_linestyle'],
-            linewidth=PLOT_GLOBAL['grid_linewidth'],
-            alpha=PLOT_GLOBAL['grid_alpha'],
-        )
-    if PLOT_GLOBAL['hide_top_spine']:
-        ax.spines['top'].set_visible(False)
-    if PLOT_GLOBAL['hide_right_spine']:
-        ax.spines['right'].set_visible(False)
+    STYLE_HELPER_NO_LEGEND.apply_common_style(
+        ax,
+        xlabel=xlabel,
+        ylabel=ylabel,
+        title=title,
+    )
     if bottom_zero:
         ymin, ymax = ax.get_ylim()
         ax.set_ylim(bottom=0.0, top=ymax)

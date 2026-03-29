@@ -29,9 +29,8 @@ import copy
 import re
 import numpy as np
 import matplotlib.pyplot as plt
-import matplotlib.ticker as mticker
-from matplotlib.font_manager import FontProperties
 from datetime import datetime
+from plot_style_helper import PlotStyleHelper
 
 try:
     import mat73
@@ -201,6 +200,7 @@ FIGURE_CONFIG = {
 }
 
 os.makedirs(FIGURES_DIR, exist_ok=True)
+STYLE_HELPER = PlotStyleHelper(PLOT_GLOBAL, FIGURES_DIR)
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -305,45 +305,22 @@ def merge_figure_config(fig_key, **kwargs):
 
 def get_text_style(size_key, weight_key):
     """返回一组可复用的字体配置。"""
-    return dict(
-        fontsize=PLOT_GLOBAL[size_key],
-        fontfamily=PLOT_GLOBAL['font_family'],
-        fontstyle=PLOT_GLOBAL['font_style'],
-        fontweight=PLOT_GLOBAL[weight_key],
-    )
+    return STYLE_HELPER.get_text_style(size_key, weight_key)
 
 
 def apply_plot_rcparams():
     """设置 matplotlib 的全局字体默认值。"""
-    plt.rcParams['font.family'] = PLOT_GLOBAL['font_family']
-    plt.rcParams['font.style'] = PLOT_GLOBAL['font_style']
-    plt.rcParams['font.weight'] = PLOT_GLOBAL['font_weight']
-    plt.rcParams['axes.unicode_minus'] = False
+    STYLE_HELPER.apply_rcparams()
 
 
 def get_marker_kwargs(show_markers, marker, markevery=None):
     """根据配置生成 marker 参数。"""
-    if not show_markers:
-        return {}
-
-    kwargs = {
-        'marker': marker,
-        'ms': PLOT_GLOBAL['markersize'],
-        'mew': PLOT_GLOBAL['markeredgewidth'],
-    }
-    if markevery is not None:
-        kwargs['markevery'] = markevery
-    return kwargs
+    return STYLE_HELPER.get_marker_kwargs(show_markers, marker, markevery)
 
 
 def build_output_path(ts, stem):
     """按配置生成输出文件路径。"""
-    ext = PLOT_GLOBAL['save_format'].lstrip('.')
-    if PLOT_GLOBAL['timestamp_first_in_name']:
-        filename = f'{ts}_{stem}.{ext}'
-    else:
-        filename = f'{stem}_{ts}.{ext}'
-    return os.path.join(FIGURES_DIR, filename)
+    return STYLE_HELPER.build_output_path(ts, stem)
 
 
 def extract_timestamp_tag(mat_path):
@@ -357,85 +334,21 @@ def extract_timestamp_tag(mat_path):
 
 def apply_common_style(ax, cfg, title=None):
     """统一处理坐标轴标签、标题、网格、图例和边框。"""
-    ax.set_xlabel(cfg['xlabel'], **get_text_style('xlabel_fontsize', 'label_fontweight'))
-    ax.set_ylabel(cfg['ylabel'], **get_text_style('ylabel_fontsize', 'label_fontweight'))
-
-    if PLOT_GLOBAL['show_titles'] and cfg.get('show_title', True) and title:
-        ax.set_title(
-            title,
-            pad=PLOT_GLOBAL['title_pad'],
-            **get_text_style('title_fontsize', 'title_fontweight'),
-        )
-
-    if PLOT_GLOBAL['show_grid']:
-        ax.grid(
-            True,
-            linestyle=PLOT_GLOBAL['grid_linestyle'],
-            linewidth=PLOT_GLOBAL['grid_linewidth'],
-            alpha=PLOT_GLOBAL['grid_alpha'],
-        )
-
-    ax.tick_params(labelsize=PLOT_GLOBAL['tick_fontsize'])
-    for tick in ax.get_xticklabels() + ax.get_yticklabels():
-        tick.set_fontfamily(PLOT_GLOBAL['font_family'])
-        tick.set_fontstyle(PLOT_GLOBAL['font_style'])
-        tick.set_fontweight(PLOT_GLOBAL['tick_fontweight'])
-
-    if PLOT_GLOBAL['show_legend']:
-        legend_prop = FontProperties(
-            family=PLOT_GLOBAL['font_family'],
-            style=PLOT_GLOBAL['font_style'],
-            weight=PLOT_GLOBAL['legend_fontweight'],
-            size=PLOT_GLOBAL['legend_fontsize'],
-        )
-        ax.legend(
-            prop=legend_prop,
-            framealpha=PLOT_GLOBAL['legend_framealpha'],
-            edgecolor=PLOT_GLOBAL['legend_edgecolor'],
-            loc=PLOT_GLOBAL['legend_loc'],
-            bbox_to_anchor=PLOT_GLOBAL['legend_bbox_to_anchor'],
-            ncol=PLOT_GLOBAL['legend_ncol'],
-            borderaxespad=PLOT_GLOBAL['legend_borderaxespad'],
-            handlelength=PLOT_GLOBAL['legend_handlelength'],
-            labelspacing=PLOT_GLOBAL['legend_labelspacing'],
-        )
-
-    if PLOT_GLOBAL['hide_top_spine']:
-        ax.spines['top'].set_visible(False)
-    if PLOT_GLOBAL['hide_right_spine']:
-        ax.spines['right'].set_visible(False)
+    STYLE_HELPER.apply_common_style(ax, cfg=cfg, title=title)
 
 
 def apply_axis_controls(ax, cfg, n_values=None):
     """统一处理 xlim / ylim / xticks / yticks / 底部从 0 开始等。"""
-    if cfg.get('use_fixed_N_xticks', False) and n_values is not None:
-        ax.xaxis.set_major_locator(mticker.FixedLocator(n_values))
-
-    if cfg.get('xticks') is not None:
-        ax.set_xticks(cfg['xticks'])
-    if cfg.get('yticks') is not None:
-        ax.set_yticks(cfg['yticks'])
-
-    if cfg.get('xlim') is not None:
-        ax.set_xlim(*cfg['xlim'])
-    if cfg.get('ylim') is not None:
-        ax.set_ylim(*cfg['ylim'])
-
-    if cfg.get('bottom_zero', False):
-        ymin, ymax = ax.get_ylim()
-        ax.set_ylim(bottom=0, top=ymax)
+    STYLE_HELPER.apply_axis_controls(
+        ax,
+        cfg=cfg,
+        fixed_values=n_values,
+        fixed_locator_key='use_fixed_N_xticks',
+    )
 
 
 def finalize_and_save(fig, save_path):
-    if PLOT_GLOBAL['tight_layout']:
-        fig.tight_layout()
-    fig.savefig(
-        save_path,
-        format=PLOT_GLOBAL['save_format'],
-        dpi=PLOT_GLOBAL['save_dpi'],
-        bbox_inches=PLOT_GLOBAL['save_bbox_inches'],
-    )
-    print(f"  ✓ {save_path}")
+    STYLE_HELPER.finalize_and_save(fig, save_path)
 
 
 # ══════════════════════════════════════════════════════════════════════════════

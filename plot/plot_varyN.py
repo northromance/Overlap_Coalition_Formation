@@ -21,6 +21,7 @@ import glob
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.ticker as mticker
+from plot_style_helper import PlotStyleHelper
 
 try:
     import mat73
@@ -54,6 +55,27 @@ FIG_W, FIG_H = 5.5, 4.2
 LW    = 1.8   # linewidth
 MS    = 7     # markersize
 CAPS  = 4     # capsize for errorbar
+PLOT_GLOBAL_ADAPTER = {
+    'xlabel_fontsize': 11,
+    'ylabel_fontsize': 11,
+    'title_fontsize': 12,
+    'title_pad': 8,
+    'tick_fontsize': 10,
+    'legend_fontsize': 9,
+    'show_grid': True,
+    'grid_linestyle': '--',
+    'grid_linewidth': 0.6,
+    'grid_alpha': 0.4,
+    'show_legend': True,
+    'legend_framealpha': 0.85,
+    'legend_edgecolor': '#cccccc',
+    'hide_top_spine': True,
+    'hide_right_spine': True,
+    'save_dpi': 150,
+    'save_bbox_inches': 'tight',
+    'tight_layout': True,
+}
+STYLE_HELPER = PlotStyleHelper(PLOT_GLOBAL_ADAPTER, FIGURES_DIR)
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -273,15 +295,11 @@ def extract_inner_loop(results, config, n_target=None):
 # ══════════════════════════════════════════════════════════════════════════════
 
 def _style_ax(ax, xlabel, ylabel, title=None):
-    ax.set_xlabel(xlabel, fontsize=11)
-    ax.set_ylabel(ylabel, fontsize=11)
-    if title:
-        ax.set_title(title, fontsize=12, pad=8)
-    ax.grid(True, linestyle='--', linewidth=0.6, alpha=0.4)
-    ax.tick_params(labelsize=10)
-    ax.legend(fontsize=9, framealpha=0.85, edgecolor='#cccccc')
-    ax.spines['top'].set_visible(False)
-    ax.spines['right'].set_visible(False)
+    STYLE_HELPER.apply_common_style(ax, xlabel=xlabel, ylabel=ylabel, title=title)
+
+
+def finalize_and_save(fig, save_path):
+    STYLE_HELPER.finalize_and_save(fig, save_path)
 
 
 def plot_fig1a(N_values, alg_names, metrics, save_path):
@@ -300,9 +318,7 @@ def plot_fig1a(N_values, alg_names, metrics, save_path):
     ax.xaxis.set_major_locator(mticker.FixedLocator(N_values))
     _style_ax(ax, 'Number of Agents (N)', 'Final Coalition Utility',
               'Fig. 1a — Utility vs. N')
-    fig.tight_layout()
-    fig.savefig(save_path, dpi=150, bbox_inches='tight')
-    print(f"  ✓ {save_path}")
+    finalize_and_save(fig, save_path)
 
 
 def plot_fig1b(N_values, alg_names, metrics, save_path):
@@ -322,9 +338,7 @@ def plot_fig1b(N_values, alg_names, metrics, save_path):
     ax.set_ylim(bottom=0)
     _style_ax(ax, 'Number of Agents (N)', 'Avg. Task Completion Degree',
               'Fig. 1b — Completion vs. N')
-    fig.tight_layout()
-    fig.savefig(save_path, dpi=150, bbox_inches='tight')
-    print(f"  ✓ {save_path}")
+    finalize_and_save(fig, save_path)
 
 
 def plot_fig2c(mean_curves, num_rounds, n_target, alg_names, save_path):
@@ -350,9 +364,7 @@ def plot_fig2c(mean_curves, num_rounds, n_target, alg_names, save_path):
 
     _style_ax(ax, 'Round', 'Coalition Utility',
               f'Fig. 2c — Convergence (N={n_target})')
-    fig.tight_layout()
-    fig.savefig(save_path, dpi=150, bbox_inches='tight')
-    print(f"  ✓ {save_path}")
+    finalize_and_save(fig, save_path)
 
 
 def plot_fig3a(mean_curr, std_curr, mean_best, std_best, n_target, save_path):
@@ -386,9 +398,7 @@ def plot_fig3a(mean_curr, std_curr, mean_best, std_best, n_target, save_path):
     r_label = 50   # INNER_LOOP_ROUND 默认值
     _style_ax(ax, 'Inner Iteration', 'Utility',
               f'Fig. 3a — Inner Loop (Round {r_label}, N={n_target})')
-    fig.tight_layout()
-    fig.savefig(save_path, dpi=150, bbox_inches='tight')
-    print(f"  ✓ {save_path}")
+    finalize_and_save(fig, save_path)
 
 
 # ══════════════════════════════════════════════════════════════════════════════

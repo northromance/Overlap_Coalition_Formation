@@ -26,6 +26,7 @@ import glob
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.lines as mlines
+from plot_style_helper import PlotStyleHelper
 import h5py 
 
 try:
@@ -83,6 +84,23 @@ PLOT_GLOBAL = {
     'hide_right_spine': True,
     'save_dpi':         150,
 }
+PLOT_GLOBAL_ADAPTER = {
+    'xlabel_fontsize': PLOT_GLOBAL['xlabel_fontsize'],
+    'ylabel_fontsize': PLOT_GLOBAL['ylabel_fontsize'],
+    'title_fontsize': PLOT_GLOBAL['title_fontsize'],
+    'title_fontweight': 'bold',
+    'tick_fontsize': PLOT_GLOBAL['tick_fontsize'],
+    'show_grid': PLOT_GLOBAL['show_grid'],
+    'grid_linestyle': PLOT_GLOBAL['grid_ls'],
+    'grid_alpha': PLOT_GLOBAL['grid_alpha'],
+    'show_legend': False,
+    'hide_top_spine': PLOT_GLOBAL['hide_top_spine'],
+    'hide_right_spine': PLOT_GLOBAL['hide_right_spine'],
+    'save_dpi': PLOT_GLOBAL['save_dpi'],
+    'save_bbox_inches': 'tight',
+    'tight_layout': True,
+}
+STYLE_HELPER = PlotStyleHelper(PLOT_GLOBAL_ADAPTER, FIGURES_DIR)
 
 # ══════════════════════════════════════════════════════════════════════════════
 # HDF5 加载（直接用 h5py，绕过 mat73 的 cell-array-of-structs 解析 bug）
@@ -271,17 +289,13 @@ def plot_ablation_scatter(n_values, seeds, utility, completion, save_path):
             ax.set_xticks(x_ticks)
             ax.set_xticklabels(x_labels, fontsize=pg['tick_fontsize'])
             ax.tick_params(axis='y', labelsize=pg['tick_fontsize'])
-            ax.set_xlabel('Seed', fontsize=pg['xlabel_fontsize'])
-            ax.set_ylabel(ylabel, fontsize=pg['ylabel_fontsize'])
-            ax.set_title(f'N = {n_values[col]}',
-                         fontsize=pg['title_fontsize'], fontweight='bold')
+            STYLE_HELPER.apply_common_style(
+                ax,
+                xlabel='Seed',
+                ylabel=ylabel,
+                title=f'N = {n_values[col]}',
+            )
             ax.set_xlim(0.5, num_S + 0.5)
-            if pg['show_grid']:
-                ax.grid(True, linestyle=pg['grid_ls'], alpha=pg['grid_alpha'])
-            if pg['hide_top_spine']:
-                ax.spines['top'].set_visible(False)
-            if pg['hide_right_spine']:
-                ax.spines['right'].set_visible(False)
 
     # 统一图例（右上角第1行最后一列）
     h_on  = mlines.Line2D([], [], color=STYLE_ON['color'],  marker='o',
@@ -305,11 +319,8 @@ def plot_ablation_scatter(n_values, seeds, utility, completion, save_path):
 
     fig.suptitle('消融实验：信念更新机制对比  (belief_on ● vs belief_off ✕)',
                  fontsize=12, fontweight='bold', y=1.01)
-    fig.tight_layout()
-
     os.makedirs(os.path.dirname(save_path), exist_ok=True)
-    fig.savefig(save_path, dpi=pg['save_dpi'], bbox_inches='tight')
-    print(f"  ✓ {save_path}")
+    STYLE_HELPER.finalize_and_save(fig, save_path)
     return fig
 
 

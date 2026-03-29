@@ -11,8 +11,10 @@ plot_varyM_top_config.py
   pip install mat73 numpy matplotlib scipy
 
 用法:
-  python plot_varyM_top_config.py                     # 自动搜索最新 .mat
-  python plot_varyM_top_config.py path/to/varyM.mat   # 指定文件
+  python plot_varyM_top_config.py                         # 自动搜索最新运行目录
+  python plot_varyM_top_config.py path/to/run_dir        # 指定新的 VaryM 运行目录
+  python plot_varyM_top_config.py path/to/cache.pkl      # 指定聚合缓存
+  python plot_varyM_top_config.py path/to/legacy.mat     # 指定旧版聚合 MAT
 
 说明:
   你可以直接在本文件最上方的"顶部可调参数区"中修改：
@@ -23,16 +25,11 @@ plot_varyM_top_config.py
 
 import os
 import sys
-import glob
 import copy
 import numpy as np
 import matplotlib.pyplot as plt
-import matplotlib.ticker as mticker
-
-try:
-    import mat73
-except ImportError:
-    sys.exit("缺少依赖，请先执行: pip install mat73")
+from plot_style_helper import PlotStyleHelper
+from varym_result_aggregator import VaryMResultAggregator
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -64,19 +61,36 @@ PLOT_GLOBAL = {
 
     # 线条 / 点 / 误差棒
     'linewidth': 1.8,
-    'markersize': 7,
-    'capsize': 4,
+    'markersize': 4,
+    'markeredgewidth': 0.8,
+    'capsize': 1,
+    'show_errorbar_varyM': False,  # fig1c / fig1d / fig1e 是否显示均值±std 误差棒
+    'show_markers_fig2d': False,  # fig2d 是否在收敛曲线上显示数据点
+    'markevery_fig2d': None,  # fig2d 每隔多少个点显示一个 marker；None 表示全部
     'show_fig2d_band': True,   # 控制 fig2d 是否显示半透明误差带
     'fig2d_band_alpha': 0.18,
-    'show_errorbar': True, # 控制 fig1c / fig1d / fig1e 是否画误差棒
 
     # 字体与版式
+    'font_family': ['Times New Roman', 'SimSun', 'DejaVu Sans'],  # 全局字体族；可改成 ['Arial']、['SimHei'] 等
+    'font_style': 'normal',  # 字体样式：normal / italic / oblique
+    'font_weight': 'normal',  # 全局默认字重：normal / bold
     'xlabel_fontsize': 11,
     'ylabel_fontsize': 11,
+    'label_fontweight': 'normal',  # 坐标轴标题字重
+    'show_titles': False,  # 全局标题总开关；False 时所有图都不显示标题
     'title_fontsize': 12,
+    'title_fontweight': 'bold',  # 图标题字重
     'title_pad': 8,
     'tick_fontsize': 10,
+    'tick_fontweight': 'normal',  # 刻度字重
     'legend_fontsize': 9,
+    'legend_fontweight': 'normal',  # 图例字重
+    'legend_loc': 'best',  # 图例位置，例如 'best' / 'upper right' / 'lower left'
+    'legend_bbox_to_anchor': None,  # 图例锚点，例如 (1.02, 1.0)；None 表示不用锚点
+    'legend_ncol': 1,  # 图例列数
+    'legend_borderaxespad': 0.3,  # 图例与坐标轴边缘的间距
+    'legend_handlelength': 2.0,  # 图例中示意线段的长度
+    'legend_labelspacing': 0.4,  # 图例条目之间的垂直间距
 
     # 网格 / 图例 / 边框
     'show_grid': True,
@@ -90,8 +104,10 @@ PLOT_GLOBAL = {
     'hide_right_spine': True,
 
     # 保存参数
+    'save_format': 'eps',  # 保存格式，例如 'eps' / 'png' / 'pdf' / 'svg'
     'save_dpi': 150,
     'save_bbox_inches': 'tight',
+    'timestamp_first_in_name': True,  # 文件名是否把时间戳放前面，便于按名称排序
 
     # 画布
     'tight_layout': True,
@@ -155,41 +171,12 @@ FIGURE_CONFIG = {
 }
 
 os.makedirs(FIGURES_DIR, exist_ok=True)
+STYLE_HELPER = PlotStyleHelper(PLOT_GLOBAL, FIGURES_DIR)
 
 
 # ══════════════════════════════════════════════════════════════════════════════
 # 工具函数
 # ══════════════════════════════════════════════════════════════════════════════
-
-def find_mat_file(argv):
-    """优先命令行参数，否则在 SEARCH_DIRS 中找最新的 varyM .mat 文件。"""
-    if len(argv) > 1:
-        p = argv[1]
-        if os.path.isfile(p):
-            return p
-        print(f"警告: 指定的文件不存在 '{p}'，尝试自动搜索。")
-
-    candidates = []
-    for d in SEARCH_DIRS:
-        candidates.extend(glob.glob(os.path.join(d, '*.mat')))
-
-    # 优先匹配 varyM 目录下的文件，或文件名含 varyM，或形如 N{int}_M{int}-{int}_...
-    varyM = [
-        f for f in candidates
-        if 'varyM' in os.path.basename(f)
-        or os.path.join('varyM', '') in f.replace('\\', '/')
-        or (os.path.basename(f).startswith('N') and '_M' in os.path.basename(f)
-            and '-' in os.path.basename(f).split('_M', 1)[-1].split('_')[0])
-    ]
-    pool = varyM if varyM else candidates
-    if not pool:
-        sys.exit(
-            "找不到 .mat 文件，请先运行 Batch_VaryM.m，或手动指定路径作为命令行参数。"
-        )
-
-    chosen = max(pool, key=os.path.getmtime)
-    print(f"自动选择: {chosen}")
-    return chosen
 
 
 def to_scalar(val):
@@ -256,6 +243,26 @@ def parse_M_values(config):
     return list(np.asarray(config['M_values'], dtype=int).ravel())
 
 
+def get_timestamp_tag(config, run_meta):
+    timestamp = config.get('timestamp')
+    if timestamp is not None:
+        arr = np.asarray(timestamp).ravel()
+        if arr.size > 0:
+            return str(arr[0])
+
+    run_name = str(run_meta.get('run_name', ''))
+    parts = run_name.split('_')
+    if len(parts) >= 2 and parts[0].isdigit() and parts[1].isdigit():
+        return f'{parts[0]}_{parts[1]}'
+
+    source_path = str(run_meta.get('source_path', ''))
+    basename = os.path.splitext(os.path.basename(source_path))[0]
+    parts = basename.split('_')
+    if len(parts) >= 2 and parts[-2].isdigit() and parts[-1].isdigit():
+        return '_'.join(parts[-2:])
+    return 'ts'
+
+
 def merge_figure_config(fig_key, **kwargs):
     """复制并补充每个图的配置，避免运行中修改全局字典。"""
     cfg = copy.deepcopy(FIGURE_CONFIG[fig_key])
@@ -263,70 +270,43 @@ def merge_figure_config(fig_key, **kwargs):
     return cfg
 
 
+def get_text_style(size_key, weight_key):
+    """返回一组可复用的字体配置。"""
+    return STYLE_HELPER.get_text_style(size_key, weight_key)
+
+
+def apply_plot_rcparams():
+    """设置 matplotlib 的全局字体默认值。"""
+    STYLE_HELPER.apply_rcparams()
+
+
+def get_marker_kwargs(show_markers, marker, markevery=None):
+    """根据配置生成 marker 参数。"""
+    return STYLE_HELPER.get_marker_kwargs(show_markers, marker, markevery)
+
+
+def build_output_path(ts, stem):
+    """按配置生成输出文件路径。"""
+    return STYLE_HELPER.build_output_path(ts, stem)
+
+
 def apply_common_style(ax, cfg, title=None):
     """统一处理坐标轴标签、标题、网格、图例和边框。"""
-    ax.set_xlabel(cfg['xlabel'], fontsize=PLOT_GLOBAL['xlabel_fontsize'])
-    ax.set_ylabel(cfg['ylabel'], fontsize=PLOT_GLOBAL['ylabel_fontsize'])
-
-    if cfg.get('show_title', True) and title:
-        ax.set_title(
-            title,
-            fontsize=PLOT_GLOBAL['title_fontsize'],
-            pad=PLOT_GLOBAL['title_pad'],
-        )
-
-    if PLOT_GLOBAL['show_grid']:
-        ax.grid(
-            True,
-            linestyle=PLOT_GLOBAL['grid_linestyle'],
-            linewidth=PLOT_GLOBAL['grid_linewidth'],
-            alpha=PLOT_GLOBAL['grid_alpha'],
-        )
-
-    ax.tick_params(labelsize=PLOT_GLOBAL['tick_fontsize'])
-
-    if PLOT_GLOBAL['show_legend']:
-        ax.legend(
-            fontsize=PLOT_GLOBAL['legend_fontsize'],
-            framealpha=PLOT_GLOBAL['legend_framealpha'],
-            edgecolor=PLOT_GLOBAL['legend_edgecolor'],
-        )
-
-    if PLOT_GLOBAL['hide_top_spine']:
-        ax.spines['top'].set_visible(False)
-    if PLOT_GLOBAL['hide_right_spine']:
-        ax.spines['right'].set_visible(False)
+    STYLE_HELPER.apply_common_style(ax, cfg=cfg, title=title)
 
 
 def apply_axis_controls(ax, cfg, m_values=None):
     """统一处理 xlim / ylim / xticks / yticks / 底部从 0 开始等。"""
-    if cfg.get('use_fixed_M_xticks', False) and m_values is not None:
-        ax.xaxis.set_major_locator(mticker.FixedLocator(m_values))
-
-    if cfg.get('xticks') is not None:
-        ax.set_xticks(cfg['xticks'])
-    if cfg.get('yticks') is not None:
-        ax.set_yticks(cfg['yticks'])
-
-    if cfg.get('xlim') is not None:
-        ax.set_xlim(*cfg['xlim'])
-    if cfg.get('ylim') is not None:
-        ax.set_ylim(*cfg['ylim'])
-
-    if cfg.get('bottom_zero', False):
-        ymin, ymax = ax.get_ylim()
-        ax.set_ylim(bottom=0, top=ymax)
+    STYLE_HELPER.apply_axis_controls(
+        ax,
+        cfg=cfg,
+        fixed_values=m_values,
+        fixed_locator_key='use_fixed_M_xticks',
+    )
 
 
 def finalize_and_save(fig, save_path):
-    if PLOT_GLOBAL['tight_layout']:
-        fig.tight_layout()
-    fig.savefig(
-        save_path,
-        dpi=PLOT_GLOBAL['save_dpi'],
-        bbox_inches=PLOT_GLOBAL['save_bbox_inches'],
-    )
-    print(f"  ✓ {save_path}")
+    STYLE_HELPER.finalize_and_save(fig, save_path)
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -438,11 +418,12 @@ def _plot_scalar_vs_M(fig_key, metric_key, M_values, alg_names, metrics, save_pa
         mu  = np.nanmean(metrics[aname][metric_key], axis=1)
         std = np.nanstd(metrics[aname][metric_key], axis=1)
 
-        if PLOT_GLOBAL.get('show_errorbar', False):
+        if PLOT_GLOBAL.get('show_errorbar_varyM', False):
             ax.errorbar(
                 M_values, mu, yerr=std,
                 color=st['color'], marker=st['marker'], ls=st['ls'],
                 lw=PLOT_GLOBAL['linewidth'], ms=PLOT_GLOBAL['markersize'],
+                mew=PLOT_GLOBAL['markeredgewidth'],
                 capsize=PLOT_GLOBAL['capsize'],
                 label=st['label'], zorder=3,
             )
@@ -451,6 +432,7 @@ def _plot_scalar_vs_M(fig_key, metric_key, M_values, alg_names, metrics, save_pa
                 M_values, mu,
                 color=st['color'], marker=st['marker'], ls=st['ls'],
                 lw=PLOT_GLOBAL['linewidth'], ms=PLOT_GLOBAL['markersize'],
+                mew=PLOT_GLOBAL['markeredgewidth'],
                 label=st['label'], zorder=3,
             )
 
@@ -514,10 +496,16 @@ def plot_fig2d(mean_curves, std_curves, num_rounds, m_target, alg_names, save_pa
                     linewidth=0,
                 )
 
+        marker_kwargs = get_marker_kwargs(
+            PLOT_GLOBAL['show_markers_fig2d'],
+            st['marker'],
+            PLOT_GLOBAL['markevery_fig2d'],
+        )
         ax.plot(
             rounds, filled,
             color=st['color'], ls=st['ls'],
             lw=PLOT_GLOBAL['linewidth'], label=st['label'],
+            **marker_kwargs,
         )
 
     apply_axis_controls(ax, cfg)
@@ -529,12 +517,20 @@ def plot_fig2d(mean_curves, std_curves, num_rounds, m_target, alg_names, save_pa
 # ══════════════════════════════════════════════════════════════════════════════
 
 def main():
-    mat_path = find_mat_file(sys.argv)
+    apply_plot_rcparams()
+    input_path = sys.argv[1] if len(sys.argv) > 1 else None
+    aggregator = VaryMResultAggregator(search_dirs=SEARCH_DIRS)
 
     print("\n加载数据...")
-    raw     = mat73.loadmat(mat_path)
-    results = raw['scale_M_results']
-    config  = raw['scale_config']
+    results, config, run_meta = aggregator.load_results(input_path=input_path)
+
+    print(f"  数据来源  = {run_meta.get('source_path', '')}")
+    if run_meta.get('source_type') == 'run_dir':
+        cache_state = '命中缓存' if run_meta.get('used_cache') else '重建缓存'
+        print(f"  聚合方式  = 延迟聚合（{cache_state}）")
+        print(f"  缓存文件  = {run_meta.get('cache_path', '')}")
+    else:
+        print(f"  聚合方式  = 直接读取 {run_meta.get('source_type')}")
 
     M_values  = parse_M_values(config)
     alg_names = parse_alg_names(config)
@@ -547,10 +543,7 @@ def main():
     print(f"  alg_names = {alg_names}")
     print(f"  形状      = {nM}×{nS} (M×seed)")
 
-    # 时间戳：取文件名末尾两段，如 20260322_224718
-    basename = os.path.splitext(os.path.basename(mat_path))[0]
-    parts = basename.split('_')
-    ts = '_'.join(parts[-2:]) if len(parts) >= 2 else 'ts'
+    ts = get_timestamp_tag(config, run_meta)
 
     print("\n提取指标...")
     M_values, alg_names, metrics = extract_final_metrics(results, config)
@@ -559,17 +552,17 @@ def main():
 
     plot_fig1c(
         M_values, alg_names, metrics,
-        os.path.join(FIGURES_DIR, f'fig1c_utility_varyM_{ts}.png'),
+        build_output_path(ts, 'fig1c_utility_varyM'),
     )
 
     plot_fig1d(
         M_values, alg_names, metrics,
-        os.path.join(FIGURES_DIR, f'fig1d_completion_varyM_{ts}.png'),
+        build_output_path(ts, 'fig1d_completion_varyM'),
     )
 
     plot_fig1e(
         M_values, alg_names, metrics,
-        os.path.join(FIGURES_DIR, f'fig1e_completed_value_varyM_{ts}.png'),
+        build_output_path(ts, 'fig1e_completed_value_varyM'),
     )
 
     mean_curves, std_curves, num_rounds, m_target = extract_convergence(
@@ -577,7 +570,7 @@ def main():
     )
     plot_fig2d(
         mean_curves, std_curves, num_rounds, m_target, alg_names,
-        os.path.join(FIGURES_DIR, f'fig2d_convergence_M{m_target}_{ts}.png'),
+        build_output_path(ts, f'fig2d_convergence_M{m_target}'),
     )
     print("\n完成。图窗已弹出，关闭后程序退出。")
     plt.show()

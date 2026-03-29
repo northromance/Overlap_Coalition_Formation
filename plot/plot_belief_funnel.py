@@ -15,6 +15,7 @@ import sys
 
 import matplotlib
 import numpy as np
+from plot_style_helper import PlotStyleHelper
 
 try:
     import mat73
@@ -70,6 +71,27 @@ PLOT_STYLE = {
 }
 
 os.makedirs(FIGURES_DIR, exist_ok=True)
+
+PLOT_GLOBAL = {
+    "title_fontsize": PLOT_STYLE["title_fontsize"],
+    "xlabel_fontsize": PLOT_STYLE["label_fontsize"],
+    "ylabel_fontsize": PLOT_STYLE["label_fontsize"],
+    "tick_fontsize": PLOT_STYLE["tick_fontsize"],
+    "legend_fontsize": PLOT_STYLE["legend_fontsize"],
+    "show_grid": True,
+    "grid_linestyle": PLOT_STYLE["grid_linestyle"],
+    "grid_linewidth": PLOT_STYLE["grid_linewidth"],
+    "grid_alpha": PLOT_STYLE["grid_alpha"],
+    "show_legend": False,
+    "legend_framealpha": 0.9,
+    "legend_edgecolor": "#cccccc",
+    "hide_top_spine": True,
+    "hide_right_spine": True,
+    "save_dpi": PLOT_STYLE["save_dpi"],
+    "save_bbox_inches": "tight",
+    "tight_layout": True,
+}
+STYLE_HELPER = PlotStyleHelper(PLOT_GLOBAL, FIGURES_DIR)
 
 
 def is_noninteractive_backend(backend_name):
@@ -433,20 +455,16 @@ def plot_condition_funnel(condition_name, aggregated, task_type_values, save_pat
     ymin = min(ymin_candidates) if ymin_candidates else 0.0
     ypad = max(50.0, 0.08 * (ymax - ymin if ymax > ymin else ymax))
 
-    ax.set_title(f"Belief Funnel Convergence [{condition_name}]", fontsize=PLOT_STYLE["title_fontsize"], pad=8)
-    ax.set_xlabel("Communication round", fontsize=PLOT_STYLE["label_fontsize"])
-    ax.set_ylabel("Expected task value", fontsize=PLOT_STYLE["label_fontsize"])
+    STYLE_HELPER.apply_common_style(
+        ax,
+        cfg={
+            "title": f"Belief Funnel Convergence [{condition_name}]",
+            "xlabel": "Communication round",
+            "ylabel": "Expected task value",
+        },
+    )
     ax.set_xlim(0, max(len(v["center"]) for v in aggregated.values()) - 1)
     ax.set_ylim(max(0.0, ymin - ypad), ymax + ypad)
-    ax.grid(
-        True,
-        linestyle=PLOT_STYLE["grid_linestyle"],
-        linewidth=PLOT_STYLE["grid_linewidth"],
-        alpha=PLOT_STYLE["grid_alpha"],
-    )
-    ax.tick_params(labelsize=PLOT_STYLE["tick_fontsize"])
-    ax.spines["top"].set_visible(False)
-    ax.spines["right"].set_visible(False)
     ax.legend(
         legend_handles,
         legend_labels,
@@ -456,9 +474,7 @@ def plot_condition_funnel(condition_name, aggregated, task_type_values, save_pat
         loc="best",
     )
 
-    fig.tight_layout()
-    fig.savefig(save_path, dpi=PLOT_STYLE["save_dpi"], bbox_inches="tight")
-    print(f"Saved: {save_path}")
+    STYLE_HELPER.finalize_and_save(fig, save_path)
     return fig
 
 

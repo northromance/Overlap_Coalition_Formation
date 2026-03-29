@@ -28,6 +28,7 @@ import matplotlib.pyplot as plt
 import matplotlib.patches as mpatches
 from matplotlib.colors import Normalize, TwoSlopeNorm
 from matplotlib.cm import ScalarMappable
+from plot_style_helper import PlotStyleHelper
 
 try:
     import mat73
@@ -163,6 +164,11 @@ PLOT_GLOBAL = {
 
 os.makedirs(FIGURES_DIR, exist_ok=True)
 
+PLOT_STYLE_ADAPTER = dict(PLOT_GLOBAL)
+PLOT_STYLE_ADAPTER['show_grid'] = False
+PLOT_STYLE_ADAPTER['show_legend'] = False
+STYLE_HELPER = PlotStyleHelper(PLOT_STYLE_ADAPTER, FIGURES_DIR)
+
 
 # ══════════════════════════════════════════════════════════════════════════════
 # 工具函数
@@ -259,22 +265,11 @@ def get_agent_field(struct_dict, field, idx):
 
 
 def apply_common_style(ax, xlabel, ylabel, title=None):
-    ax.set_xlabel(xlabel, fontsize=PLOT_GLOBAL['xlabel_fontsize'])
-    ax.set_ylabel(ylabel, fontsize=PLOT_GLOBAL['ylabel_fontsize'])
-    if title:
-        ax.set_title(title, fontsize=PLOT_GLOBAL['title_fontsize'],
-                     pad=PLOT_GLOBAL['title_pad'])
-    ax.tick_params(labelsize=PLOT_GLOBAL['tick_fontsize'])
-    if PLOT_GLOBAL['hide_top_spine']:
-        ax.spines['top'].set_visible(False)
-    if PLOT_GLOBAL['hide_right_spine']:
-        ax.spines['right'].set_visible(False)
+    STYLE_HELPER.apply_common_style(ax, xlabel=xlabel, ylabel=ylabel, title=title)
 
 
 def finalize_and_save(fig, save_path):
-    fig.savefig(save_path, dpi=PLOT_GLOBAL['save_dpi'],
-                bbox_inches=PLOT_GLOBAL['save_bbox_inches'])
-    print(f"  ✓ {save_path}")
+    STYLE_HELPER.finalize_and_save(fig, save_path)
 
 
 # ══════════════════════════════════════════════════════════════════════════════
