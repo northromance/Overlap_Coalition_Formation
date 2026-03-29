@@ -26,9 +26,12 @@ import os
 import sys
 import glob
 import copy
+import re
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.ticker as mticker
+from matplotlib.font_manager import FontProperties
+from datetime import datetime
 
 try:
     import mat73
@@ -41,75 +44,91 @@ except ImportError:
 # ══════════════════════════════════════════════════════════════════════════════
 
 # ── 路径配置 ──────────────────────────────────────────────────────────────────
-SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
-ROOT_DIR = os.path.dirname(SCRIPT_DIR)
-FIGURES_DIR = os.path.join(ROOT_DIR, 'figures', 'paper')
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))  # 当前脚本所在目录
+ROOT_DIR = os.path.dirname(SCRIPT_DIR)  # 项目根目录
+FIGURES_DIR = os.path.join(ROOT_DIR, 'figures', 'paper')  # 图片输出目录
 SEARCH_DIRS = [
-    os.path.join(ROOT_DIR, 'results', 'batch', 'varyN'),
-    os.path.join(ROOT_DIR, 'results', 'batch'),
+    os.path.join(ROOT_DIR, 'results', 'batch', 'varyN'),  # 优先搜索 varyN 实验结果目录
+    os.path.join(ROOT_DIR, 'results', 'batch'),  # 若上面没找到，则回退到通用 batch 目录
 ]
 
 # ── 算法显示样式（四个算法的颜色 / 点型 / 线型 / 图例名）────────────────────────
 ALG_STYLE = {
-    'Huo2025':    dict(color='#4878CF', marker='o', ls='-',  label='Huo2025'),
-    'Qi2023':     dict(color='#6ACC65', marker='s', ls='--', label='Qi2023'),
-    'Shi2024':    dict(color='#D65F5F', marker='^', ls='-.', label='Shi2024'),
-    'OCF_SAtabu': dict(color='#B47CC7', marker='D', ls='-',  label='Ours (OCF-SA)'),
+    'Huo2025':    dict(color='#4878CF', marker='o', ls='-',  label='Huo2025'),  # Huo2025 的颜色/点型/线型/图例名
+    'Qi2023':     dict(color='#6ACC65', marker='s', ls='--', label='Qi2023'),  # Qi2023 的颜色/点型/线型/图例名
+    'Shi2024':    dict(color='#D65F5F', marker='^', ls='-.', label='Shi2024'),  # Shi2024 的颜色/点型/线型/图例名
+    'OCF_SAtabu': dict(color='#B47CC7', marker='D', ls='-',  label='Ours (OCF-SA)'),  # OCF_SAtabu 的颜色/点型/线型/图例名
 }
-DEFAULT_STYLE = dict(color='#888888', marker='x', ls=':', label='Unknown')
+DEFAULT_STYLE = dict(color='#888888', marker='x', ls=':', label='Unknown')  # 未知算法时的兜底样式
 
 # ── 全局绘图参数 ──────────────────────────────────────────────────────────────
 PLOT_GLOBAL = {
-    # 图尺寸
-    'figsize': (5.5, 4.2),
+    'figsize': (5.5, 4.2),  # 图像尺寸 (宽, 高)，单位英寸
 
-    # 线条 / 点 / 误差棒
-    'linewidth': 1.8,
-    'markersize': 7,
-    'capsize': 1,
-    'show_errorbar_varyN': False,   # ← 新增：False=只画均值线，True=画均值±std
+    'linewidth': 1.8,  # 折线线宽
+    'markersize': 4,  # 数据点大小；改这里即可统一放大/缩小点
+    'markeredgewidth': 0.8,  # 数据点边框宽度
+    'capsize': 1,  # 误差棒帽子的宽度
+    'show_errorbar_varyN': False,  # fig1a/1b/1c 是否显示均值±std 误差棒
+    'show_markers_fig2c': False,  # fig2c 是否在收敛曲线上显示数据点
+    'show_markers_fig3a': False,  # fig3a 是否在 inner-loop 曲线上显示数据点
+    'markevery_fig2c': None,  # fig2c 每隔多少个点显示一个 marker；None 表示全部
+    'markevery_fig3a': None,  # fig3a 每隔多少个点显示一个 marker；None 表示全部
 
-    # 字体与版式
-    'xlabel_fontsize': 11,
-    'ylabel_fontsize': 11,
-    'title_fontsize': 12,
-    'title_pad': 8,
-    'tick_fontsize': 10,
-    'legend_fontsize': 9,
+    'font_family': ['Times New Roman', 'SimSun', 'DejaVu Sans'],  # 全局字体族；可改成 ['Arial']、['SimHei'] 等
+    'font_style': 'normal',  # 字体样式：normal / italic / oblique
+    'font_weight': 'normal',  # 全局默认字重：normal / bold
+    'xlabel_fontsize': 11,  # x 轴标题字号
+    'ylabel_fontsize': 11,  # y 轴标题字号
+    'label_fontweight': 'normal',  # 坐标轴标题字重
+    'show_titles': False,  # 全局标题总开关；False 时所有图都不显示标题
+    'title_fontsize': 12,  # 图标题字号
+    'title_fontweight': 'bold',  # 图标题字重
+    'title_pad': 8,  # 图标题与绘图区的间距
+    'tick_fontsize': 10,  # 刻度字号
+    'tick_fontweight': 'normal',  # 刻度字重
+    'legend_fontsize': 9,  # 图例字号
+    'legend_fontweight': 'normal',  # 图例字重
+    'legend_loc': 'best',  # 图例位置，例如 'best' / 'upper right' / 'lower left'
+    'legend_bbox_to_anchor': None,  # 图例锚点，例如 (1.02, 1.0)；None 表示不用锚点
+    'legend_ncol': 1,  # 图例列数
+    'legend_borderaxespad': 0.3,  # 图例与坐标轴边缘的间距
+    'legend_handlelength': 2.0,  # 图例中示意线段的长度
+    'legend_labelspacing': 0.4,  # 图例条目之间的垂直间距
 
-    # 网格 / 图例 / 边框
-    'show_grid': True,
-    'grid_linestyle': '--',
-    'grid_linewidth': 0.6,
-    'grid_alpha': 0.4,
-    'show_legend': True,
-    'legend_framealpha': 0.85,
-    'legend_edgecolor': '#cccccc',
-    'hide_top_spine': True,
-    'hide_right_spine': True,
+    'show_grid': True,  # 是否显示网格
+    'grid_linestyle': '--',  # 网格线型
+    'grid_linewidth': 0.6,  # 网格线宽
+    'grid_alpha': 0.4,  # 网格透明度
+    'show_legend': True,  # 是否显示图例
+    'legend_framealpha': 0.85,  # 图例边框透明度
+    'legend_edgecolor': '#cccccc',  # 图例边框颜色
+    'hide_top_spine': True,  # 是否隐藏上边框
+    'hide_right_spine': True,  # 是否隐藏右边框
 
-    # 保存参数
-    'save_dpi': 150,
-    'save_bbox_inches': 'tight',
+    'save_format': 'eps',  # 保存格式，例如 'eps' / 'png' / 'pdf' / 'svg'
+    'save_dpi': 150,  # 保存图片的 dpi
+    'save_bbox_inches': 'tight',  # 保存时是否紧凑裁边
+    'timestamp_first_in_name': True,  # 文件名是否把时间戳放前面，便于按名称排序
 
-    # 画布
-    'tight_layout': True,
+    'tight_layout': True,  # 保存前是否自动紧凑排版
 }
 
 # ── 图3a 专用样式（原来写死在函数里，现在提到顶部）────────────────────────────
 INNER_LOOP_STYLE = {
-    'current_label': 'Current Utility',
-    'current_color': '#4878CF',
-    'current_ls': '-',
-    'current_band_alpha': 0.15,
+    'current_label': 'Current Utility',  # fig3a 中当前效用曲线的图例文字
+    'current_color': '#4878CF',  # fig3a 中当前效用曲线颜色
+    'current_ls': '-',  # fig3a 中当前效用曲线线型
+    'current_marker': 'o',  # fig3a 中当前效用曲线点型；仅在 show_markers_fig3a=True 时生效
+    'current_band_alpha': 0.15,  # fig3a 中当前效用阴影带透明度
 
-    'best_label': 'Best Utility',
-    'best_color': '#D65F5F',
-    'best_ls': '--',
-    'best_band_alpha': 0.15,
+    'best_label': 'Best Utility',  # fig3a 中最优效用曲线的图例文字
+    'best_color': '#D65F5F',  # fig3a 中最优效用曲线颜色
+    'best_ls': '--',  # fig3a 中最优效用曲线线型
+    'best_marker': 's',  # fig3a 中最优效用曲线点型；仅在 show_markers_fig3a=True 时生效
+    'best_band_alpha': 0.15,  # fig3a 中最优效用阴影带透明度
 
-    # 只是标题里显示的 round 标签，不影响数据提取
-    'round_label': 50,
+    'round_label': 50,  # 仅用于标题显示的 round 标签，不影响实际数据提取
 }
 
 # ── 每个图单独控制（坐标轴 / 刻度 / 标题 / 范围）──────────────────────────────
@@ -120,64 +139,64 @@ INNER_LOOP_STYLE = {
 #   bottom_zero = True 常用于完成度图让 y 轴从 0 开始
 FIGURE_CONFIG = {
     'fig1a': {
-        'show_title': True,
-        'title': 'Fig. 1a — Utility vs. N',
-        'xlabel': 'Number of Agents (N)',
-        'ylabel': 'Final Coalition Utility',
-        'xlim': None,
-        'ylim': None,
-        'xticks': None,
-        'yticks': None,
-        'use_fixed_N_xticks': True,
-        'bottom_zero': False,
+        'show_title': True,  # 是否显示标题；仅在全局 show_titles=True 时生效
+        'title': 'Fig. 1a — Utility vs. N',  # 固定标题内容
+        'xlabel': 'Number of Agents (N)',  # x 轴名称
+        'ylabel': 'Final Coalition Utility',  # y 轴名称
+        'xlim': None,  # x 轴范围，例如 (10, 100)
+        'ylim': None,  # y 轴范围，例如 (0, 150)
+        'xticks': None,  # 手动指定 x 轴刻度，例如 [10, 20, 30]
+        'yticks': None,  # 手动指定 y 轴刻度，例如 [0, 50, 100]
+        'use_fixed_N_xticks': True,  # 是否强制用 N_values 作为 x 轴刻度
+        'bottom_zero': False,  # 是否强制让 y 轴从 0 开始
     },
     'fig1b': {
-        'show_title': True,
-        'title': 'Fig. 1b — Completion vs. N',
-        'xlabel': 'Number of Agents (N)',
-        'ylabel': 'Avg. Task Completion Degree',
-        'xlim': None,
-        'ylim': None,
-        'xticks': None,
-        'yticks': None,
-        'use_fixed_N_xticks': True,
-        'bottom_zero': True,
+        'show_title': True,  # 是否显示标题；仅在全局 show_titles=True 时生效
+        'title': 'Fig. 1b — Completion vs. N',  # 固定标题内容
+        'xlabel': 'Number of Agents (N)',  # x 轴名称
+        'ylabel': 'Avg. Task Completion Degree',  # y 轴名称
+        'xlim': None,  # x 轴范围
+        'ylim': None,  # y 轴范围
+        'xticks': None,  # 手动指定 x 轴刻度
+        'yticks': None,  # 手动指定 y 轴刻度
+        'use_fixed_N_xticks': True,  # 是否强制用 N_values 作为 x 轴刻度
+        'bottom_zero': True,  # 是否强制让 y 轴从 0 开始
     },
     'fig1c': {
-        'show_title': True,
-        'title': 'Fig. 1c - Total Completed Value vs. N',
-        'xlabel': 'Number of Agents (N)',
-        'ylabel': 'Total Completed Value',
-        'xlim': None,
-        'ylim': None,
-        'xticks': None,
-        'yticks': None,
-        'use_fixed_N_xticks': True,
-        'bottom_zero': True,
+        'show_title': True,  # 是否显示标题；仅在全局 show_titles=True 时生效
+        'title': 'Fig. 1c - Total Completed Value vs. N',  # 固定标题内容
+        'xlabel': 'Number of Agents (N)',  # x 轴名称
+        'ylabel': 'Total Completed Value',  # y 轴名称
+        'xlim': None,  # x 轴范围
+        'ylim': None,  # y 轴范围
+        'xticks': None,  # 手动指定 x 轴刻度
+        'yticks': None,  # 手动指定 y 轴刻度
+        'use_fixed_N_xticks': True,  # 是否强制用 N_values 作为 x 轴刻度
+        'bottom_zero': True,  # 是否强制让 y 轴从 0 开始
     },
     'fig2c': {
-        'show_title': True,
-        'title_template': 'Fig. 2c — Convergence (N={n_target})',
-        'xlabel': 'Round',
-        'ylabel': 'Coalition Utility',
-        'xlim': None,
-        'ylim': None,
-        'xticks': None,
-        'yticks': None,
-        'use_fixed_N_xticks': False,
-        'bottom_zero': False,
+        'show_title': True,  # 是否显示标题；仅在全局 show_titles=True 时生效
+        'title_template': 'Fig. 2c — Convergence (N={n_target})',  # 动态标题模板
+        'xlabel': 'Round',  # x 轴名称
+        'ylabel': 'Coalition Utility',  # y 轴名称
+        'xlim': None,  # x 轴范围
+        'ylim': None,  # y 轴范围
+        'xticks': None,  # 手动指定 x 轴刻度
+        'yticks': None,  # 手动指定 y 轴刻度
+        'use_fixed_N_xticks': False,  # 是否强制用 N_values 作为 x 轴刻度
+        'bottom_zero': False,  # 是否强制让 y 轴从 0 开始
     },
     'fig3a': {
-        'show_title': True,
-        'title_template': 'Fig. 3a — Inner Loop (Round {round_label}, N={n_target})',
-        'xlabel': 'Inner Iteration',
-        'ylabel': 'Utility',
-        'xlim': None,
-        'ylim': None,
-        'xticks': None,
-        'yticks': None,
-        'use_fixed_N_xticks': False,
-        'bottom_zero': False,
+        'show_title': True,  # 是否显示标题；仅在全局 show_titles=True 时生效
+        'title_template': 'Fig. 3a — Inner Loop (Round {round_label}, N={n_target})',  # 动态标题模板
+        'xlabel': 'Inner Iteration',  # x 轴名称
+        'ylabel': 'Utility',  # y 轴名称
+        'xlim': None,  # x 轴范围
+        'ylim': None,  # y 轴范围
+        'xticks': None,  # 手动指定 x 轴刻度
+        'yticks': None,  # 手动指定 y 轴刻度
+        'use_fixed_N_xticks': False,  # 是否强制用 N_values 作为 x 轴刻度
+        'bottom_zero': False,  # 是否强制让 y 轴从 0 开始
     },
 }
 
@@ -284,16 +303,68 @@ def merge_figure_config(fig_key, **kwargs):
     return cfg
 
 
+def get_text_style(size_key, weight_key):
+    """返回一组可复用的字体配置。"""
+    return dict(
+        fontsize=PLOT_GLOBAL[size_key],
+        fontfamily=PLOT_GLOBAL['font_family'],
+        fontstyle=PLOT_GLOBAL['font_style'],
+        fontweight=PLOT_GLOBAL[weight_key],
+    )
+
+
+def apply_plot_rcparams():
+    """设置 matplotlib 的全局字体默认值。"""
+    plt.rcParams['font.family'] = PLOT_GLOBAL['font_family']
+    plt.rcParams['font.style'] = PLOT_GLOBAL['font_style']
+    plt.rcParams['font.weight'] = PLOT_GLOBAL['font_weight']
+    plt.rcParams['axes.unicode_minus'] = False
+
+
+def get_marker_kwargs(show_markers, marker, markevery=None):
+    """根据配置生成 marker 参数。"""
+    if not show_markers:
+        return {}
+
+    kwargs = {
+        'marker': marker,
+        'ms': PLOT_GLOBAL['markersize'],
+        'mew': PLOT_GLOBAL['markeredgewidth'],
+    }
+    if markevery is not None:
+        kwargs['markevery'] = markevery
+    return kwargs
+
+
+def build_output_path(ts, stem):
+    """按配置生成输出文件路径。"""
+    ext = PLOT_GLOBAL['save_format'].lstrip('.')
+    if PLOT_GLOBAL['timestamp_first_in_name']:
+        filename = f'{ts}_{stem}.{ext}'
+    else:
+        filename = f'{stem}_{ts}.{ext}'
+    return os.path.join(FIGURES_DIR, filename)
+
+
+def extract_timestamp_tag(mat_path):
+    """从结果文件名中提取时间戳；提取失败时回退到当前时间。"""
+    basename = os.path.splitext(os.path.basename(mat_path))[0]
+    match = re.search(r'(\d{8})_(\d{6})$', basename)
+    if match:
+        return f'{match.group(1)}_{match.group(2)}'
+    return datetime.now().strftime('%Y%m%d_%H%M%S')
+
+
 def apply_common_style(ax, cfg, title=None):
     """统一处理坐标轴标签、标题、网格、图例和边框。"""
-    ax.set_xlabel(cfg['xlabel'], fontsize=PLOT_GLOBAL['xlabel_fontsize'])
-    ax.set_ylabel(cfg['ylabel'], fontsize=PLOT_GLOBAL['ylabel_fontsize'])
+    ax.set_xlabel(cfg['xlabel'], **get_text_style('xlabel_fontsize', 'label_fontweight'))
+    ax.set_ylabel(cfg['ylabel'], **get_text_style('ylabel_fontsize', 'label_fontweight'))
 
-    if cfg.get('show_title', True) and title:
+    if PLOT_GLOBAL['show_titles'] and cfg.get('show_title', True) and title:
         ax.set_title(
             title,
-            fontsize=PLOT_GLOBAL['title_fontsize'],
             pad=PLOT_GLOBAL['title_pad'],
+            **get_text_style('title_fontsize', 'title_fontweight'),
         )
 
     if PLOT_GLOBAL['show_grid']:
@@ -305,12 +376,28 @@ def apply_common_style(ax, cfg, title=None):
         )
 
     ax.tick_params(labelsize=PLOT_GLOBAL['tick_fontsize'])
+    for tick in ax.get_xticklabels() + ax.get_yticklabels():
+        tick.set_fontfamily(PLOT_GLOBAL['font_family'])
+        tick.set_fontstyle(PLOT_GLOBAL['font_style'])
+        tick.set_fontweight(PLOT_GLOBAL['tick_fontweight'])
 
     if PLOT_GLOBAL['show_legend']:
+        legend_prop = FontProperties(
+            family=PLOT_GLOBAL['font_family'],
+            style=PLOT_GLOBAL['font_style'],
+            weight=PLOT_GLOBAL['legend_fontweight'],
+            size=PLOT_GLOBAL['legend_fontsize'],
+        )
         ax.legend(
-            fontsize=PLOT_GLOBAL['legend_fontsize'],
+            prop=legend_prop,
             framealpha=PLOT_GLOBAL['legend_framealpha'],
             edgecolor=PLOT_GLOBAL['legend_edgecolor'],
+            loc=PLOT_GLOBAL['legend_loc'],
+            bbox_to_anchor=PLOT_GLOBAL['legend_bbox_to_anchor'],
+            ncol=PLOT_GLOBAL['legend_ncol'],
+            borderaxespad=PLOT_GLOBAL['legend_borderaxespad'],
+            handlelength=PLOT_GLOBAL['legend_handlelength'],
+            labelspacing=PLOT_GLOBAL['legend_labelspacing'],
         )
 
     if PLOT_GLOBAL['hide_top_spine']:
@@ -344,6 +431,7 @@ def finalize_and_save(fig, save_path):
         fig.tight_layout()
     fig.savefig(
         save_path,
+        format=PLOT_GLOBAL['save_format'],
         dpi=PLOT_GLOBAL['save_dpi'],
         bbox_inches=PLOT_GLOBAL['save_bbox_inches'],
     )
@@ -497,6 +585,7 @@ def plot_fig1a(N_values, alg_names, metrics, save_path):
                 N_values, mu, yerr=std,
                 color=st['color'], marker=st['marker'], ls=st['ls'],
                 lw=PLOT_GLOBAL['linewidth'], ms=PLOT_GLOBAL['markersize'],
+                mew=PLOT_GLOBAL['markeredgewidth'],
                 capsize=PLOT_GLOBAL['capsize'],
                 label=st['label'], zorder=3,
             )
@@ -505,6 +594,7 @@ def plot_fig1a(N_values, alg_names, metrics, save_path):
                 N_values, mu,
                 color=st['color'], marker=st['marker'], ls=st['ls'],
                 lw=PLOT_GLOBAL['linewidth'], ms=PLOT_GLOBAL['markersize'],
+                mew=PLOT_GLOBAL['markeredgewidth'],
                 label=st['label'], zorder=3,
             )
 
@@ -527,6 +617,7 @@ def plot_fig1b(N_values, alg_names, metrics, save_path):
                 N_values, mu, yerr=std,
                 color=st['color'], marker=st['marker'], ls=st['ls'],
                 lw=PLOT_GLOBAL['linewidth'], ms=PLOT_GLOBAL['markersize'],
+                mew=PLOT_GLOBAL['markeredgewidth'],
                 capsize=PLOT_GLOBAL['capsize'],
                 label=st['label'], zorder=3,
             )
@@ -535,6 +626,7 @@ def plot_fig1b(N_values, alg_names, metrics, save_path):
                 N_values, mu,
                 color=st['color'], marker=st['marker'], ls=st['ls'],
                 lw=PLOT_GLOBAL['linewidth'], ms=PLOT_GLOBAL['markersize'],
+                mew=PLOT_GLOBAL['markeredgewidth'],
                 label=st['label'], zorder=3,
             )
 
@@ -557,6 +649,7 @@ def plot_fig1c(N_values, alg_names, metrics, save_path):
                 N_values, mu, yerr=std,
                 color=st['color'], marker=st['marker'], ls=st['ls'],
                 lw=PLOT_GLOBAL['linewidth'], ms=PLOT_GLOBAL['markersize'],
+                mew=PLOT_GLOBAL['markeredgewidth'],
                 capsize=PLOT_GLOBAL['capsize'],
                 label=st['label'], zorder=3,
             )
@@ -565,6 +658,7 @@ def plot_fig1c(N_values, alg_names, metrics, save_path):
                 N_values, mu,
                 color=st['color'], marker=st['marker'], ls=st['ls'],
                 lw=PLOT_GLOBAL['linewidth'], ms=PLOT_GLOBAL['markersize'],
+                mew=PLOT_GLOBAL['markeredgewidth'],
                 label=st['label'], zorder=3,
             )
 
@@ -593,10 +687,16 @@ def plot_fig2c(mean_curves, num_rounds, n_target, alg_names, save_path):
         filled = curve.copy()
         idx = np.where(mask)[0]
         filled[idx[-1] + 1:] = filled[idx[-1]]
+        marker_kwargs = get_marker_kwargs(
+            PLOT_GLOBAL['show_markers_fig2c'],
+            st['marker'],
+            PLOT_GLOBAL['markevery_fig2c'],
+        )
         ax.plot(
             rounds, filled,
             color=st['color'], ls=st['ls'],
             lw=PLOT_GLOBAL['linewidth'], label=st['label'],
+            **marker_kwargs,
         )
 
     apply_axis_controls(ax, cfg)
@@ -622,12 +722,18 @@ def plot_fig3a(mean_curr, std_curr, mean_best, std_best, n_target, save_path):
     iters = np.arange(1, len(ref) + 1)
 
     if mean_curr is not None:
+        marker_kwargs = get_marker_kwargs(
+            PLOT_GLOBAL['show_markers_fig3a'],
+            INNER_LOOP_STYLE['current_marker'],
+            PLOT_GLOBAL['markevery_fig3a'],
+        )
         ax.plot(
             iters, mean_curr,
             color=INNER_LOOP_STYLE['current_color'],
             ls=INNER_LOOP_STYLE['current_ls'],
             lw=PLOT_GLOBAL['linewidth'],
             label=INNER_LOOP_STYLE['current_label'],
+            **marker_kwargs,
         )
         if std_curr is not None:
             ax.fill_between(
@@ -639,12 +745,18 @@ def plot_fig3a(mean_curr, std_curr, mean_best, std_best, n_target, save_path):
             )
 
     if mean_best is not None:
+        marker_kwargs = get_marker_kwargs(
+            PLOT_GLOBAL['show_markers_fig3a'],
+            INNER_LOOP_STYLE['best_marker'],
+            PLOT_GLOBAL['markevery_fig3a'],
+        )
         ax.plot(
             iters, mean_best,
             color=INNER_LOOP_STYLE['best_color'],
             ls=INNER_LOOP_STYLE['best_ls'],
             lw=PLOT_GLOBAL['linewidth'],
             label=INNER_LOOP_STYLE['best_label'],
+            **marker_kwargs,
         )
         if std_best is not None:
             ax.fill_between(
@@ -665,6 +777,7 @@ def plot_fig3a(mean_curr, std_curr, mean_best, std_best, n_target, save_path):
 # ══════════════════════════════════════════════════════════════════════════════
 
 def main():
+    apply_plot_rcparams()
     mat_path = find_mat_file(sys.argv)
 
     print("\n加载数据...")
@@ -681,9 +794,7 @@ def main():
     print(f"  alg_names = {alg_names}")
     print(f"  形状      = {nN}×{nS} (N×seed)")
 
-    basename = os.path.splitext(os.path.basename(mat_path))[0]
-    parts = basename.split('_')
-    ts = '_'.join(parts[-2:]) if len(parts) >= 2 else 'ts'
+    ts = extract_timestamp_tag(mat_path)
 
     print("\n提取指标...")
     N_values, alg_names, metrics = extract_final_metrics(results, config)
@@ -692,17 +803,17 @@ def main():
 
     plot_fig1a(
         N_values, alg_names, metrics,
-        os.path.join(FIGURES_DIR, f'fig1a_utility_varyN_{ts}.png'),
+        build_output_path(ts, 'fig1a_utility_varyN'),
     )
 
     plot_fig1b(
         N_values, alg_names, metrics,
-        os.path.join(FIGURES_DIR, f'fig1b_completion_varyN_{ts}.png'),
+        build_output_path(ts, 'fig1b_completion_varyN'),
     )
 
     plot_fig1c(
         N_values, alg_names, metrics,
-        os.path.join(FIGURES_DIR, f'fig1c_completed_value_varyN_{ts}.png'),
+        build_output_path(ts, 'fig1c_completed_value_varyN'),
     )
 
     mean_curves, num_rounds, n_target = extract_convergence(
@@ -710,13 +821,13 @@ def main():
     )
     plot_fig2c(
         mean_curves, num_rounds, n_target, alg_names,
-        os.path.join(FIGURES_DIR, f'fig2c_convergence_N{n_target}_{ts}.png'),
+        build_output_path(ts, f'fig2c_convergence_N{n_target}'),
     )
 
     mc, sc, mb, sb, nt = extract_inner_loop(results, config, n_target=n_conv)
     plot_fig3a(
         mc, sc, mb, sb, nt,
-        os.path.join(FIGURES_DIR, f'fig3a_innerloop_N{nt}_{ts}.png'),
+        build_output_path(ts, f'fig3a_innerloop_N{nt}'),
     )
 
     print("\n完成。图窗已弹出，关闭后程序退出。")
