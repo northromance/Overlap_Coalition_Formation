@@ -152,8 +152,8 @@ Exp_Config.VaryN.AddPara = struct( ...
 
 % Batch_VaryM
 Exp_Config.VaryM.SEEDS = Exp_Config.Common.SEEDS;
-Exp_Config.VaryM.M_VALUES = [8, 10, 12, 14, 16, 18, 20];
-Exp_Config.VaryM.N = 8;
+Exp_Config.VaryM.M_VALUES = [6, 8, 10, 12, 14, 16, 18];
+Exp_Config.VaryM.N = 10;
 Exp_Config.VaryM.K = 6;
 Exp_Config.VaryM.algorithms_to_run_ids = [2, 3, 4, 7];
 Exp_Config.VaryM.AddPara = struct( ...
