@@ -151,6 +151,7 @@
 
             % 获取资源置信度和任务类型需求
             confidence = Value_Params.resource_confidence;
+            [demand_mode, demand_rounding_mode] = WorldSim.get_demand_estimation_settings(AddPara, Value_Params);
             task_type_demands = Value_Params.task_type_demands;
             task_types = Value_Params.task_type;
 
@@ -186,9 +187,14 @@
                 task_pos = [tasks(task_id).x, tasks(task_id).y];
 
                 % ========== 收益计算 ==========
-                % A. 计算任务需求（基于信念分布的分位数需求）
+                % A. 计算任务需求
                 belief = Value_data.initbelief(task_id, :);
-                demand = WorldSim.calculate_demand_quantile(belief, task_type_demands, confidence);
+                demand = WorldSim.estimate_demand_from_belief( ...
+                    belief, ...
+                    task_type_demands, ...
+                    demand_mode, ...
+                    confidence, ...
+                    demand_rounding_mode);
 
                 % B. 获取联盟成员及资源分配
                 participants = OCFUtils.get_participants(SC, task_id, tol);

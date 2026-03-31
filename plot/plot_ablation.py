@@ -1,361 +1,898 @@
 """
 plot_ablation.py
 ================
-从 Batch_Ablation.m 生成的 .mat 文件绘制消融实验散点图：
+Plot ablation results produced by Batch_Ablation.m.
 
-  图版式：2行 × len(N_VALUES) 列
-    第1行：最终联盟效用 (Coalition Utility)
-    第2行：平均任务完成率 (Task Completion Rate)
+Outputs:
+1. Endpoint scatter figure:
+   - final coalition utility
+   - final task completion rate
+2. Convergence figure:
+   - mean +/- std coalition utility over rounds
 
-  每个子图：
-    横坐标 = 随机种子（seed 值作为刻度标签）
-    每个 x 位置两个点：belief_on（蓝圆）和 belief_off（红叉），灰线连接
-
-依赖:
-  pip install h5py numpy matplotlib
-  （mat73 不需要，直接用 h5py 绕过其 cell-array-of-structs 解析 bug）
-
-用法:
-  python plot_ablation.py                        # 自动搜索最新 .mat
-  python plot_ablation.py path/to/ablation.mat   # 指定文件
+Usage:
+  python plot_ablation.py
+  python plot_ablation.py <ablation_run_name>
+  python plot_ablation.py <path/to/ablation_run_dir>
+  python plot_ablation.py <legacy_ablation.mat>
 """
 
 import os
+import re
 import sys
-import glob
-import numpy as np
-import matplotlib.pyplot as plt
-import matplotlib.lines as mlines
-from plot_style_helper import PlotStyleHelper
-import h5py 
 
+import matplotlib.lines as mlines
+import matplotlib.pyplot as plt
+import numpy as np
 try:
     import h5py
 except ImportError:
-    sys.exit("缺少依赖，请先执行: pip install h5py")
+    h5py = None
 
-# ══════════════════════════════════════════════════════════════════════════════
-# 顶部可调参数区
-# ══════════════════════════════════════════════════════════════════════════════
+try:
+    from plot_style_helper import PlotStyleHelper
+except ImportError:
+    from .plot_style_helper import PlotStyleHelper
+try:
+    from ablation_result_aggregator import AblationResultAggregator
+except ImportError:
+    from .ablation_result_aggregator import AblationResultAggregator
 
-SCRIPT_DIR  = os.path.dirname(os.path.abspath(__file__))
-ROOT_DIR    = os.path.dirname(SCRIPT_DIR)
-FIGURES_DIR = os.path.join(ROOT_DIR, 'figures', 'paper')
+
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+ROOT_DIR = os.path.dirname(SCRIPT_DIR)
+FIGURES_DIR = os.path.join(ROOT_DIR, "figures", "paper")
 SEARCH_DIRS = [
-    os.path.join(ROOT_DIR, 'results', 'batch', 'ablation'),
-    os.path.join(ROOT_DIR, 'results', 'batch'),
+    os.path.join(ROOT_DIR, "results", "batch", "ablation"),
+    os.path.join(ROOT_DIR, "results", "batch"),
 ]
 
-# ── 散点样式 ──────────────────────────────────────────────────────────────────
-STYLE_ON = dict(
-    color='#2E6DB4',   # 蓝
-    marker='o',
-    markersize=8,
-    label='belief_on',
-    zorder=4,
-)
-STYLE_OFF = dict(
-    color='#C0392B',   # 红
-    marker='x',
-    markersize=9,
-    markeredgewidth=2.0,
-    label='belief_off',
-    zorder=4,
-)
-CONN_LINE = dict(color='#AAAAAA', linewidth=0.9, zorder=2)
+# Optional manual input selector.
+# None / ""      -> auto-pick the latest ablation run_dir; fallback to latest legacy MAT.
+# run name       -> exact run directory name under SEARCH_DIRS.
+# relative / abs -> run_dir, cache file, or legacy MAT path.
 
-# ── 行标题 / 坐标轴标签 ───────────────────────────────────────────────────────
-ROW_YLABELS = ['Coalition Utility', 'Task Completion Rate']
-ROW_TITLES  = ['最终联盟效用', '平均任务完成率']
 
-# ── 全局绘图参数 ──────────────────────────────────────────────────────────────
+
+
+# Example:
+#   PREFERRED_INPUT = "20260330_190655_N6-6_M10_K6_C3_S3"
+#   PREFERRED_INPUT = r"results/batch/ablation/20260330_190655_N6-6_M10_K6_C3_S3"
+# PREFERRED_INPUT = "20260330_190655_N6-6_M10_K6_C3_S3"
+PREFERRED_INPUT = None
+
+
+# None means "show all conditions found in the input".
+# Example:
+VISIBLE_CONDITIONS = ['belief_off', 'belief_on_quantile']
+# VISIBLE_CONDITIONS = None
+
+CONDITION_STYLE_MAP = {
+    "belief_off": {
+        "color": "#C0392B",
+        "marker": "o",
+        "markersize": 5,
+        "markeredgewidth": 1.8,
+        "linewidth": 2.0,
+        "label": "belief_off",
+    },
+    "belief_on": {
+        "color": "#2E6DB4",
+        "marker": "o",
+        "markersize": 5,
+        "markeredgewidth": 1.2,
+        "linewidth": 2.0,
+        "label": "belief_on",
+    },
+    "belief_on_quantile": {
+        "color": "#2E6DB4",
+        "marker": "o",
+        "markersize": 5,
+        "markeredgewidth": 1.2,
+        "linewidth": 2.0,
+        "label": "belief_on_quantile",
+    },
+    "belief_on_expected": {
+        "color": "#1F8A5B",
+        "marker": "^",
+        "markersize": 8.0,
+        "markeredgewidth": 1.2,
+        "linewidth": 2.0,
+        "label": "belief_on_expected",
+    },
+}
+FALLBACK_COLORS = ["#7A5195", "#EF5675", "#FFA600", "#4C78A8", "#72B7B2"]
+FALLBACK_MARKERS = ["s", "D", "P", "v", ">"]
+
+CONN_LINE = {"color": "#B3B3B3", "linewidth": 0.8, "alpha": 0.7, "zorder": 2}
+BAND_ALPHA = 0.16
+
+ROW_YLABELS = ["Coalition Utility", "Task Completion Rate"]
+ROW_TITLES = ["Endpoint Utility", "Endpoint Completion"]
+
 PLOT_GLOBAL = {
-    'subplot_w':        3.4,
-    'subplot_h':        3.2,
-    'xlabel_fontsize':  10,
-    'ylabel_fontsize':  10,
-    'title_fontsize':   11,
-    'tick_fontsize':    9,
-    'legend_fontsize':  9,
-    'show_grid':        True,
-    'grid_alpha':       0.35,
-    'grid_ls':          '--',
-    'hide_top_spine':   True,
-    'hide_right_spine': True,
-    'save_dpi':         150,
+    "subplot_w": 3.5,
+    "subplot_h": 3.1,
+    "convergence_subplot_w": 3.6,
+    "convergence_subplot_h": 2.9,
+    "xlabel_fontsize": 10,
+    "ylabel_fontsize": 10,
+    "title_fontsize": 11,
+    "title_fontweight": "bold",
+    "label_fontweight": "normal",
+    "tick_fontsize": 9,
+    "tick_fontweight": "normal",
+    "legend_fontsize": 9,
+    "show_titles": True,
+    "show_grid": True,
+    "grid_alpha": 0.35,
+    "grid_linestyle": "--",
+    "hide_top_spine": True,
+    "hide_right_spine": True,
+    "show_legend": False,
+    "tight_layout": True,
+    "save_dpi": 150,
+    "save_format": "png",
+    "save_bbox_inches": "tight",
 }
-PLOT_GLOBAL_ADAPTER = {
-    'xlabel_fontsize': PLOT_GLOBAL['xlabel_fontsize'],
-    'ylabel_fontsize': PLOT_GLOBAL['ylabel_fontsize'],
-    'title_fontsize': PLOT_GLOBAL['title_fontsize'],
-    'title_fontweight': 'bold',
-    'tick_fontsize': PLOT_GLOBAL['tick_fontsize'],
-    'show_grid': PLOT_GLOBAL['show_grid'],
-    'grid_linestyle': PLOT_GLOBAL['grid_ls'],
-    'grid_alpha': PLOT_GLOBAL['grid_alpha'],
-    'show_legend': False,
-    'hide_top_spine': PLOT_GLOBAL['hide_top_spine'],
-    'hide_right_spine': PLOT_GLOBAL['hide_right_spine'],
-    'save_dpi': PLOT_GLOBAL['save_dpi'],
-    'save_bbox_inches': 'tight',
-    'tight_layout': True,
-}
-STYLE_HELPER = PlotStyleHelper(PLOT_GLOBAL_ADAPTER, FIGURES_DIR)
 
-# ══════════════════════════════════════════════════════════════════════════════
-# HDF5 加载（直接用 h5py，绕过 mat73 的 cell-array-of-structs 解析 bug）
-# ══════════════════════════════════════════════════════════════════════════════
+STYLE_HELPER = PlotStyleHelper(PLOT_GLOBAL, FIGURES_DIR)
 
-def _read_scalar(ds, f=None):
-    """
-    从 h5py Dataset 读取 float 标量。
-    若值是 HDF5 对象引用（object ref），先解引用再读取。
-    """
-    if ds is None:
+
+def resolve_input_selector(input_selector):
+    if input_selector is None:
+        return None
+    selector = str(input_selector).strip()
+    return selector or None
+
+
+def _read_scalar(dataset, h5file=None):
+    if dataset is None:
         return np.nan
-    val = ds[()]
-    # 对象引用：再解一层
-    if isinstance(val, np.ndarray) and val.dtype.kind == 'O':
-        if f is None or val.size == 0:
+
+    value = dataset[()]
+    if isinstance(value, np.ndarray) and value.dtype.kind == "O":
+        if h5file is None or value.size == 0:
             return np.nan
         try:
-            val = f[val.flat[0]][()]
+            value = h5file[value.flat[0]][()]
         except Exception:
             return np.nan
+
     try:
-        return float(np.asarray(val, dtype=float).ravel()[0])
+        return float(np.asarray(value, dtype=float).ravel()[0])
     except Exception:
         return np.nan
 
 
-def _read_1d(ds, f=None):
-    """从 h5py Dataset 读取 1D float array（含对象引用解包）。"""
-    if ds is None:
+def _read_1d(dataset, h5file=None):
+    if dataset is None:
         return np.array([])
-    val = ds[()]
-    if isinstance(val, np.ndarray) and val.dtype.kind == 'O':
-        if f is None or val.size == 0:
+
+    value = dataset[()]
+    if isinstance(value, np.ndarray) and value.dtype.kind == "O":
+        if h5file is None or value.size == 0:
             return np.array([])
         try:
-            val = f[val.flat[0]][()]
+            value = h5file[value.flat[0]][()]
         except Exception:
             return np.array([])
-    return np.asarray(val, dtype=float).ravel()
+
+    try:
+        return np.asarray(value, dtype=float).ravel()
+    except Exception:
+        return np.array([])
 
 
-def load_ablation_h5py(mat_path):
-    """
-    用 h5py 直接解析 MATLAB v7.3 (.mat) 中的 ablation_results cell array。
+def _decode_char_array(value):
+    arr = np.asarray(value)
+    if arr.size == 0:
+        return None
 
-    MATLAB cell array 在 HDF5 中存储为对象引用数组，维度顺序是 Fortran（列优先）：
-      MATLAB shape (num_N, num_seeds, num_cond=2)
-      → HDF5 shape  (2, num_seeds, num_N)
-    每个引用指向一个 HDF5 Group（对应 MATLAB struct entry）。
+    if arr.dtype.kind in ("U", "S"):
+        chars = []
+        for item in arr.flatten(order="F"):
+            if isinstance(item, bytes):
+                chars.append(item.decode("utf-8", errors="ignore"))
+            else:
+                chars.append(str(item))
+        text = "".join(chars).strip()
+        return text or None
 
-    返回:
-      n_values   : list[int]
-      seeds      : list[int]
-      utility    : np.ndarray  (num_N, num_seeds, 2)
-      completion : np.ndarray  (num_N, num_seeds, 2)
-    """
-    with h5py.File(mat_path, 'r') as f:
-        # ── 1. 读取 config ─────────────────────────────────────────────────
-        cfg = f['ablation_config']
-        n_values_arr = _read_1d(cfg.get('N_values'), f)
-        seeds_arr    = _read_1d(cfg.get('seeds'),    f)
+    if np.issubdtype(arr.dtype, np.integer):
+        chars = [chr(int(ch)) for ch in arr.flatten(order="F") if int(ch) != 0]
+        text = "".join(chars).strip()
+        return text or None
 
-        num_N = int(n_values_arr.size)
-        num_S = int(seeds_arr.size)
-        n_values = [int(x) for x in n_values_arr]
-        seeds    = [int(x) for x in seeds_arr]
+    if arr.ndim == 0:
+        text = str(arr.item()).strip()
+        return text or None
 
-        # ── 2. 读取 ablation_results cell array ───────────────────────────
-        refs_ds   = f['ablation_results']
-        hdf5_shape = refs_ds.shape   # (num_cond, num_seeds, num_N) Fortran 顺序
-        print(f"  ablation_results HDF5 shape = {hdf5_shape}  "
-              f"(期望 ({2}, {num_S}, {num_N}))")
+    return None
 
-        utility    = np.full((num_N, num_S, 2), np.nan)
-        completion = np.full((num_N, num_S, 2), np.nan)
 
-        for hdf5_idx in np.ndindex(hdf5_shape):
-            # HDF5 Fortran 顺序 → MATLAB 顺序：反转下标
-            # hdf5_idx = (ci, si, ni)  →  MATLAB idx = (ni, si, ci)
-            rev = tuple(reversed(hdf5_idx))
-            if len(rev) != 3:
-                continue
-            ni, si, ci = rev
-            if ni >= num_N or si >= num_S or ci >= 2:
-                continue
+def _read_string(dataset, h5file):
+    if dataset is None:
+        return None
 
-            ref = refs_ds[hdf5_idx]
+    value = dataset[()]
+    if isinstance(value, bytes):
+        text = value.decode("utf-8", errors="ignore").strip()
+        return text or None
+    if isinstance(value, str):
+        text = value.strip()
+        return text or None
+
+    if isinstance(value, np.ndarray) and value.dtype.kind == "O":
+        if value.size == 0:
+            return None
+        try:
+            return _read_string(h5file[value.flat[0]], h5file)
+        except Exception:
+            return None
+
+    return _decode_char_array(value)
+
+
+def _read_string_list(dataset, h5file):
+    if dataset is None:
+        return []
+
+    value = dataset[()]
+    if isinstance(value, np.ndarray) and value.dtype.kind == "O":
+        items = []
+        for ref in value.flatten(order="F"):
             try:
-                entry = f[ref]
+                text = _read_string(h5file[ref], h5file)
+            except Exception:
+                text = None
+            if text:
+                items.append(text)
+        return items
+
+    text = _read_string(dataset, h5file)
+    return [text] if text else []
+
+
+def _normalize_value(value):
+    if isinstance(value, dict):
+        return {key: _normalize_value(val) for key, val in value.items()}
+    if isinstance(value, list):
+        return [_normalize_value(val) for val in value]
+    if isinstance(value, tuple):
+        return tuple(_normalize_value(val) for val in value)
+    if isinstance(value, np.ndarray):
+        if value.dtype.names:
+            if value.size == 1:
+                return _normalize_value(value.reshape(-1, order="F")[0])
+            flat = np.empty(value.size, dtype=object)
+            for idx, item in enumerate(value.reshape(-1, order="F")):
+                flat[idx] = _normalize_value(item)
+            return flat.reshape(value.shape, order="F")
+        if value.dtype == object:
+            if value.ndim == 0:
+                return _normalize_value(value.item())
+            flat = np.empty(value.size, dtype=object)
+            for idx, item in enumerate(value.reshape(-1, order="F")):
+                flat[idx] = _normalize_value(item)
+            return flat.reshape(value.shape, order="F")
+        if value.ndim == 0:
+            return _normalize_value(value.item())
+        return value
+    if isinstance(value, np.generic):
+        return value.item()
+    return value
+
+
+def _coerce_results_array(raw_results):
+    results = _normalize_value(raw_results)
+    arr = np.asarray(results, dtype=object)
+    if arr.ndim != 3:
+        raise RuntimeError(
+            f"Unsupported ablation_results shape: {arr.shape}. Expected a 3-D [N, seed, condition] container."
+        )
+    return arr
+
+
+def _to_string(value):
+    if value is None:
+        return ""
+    if isinstance(value, bytes):
+        return value.decode("utf-8", errors="ignore")
+    if isinstance(value, np.ndarray):
+        if value.size == 0:
+            return ""
+        if value.size == 1:
+            return _to_string(value.item())
+        return "".join(_to_string(item) for item in value.ravel().tolist())
+    text = str(value)
+    return "" if text == "None" else text
+
+
+def _to_bool(value):
+    if isinstance(value, np.ndarray):
+        if value.size == 0:
+            return False
+        return _to_bool(value.item())
+    if isinstance(value, (list, tuple)):
+        if not value:
+            return False
+        return _to_bool(value[0])
+    if value is None:
+        return False
+    return bool(value)
+
+
+def _to_scalar(value):
+    if value is None:
+        return np.nan
+    try:
+        arr = np.asarray(value, dtype=float).ravel()
+        return float(arr[0]) if arr.size else np.nan
+    except Exception:
+        return np.nan
+
+
+def _to_curve(value):
+    if value is None:
+        return np.array([])
+    try:
+        return np.asarray(value, dtype=float).ravel()
+    except Exception:
+        return np.array([])
+
+
+def _to_int_list(value):
+    if value is None:
+        return []
+    arr = np.asarray(value).ravel()
+    return [int(v) for v in arr.tolist()]
+
+
+def _to_string_list(value):
+    if value is None:
+        return []
+    if isinstance(value, str):
+        return [value]
+    if isinstance(value, np.ndarray):
+        return [_to_string(v) for v in value.ravel().tolist()]
+    return [_to_string(v) for v in list(value)]
+
+
+def _first_entry_with_field(entries_2d, field_name):
+    for item in entries_2d.reshape(-1, order="F"):
+        if isinstance(item, dict) and field_name in item and item[field_name] not in (None, ""):
+            return item[field_name]
+    return None
+
+
+def _infer_n_values(results_arr, configured_n_values):
+    if configured_n_values and len(configured_n_values) == results_arr.shape[0]:
+        return configured_n_values
+
+    inferred = []
+    for ni in range(results_arr.shape[0]):
+        field_value = _first_entry_with_field(results_arr[ni, :, :], "N")
+        if field_value is None:
+            inferred.append(ni + 1)
+        else:
+            inferred.append(int(_to_scalar(field_value)))
+    return inferred
+
+
+def _infer_seeds(results_arr, configured_seeds):
+    if configured_seeds and len(configured_seeds) == results_arr.shape[1]:
+        return configured_seeds
+
+    inferred = []
+    for si in range(results_arr.shape[1]):
+        field_value = _first_entry_with_field(results_arr[:, si, :], "seed")
+        if field_value is None:
+            inferred.append(si + 1)
+        else:
+            inferred.append(int(_to_scalar(field_value)))
+    return inferred
+
+
+def _resolve_condition_name(entry, cond_idx, configured_conditions):
+    if isinstance(entry, dict):
+        cond_name = _to_string(entry.get("condition"))
+        if cond_name:
+            return cond_name
+
+        belief_on = entry.get("belief_on", entry.get("enable_belief_update"))
+        demand_mode = _to_string(entry.get("demand_estimation_mode")).lower()
+        if belief_on is not None:
+            belief_on = _to_bool(belief_on)
+            if belief_on and demand_mode == "expected":
+                return "belief_on_expected"
+            if belief_on:
+                return "belief_on"
+            return "belief_off"
+
+    if cond_idx < len(configured_conditions) and configured_conditions[cond_idx]:
+        return configured_conditions[cond_idx]
+    return f"condition_{cond_idx + 1}"
+
+
+def _load_ablation_h5py_legacy(mat_path):
+    if h5py is None:
+        raise RuntimeError(
+            "Legacy ablation MAT loading requires h5py in this environment."
+        )
+
+    with h5py.File(mat_path, "r") as h5file:
+        config = h5file["ablation_config"]
+        n_values_arr = _read_1d(config.get("N_values"), h5file)
+        seeds_arr = _read_1d(config.get("seeds"), h5file)
+        num_rounds_cfg = int(_read_scalar(config.get("num_rounds"), h5file))
+        configured_conditions = _read_string_list(config.get("conditions"), h5file)
+
+        n_values = [int(v) for v in n_values_arr]
+        seeds = [int(v) for v in seeds_arr]
+        num_n = len(n_values)
+        num_s = len(seeds)
+
+        refs_dataset = h5file["ablation_results"]
+        num_c = int(refs_dataset.shape[0])
+
+        utility = np.full((num_n, num_s, num_c), np.nan)
+        completion = np.full((num_n, num_s, num_c), np.nan)
+        condition_names = [None] * num_c
+
+        convergence_map = {}
+        max_rounds = max(num_rounds_cfg, 0)
+
+        for hdf5_idx in np.ndindex(refs_dataset.shape):
+            ni, si, ci = tuple(reversed(hdf5_idx))
+            if ni >= num_n or si >= num_s or ci >= num_c:
+                continue
+
+            ref = refs_dataset[hdf5_idx]
+            try:
+                entry = h5file[ref]
             except Exception:
                 continue
             if not isinstance(entry, h5py.Group):
                 continue
 
-            # success 字段
-            succ = _read_scalar(entry.get('success'), f)
-            if succ != 1.0:
+            cond_name = _read_string(entry.get("condition"), h5file)
+            if not cond_name and ci < len(configured_conditions):
+                cond_name = configured_conditions[ci]
+            if not cond_name:
+                belief_on = _read_scalar(entry.get("belief_on"), h5file)
+                demand_mode = _read_string(entry.get("demand_estimation_mode"), h5file) or ""
+                if not np.isnan(belief_on):
+                    if belief_on >= 0.5 and demand_mode.lower() == "expected":
+                        cond_name = "belief_on_expected"
+                    elif belief_on >= 0.5:
+                        cond_name = "belief_on"
+                    else:
+                        cond_name = "belief_off"
+            if not cond_name:
+                cond_name = f"condition_{ci + 1}"
+
+            if condition_names[ci] is None:
+                condition_names[ci] = cond_name
+
+            success = _read_scalar(entry.get("success"), h5file)
+            if success != 1.0:
                 continue
 
-            utility[ni, si, ci]    = _read_scalar(entry.get('final_utility'),         f)
-            completion[ni, si, ci] = _read_scalar(entry.get('final_task_completion'),  f)
+            utility[ni, si, ci] = _read_scalar(entry.get("final_utility"), h5file)
+            completion[ni, si, ci] = _read_scalar(entry.get("final_task_completion"), h5file)
 
-    return n_values, seeds, utility, completion
+            curve = _read_1d(entry.get("convergence_utility"), h5file)
+            if curve.size:
+                convergence_map[(ni, si, ci)] = curve
+                max_rounds = max(max_rounds, int(curve.size))
+
+        for ci in range(num_c):
+            if condition_names[ci] is None:
+                if ci < len(configured_conditions) and configured_conditions[ci]:
+                    condition_names[ci] = configured_conditions[ci]
+                else:
+                    condition_names[ci] = f"condition_{ci + 1}"
+
+        convergence = np.full((num_n, num_s, num_c, max_rounds), np.nan)
+        for (ni, si, ci), curve in convergence_map.items():
+            upto = min(max_rounds, curve.size)
+            convergence[ni, si, ci, :upto] = curve[:upto]
+
+    run_meta = {
+        "source_type": "legacy_mat",
+        "source_path": mat_path,
+        "run_dir": os.path.dirname(mat_path),
+        "run_name": os.path.splitext(os.path.basename(mat_path))[0],
+        "used_cache": False,
+        "cache_path": None,
+        "param_snapshot": None,
+    }
+    return n_values, seeds, condition_names, utility, completion, convergence, run_meta
 
 
-# ══════════════════════════════════════════════════════════════════════════════
-# 查找文件
-# ══════════════════════════════════════════════════════════════════════════════
+def load_ablation_data(input_path=None):
+    aggregator = AblationResultAggregator(SEARCH_DIRS)
+    resolved = aggregator.resolve_input(input_path=input_path)
+    if resolved["source_type"] == "legacy_mat":
+        return _load_ablation_h5py_legacy(resolved["path"])
 
-def find_mat_file(argv):
-    if len(argv) > 1:
-        p = argv[1]
-        if os.path.isfile(p):
-            return p
-        print(f"警告: 指定文件不存在 '{p}'，尝试自动搜索。")
+    raw_results, ablation_config, run_meta = aggregator.load_results(input_path=resolved["path"])
 
-    candidates = []
-    for d in SEARCH_DIRS:
-        candidates.extend(glob.glob(os.path.join(d, '*.mat')))
+    ablation_config = _normalize_value(ablation_config)
+    results_arr = _coerce_results_array(raw_results)
 
-    ablation = [f for f in candidates
-                if 'ablation' in os.path.basename(f).lower()
-                or os.path.join('ablation', '') in f.replace('\\', '/')]
-    pool = ablation if ablation else candidates
-    if not pool:
-        sys.exit("找不到 .mat 文件，请先运行 Batch_Ablation.m，或手动指定路径。")
+    configured_conditions = _to_string_list(ablation_config.get("conditions", []))
+    configured_n_values = _to_int_list(ablation_config.get("N_values", []))
+    configured_seeds = _to_int_list(ablation_config.get("seeds", []))
+    configured_rounds = int(_to_scalar(ablation_config.get("num_rounds", 0)))
 
-    chosen = max(pool, key=os.path.getmtime)
-    print(f"自动选择: {chosen}")
-    return chosen
+    n_values = _infer_n_values(results_arr, configured_n_values)
+    seeds = _infer_seeds(results_arr, configured_seeds)
+    num_n, num_s, num_c = results_arr.shape
+
+    utility = np.full((num_n, num_s, num_c), np.nan)
+    completion = np.full((num_n, num_s, num_c), np.nan)
+    condition_names = [None] * num_c
+
+    convergence_map = {}
+    max_rounds = max(configured_rounds, 0)
+
+    for ni in range(num_n):
+        for si in range(num_s):
+            for ci in range(num_c):
+                entry = results_arr[ni, si, ci]
+                if not isinstance(entry, dict):
+                    continue
+
+                cond_name = _resolve_condition_name(entry, ci, configured_conditions)
+                if condition_names[ci] is None:
+                    condition_names[ci] = cond_name
+
+                if not _to_bool(entry.get("success")):
+                    continue
+
+                utility[ni, si, ci] = _to_scalar(entry.get("final_utility"))
+                completion[ni, si, ci] = _to_scalar(entry.get("final_task_completion"))
+
+                curve = _to_curve(entry.get("convergence_utility"))
+                if curve.size:
+                    convergence_map[(ni, si, ci)] = curve
+                    max_rounds = max(max_rounds, int(curve.size))
+
+    for ci in range(num_c):
+        if condition_names[ci] is None:
+            if ci < len(configured_conditions) and configured_conditions[ci]:
+                condition_names[ci] = configured_conditions[ci]
+            else:
+                condition_names[ci] = f"condition_{ci + 1}"
+
+    convergence = np.full((num_n, num_s, num_c, max_rounds), np.nan)
+    for (ni, si, ci), curve in convergence_map.items():
+        upto = min(max_rounds, curve.size)
+        convergence[ni, si, ci, :upto] = curve[:upto]
+
+    return n_values, seeds, condition_names, utility, completion, convergence, run_meta
 
 
-# ══════════════════════════════════════════════════════════════════════════════
-# 绘图
-# ══════════════════════════════════════════════════════════════════════════════
+def _extract_timestamp_token(run_meta):
+    run_name = _to_string(run_meta.get("run_name"))
+    if run_name:
+        parts = run_name.split("_")
+        if len(parts) >= 2 and re.fullmatch(r"\d{8}", parts[0]) and re.fullmatch(r"\d{6}", parts[1]):
+            return f"{parts[0]}_{parts[1]}"
 
-def plot_ablation_scatter(n_values, seeds, utility, completion, save_path):
-    num_N   = len(n_values)
-    num_S   = len(seeds)
-    x_ticks  = np.arange(1, num_S + 1)
-    x_labels = [str(s) for s in seeds]
+    source_path = _to_string(run_meta.get("source_path"))
+    basename = os.path.splitext(os.path.basename(source_path))[0]
+    parts = basename.split("_")
+    if len(parts) >= 2:
+        if re.fullmatch(r"\d{8}", parts[0]) and re.fullmatch(r"\d{6}", parts[1]):
+            return f"{parts[0]}_{parts[1]}"
+        return "_".join(parts[-2:])
+    return basename or "ablation"
 
-    pg = PLOT_GLOBAL
-    fig_w = pg['subplot_w'] * num_N
-    fig_h = pg['subplot_h'] * 2
-    fig, axes = plt.subplots(2, num_N, figsize=(fig_w, fig_h), squeeze=False)
 
-    for row, (data, ylabel) in enumerate(zip(
-            [utility, completion], ROW_YLABELS)):
+def _mean_and_std(curves_2d):
+    valid = np.any(~np.isnan(curves_2d), axis=0)
+    counts = np.sum(~np.isnan(curves_2d), axis=0)
+    safe_counts = np.maximum(counts, 1)
 
-        for col in range(num_N):
+    filled = np.where(np.isnan(curves_2d), 0.0, curves_2d)
+    mean = np.sum(filled, axis=0) / safe_counts
+
+    centered = np.where(np.isnan(curves_2d), 0.0, curves_2d - mean)
+    std = np.sqrt(np.sum(centered ** 2, axis=0) / safe_counts)
+
+    mean[~valid] = np.nan
+    std[~valid] = np.nan
+    return mean, std, valid
+
+
+def _unique_preserve_order(items):
+    seen = set()
+    result = []
+    for item in items:
+        if item in seen:
+            continue
+        seen.add(item)
+        result.append(item)
+    return result
+
+
+def _build_condition_styles(condition_names):
+    styles = {}
+    fallback_idx = 0
+    for cond_name in condition_names:
+        if cond_name in CONDITION_STYLE_MAP:
+            styles[cond_name] = dict(CONDITION_STYLE_MAP[cond_name])
+            continue
+
+        styles[cond_name] = {
+            "color": FALLBACK_COLORS[fallback_idx % len(FALLBACK_COLORS)],
+            "marker": FALLBACK_MARKERS[fallback_idx % len(FALLBACK_MARKERS)],
+            "markersize": 7.5,
+            "markeredgewidth": 1.2,
+            "linewidth": 2.0,
+            "label": cond_name,
+        }
+        fallback_idx += 1
+    return styles
+
+
+def _resolve_visible_conditions(condition_names):
+    names = _unique_preserve_order(condition_names)
+    if VISIBLE_CONDITIONS is None:
+        return names
+
+    visible = [name for name in VISIBLE_CONDITIONS if name in names]
+    if not visible:
+        raise SystemExit(
+            f"VISIBLE_CONDITIONS={VISIBLE_CONDITIONS} does not match any condition in this input: {names}"
+        )
+    return visible
+
+
+def _build_condition_offsets(num_visible):
+    if num_visible <= 1:
+        return np.array([0.0])
+    return np.linspace(-0.22, 0.22, num_visible)
+
+
+def _sanitize_token(text):
+    return re.sub(r"[^A-Za-z0-9_\\-]+", "-", text).strip("-") or "all"
+
+
+def _visibility_suffix(visible_conditions, all_conditions):
+    if visible_conditions == all_conditions:
+        return "all"
+    return "-".join(_sanitize_token(name) for name in visible_conditions)
+
+
+def plot_ablation_scatter(n_values, seeds, condition_names, utility, completion, save_path):
+    visible_conditions = _resolve_visible_conditions(condition_names)
+    condition_styles = _build_condition_styles(condition_names)
+    condition_indices = [condition_names.index(name) for name in visible_conditions]
+    offsets = _build_condition_offsets(len(condition_indices))
+
+    num_n = len(n_values)
+    num_s = len(seeds)
+    x_ticks = np.arange(1, num_s + 1)
+    x_labels = [str(seed) for seed in seeds]
+
+    fig_w = PLOT_GLOBAL["subplot_w"] * num_n
+    fig_h = PLOT_GLOBAL["subplot_h"] * 2
+    fig, axes = plt.subplots(2, num_n, figsize=(fig_w, fig_h), squeeze=False)
+
+    for row, (data, ylabel) in enumerate(zip([utility, completion], ROW_YLABELS)):
+        for col, n_value in enumerate(n_values):
             ax = axes[row][col]
 
-            # 灰线：连接同 seed 的两个条件
-            for si in range(num_S):
-                y_on  = data[col, si, 0]
-                y_off = data[col, si, 1]
-                if not (np.isnan(y_on) or np.isnan(y_off)):
-                    ax.plot([x_ticks[si], x_ticks[si]], [y_on, y_off],
-                            **CONN_LINE)
+            for si, base_x in enumerate(x_ticks):
+                xs = []
+                ys = []
+                for offset, cond_idx in zip(offsets, condition_indices):
+                    y = data[col, si, cond_idx]
+                    if np.isnan(y):
+                        continue
+                    xs.append(base_x + offset)
+                    ys.append(y)
+                if len(xs) >= 2:
+                    ax.plot(xs, ys, **CONN_LINE)
 
-            # belief_on（蓝圆）
-            y_on  = data[col, :, 0]
-            valid = ~np.isnan(y_on)
-            ax.plot(x_ticks[valid], y_on[valid],
-                    marker=STYLE_ON['marker'],
-                    color=STYLE_ON['color'],
-                    markersize=STYLE_ON['markersize'],
-                    linestyle='none',
-                    label=STYLE_ON['label'],
-                    zorder=STYLE_ON['zorder'])
+            for offset, cond_idx in zip(offsets, condition_indices):
+                cond_name = condition_names[cond_idx]
+                style = condition_styles[cond_name]
+                y = data[col, :, cond_idx]
+                valid = ~np.isnan(y)
+                ax.plot(
+                    x_ticks[valid] + offset,
+                    y[valid],
+                    linestyle="none",
+                    marker=style["marker"],
+                    color=style["color"],
+                    markersize=style["markersize"],
+                    markeredgewidth=style.get("markeredgewidth", 1.2),
+                    zorder=4,
+                )
 
-            # belief_off（红叉）
-            y_off = data[col, :, 1]
-            valid = ~np.isnan(y_off)
-            ax.plot(x_ticks[valid], y_off[valid],
-                    marker=STYLE_OFF['marker'],
-                    color=STYLE_OFF['color'],
-                    markersize=STYLE_OFF['markersize'],
-                    markeredgewidth=STYLE_OFF['markeredgewidth'],
-                    linestyle='none',
-                    label=STYLE_OFF['label'],
-                    zorder=STYLE_OFF['zorder'])
-
+            margin = 0.3 + (np.max(np.abs(offsets)) if offsets.size else 0.0)
             ax.set_xticks(x_ticks)
-            ax.set_xticklabels(x_labels, fontsize=pg['tick_fontsize'])
-            ax.tick_params(axis='y', labelsize=pg['tick_fontsize'])
+            ax.set_xticklabels(x_labels)
+            ax.set_xlim(0.5 - margin, num_s + 0.5 + margin)
             STYLE_HELPER.apply_common_style(
                 ax,
-                xlabel='Seed',
+                xlabel="Seed",
                 ylabel=ylabel,
-                title=f'N = {n_values[col]}',
+                title=f"N = {n_value}",
             )
-            ax.set_xlim(0.5, num_S + 0.5)
 
-    # 统一图例（右上角第1行最后一列）
-    h_on  = mlines.Line2D([], [], color=STYLE_ON['color'],  marker='o',
-                          markersize=8,  linestyle='none', label='belief_on')
-    h_off = mlines.Line2D([], [], color=STYLE_OFF['color'], marker='x',
-                          markersize=9,  markeredgewidth=2.0,
-                          linestyle='none', label='belief_off')
-    axes[0][-1].legend(handles=[h_on, h_off],
-                       fontsize=pg['legend_fontsize'],
-                       framealpha=0.85, edgecolor='#cccccc', loc='best')
+    legend_handles = []
+    for cond_name in visible_conditions:
+        style = condition_styles[cond_name]
+        legend_handles.append(
+            mlines.Line2D(
+                [],
+                [],
+                linestyle="none",
+                marker=style["marker"],
+                color=style["color"],
+                markersize=style["markersize"],
+                markeredgewidth=style.get("markeredgewidth", 1.2),
+                label=style["label"],
+            )
+        )
+    fig.legend(
+        handles=legend_handles,
+        loc="upper center",
+        ncol=max(1, min(3, len(legend_handles))),
+        framealpha=0.9,
+        edgecolor="#cccccc",
+        fontsize=PLOT_GLOBAL["legend_fontsize"],
+        bbox_to_anchor=(0.5, 1.02),
+    )
 
-    # 左侧行标题
     for row, title in enumerate(ROW_TITLES):
         axes[row][0].annotate(
-            title, xy=(0, 0.5), xycoords='axes fraction',
-            xytext=(-0.30, 0.5), textcoords='axes fraction',
-            fontsize=9, fontweight='bold',
-            rotation=90, va='center', ha='center',
+            title,
+            xy=(0, 0.5),
+            xycoords="axes fraction",
+            xytext=(-0.28, 0.5),
+            textcoords="axes fraction",
+            fontsize=9,
+            fontweight="bold",
+            rotation=90,
+            va="center",
+            ha="center",
             annotation_clip=False,
         )
 
-    fig.suptitle('消融实验：信念更新机制对比  (belief_on ● vs belief_off ✕)',
-                 fontsize=12, fontweight='bold', y=1.01)
-    os.makedirs(os.path.dirname(save_path), exist_ok=True)
-    STYLE_HELPER.finalize_and_save(fig, save_path)
+    fig.suptitle("Ablation endpoint comparison", fontsize=12, fontweight="bold", y=1.07)
+    STYLE_HELPER.finalize_and_save(fig, save_path, tight_layout_rect=[0, 0, 1, 0.95])
     return fig
 
 
-# ══════════════════════════════════════════════════════════════════════════════
-# 主程序
-# ══════════════════════════════════════════════════════════════════════════════
+def plot_ablation_convergence(n_values, condition_names, convergence, save_path):
+    visible_conditions = _resolve_visible_conditions(condition_names)
+    condition_styles = _build_condition_styles(condition_names)
+    condition_indices = [condition_names.index(name) for name in visible_conditions]
 
-def main():
-    mat_path = find_mat_file(sys.argv)
+    num_n = len(n_values)
+    num_rounds = convergence.shape[-1]
+    rounds = np.arange(1, num_rounds + 1)
 
-    print("\n加载数据（h5py 直接解析）...")
-    n_values, seeds, utility, completion = load_ablation_h5py(mat_path)
+    fig_w = PLOT_GLOBAL["convergence_subplot_w"] * num_n
+    fig_h = PLOT_GLOBAL["convergence_subplot_h"]
+    fig, axes = plt.subplots(1, num_n, figsize=(fig_w, fig_h), squeeze=False)
 
-    print(f"  N_values   = {n_values}")
-    print(f"  seeds      = {seeds}")
-    print(f"  utility    有效: on={int(np.sum(~np.isnan(utility[:,:,0])))} "
-          f"off={int(np.sum(~np.isnan(utility[:,:,1])))}")
-    print(f"  completion 有效: on={int(np.sum(~np.isnan(completion[:,:,0])))} "
-          f"off={int(np.sum(~np.isnan(completion[:,:,1])))}")
+    for col, n_value in enumerate(n_values):
+        ax = axes[0][col]
 
-    if np.all(np.isnan(completion)):
-        print("\n⚠ 警告: 未找到 final_task_completion 字段（旧版 .mat 不含此字段）。")
-        print("  任务完成率子图将为空。重新运行 Batch_Ablation.m 可修复。")
+        for cond_idx in condition_indices:
+            cond_name = condition_names[cond_idx]
+            style = condition_styles[cond_name]
+            curves = convergence[col, :, cond_idx, :]
+            mean, std, valid = _mean_and_std(curves)
 
-    basename = os.path.splitext(os.path.basename(mat_path))[0]
-    parts    = basename.split('_')
-    ts       = '_'.join(parts[-2:]) if len(parts) >= 2 else 'ts'
+            if not np.any(valid):
+                continue
 
-    save_path = os.path.join(FIGURES_DIR, f'ablation_scatter_{ts}.png')
-    print(f"\n绘图 → {save_path}")
-    plot_ablation_scatter(n_values, seeds, utility, completion, save_path)
+            ax.plot(
+                rounds,
+                mean,
+                color=style["color"],
+                linewidth=style["linewidth"],
+                label=style["label"],
+            )
+            ax.fill_between(
+                rounds[valid],
+                (mean - std)[valid],
+                (mean + std)[valid],
+                color=style["color"],
+                alpha=BAND_ALPHA,
+                linewidth=0,
+            )
 
-    print("\n完成。")
+        ax.set_xlim(1, max(1, num_rounds))
+        STYLE_HELPER.apply_common_style(
+            ax,
+            xlabel="Round",
+            ylabel="Coalition Utility",
+            title=f"N = {n_value}",
+        )
+
+    legend_handles = []
+    for cond_name in visible_conditions:
+        style = condition_styles[cond_name]
+        legend_handles.append(
+            mlines.Line2D([], [], color=style["color"], linewidth=style["linewidth"], label=style["label"])
+        )
+    fig.legend(
+        handles=legend_handles,
+        loc="upper center",
+        ncol=max(1, min(3, len(legend_handles))),
+        framealpha=0.9,
+        edgecolor="#cccccc",
+        fontsize=PLOT_GLOBAL["legend_fontsize"],
+        bbox_to_anchor=(0.5, 1.02),
+    )
+
+    fig.suptitle("Ablation convergence by N (mean +/- std)", fontsize=12, fontweight="bold", y=1.08)
+    STYLE_HELPER.finalize_and_save(fig, save_path, tight_layout_rect=[0, 0, 1, 0.94])
+    return fig
+
+
+def main(input_path=None):
+    STYLE_HELPER.apply_rcparams()
+
+    if input_path is None and len(sys.argv) > 1:
+        input_path = sys.argv[1]
+    if input_path is None:
+        input_path = PREFERRED_INPUT
+    input_path = resolve_input_selector(input_path)
+
+    print("\nLoading ablation data...")
+    n_values, seeds, condition_names, utility, completion, convergence, run_meta = load_ablation_data(input_path)
+    visible_conditions = _resolve_visible_conditions(condition_names)
+
+    print(f"  Input path         = {run_meta.get('source_path', '')}")
+    print(f"  Source type        = {run_meta.get('source_type', '')}")
+    print(f"  Run name           = {run_meta.get('run_name', '')}")
+    if run_meta.get("source_type") == "run_dir":
+        cache_state = "cache hit" if run_meta.get("used_cache") else "cache rebuilt"
+        print(f"  Aggregation        = {cache_state}")
+        print(f"  Cache path         = {run_meta.get('cache_path', '')}")
+    elif run_meta.get("source_type") == "cache_file":
+        print("  Aggregation        = direct cache load")
+    else:
+        print(f"  Aggregation        = direct {run_meta.get('source_type', '')} load")
+
+    print(f"  N_values           = {n_values}")
+    print(f"  seeds              = {seeds}")
+    print(f"  conditions         = {condition_names}")
+    print(f"  visible_conditions = {visible_conditions}")
+    for cond_idx, cond_name in enumerate(condition_names):
+        utility_valid = int(np.sum(~np.isnan(utility[:, :, cond_idx])))
+        completion_valid = int(np.sum(~np.isnan(completion[:, :, cond_idx])))
+        print(f"  valid[{cond_name}] utility={utility_valid} completion={completion_valid}")
+    print(f"  convergence rounds = {convergence.shape[-1]}")
+
+    timestamp_token = _extract_timestamp_token(run_meta)
+    visibility_token = _visibility_suffix(visible_conditions, _unique_preserve_order(condition_names))
+    scatter_path = STYLE_HELPER.build_output_path(timestamp_token, f"ablation_scatter_{visibility_token}")
+    convergence_path = STYLE_HELPER.build_output_path(timestamp_token, f"ablation_convergence_{visibility_token}")
+
+    print(f"\nPlotting endpoint scatter -> {scatter_path}")
+    plot_ablation_scatter(n_values, seeds, condition_names, utility, completion, scatter_path)
+
+    if convergence.shape[-1] > 0 and not np.all(np.isnan(convergence)):
+        print(f"Plotting convergence figure -> {convergence_path}")
+        plot_ablation_convergence(n_values, condition_names, convergence, convergence_path)
+    else:
+        print("Skipping convergence figure: no convergence_utility data found.")
+
+    print("\nDone.")
     plt.show()
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

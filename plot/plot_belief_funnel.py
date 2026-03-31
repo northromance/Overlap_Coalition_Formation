@@ -5,32 +5,46 @@ Plot belief-to-value funnel figures from Batch_Belief.m outputs.
 
 Usage:
   python plot_belief_funnel.py
-  python plot_belief_funnel.py path/to/belief.mat
+  python plot_belief_funnel.py <belief_run_name>
+  python plot_belief_funnel.py <path/to/belief_run_dir>
+  python plot_belief_funnel.py <legacy_belief.mat>
+
+Optional top-level selector:
+  PREFERRED_INPUT = None
+  PREFERRED_INPUT = "20260330_120000_N10_M10_K6_C2_S5"
+  PREFERRED_INPUT = "results/batch/belief/20260330_120000_N10_M10_K6_C2_S5"
+  PREFERRED_INPUT = "N10_M10_K6_S2_20260326_213543.mat"
 """
 
-import glob
 import os
 import re
 import sys
+import copy
 
 import matplotlib
 import numpy as np
+from belief_result_aggregator import BeliefResultAggregator
 from plot_style_helper import PlotStyleHelper
-
-try:
-    import mat73
-except ImportError:
-    sys.exit("Missing dependency: please run `pip install mat73` first.")
 
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 ROOT_DIR = os.path.dirname(SCRIPT_DIR)
 FIGURES_DIR = os.path.join(ROOT_DIR, "figures", "paper")
 SEARCH_DIRS = [
-    os.path.join(ROOT_DIR, "results", "batch", "belief"),
-    os.path.join(ROOT_DIR, "results", "batch"),
+    os.path.join(ROOT_DIR, "results", "batch", "belief"),  # belief 实验结果主目录
+    os.path.join(ROOT_DIR, "results", "batch"),  # 兜底搜索目录
 ]
 
+# 顶部可调参数区
+# PREFERRED_INPUT:
+#   None / ""      -> 自动选择最新 belief run_dir；若没有再回退到最新旧 MAT
+#   run name       -> SEARCH_DIRS 下精确匹配同名 run_dir
+#   file name      -> SEARCH_DIRS 下精确匹配同名旧 MAT
+#   relative/abs   -> 直接使用 run_dir、cache 文件或旧 MAT 路径
+PREFERRED_INPUT = None
+
+# 任务类型颜色映射。
+# 若任务类型数超过这里显式给出的颜色，回退到 FALLBACK_COLORS 轮换取色。
 TYPE_COLORS = {
     1: "#4878CF",
     2: "#6ACC65",
@@ -40,6 +54,9 @@ TYPE_COLORS = {
     6: "#956CB4",
 }
 FALLBACK_COLORS = ["#4878CF", "#6ACC65", "#D65F5F", "#EE854A", "#C4AD66", "#956CB4"]
+
+# 判定当前 matplotlib backend 是否为非交互后端。
+# 若命中这些标记，show() 可能不会弹窗，只会保存文件。
 NON_INTERACTIVE_BACKEND_MARKERS = (
     "agg",
     "pdf",
@@ -50,48 +67,148 @@ NON_INTERACTIVE_BACKEND_MARKERS = (
     "pgf",
     "module://matplotlib_inline",
 )
+
+# 若当前后端不可交互，则按顺序尝试切到这些 GUI backend。
 GUI_BACKEND_CANDIDATES = ("TkAgg", "QtAgg", "Qt5Agg")
-PLOT_EVERY_N_ROUNDS = 3  # 1 = plot every round; 5 = plot rounds 0,5,10,...
 
+# 横轴抽样步长。
+# 1 表示每一轮都画；3 表示 round 0,3,6,...；最后一轮会强制保留。
+PLOT_EVERY_N_ROUNDS = 3
+
+# 局部绘图样式参数。
+# 这里主要放“曲线本体”相关控制项，供 belief funnel 单图直接使用。
 PLOT_STYLE = {
-    "figsize": (7.2, 4.8),
-    "linewidth": 2.1,
-    "ref_linewidth": 1.2,
-    "band_alpha": 0.35,
+    "figsize": (3.5, 2.5),
+    "linewidth": 1.4,
+    "ref_linewidth": 1.0,
+    "ref_alpha": 0.85,
+    "band_alpha": 0.20,
     "marker": "o",
-    "markersize": 4.2,
+    "markersize": 3.5,
+    "markevery": 1,
+    "show_band": True,
+    "show_reference_line": True,
     "grid_linestyle": "--",
-    "grid_linewidth": 0.55,
-    "grid_alpha": 0.35,
-    "title_fontsize": 12,
-    "label_fontsize": 11,
-    "tick_fontsize": 10,
-    "legend_fontsize": 9,
-    "save_dpi": 160,
+    "grid_linewidth": 0.45,
+    "grid_alpha": 0.25,
+    "title_fontsize": 8,      # 论文里通常可不写图内标题
+    "label_fontsize": 8,
+    "tick_fontsize": 8,
+    "legend_fontsize": 7.5,
+    "save_dpi": 600,
+    "y_padding_min": 20.0,
+    "y_padding_ratio": 0.05,
 }
-
 os.makedirs(FIGURES_DIR, exist_ok=True)
 
 PLOT_GLOBAL = {
+    # 字体与标题
     "title_fontsize": PLOT_STYLE["title_fontsize"],
+    "title_fontweight": "bold",           # 标题字重
+    "title_pad": 8,                       # 标题与坐标轴上边距
     "xlabel_fontsize": PLOT_STYLE["label_fontsize"],
     "ylabel_fontsize": PLOT_STYLE["label_fontsize"],
+    "label_fontweight": "normal",         # 坐标轴标题字重
     "tick_fontsize": PLOT_STYLE["tick_fontsize"],
+    "tick_fontweight": "normal",          # 刻度字重
     "legend_fontsize": PLOT_STYLE["legend_fontsize"],
-    "show_grid": True,
+    "legend_fontweight": "normal",        # 图例字重
+    "show_titles": True,                  # 全局标题总开关
+
+    # 网格与图例
+    "show_grid": True,                    # 是否显示网格
     "grid_linestyle": PLOT_STYLE["grid_linestyle"],
     "grid_linewidth": PLOT_STYLE["grid_linewidth"],
     "grid_alpha": PLOT_STYLE["grid_alpha"],
-    "show_legend": False,
-    "legend_framealpha": 0.9,
-    "legend_edgecolor": "#cccccc",
-    "hide_top_spine": True,
-    "hide_right_spine": True,
+    "show_legend": True,                  # 全局图例总开关
+    "legend_loc": "best",                 # 图例位置
+    "legend_bbox_to_anchor": None,        # 图例锚点；None 表示不用锚点
+    "legend_ncol": 1,                     # 图例列数
+    "legend_borderaxespad": 0.3,          # 图例与坐标轴边界距离
+    "legend_handlelength": 2.0,           # 图例示意线长度
+    "legend_labelspacing": 0.4,           # 图例条目间距
+    "legend_framealpha": 0.9,             # 图例边框透明度
+    "legend_edgecolor": "#cccccc",        # 图例边框颜色
+
+    # 坐标轴边框
+    "hide_top_spine": True,               # 隐藏上边框
+    "hide_right_spine": True,             # 隐藏右边框
+
+    # 保存输出
+    "save_format": "eps",                 # 输出格式，可改为 png/pdf/svg
     "save_dpi": PLOT_STYLE["save_dpi"],
-    "save_bbox_inches": "tight",
-    "tight_layout": True,
+    "save_bbox_inches": "tight",         # 保存时裁掉多余白边
+    "timestamp_first_in_name": False,     # 文件名格式：False=stem_timestamp，True=timestamp_stem
+
+    # 画布布局
+    "tight_layout": True,                 # 保存前是否执行 tight_layout
 }
 STYLE_HELPER = PlotStyleHelper(PLOT_GLOBAL, FIGURES_DIR)
+STYLE_HELPER_NO_LEGEND = PlotStyleHelper(dict(PLOT_GLOBAL, show_legend=False), FIGURES_DIR)
+
+# 每张图的显式配置。
+# 这里控制标题文本、坐标轴标签、坐标轴范围、是否从 0 开始等。
+FIGURE_CONFIG = {
+    "belief_funnel": {
+        "show_title": True,   # 当前图标题开关；受全局 show_titles 共同控制
+        "show_legend": True,  # 当前图图例开关；受全局 show_legend 共同控制
+        "title_template": "Belief Funnel Convergence [{condition_name}]",  # 标题模板
+        "xlabel": "Communication round",  # x 轴标题
+        "ylabel": "Expected task value",  # y 轴标题
+        "xlim": None,      # x 轴范围；None 表示自动
+        "ylim": None,      # y 轴范围；None 表示自动
+        "xticks": None,    # x 轴刻度；None 表示自动
+        "yticks": None,    # y 轴刻度；None 表示自动
+        "bottom_zero": True,  # True 时若自动计算 y 轴下界，则不低于 0
+    },
+}
+
+
+def merge_figure_config(fig_key, **kwargs):
+    cfg = copy.deepcopy(FIGURE_CONFIG[fig_key])
+    cfg.update(kwargs)
+    return cfg
+
+
+def apply_plot_rcparams():
+    STYLE_HELPER.apply_rcparams()
+
+
+def build_output_path(timestamp, stem):
+    return STYLE_HELPER.build_output_path(timestamp, stem)
+
+
+def apply_common_style(ax, cfg, title=None, legend_handles=None, legend_labels=None):
+    show_legend = cfg.get("show_legend", PLOT_GLOBAL.get("show_legend", False))
+    helper = STYLE_HELPER if show_legend else STYLE_HELPER_NO_LEGEND
+
+    legend_kwargs = None
+    if show_legend and legend_handles and legend_labels:
+        legend_kwargs = {
+            "handles": legend_handles,
+            "labels": legend_labels,
+        }
+
+    helper.apply_common_style(ax, cfg=cfg, title=title, legend_kwargs=legend_kwargs)
+
+
+def apply_axis_controls(ax, cfg):
+    STYLE_HELPER.apply_axis_controls(ax, cfg=cfg)
+
+
+def finalize_and_save(fig, save_path):
+    STYLE_HELPER.finalize_and_save(fig, save_path)
+
+
+def get_timestamp_tag(config, run_meta):
+    timestamp = str(config.get("timestamp") or "").strip()
+    if timestamp:
+        return timestamp
+    run_name = str(run_meta.get("run_name") or "").strip()
+    if run_name:
+        return run_name
+    source_path = str(run_meta.get("source_path") or "").strip()
+    return os.path.splitext(os.path.basename(source_path))[0]
 
 
 def is_noninteractive_backend(backend_name):
@@ -121,30 +238,23 @@ SELECTED_BACKEND, BACKEND_SWITCHED = configure_gui_backend()
 import matplotlib.pyplot as plt
 
 
-def find_mat_file(argv):
-    if len(argv) > 1:
-        path = argv[1]
-        if os.path.isfile(path):
-            return path
-        print(f"Warning: file not found: {path}. Falling back to auto-search.")
+def resolve_input_selector(input_selector):
+    if input_selector is None:
+        return None
 
-    candidates = []
-    for directory in SEARCH_DIRS:
-        candidates.extend(glob.glob(os.path.join(directory, "*.mat")))
+    selector = str(input_selector).strip()
+    if not selector:
+        return None
 
-    belief_files = [
-        path
-        for path in candidates
-        if "belief" in os.path.basename(path).lower()
-        or os.path.join("belief", "") in path.replace("\\", "/").lower()
+    candidate_paths = [
+        os.path.abspath(selector),
+        os.path.abspath(os.path.join(ROOT_DIR, selector)),
     ]
-    pool = belief_files if belief_files else candidates
-    if not pool:
-        sys.exit("No belief .mat file found. Run Batch_Belief.m first or pass a path.")
+    for candidate in candidate_paths:
+        if os.path.exists(candidate):
+            return candidate
 
-    chosen = max(pool, key=os.path.getmtime)
-    print(f"Using latest result: {chosen}")
-    return chosen
+    return selector
 
 
 def to_scalar(val, default=np.nan):
@@ -417,6 +527,10 @@ def plot_condition_funnel(condition_name, aggregated, task_type_values, save_pat
         print(f"Skip {condition_name}: no valid task-type data.")
         return None
 
+    cfg = merge_figure_config(
+        "belief_funnel",
+        title=FIGURE_CONFIG["belief_funnel"]["title_template"].format(condition_name=condition_name),
+    )
     fig, ax = plt.subplots(figsize=PLOT_STYLE["figsize"])
     legend_handles = []
     legend_labels = []
@@ -433,7 +547,8 @@ def plot_condition_funnel(condition_name, aggregated, task_type_values, save_pat
         color = condition_style(type_id)
         true_value = float(task_type_values[type_id - 1])
 
-        ax.fill_between(rounds, low, high, color=color, alpha=PLOT_STYLE["band_alpha"])
+        if PLOT_STYLE.get("show_band", True):
+            ax.fill_between(rounds, low, high, color=color, alpha=PLOT_STYLE["band_alpha"])
         line, = ax.plot(
             rounds,
             center,
@@ -441,10 +556,17 @@ def plot_condition_funnel(condition_name, aggregated, task_type_values, save_pat
             linewidth=PLOT_STYLE["linewidth"],
             marker=PLOT_STYLE["marker"],
             markersize=PLOT_STYLE["markersize"],
-            markevery=1,
+            markevery=PLOT_STYLE["markevery"],
             solid_capstyle="round",
         )
-        ax.axhline(true_value, color=color, linestyle="--", linewidth=PLOT_STYLE["ref_linewidth"], alpha=0.9)
+        if PLOT_STYLE.get("show_reference_line", True):
+            ax.axhline(
+                true_value,
+                color=color,
+                linestyle="--",
+                linewidth=PLOT_STYLE["ref_linewidth"],
+                alpha=PLOT_STYLE["ref_alpha"],
+            )
 
         legend_handles.append(line)
         legend_labels.append(f"Type-{type_id} (V*={true_value:.0f})")
@@ -453,37 +575,30 @@ def plot_condition_funnel(condition_name, aggregated, task_type_values, save_pat
 
     ymax = max(ymax_candidates) if ymax_candidates else 1.0
     ymin = min(ymin_candidates) if ymin_candidates else 0.0
-    ypad = max(50.0, 0.08 * (ymax - ymin if ymax > ymin else ymax))
+    yspan = ymax - ymin if ymax > ymin else ymax
+    ypad = max(PLOT_STYLE["y_padding_min"], PLOT_STYLE["y_padding_ratio"] * yspan)
 
-    STYLE_HELPER.apply_common_style(
+    cfg["xlim"] = cfg.get("xlim") or (0, max(len(v["center"]) for v in aggregated.values()) - 1)
+    y_bottom = ymin - ypad
+    if cfg.get("bottom_zero", False):
+        y_bottom = max(0.0, y_bottom)
+    cfg["ylim"] = cfg.get("ylim") or (y_bottom, ymax + ypad)
+
+    apply_common_style(
         ax,
-        cfg={
-            "title": f"Belief Funnel Convergence [{condition_name}]",
-            "xlabel": "Communication round",
-            "ylabel": "Expected task value",
-        },
+        cfg=cfg,
+        title=cfg.get("title"),
+        legend_handles=legend_handles,
+        legend_labels=legend_labels,
     )
-    ax.set_xlim(0, max(len(v["center"]) for v in aggregated.values()) - 1)
-    ax.set_ylim(max(0.0, ymin - ypad), ymax + ypad)
-    ax.legend(
-        legend_handles,
-        legend_labels,
-        fontsize=PLOT_STYLE["legend_fontsize"],
-        framealpha=0.9,
-        edgecolor="#cccccc",
-        loc="best",
-    )
-
-    STYLE_HELPER.finalize_and_save(fig, save_path)
+    apply_axis_controls(ax, cfg)
+    finalize_and_save(fig, save_path)
     return fig
 
 
-def load_successful_entries(mat_path):
-    data = mat73.loadmat(mat_path)
-    results = data.get("belief_results")
-    config = data.get("belief_config", {})
+def group_successful_entries(results, config):
     if results is None:
-        sys.exit("belief_results not found in the .mat file.")
+        sys.exit("belief_results not found in the selected belief input.")
 
     conditions = parse_conditions(config)
     grouped = {condition: [] for condition in conditions}
@@ -519,17 +634,42 @@ def maybe_show_figures(figures):
         return
     backend = str(plt.get_backend())
     if is_noninteractive_backend(backend):
-        print(f"\nFigures were saved only; no interactive backend available (backend={backend}).")
+        print(f"\nBackend {backend} is non-interactive; calling plt.show() may not open GUI windows.")
     else:
         print(f"\nFigures saved. Close the windows to exit (backend={backend}).")
-        plt.show()
+    plt.show(block=True)
 
 
-def main():
-    mat_path = find_mat_file(sys.argv)
-    grouped, config, results = load_successful_entries(mat_path)
+def main(input_path=None):
+    apply_plot_rcparams()
+
+    if input_path is None and len(sys.argv) > 1:
+        input_path = sys.argv[1]
+    if input_path is None:
+        input_path = PREFERRED_INPUT
+
+    input_path = resolve_input_selector(input_path)
+    aggregator = BeliefResultAggregator(search_dirs=SEARCH_DIRS)
+
+    print("\nLoading belief data...")
+    results, config, run_meta = aggregator.load_results(input_path=input_path)
+    print(f"  Source path = {run_meta.get('source_path', '')}")
+    print(f"  Source type = {run_meta.get('source_type', '')}")
+    if run_meta.get("run_name"):
+        print(f"  Run name    = {run_meta.get('run_name', '')}")
+    if run_meta.get("cache_path"):
+        if run_meta.get("source_type") == "run_dir":
+            cache_state = "cache hit" if run_meta.get("used_cache") else "cache rebuilt"
+        elif run_meta.get("source_type") == "cache_file":
+            cache_state = "direct cache file"
+        else:
+            cache_state = "cache available"
+        print(f"  Cache       = {cache_state}")
+        print(f"  Cache path  = {run_meta.get('cache_path', '')}")
+
+    grouped, config, results = group_successful_entries(results, config)
     task_type_values = get_task_type_values(config, results)
-    timestamp = str(config.get("timestamp") or "").strip() or os.path.splitext(os.path.basename(mat_path))[0]
+    timestamp = get_timestamp_tag(config, run_meta)
 
     print(f"Matplotlib backend: {plt.get_backend()}")
     print(f"Plot every N rounds: {PLOT_EVERY_N_ROUNDS}")
@@ -554,8 +694,10 @@ def main():
                     f"V*={task_type_values[type_id - 1]:.0f}."
                 )
 
-        filename = f"fig_belief_funnel_{sanitize_name(condition_name)}_{timestamp}.png"
-        save_path = os.path.join(FIGURES_DIR, filename)
+        save_path = build_output_path(
+            timestamp,
+            f"fig_belief_funnel_{sanitize_name(condition_name)}",
+        )
         fig = plot_condition_funnel(condition_name, aggregated, task_type_values, save_path)
         if fig is not None:
             figures.append(fig)

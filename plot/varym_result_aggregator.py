@@ -98,9 +98,13 @@ class VaryMResultAggregator:
         param_snapshot = self._normalize_loaded_value(run_config_data.get('param_snapshot', {}))
         progress_status = self._normalize_loaded_value(progress_data.get('progress_status', {}))
 
-        cache_dir = scale_config.get('aggregate_dir', os.path.join(run_dir, 'aggregated'))
+        cache_dir = self._resolve_cache_dir(run_dir, scale_config)
         cache_path = os.path.join(cache_dir, self.CACHE_FILENAME)
         progress_last_update = self._as_string(progress_status.get('last_update', ''))
+
+        scale_config['run_dir'] = run_dir
+        scale_config['aggregate_dir'] = cache_dir
+        scale_config['aggregate_cache_file'] = cache_path
 
         if os.path.isfile(cache_path):
             payload = self._load_cache(cache_path)
@@ -138,6 +142,16 @@ class VaryMResultAggregator:
             'param_snapshot': param_snapshot,
         }
         return scale_M_results, scale_config, run_meta
+
+    def _resolve_cache_dir(self, run_dir, scale_config):
+        """
+        Keep cache co-located with the selected run_dir.
+
+        Old run_config snapshots may contain absolute paths from another machine
+        (for example D:\\... after the run directory has been copied to E:\\...).
+        For portability we always use <run_dir>/aggregated at plotting time.
+        """
+        return os.path.join(run_dir, 'aggregated')
 
     def _aggregate_from_incremental(self, run_dir, scale_config, progress_status):
         m_values = self._to_int_list(scale_config.get('M_values', []))

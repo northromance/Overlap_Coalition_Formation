@@ -118,6 +118,7 @@ for counter = 1:Value_Params.num_rounds
         end
         SC_global = Value_data(1).SC;
         task_type_demands = Value_Params.task_type_demands;
+        [demand_mode, demand_rounding_mode] = WorldSim.get_demand_estimation_settings(AddPara, Value_Params);
         resource_confidence = Value_Params.resource_confidence; % 资源需求置信度（处理不确定性）
         T_init_construction = Value_Params.OCF_T_init_construction;
 
@@ -144,7 +145,8 @@ for counter = 1:Value_Params.num_rounds
                 % 根据置信需求判断是否需要补充该类资源
                 curr_alloc = sum(SC_global{selected_task}(:, k));
                 belief = Value_data(i).initbelief(selected_task, :);
-                expected_demand = WorldSim.calculate_demand_quantile(belief, task_type_demands, resource_confidence);
+                expected_demand = WorldSim.estimate_demand_from_belief( ...
+                    belief, task_type_demands, demand_mode, resource_confidence, demand_rounding_mode);
                 can_add = max(0, expected_demand(k) - curr_alloc);
 
                 % 如果该任务还需要该类资源，则尝试投放
@@ -478,6 +480,7 @@ Value_data_i.SC = SC_temp;
 probs = SA_Select_probs(Value_data_i, agents, tasks, Value_Params, resource_gap, current_T);
 SC_new = SC_temp;
 task_type_demands = Value_Params.task_type_demands;
+[demand_mode, demand_rounding_mode] = WorldSim.get_demand_estimation_settings(AddPara, Value_Params);
 
 % --- 步骤 B：重新分配资源，形成候选解 ---
 for k = 1:K
@@ -493,7 +496,8 @@ for k = 1:K
     % 判断该任务是否仍然需要该类资源
     curr_alloc = sum(SC_new{selected_task}(:, k));
     belief = Value_data_i.initbelief(selected_task, :);
-    expected_demand = WorldSim.calculate_demand_quantile(belief, task_type_demands, confidence);
+    expected_demand = WorldSim.estimate_demand_from_belief( ...
+        belief, task_type_demands, demand_mode, confidence, demand_rounding_mode);
     can_add = max(0, expected_demand(k) - curr_alloc);
 
     if can_add > eps_val

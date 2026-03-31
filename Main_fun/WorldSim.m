@@ -431,6 +431,98 @@ classdef WorldSim
         end
 
 
+        function demand = estimate_demand_from_belief(belief, task_type_demands, mode, confidence, rounding_mode)
+            if nargin < 3 || isempty(mode)
+                mode = 'quantile';
+            end
+            if nargin < 4 || isempty(confidence)
+                confidence = 0.7;
+            end
+            if nargin < 5 || isempty(rounding_mode)
+                rounding_mode = 'ceil';
+            end
+
+            mode = lower(string(mode));
+            rounding_mode = lower(string(rounding_mode));
+
+            [num_types, ~] = size(task_type_demands);
+            belief = belief(:).';
+            num_use = min(numel(belief), num_types);
+
+            if num_use <= 0
+                demand = zeros(1, size(task_type_demands, 2));
+                return;
+            end
+
+            belief = belief(1:num_use);
+            task_type_demands = task_type_demands(1:num_use, :);
+
+            if sum(belief) > 0
+                belief = belief / sum(belief);
+            else
+                belief = ones(1, num_use) / num_use;
+            end
+
+            switch char(mode)
+                case 'quantile'
+                    demand = WorldSim.calculate_demand_quantile(belief, task_type_demands, confidence);
+                case 'expected'
+                    demand = belief * task_type_demands;
+                    demand = WorldSim.apply_demand_rounding(demand, rounding_mode);
+                otherwise
+                    error('estimate_demand_from_belief:UnsupportedMode', ...
+                        'Unsupported demand estimation mode: %s', char(mode));
+            end
+        end
+
+
+        function demand = apply_demand_rounding(demand, rounding_mode)
+            if nargin < 2 || isempty(rounding_mode)
+                rounding_mode = 'ceil';
+            end
+
+            rounding_mode = lower(string(rounding_mode));
+
+            switch char(rounding_mode)
+                case 'none'
+                    % keep raw expectation
+                case 'ceil'
+                    demand = ceil(demand);
+                case 'round'
+                    demand = round(demand);
+                otherwise
+                    error('apply_demand_rounding:UnsupportedMode', ...
+                        'Unsupported demand rounding mode: %s', char(rounding_mode));
+            end
+        end
+
+
+        function [mode, rounding_mode] = get_demand_estimation_settings(AddPara, Value_Params)
+            mode = 'quantile';
+            rounding_mode = 'ceil';
+
+            if nargin >= 1 && isstruct(AddPara)
+                if isfield(AddPara, 'demand_estimation_mode') && ~isempty(AddPara.demand_estimation_mode)
+                    mode = char(string(AddPara.demand_estimation_mode));
+                end
+                if isfield(AddPara, 'demand_rounding_mode') && ~isempty(AddPara.demand_rounding_mode)
+                    rounding_mode = char(string(AddPara.demand_rounding_mode));
+                end
+            end
+
+            if nargin >= 2 && isstruct(Value_Params) ...
+                    && isfield(Value_Params, 'resource_confidence') ...
+                    && Value_Params.resource_confidence <= 0 ...
+                    && (~isstruct(AddPara) || ~isfield(AddPara, 'demand_estimation_mode') || isempty(AddPara.demand_estimation_mode))
+                mode = 'expected';
+                rounding_mode = 'none';
+            end
+
+            mode = char(lower(string(mode)));
+            rounding_mode = char(lower(string(rounding_mode)));
+        end
+
+
         function Value_data = init_value_data(agents, tasks, Value_Params)
             N = Value_Params.N;
             M = Value_Params.M;

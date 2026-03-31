@@ -25,6 +25,7 @@ plot_varyM_top_config.py
 
 import os
 import sys
+import glob
 import copy
 import numpy as np
 import matplotlib.pyplot as plt
@@ -44,6 +45,15 @@ SEARCH_DIRS = [
     os.path.join(ROOT_DIR, 'results', 'batch', 'varyM'),
     os.path.join(ROOT_DIR, 'results', 'batch'),
 ]
+
+# Optional manual input selector.
+# None  -> auto-pick the latest run/cache under SEARCH_DIRS.
+# Name  -> resolve by run folder name, e.g. '20260329_190314_N8_M8-20_K6_S11'.
+# Path  -> absolute/relative run dir, cache file, or legacy MAT file.
+
+
+# PREFERRED_INPUT = None
+PREFERRED_INPUT = '20260329_190314_N8_M8-20_K6_S11'
 
 # ── 算法显示样式（颜色 / 点型 / 线型 / 图例名）────────────────────────────────
 ALG_STYLE = {
@@ -309,6 +319,59 @@ def finalize_and_save(fig, save_path):
     STYLE_HELPER.finalize_and_save(fig, save_path)
 
 
+def resolve_input_selector(input_selector, search_dirs=None):
+    """
+    Resolve a preferred input selector into an existing path when possible.
+
+    Supported forms:
+      - None / ''                     -> use latest available input
+      - run folder name               -> search under SEARCH_DIRS
+      - absolute or relative file/dir -> use directly if it exists
+    """
+    if input_selector is None:
+        return None
+
+    selector = str(input_selector).strip()
+    if not selector:
+        return None
+
+    candidate_paths = [
+        os.path.abspath(selector),
+        os.path.abspath(os.path.join(ROOT_DIR, selector)),
+    ]
+    for candidate in candidate_paths:
+        if os.path.exists(candidate):
+            return candidate
+
+    matches = []
+    for search_dir in (search_dirs or []):
+        if not os.path.isdir(search_dir):
+            continue
+
+        direct_match = os.path.join(search_dir, selector)
+        if os.path.exists(direct_match):
+            matches.append(os.path.abspath(direct_match))
+
+        pattern = os.path.join(search_dir, '**', selector)
+        for matched_path in glob.glob(pattern, recursive=True):
+            if os.path.basename(os.path.normpath(matched_path)) == selector:
+                matches.append(os.path.abspath(matched_path))
+
+    matches = sorted(set(matches))
+    if len(matches) == 1:
+        return matches[0]
+    if len(matches) > 1:
+        match_text = '\n  - '.join(matches)
+        raise FileNotFoundError(
+            f"Multiple VaryM inputs match '{selector}'. Please use a full path:\n  - {match_text}"
+        )
+
+    raise FileNotFoundError(
+        f"Cannot find VaryM input '{selector}'. "
+        f"Set PREFERRED_INPUT to a run name under SEARCH_DIRS or to a full path."
+    )
+
+
 # ══════════════════════════════════════════════════════════════════════════════
 # 数据提取
 # ══════════════════════════════════════════════════════════════════════════════
@@ -516,9 +579,13 @@ def plot_fig2d(mean_curves, std_curves, num_rounds, m_target, alg_names, save_pa
 # 主程序
 # ══════════════════════════════════════════════════════════════════════════════
 
-def main():
+def main(input_path=None):
     apply_plot_rcparams()
-    input_path = sys.argv[1] if len(sys.argv) > 1 else None
+    if input_path is None and len(sys.argv) > 1:
+        input_path = sys.argv[1]
+    if input_path is None:
+        input_path = PREFERRED_INPUT
+    input_path = resolve_input_selector(input_path, SEARCH_DIRS)
     aggregator = VaryMResultAggregator(search_dirs=SEARCH_DIRS)
 
     print("\n加载数据...")

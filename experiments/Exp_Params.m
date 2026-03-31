@@ -12,7 +12,7 @@ obs_times  = 50;    % 效用/观测统计参数（传入 OCFUtils.init_value_par
 xp_Config = struct();
 Exp_Config.Common = struct();
 Exp_Config.Common.num_rounds = num_rounds;
-Exp_Config.Common.SEEDS = 2486:1:2496; % 随机种子列表（21 个种子，正式运行值；测试时在各脚本中覆盖此变量）
+Exp_Config.Common.SEEDS = 2486:1:2536; % 随机种子列表（21 个种子，正式运行值；测试时在各脚本中覆盖此变量）
 
 %% ===== 任务价值与类型 =====
 task_values    = [500, 1000, 2000];   % 三类任务的基础奖励价值
@@ -90,7 +90,7 @@ WORLD_ZMIN = 0;   WORLD_ZMAX = 0;
 %% ===== 智能体基础属性 =====
 agent_velocity    = 2;      % 速度（统一）
 agent_detprob_min = 0.75;   % 探测/感知概率下限
-agent_detprob_max = 1;    % 探测/感知概率上限
+agent_detprob_max = 0.1;    % 探测/感知概率上限
 agent_Emax_min    = 300;    % 最大能量下限
 agent_Emax_range  = 50;     % 最大能量随机浮动范围
 agent_fuel        = 1;      % 飞行燃料消耗系数 varpi（= agents.fuel）
@@ -106,6 +106,17 @@ task_type1_demand_max = 2;   % 类型1任务各维资源需求上限（低价值
 task_type2_demand_max = 5;   % 类型2任务各维资源需求上限（中等任务）
 task_type3_demand_max = 8;   % 类型3任务各维资源需求上限（高价值任务）
 task_type_demand_max  = [task_type1_demand_max, task_type2_demand_max, task_type3_demand_max];
+
+
+
+% % % Batch_Ablation 中的任务资源需求上限设置
+% task_type1_demand_max = 2;   % 类型1任务各维资源需求上限（低价值任务）
+% task_type2_demand_max = 8;   % 类型2任务各维资源需求上限（中等任务）
+% task_type3_demand_max = 14;   % 类型3任务各维资源需求上限（高价值任务）
+% task_type_demand_max  = [task_type1_demand_max, task_type2_demand_max, task_type3_demand_max];
+
+
+
 
 %% ===== 各资源类型的执行时间（K=6 维）=====
 % resource_exec_time(k) = 第 k 类资源执行所需时间
@@ -187,10 +198,19 @@ Exp_Config.Belief.AddPara = struct( ...
 
 % Batch_Ablation
 Exp_Config.Ablation.SEEDS = Exp_Config.Common.SEEDS;
-Exp_Config.Ablation.N_VALUES = [10];
-Exp_Config.Ablation.M = 10;
+Exp_Config.Ablation.N_VALUES = [4,8,12,15];
+Exp_Config.Ablation.M = 15;
 Exp_Config.Ablation.K = 6;
-Exp_Config.Ablation.CONDITIONS = {'belief_on', 'belief_off'};
+Exp_Config.Ablation.resource_confidence = 0.55;
+Exp_Config.Ablation.init_belief_mode = 'shared_wrong_prior';
+Exp_Config.Ablation.init_belief_vector = [0.55, 0.25, 0.20];
+Exp_Config.Ablation.ALL_CONDITION_DEFS = struct( ...
+    'name', {'belief_off', 'belief_on_quantile', 'belief_on_expected'}, ...
+    'enable_belief_update', {false, true, true}, ...
+    'demand_estimation_mode', {'quantile', 'quantile', 'expected'}, ...
+    'demand_rounding_mode', {'ceil', 'ceil', 'round'});
+Exp_Config.Ablation.ENABLED_CONDITIONS = {'belief_off', 'belief_on_quantile'};
+Exp_Config.Ablation.CONDITIONS = Exp_Config.Ablation.ENABLED_CONDITIONS;
 Exp_Config.Ablation.AddPara = struct( ...
     'verbose', 1, ...
     'enable_belief_update', true, ...
