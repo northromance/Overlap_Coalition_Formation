@@ -15,6 +15,7 @@ class VaryMResultAggregator:
     RUN_CONFIG_NAME = 'run_config.mat'
     PROGRESS_STATUS_NAME = 'progress_status.mat'
     CACHE_FILENAME = 'varym_aggregate_cache.pkl'
+    CACHE_FORMAT_VERSION = 2
 
     def __init__(self, search_dirs=None):
         self.search_dirs = [os.path.abspath(p) for p in (search_dirs or [])]
@@ -66,6 +67,10 @@ class VaryMResultAggregator:
 
         if source_type == 'cache_file':
             payload = self._load_cache(path)
+            if payload.get('cache_format_version') != self.CACHE_FORMAT_VERSION:
+                raise RuntimeError(
+                    f'缂撳瓨鐗堟湰杩囨椂: {path}锛岃鐢ㄨ繍琛岀洰褰曟垨鏂版牸寮忕紦瀛樿緭鍏ャ€?'
+                )
             run_meta = {
                 'source_type': 'cache_file',
                 'source_path': path,
@@ -108,7 +113,10 @@ class VaryMResultAggregator:
 
         if os.path.isfile(cache_path):
             payload = self._load_cache(cache_path)
-            if payload.get('progress_last_update', '') == progress_last_update:
+            if (
+                payload.get('cache_format_version') == self.CACHE_FORMAT_VERSION
+                and payload.get('progress_last_update', '') == progress_last_update
+            ):
                 run_meta = {
                     'source_type': 'run_dir',
                     'source_path': run_dir,
@@ -122,6 +130,7 @@ class VaryMResultAggregator:
 
         scale_M_results = self._aggregate_from_incremental(run_dir, scale_config, progress_status)
         payload = {
+            'cache_format_version': self.CACHE_FORMAT_VERSION,
             'scale_M_results': scale_M_results,
             'scale_config': scale_config,
             'run_dir': run_dir,
@@ -404,6 +413,7 @@ class VaryMResultAggregator:
             return arr
 
         loaded = np.asarray(value, dtype=object)
+        loaded = self._expand_singleton_axes(loaded, shape)
         if loaded.shape == shape:
             return loaded
 
@@ -415,6 +425,46 @@ class VaryMResultAggregator:
         flat_arr = arr.reshape(-1, order='F')
         flat_arr[:min(flat_loaded.size, flat_arr.size)] = flat_loaded[:min(flat_loaded.size, flat_arr.size)]
         return arr
+
+    def _expand_singleton_axes(self, loaded, shape):
+        if loaded.ndim >= len(shape):
+            return loaded
+
+        target_ndim = len(shape)
+        candidate = loaded
+        axis_pairs = list(enumerate(shape))
+
+        for axis, dim in axis_pairs:
+            if candidate.ndim >= target_ndim:
+                break
+
+            remaining_loaded = candidate.shape
+            remaining_target = shape[axis:]
+            if dim != 1:
+                continue
+
+            if self._can_match_with_singletons(remaining_loaded, remaining_target):
+                candidate = np.expand_dims(candidate, axis=axis)
+
+        if candidate.ndim == target_ndim:
+            return candidate
+
+        while candidate.ndim < target_ndim:
+            candidate = np.expand_dims(candidate, axis=0)
+        return candidate
+
+    def _can_match_with_singletons(self, loaded_shape, target_shape):
+        li = 0
+        for dim in target_shape:
+            if li >= len(loaded_shape):
+                return True
+            if loaded_shape[li] == dim:
+                li += 1
+                continue
+            if dim == 1:
+                continue
+            return False
+        return li == len(loaded_shape)
 
     def _coerce_bool_array(self, value, shape):
         obj_arr = self._coerce_object_array(value, shape, False)

@@ -47,25 +47,78 @@ SEARCH_DIRS = [
     os.path.join(ROOT_DIR, "results", "batch"),
 ]
 
-# Optional manual input selector.
-# None / ""      -> auto-pick the latest ablation run_dir; fallback to latest legacy MAT.
-# run name       -> exact run directory name under SEARCH_DIRS.
-# relative / abs -> run_dir, cache file, or legacy MAT path.
-
-
-
-
-# Example:
+# =========================
+# 输入与条件显示
+# =========================
+# 指定输入来源:
+# - None / ""      : 自动读取最新的 ablation run_dir, 若不存在则回退到最新 legacy MAT
+# - run name       : 例如 "20260330_190655_N6-6_M10_K6_C3_S3"
+# - relative / abs : run_dir、cache 文件或 legacy MAT 路径
+# 示例:
 #   PREFERRED_INPUT = "20260330_190655_N6-6_M10_K6_C3_S3"
 #   PREFERRED_INPUT = r"results/batch/ablation/20260330_190655_N6-6_M10_K6_C3_S3"
-# PREFERRED_INPUT = "20260330_190655_N6-6_M10_K6_C3_S3"
 PREFERRED_INPUT = None
 
+# 选择要展示的条件:
+# - None    : 显示当前输入中所有条件
+# - 列表     : 只按给定顺序显示这些条件
+# 示例:
+#   VISIBLE_CONDITIONS = ["belief_off", "belief_on_quantile"]
+VISIBLE_CONDITIONS = None
 
-# None means "show all conditions found in the input".
-# Example:
-VISIBLE_CONDITIONS = ['belief_off', 'belief_on_quantile']
-# VISIBLE_CONDITIONS = None
+# =========================
+# 散点图样本显示
+# =========================
+# 选择散点图中要展示的随机种子:
+# - None    : 显示全部 seed
+# - 列表     : 只显示这些实际 seed 值, 仅影响第一张散点图
+# 示例:
+# SCATTER_VISIBLE_SEEDS = list(range(2487, 2537))
+
+SCATTER_VISIBLE_SEEDS = None
+
+# 散点图横坐标标签模式:
+# - "mc_id" : 显示连续 Monte Carlo ID, 如 MC 1, MC 2, ...
+# - "seed"  : 直接显示原始随机数种子
+SCATTER_XLABEL_MODE = "mc_id"
+
+# Monte Carlo ID 的起始编号, 仅在 SCATTER_XLABEL_MODE = "mc_id" 时使用。
+SCATTER_MC_ID_START = 0
+
+# 横坐标标签的显示间隔:
+# - 1 表示每个样本都放一个刻度
+# - 4 表示只在 MC 1, 5, 9, ... 这些位置放刻度
+SCATTER_MC_TICK_STEP = 5
+
+# 是否让同一个 Monte Carlo 样本的不同条件落在同一条竖线上。
+SCATTER_ALIGN_CONDITIONS = True
+
+# 是否绘制同一样本内不同条件之间的连接线。
+SCATTER_SHOW_CONNECTION_LINES = False
+
+# =========================
+# 收敛图波动带显示
+# =========================
+# 是否显示第二张收敛图中的阴影带。
+CONV_SHOW_BAND = True
+
+# 阴影带模式:
+# - "std"        : 显示 mean +/- CONV_BAND_SCALE * std
+# - "percentile" : 显示指定百分位区间, 中心线仍然是 mean
+CONV_BAND_MODE = "percentile"
+
+
+# 仅在 CONV_BAND_MODE = "std" 时使用:
+# 阴影带按多少倍标准差显示。论文正式图建议保持 1.0。
+CONV_BAND_SCALE = 1.0
+
+# 仅在 CONV_BAND_MODE = "percentile" 时使用:
+# 指定阴影带的百分位范围, 例如 (10, 90) 表示 10%-90% 区间。
+CONV_BAND_PERCENTILES = (30, 70)
+
+# =========================
+# 样式配置
+# =========================
 
 CONDITION_STYLE_MAP = {
     "belief_off": {
@@ -104,7 +157,10 @@ CONDITION_STYLE_MAP = {
 FALLBACK_COLORS = ["#7A5195", "#EF5675", "#FFA600", "#4C78A8", "#72B7B2"]
 FALLBACK_MARKERS = ["s", "D", "P", "v", ">"]
 
+# 仅在开启 SCATTER_SHOW_CONNECTION_LINES 时生效。
 CONN_LINE = {"color": "#B3B3B3", "linewidth": 0.8, "alpha": 0.7, "zorder": 2}
+
+# 收敛图阴影带透明度。
 BAND_ALPHA = 0.16
 
 ROW_YLABELS = ["Coalition Utility", "Task Completion Rate"]
@@ -652,9 +708,61 @@ def _resolve_visible_conditions(condition_names):
     return visible
 
 
+def _normalize_seed_value(seed_value):
+    if isinstance(seed_value, (int, np.integer)):
+        return int(seed_value)
+
+    text = str(seed_value).strip()
+    if not text:
+        return text
+
+    try:
+        numeric = float(text)
+    except ValueError:
+        return text
+
+    if numeric.is_integer():
+        return int(numeric)
+    return text
+
+
+def _resolve_scatter_seed_indices(seeds):
+    if SCATTER_VISIBLE_SEEDS is None:
+        return np.arange(len(seeds), dtype=int)
+
+    normalized_seeds = [_normalize_seed_value(seed) for seed in seeds]
+    seed_to_index = {seed_value: idx for idx, seed_value in enumerate(normalized_seeds)}
+
+    requested = _unique_preserve_order([_normalize_seed_value(seed) for seed in SCATTER_VISIBLE_SEEDS])
+    resolved = []
+    missing = []
+    for seed_value in requested:
+        if seed_value in seed_to_index:
+            resolved.append(seed_to_index[seed_value])
+        else:
+            missing.append(seed_value)
+
+    if missing:
+        print(f"Warning: scatter seeds not found in current input and will be skipped: {missing}")
+    if not resolved:
+        raise SystemExit(
+            "SCATTER_VISIBLE_SEEDS does not match any seed in this input. "
+            f"Available seeds: {list(seeds)}"
+        )
+    return np.asarray(resolved, dtype=int)
+
+
+def _resolve_scatter_seed_selection(seeds):
+    seed_indices = _resolve_scatter_seed_indices(seeds)
+    display_seeds = [seeds[idx] for idx in seed_indices]
+    return seed_indices, display_seeds
+
+
 def _build_condition_offsets(num_visible):
     if num_visible <= 1:
         return np.array([0.0])
+    if SCATTER_ALIGN_CONDITIONS:
+        return np.zeros(num_visible)
     return np.linspace(-0.22, 0.22, num_visible)
 
 
@@ -668,16 +776,98 @@ def _visibility_suffix(visible_conditions, all_conditions):
     return "-".join(_sanitize_token(name) for name in visible_conditions)
 
 
-def plot_ablation_scatter(n_values, seeds, condition_names, utility, completion, save_path):
+def _scatter_seed_suffix(display_seeds, all_seeds):
+    if len(display_seeds) == len(all_seeds) and list(display_seeds) == list(all_seeds):
+        return "allseeds"
+    return "seedsel-" + "-".join(_sanitize_token(str(seed)) for seed in display_seeds)
+
+
+def _build_scatter_axis(display_seeds):
+    x_positions = np.arange(1, len(display_seeds) + 1, dtype=float)
+    mode = str(SCATTER_XLABEL_MODE).strip().lower()
+    tick_step = max(1, int(SCATTER_MC_TICK_STEP))
+
+    if mode == "mc_id":
+        base_labels = [f"{SCATTER_MC_ID_START + idx}" for idx in range(len(display_seeds))]
+        xlabel = "Monte Carlo ID"
+    elif mode == "seed":
+        base_labels = [str(seed) for seed in display_seeds]
+        xlabel = "Random Seed"
+    else:
+        raise SystemExit(f"Unsupported SCATTER_XLABEL_MODE={SCATTER_XLABEL_MODE!r}. Use 'mc_id' or 'seed'.")
+
+    tick_indices = np.arange(0, len(display_seeds), tick_step, dtype=int)
+    tick_positions = x_positions[tick_indices]
+    tick_labels = [base_labels[idx] for idx in tick_indices]
+    return x_positions, tick_positions, tick_labels, xlabel
+
+
+def _resolve_convergence_band(curves, mean, std, valid):
+    mode = str(CONV_BAND_MODE).strip().lower()
+
+    if mode == "std":
+        scale = float(CONV_BAND_SCALE)
+        lower = mean - scale * std
+        upper = mean + scale * std
+    elif mode == "percentile":
+        low, high = CONV_BAND_PERCENTILES
+        if not (0 <= low < high <= 100):
+            raise SystemExit(
+                f"Invalid CONV_BAND_PERCENTILES={CONV_BAND_PERCENTILES}. Expected 0 <= low < high <= 100."
+            )
+
+        lower = np.full_like(mean, np.nan, dtype=float)
+        upper = np.full_like(mean, np.nan, dtype=float)
+        valid_cols = np.where(valid)[0]
+        if valid_cols.size:
+            percentiles = np.nanpercentile(curves[:, valid_cols], [low, high], axis=0)
+            lower[valid_cols] = percentiles[0]
+            upper[valid_cols] = percentiles[1]
+    else:
+        raise SystemExit(f"Unsupported CONV_BAND_MODE={CONV_BAND_MODE!r}. Use 'std' or 'percentile'.")
+
+    lower[~valid] = np.nan
+    upper[~valid] = np.nan
+    return lower, upper
+
+
+def _describe_convergence_band():
+    mode = str(CONV_BAND_MODE).strip().lower()
+    if not CONV_SHOW_BAND:
+        return "mean only"
+    if mode == "std":
+        scale = float(CONV_BAND_SCALE)
+        if np.isclose(scale, 1.0):
+            return "mean +/- std"
+        return f"mean +/- {scale:g} std"
+
+    low, high = CONV_BAND_PERCENTILES
+    return f"mean with {low:g}-{high:g} percentile band"
+
+
+def plot_ablation_scatter(
+    n_values,
+    seeds,
+    condition_names,
+    utility,
+    completion,
+    save_path,
+    scatter_seed_indices=None,
+    scatter_display_seeds=None,
+):
     visible_conditions = _resolve_visible_conditions(condition_names)
     condition_styles = _build_condition_styles(condition_names)
     condition_indices = [condition_names.index(name) for name in visible_conditions]
     offsets = _build_condition_offsets(len(condition_indices))
+    if scatter_seed_indices is None or scatter_display_seeds is None:
+        seed_indices, display_seeds = _resolve_scatter_seed_selection(seeds)
+    else:
+        seed_indices = np.asarray(scatter_seed_indices, dtype=int)
+        display_seeds = list(scatter_display_seeds)
 
     num_n = len(n_values)
-    num_s = len(seeds)
-    x_ticks = np.arange(1, num_s + 1)
-    x_labels = [str(seed) for seed in seeds]
+    num_s = len(display_seeds)
+    x_positions, tick_positions, tick_labels, xlabel = _build_scatter_axis(display_seeds)
 
     fig_w = PLOT_GLOBAL["subplot_w"] * num_n
     fig_h = PLOT_GLOBAL["subplot_h"] * 2
@@ -687,25 +877,27 @@ def plot_ablation_scatter(n_values, seeds, condition_names, utility, completion,
         for col, n_value in enumerate(n_values):
             ax = axes[row][col]
 
-            for si, base_x in enumerate(x_ticks):
-                xs = []
-                ys = []
-                for offset, cond_idx in zip(offsets, condition_indices):
-                    y = data[col, si, cond_idx]
-                    if np.isnan(y):
-                        continue
-                    xs.append(base_x + offset)
-                    ys.append(y)
-                if len(xs) >= 2:
-                    ax.plot(xs, ys, **CONN_LINE)
+            if SCATTER_SHOW_CONNECTION_LINES:
+                for scatter_idx, base_x in enumerate(x_positions):
+                    xs = []
+                    ys = []
+                    seed_idx = seed_indices[scatter_idx]
+                    for offset, cond_idx in zip(offsets, condition_indices):
+                        y = data[col, seed_idx, cond_idx]
+                        if np.isnan(y):
+                            continue
+                        xs.append(base_x + offset)
+                        ys.append(y)
+                    if len(xs) >= 2:
+                        ax.plot(xs, ys, **CONN_LINE)
 
             for offset, cond_idx in zip(offsets, condition_indices):
                 cond_name = condition_names[cond_idx]
                 style = condition_styles[cond_name]
-                y = data[col, :, cond_idx]
+                y = data[col, seed_indices, cond_idx]
                 valid = ~np.isnan(y)
                 ax.plot(
-                    x_ticks[valid] + offset,
+                    x_positions[valid] + offset,
                     y[valid],
                     linestyle="none",
                     marker=style["marker"],
@@ -716,12 +908,12 @@ def plot_ablation_scatter(n_values, seeds, condition_names, utility, completion,
                 )
 
             margin = 0.3 + (np.max(np.abs(offsets)) if offsets.size else 0.0)
-            ax.set_xticks(x_ticks)
-            ax.set_xticklabels(x_labels)
+            ax.set_xticks(tick_positions)
+            ax.set_xticklabels(tick_labels)
             ax.set_xlim(0.5 - margin, num_s + 0.5 + margin)
             STYLE_HELPER.apply_common_style(
                 ax,
-                xlabel="Seed",
+                xlabel=xlabel,
                 ylabel=ylabel,
                 title=f"N = {n_value}",
             )
@@ -803,14 +995,16 @@ def plot_ablation_convergence(n_values, condition_names, convergence, save_path)
                 linewidth=style["linewidth"],
                 label=style["label"],
             )
-            ax.fill_between(
-                rounds[valid],
-                (mean - std)[valid],
-                (mean + std)[valid],
-                color=style["color"],
-                alpha=BAND_ALPHA,
-                linewidth=0,
-            )
+            if CONV_SHOW_BAND:
+                lower, upper = _resolve_convergence_band(curves, mean, std, valid)
+                ax.fill_between(
+                    rounds[valid],
+                    lower[valid],
+                    upper[valid],
+                    color=style["color"],
+                    alpha=BAND_ALPHA,
+                    linewidth=0,
+                )
 
         ax.set_xlim(1, max(1, num_rounds))
         STYLE_HELPER.apply_common_style(
@@ -836,7 +1030,12 @@ def plot_ablation_convergence(n_values, condition_names, convergence, save_path)
         bbox_to_anchor=(0.5, 1.02),
     )
 
-    fig.suptitle("Ablation convergence by N (mean +/- std)", fontsize=12, fontweight="bold", y=1.08)
+    fig.suptitle(
+        f"Ablation convergence by N ({_describe_convergence_band()})",
+        fontsize=12,
+        fontweight="bold",
+        y=1.08,
+    )
     STYLE_HELPER.finalize_and_save(fig, save_path, tight_layout_rect=[0, 0, 1, 0.94])
     return fig
 
@@ -870,6 +1069,12 @@ def main(input_path=None):
     print(f"  seeds              = {seeds}")
     print(f"  conditions         = {condition_names}")
     print(f"  visible_conditions = {visible_conditions}")
+    scatter_seed_indices, scatter_display_seeds = _resolve_scatter_seed_selection(seeds)
+    if SCATTER_VISIBLE_SEEDS is None:
+        print("  scatter seeds      = all")
+    else:
+        print(f"  scatter seeds      = {scatter_display_seeds}")
+    print(f"  convergence band   = {_describe_convergence_band()}")
     for cond_idx, cond_name in enumerate(condition_names):
         utility_valid = int(np.sum(~np.isnan(utility[:, :, cond_idx])))
         completion_valid = int(np.sum(~np.isnan(completion[:, :, cond_idx])))
@@ -878,11 +1083,27 @@ def main(input_path=None):
 
     timestamp_token = _extract_timestamp_token(run_meta)
     visibility_token = _visibility_suffix(visible_conditions, _unique_preserve_order(condition_names))
-    scatter_path = STYLE_HELPER.build_output_path(timestamp_token, f"ablation_scatter_{visibility_token}")
+    scatter_seed_token = _scatter_seed_suffix(
+        [_normalize_seed_value(seed) for seed in scatter_display_seeds],
+        [_normalize_seed_value(seed) for seed in seeds],
+    )
+    scatter_base = f"ablation_scatter_{visibility_token}"
+    if scatter_seed_token != "allseeds":
+        scatter_base = f"{scatter_base}_{scatter_seed_token}"
+    scatter_path = STYLE_HELPER.build_output_path(timestamp_token, scatter_base)
     convergence_path = STYLE_HELPER.build_output_path(timestamp_token, f"ablation_convergence_{visibility_token}")
 
     print(f"\nPlotting endpoint scatter -> {scatter_path}")
-    plot_ablation_scatter(n_values, seeds, condition_names, utility, completion, scatter_path)
+    plot_ablation_scatter(
+        n_values,
+        seeds,
+        condition_names,
+        utility,
+        completion,
+        scatter_path,
+        scatter_seed_indices=scatter_seed_indices,
+        scatter_display_seeds=scatter_display_seeds,
+    )
 
     if convergence.shape[-1] > 0 and not np.all(np.isnan(convergence)):
         print(f"Plotting convergence figure -> {convergence_path}")

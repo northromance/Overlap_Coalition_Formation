@@ -23,10 +23,11 @@ plot_single_viz.py
 import os
 import sys
 import glob
+import colorsys
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.patches as mpatches
-from matplotlib.colors import Normalize, TwoSlopeNorm
+from matplotlib.colors import Normalize, TwoSlopeNorm, to_hex, to_rgb
 from matplotlib.cm import ScalarMappable
 from plot_style_helper import PlotStyleHelper
 
@@ -87,9 +88,18 @@ FIG5B_CONFIG = {
     'title':               'Fig. 5b — Agent Task Execution Gantt',
     'xlabel':              'Time',
     'ylabel':              'Agent',
+    'color_mode':          'task_id_with_value_lightness',  # 'task_id_with_value_lightness' / 'task_type'
     'bar_height':          0.55,  # 甘特条高度（0~1）
     'label_min_width':     8.0,   # 时间宽度大于此值才在条上显示 Task ID
     'show_task_id_label':  True,  # 是否在条上写任务 ID
+    'show_value_legend':   True,  # show compact value legend
+    'value_legend_mode':   'compact',  # 'compact' keeps a small legend only
+    'value_shade_order':   'high_darker',  # 'high_darker' / 'high_lighter'
+    'task_hue_offset':     0.08,  # base hue offset for task-id palette, 0~1
+    'task_color_saturation': 0.68,  # saturation for task bars, 0~1
+    'value_lightness_min': 0.42,  # darkest lightness for value encoding, 0~1
+    'value_lightness_max': 0.78,  # lightest lightness for value encoding, 0~1
+    'value_legend_hue':    0.58,  # neutral hue used by the value legend samples
     'label_fontsize':      7,
     'max_fig_width':       18.0,  # 图宽上限（inch）
     'min_fig_width':       8.0,   # 图宽下限（inch）
@@ -270,6 +280,161 @@ def apply_common_style(ax, xlabel, ylabel, title=None):
 
 def finalize_and_save(fig, save_path):
     STYLE_HELPER.finalize_and_save(fig, save_path)
+
+
+def build_task_type_value_maps(task_info):
+    """Build task_id -> type/value lookups from extracted task_info."""
+    task_type_map = {}
+    task_value_map = {}
+    for m in range(task_info['M']):
+        tid = int(round(task_info['id'][m]))
+        if tid <= 0:
+            continue
+        task_type_map[tid] = int(round(task_info['type'][m]))
+        task_value_map[tid] = to_scalar(task_info['value'][m], default=np.nan)
+    return task_type_map, task_value_map
+
+
+def build_task_id_hue_map(task_ids, hue_offset):
+    """Assign a stable hue to each task id without using a short discrete palette."""
+    sorted_ids = sorted({int(tid) for tid in task_ids if int(tid) > 0})
+    hue_map = {}
+    golden_ratio = 0.618033988749895
+    for idx, tid in enumerate(sorted_ids):
+        hue_map[tid] = (hue_offset + idx * golden_ratio) % 1.0
+    return hue_map
+
+
+def build_value_level_map(task_value_map):
+    """Map raw task values to ordered value levels."""
+    valid_values = sorted({
+        float(v) for v in task_value_map.values()
+        if v is not None and np.isfinite(v) and float(v) > 0
+    })
+    return {val: idx for idx, val in enumerate(valid_values)}, valid_values
+
+
+def get_value_lightness(level_idx, num_levels, cfg):
+    """Convert a value level into an HLS lightness value."""
+    light_max = float(cfg['value_lightness_max'])
+    light_min = float(cfg['value_lightness_min'])
+    if num_levels <= 1 or level_idx is None:
+        return 0.5 * (light_max + light_min)
+
+    pos = float(level_idx) / float(num_levels - 1)
+    if cfg['value_shade_order'] == 'high_lighter':
+        return light_min + pos * (light_max - light_min)
+    return light_max - pos * (light_max - light_min)
+
+
+def make_hls_color(hue, lightness, saturation):
+    rgb = colorsys.hls_to_rgb(hue % 1.0, np.clip(lightness, 0.0, 1.0), np.clip(saturation, 0.0, 1.0))
+    return to_hex(rgb)
+
+
+def shift_color_lightness(color, delta):
+    """Lighten or darken a color by shifting HLS lightness."""
+    r, g, b = to_rgb(color)
+    hue, lightness, saturation = colorsys.rgb_to_hls(r, g, b)
+    new_lightness = np.clip(lightness + delta, 0.0, 1.0)
+    return to_hex(colorsys.hls_to_rgb(hue, new_lightness, saturation))
+
+
+def get_contrast_text_color(color):
+    """Choose white or dark text based on perceived luminance."""
+    r, g, b = to_rgb(color)
+    luminance = 0.2126 * r + 0.7152 * g + 0.0722 * b
+    return 'white' if luminance < 0.52 else '#1f1f1f'
+
+
+def get_value_label(level_idx, num_levels, value):
+    if num_levels == 1:
+        prefix = 'Value'
+    elif num_levels == 2:
+        prefix = ['Low value', 'High value'][level_idx]
+    elif num_levels == 3:
+        prefix = ['Low value', 'Med value', 'High value'][level_idx]
+    else:
+        prefix = f'Value level {level_idx + 1}'
+
+    if value is None or not np.isfinite(value):
+        return prefix
+    if abs(value - round(value)) < 1e-9:
+        return f'{prefix} ({int(round(value))})'
+    return f'{prefix} ({value:.2f})'
+
+
+def build_fig5b_task_style_maps(task_info, cfg):
+    """Prepare fill, edge, and text colors for the Fig.5b gantt chart."""
+    task_type_map, task_value_map = build_task_type_value_maps(task_info)
+    task_ids = list(task_type_map.keys()) or list(task_value_map.keys())
+    hue_map = build_task_id_hue_map(task_ids, cfg['task_hue_offset'])
+    value_level_map, value_levels = build_value_level_map(task_value_map)
+
+    fill_color_map = {}
+    edge_color_map = {}
+    text_color_map = {}
+    for tid in sorted(set(task_ids)):
+        if cfg['color_mode'] == 'task_type':
+            color = TASK_TYPE_COLOR.get(task_type_map.get(tid, 0), DEFAULT_TASK_COLOR)
+        else:
+            hue = hue_map.get(tid)
+            value = task_value_map.get(tid)
+            if hue is None:
+                color = DEFAULT_TASK_COLOR
+            else:
+                level_idx = value_level_map.get(float(value)) if value is not None and np.isfinite(value) else None
+                lightness = get_value_lightness(level_idx, len(value_levels), cfg)
+                color = make_hls_color(hue, lightness, cfg['task_color_saturation'])
+
+        fill_color_map[tid] = color
+        edge_color_map[tid] = shift_color_lightness(color, -0.14)
+        text_color_map[tid] = get_contrast_text_color(color)
+
+    return {
+        'task_type_map': task_type_map,
+        'task_value_map': task_value_map,
+        'fill_color_map': fill_color_map,
+        'edge_color_map': edge_color_map,
+        'text_color_map': text_color_map,
+        'value_levels': value_levels,
+    }
+
+
+def build_fig5b_legend_handles(cfg, style_maps, used_types):
+    """Create legend handles for either legacy type colors or value shades."""
+    if cfg['color_mode'] == 'task_type':
+        return [
+            mpatches.Patch(
+                color=TASK_TYPE_COLOR.get(t, DEFAULT_TASK_COLOR),
+                label=TASK_TYPE_LABEL.get(t, f'Type {t}')
+            )
+            for t in sorted(used_types)
+        ]
+
+    if not cfg.get('show_value_legend', True):
+        return []
+
+    value_levels = style_maps['value_levels']
+    if not value_levels:
+        return []
+
+    handles = []
+    for idx, value in enumerate(value_levels):
+        lightness = get_value_lightness(idx, len(value_levels), cfg)
+        sample_color = make_hls_color(
+            cfg['value_legend_hue'],
+            lightness,
+            cfg['task_color_saturation'],
+        )
+        handles.append(
+            mpatches.Patch(
+                facecolor=sample_color,
+                edgecolor=shift_color_lightness(sample_color, -0.14),
+                label=get_value_label(idx, len(value_levels), value),
+            )
+        )
+    return handles
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -749,28 +914,32 @@ def plot_fig5b(timing_list, task_info, N, save_path):
     fig, ax = plt.subplots(figsize=(fig_w, fig_h))
 
     # task_id → type 映射
-    task_type_map = {}
-    for m in range(task_info['M']):
-        tid = int(round(task_info['id'][m]))
-        task_type_map[tid] = int(round(task_info['type'][m]))
+    style_maps = build_fig5b_task_style_maps(task_info, cfg)
+    task_type_map = style_maps['task_type_map']
+    fill_color_map = style_maps['fill_color_map']
+    edge_color_map = style_maps['edge_color_map']
+    text_color_map = style_maps['text_color_map']
 
     used_types = set()
     for i, ag in enumerate(timing_list):
         y = N - 1 - i    # 智能体 1 在最顶行
         for task_id, start, dur in zip(ag['task_seq'], ag['starts'], ag['execs']):
+            task_id = int(round(task_id))
             t_type  = task_type_map.get(task_id, 0)
-            color   = TASK_TYPE_COLOR.get(t_type, DEFAULT_TASK_COLOR)
+            color   = fill_color_map.get(task_id, DEFAULT_TASK_COLOR)
+            edge_color = edge_color_map.get(task_id, shift_color_lightness(DEFAULT_TASK_COLOR, -0.14))
+            text_color = text_color_map.get(task_id, get_contrast_text_color(DEFAULT_TASK_COLOR))
             used_types.add(t_type)
 
             ax.barh(y, dur, left=start, height=bar_h,
-                    color=color, edgecolor='white', linewidth=0.5,
+                    color=color, edgecolor=edge_color, linewidth=0.8,
                     align='center', zorder=2)
 
             if cfg['show_task_id_label'] and dur >= cfg['label_min_width']:
                 ax.text(start + dur / 2, y, f'T{task_id}',
                         ha='center', va='center',
                         fontsize=cfg['label_fontsize'],
-                        color='white', fontweight='bold', zorder=3)
+                        color=text_color, fontweight='bold', zorder=3)
 
     # y 轴：智能体标签（从上到下 A1→AN）
     ax.set_yticks(range(N))
@@ -788,19 +957,14 @@ def plot_fig5b(timing_list, task_info, N, save_path):
 
     # 图例：任务类型
     if PLOT_GLOBAL['show_legend']:
-        patches = [
-            mpatches.Patch(
-                color=TASK_TYPE_COLOR.get(t, DEFAULT_TASK_COLOR),
-                label=TASK_TYPE_LABEL.get(t, f'Type {t}')
-            )
-            for t in sorted(used_types)
-        ]
+        patches = build_fig5b_legend_handles(cfg, style_maps, used_types)
         if patches:
+            legend_loc = 'lower right' if cfg.get('value_legend_mode', 'compact') == 'compact' else 'best'
             ax.legend(handles=patches,
                       fontsize=PLOT_GLOBAL['legend_fontsize'],
                       framealpha=PLOT_GLOBAL['legend_framealpha'],
                       edgecolor=PLOT_GLOBAL['legend_edgecolor'],
-                      loc='lower right')
+                      loc=legend_loc)
 
     apply_common_style(ax, cfg['xlabel'], cfg['ylabel'],
                        title=cfg['title'] if cfg['show_title'] else None)

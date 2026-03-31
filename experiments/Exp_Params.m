@@ -201,9 +201,9 @@ Exp_Config.Ablation.SEEDS = Exp_Config.Common.SEEDS;
 Exp_Config.Ablation.N_VALUES = [4,8,12,15];
 Exp_Config.Ablation.M = 15;
 Exp_Config.Ablation.K = 6;
-Exp_Config.Ablation.resource_confidence = 0.55;
+Exp_Config.Ablation.resource_confidence = 0.8;
 Exp_Config.Ablation.init_belief_mode = 'shared_wrong_prior';
-Exp_Config.Ablation.init_belief_vector = [0.55, 0.25, 0.20];
+Exp_Config.Ablation.init_belief_vector = [0.6, 0.25, 0.15];
 Exp_Config.Ablation.ALL_CONDITION_DEFS = struct( ...
     'name', {'belief_off', 'belief_on_quantile', 'belief_on_expected'}, ...
     'enable_belief_update', {false, true, true}, ...
@@ -217,8 +217,8 @@ Exp_Config.Ablation.AddPara = struct( ...
     'control', 1);
 
 % Single_Viz
-Exp_Config.SingleViz.SEED = Exp_Config.Common.SEEDS(1);
-Exp_Config.SingleViz.N = 10;
+Exp_Config.SingleViz.SEED = Exp_Config.Common.SEEDS(2);
+Exp_Config.SingleViz.N = 6;
 Exp_Config.SingleViz.M = 10;
 Exp_Config.SingleViz.K = 6;
 Exp_Config.SingleViz.AddPara = struct( ...
