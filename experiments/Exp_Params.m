@@ -218,7 +218,7 @@ Exp_Config.Ablation.AddPara = struct( ...
 
 % Single_Viz
 Exp_Config.SingleViz.SEED = Exp_Config.Common.SEEDS(2);
-Exp_Config.SingleViz.N = 6;
+Exp_Config.SingleViz.N = 10;
 Exp_Config.SingleViz.M = 10;
 Exp_Config.SingleViz.K = 6;
 Exp_Config.SingleViz.AddPara = struct( ...
