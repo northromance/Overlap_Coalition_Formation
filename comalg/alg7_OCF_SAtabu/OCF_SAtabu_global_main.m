@@ -78,6 +78,14 @@ end
 
 %% ==================== 2. 外循环（轮次迭代） ====================
 for counter = 1:Value_Params.num_rounds
+    % 在本轮 p_leave 随机退出前，先按上一轮更新后的当前 belief 清理估计需求已为 0 的历史残留分配
+    % if counter > 1
+    %     [Value_data, cleaned_entries] = cleanup_zero_estimated_demand_allocations(Value_data, agents, Value_Params, AddPara);
+    %     if cleaned_entries > 0 && AddPara.verbose >= 2
+    %         fprintf('  [OCF Cleanup] Round %d: removed %d zero-estimated-demand allocation entries before p_leave.\n', ...
+    %             counter, cleaned_entries);
+    %     end
+    % end
     %% 2.2 SA 初始化
     k_iter = 1;                     % 内循环迭代计数
     previous_SC = Value_data(1).SC; % 上一轮联盟结构
@@ -432,6 +440,74 @@ tabu_list{end+1} = hash_str;
 % 如果超过长度限制，移除最早进入的解
 if length(tabu_list) > tabu_tenure
     tabu_list = tabu_list(2:end);
+end
+end
+
+% 按当前 belief 重新估计需求，清理“估计需求为 0”的历史残留分配，并同步所有 agent 的派生结构
+function [Value_data, cleaned_entries] = cleanup_zero_estimated_demand_allocations(Value_data, agents, Value_Params, AddPara)
+M = Value_Params.M;
+N = Value_Params.N;
+K = Value_Params.K;
+eps_val = 1e-9;
+cleaned_entries = 0;
+
+if isempty(Value_data) || M <= 0 || N <= 0 || K <= 0
+    return;
+end
+
+SC_clean = Value_data(1).SC;
+if isempty(SC_clean)
+    return;
+end
+
+task_type_demands = Value_Params.task_type_demands;
+resource_confidence = Value_Params.resource_confidence;
+[demand_mode, demand_rounding_mode] = WorldSim.get_demand_estimation_settings(AddPara, Value_Params);
+
+for agent_idx = 1:N
+    if ~isfield(Value_data(agent_idx), 'initbelief') || isempty(Value_data(agent_idx).initbelief)
+        continue;
+    end
+
+    for task_idx = 1:M
+        if size(Value_data(agent_idx).initbelief, 1) < task_idx
+            continue;
+        end
+
+        belief = Value_data(agent_idx).initbelief(task_idx, :);
+        if isempty(belief)
+            continue;
+        end
+
+        expected_demand = WorldSim.estimate_demand_from_belief( ...
+            belief, task_type_demands, demand_mode, resource_confidence, demand_rounding_mode);
+        expected_demand = reshape(expected_demand, 1, []);
+
+        zero_demand_mask = false(1, K);
+        usable_k = min(numel(expected_demand), K);
+        if usable_k > 0
+            zero_demand_mask(1:usable_k) = expected_demand(1:usable_k) <= eps_val;
+        end
+        if ~any(zero_demand_mask)
+            continue;
+        end
+
+        current_alloc = SC_clean{task_idx}(agent_idx, :);
+        remove_mask = zero_demand_mask & (current_alloc > eps_val);
+        if any(remove_mask)
+            cleaned_entries = cleaned_entries + nnz(remove_mask);
+            SC_clean{task_idx}(agent_idx, remove_mask) = 0;
+        end
+    end
+end
+
+if cleaned_entries > 0
+    cleaned_coalitionstru = OCFUtils.build_coalitionstru_from_SC(SC_clean, Value_Params, agents);
+    for agent_idx = 1:N
+        Value_data(agent_idx).SC = SC_clean;
+        Value_data(agent_idx).coalitionstru = cleaned_coalitionstru;
+        Value_data(agent_idx).resources_matrix = OCFUtils.get_agent_resource_matrix(SC_clean, agent_idx, Value_Params);
+    end
 end
 end
 
