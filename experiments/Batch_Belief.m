@@ -168,6 +168,7 @@ for ci = 1:num_cond
         entry.seed = seed;
         entry.success = false;
         entry.error = '';
+        entry.exp_params_snapshot = struct();
 
         try
             %% -- Build random scenario --
@@ -226,6 +227,32 @@ for ci = 1:num_cond
                     AddPara_run.init_belief_tensor = init_b_tensor;
                     init_b_mode = 'shared_agent_prior';
             end
+
+            belief_run = struct();
+            belief_run.N = N;
+            belief_run.M = M;
+            belief_run.K = K;
+            belief_run.seed = seed;
+            belief_run.condition = cond_name;
+            belief_run.scenario_cfg = scenario_cfg;
+            belief_run.AddPara = AddPara_run;
+            belief_run.Value_Params = Value_Params;
+            belief_run.task_type_demands = task_type_demands;
+            belief_run.num_rounds = num_rounds;
+            belief_run.max_inner_iter = MaxIter;
+            belief_run.obs_times = obs_times;
+            belief_run.num_task_types = num_task_types;
+            belief_run.init_belief_mode = init_b_mode;
+            entry.exp_params_snapshot = build_exp_params_snapshot(struct( ...
+                'exp_params_source', fullfile(script_dir, 'Exp_Params.m'), ...
+                'experiment_script', fullfile(script_dir, 'Batch_Belief.m'), ...
+                'experiment_name', 'Batch_Belief', ...
+                'common_config', Exp_Config.Common, ...
+                'scenario_cfg_base', Exp_Config.ScenarioCfg, ...
+                'experiment_cfg', cfg, ...
+                'common_params', Common_Params, ...
+                'algorithm_params', Algorithm_Params, ...
+                'effective_run', belief_run));
 
             %% -- Run OCF_SAtabu --
             rng(seed);

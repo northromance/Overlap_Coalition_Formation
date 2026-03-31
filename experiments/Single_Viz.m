@@ -67,6 +67,32 @@ Value_Params = OCFUtils.init_value_params(N, M, K, num_task_types, task_type_dem
     OCF_alpha, OCF_Tmin, OCF_K_stable_max, obs_times, num_rounds);
 Value_Params = OCFUtils.apply_experiment_params(Value_Params, Common_Params, Algorithm_Params, SEED);
 
+singleviz_run = struct();
+singleviz_run.N = N;
+singleviz_run.M = M;
+singleviz_run.K = K;
+singleviz_run.seed = SEED;
+singleviz_run.scenario_cfg = scenario_cfg;
+singleviz_run.AddPara = AddPara;
+singleviz_run.Value_Params = Value_Params;
+singleviz_run.task_type_demands = task_type_demands;
+singleviz_run.num_rounds = num_rounds;
+singleviz_run.max_inner_iter = MaxIter;
+singleviz_run.obs_times = obs_times;
+singleviz_run.num_task_types = num_task_types;
+singleviz_run.algorithm_name = 'OCF_SAtabu';
+
+exp_params_snapshot = build_exp_params_snapshot(struct( ...
+    'exp_params_source', fullfile(script_dir, 'Exp_Params.m'), ...
+    'experiment_script', fullfile(script_dir, 'Single_Viz.m'), ...
+    'experiment_name', 'Single_Viz', ...
+    'common_config', Exp_Config.Common, ...
+    'scenario_cfg_base', Exp_Config.ScenarioCfg, ...
+    'experiment_cfg', cfg, ...
+    'common_params', Common_Params, ...
+    'algorithm_params', Algorithm_Params, ...
+    'effective_run', singleviz_run));
+
 %% ===== 运行算法 =====
 fprintf('运行 OCF_SAtabu...\n');
 rng(SEED);
@@ -132,6 +158,7 @@ viz_data.coalition_utility     = coalition_utility;
 viz_data.total_global_cost     = total_global_cost;
 viz_data.total_completed_value = total_completed_value;
 viz_data.computation_time      = comp_time;
+viz_data.exp_params_snapshot   = exp_params_snapshot;
 
 %% ===== 保存 .mat =====
 timestamp = datestr(now, 'yyyymmdd_HHMMSS');

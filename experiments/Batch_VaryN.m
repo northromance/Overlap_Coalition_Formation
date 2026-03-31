@@ -114,6 +114,7 @@ for ni = 1:length(N_VALUES)
         entry.success = false;
         entry.error   = '';
         entry.algs    = struct();
+        entry.exp_params_snapshot = struct();
 
         try
             %% -- 构建随机场景 --
@@ -127,6 +128,31 @@ for ni = 1:length(N_VALUES)
                 N, M, K, num_task_types, task_type_demands, ...
                 OCF_alpha, OCF_Tmin, OCF_K_stable_max, obs_times, num_rounds);
             Value_Params = OCFUtils.apply_experiment_params(Value_Params, Common_Params, Algorithm_Params, seed);
+            entry_run = struct();
+            entry_run.N = N;
+            entry_run.M = M;
+            entry_run.K = K;
+            entry_run.seed = seed;
+            entry_run.scenario_cfg = scenario_cfg;
+            entry_run.AddPara = AddPara;
+            entry_run.Value_Params = Value_Params;
+            entry_run.task_type_demands = task_type_demands;
+            entry_run.num_rounds = num_rounds;
+            entry_run.max_inner_iter = MaxIter;
+            entry_run.obs_times = obs_times;
+            entry_run.num_task_types = num_task_types;
+            entry_run.algorithm_names = alg_names;
+            entry_run.algorithm_ids = algorithms_to_run_ids;
+            entry.exp_params_snapshot = build_exp_params_snapshot(struct( ...
+                'exp_params_source', fullfile(script_dir, 'Exp_Params.m'), ...
+                'experiment_script', fullfile(script_dir, 'Batch_VaryN.m'), ...
+                'experiment_name', 'Batch_VaryN', ...
+                'common_config', Exp_Config.Common, ...
+                'scenario_cfg_base', Exp_Config.ScenarioCfg, ...
+                'experiment_cfg', cfg, ...
+                'common_params', Common_Params, ...
+                'algorithm_params', Algorithm_Params, ...
+                'effective_run', entry_run));
 
             %% -- 运行所有启用算法 --
             for ai = 1:num_algs
@@ -199,13 +225,34 @@ scale_config.alg_names      = alg_names;
 scale_config.num_rounds     = num_rounds;
 scale_config.max_inner_iter = MaxIter;
 scale_config.timestamp      = datestr(now, 'yyyymmdd_HHMMSS');
+run_scope = struct();
+run_scope.N_values = N_VALUES;
+run_scope.M = M;
+run_scope.K = K;
+run_scope.seeds = SEEDS;
+run_scope.alg_ids = algorithms_to_run_ids;
+run_scope.alg_names = alg_names;
+run_scope.num_rounds = num_rounds;
+run_scope.max_inner_iter = MaxIter;
+run_scope.obs_times = obs_times;
+run_scope.num_task_types = num_task_types;
+param_snapshot = build_exp_params_snapshot(struct( ...
+    'exp_params_source', fullfile(script_dir, 'Exp_Params.m'), ...
+    'experiment_script', fullfile(script_dir, 'Batch_VaryN.m'), ...
+    'experiment_name', 'Batch_VaryN', ...
+    'common_config', Exp_Config.Common, ...
+    'scenario_cfg_base', Exp_Config.ScenarioCfg, ...
+    'experiment_cfg', cfg, ...
+    'common_params', Common_Params, ...
+    'algorithm_params', Algorithm_Params, ...
+    'effective_run', run_scope));
 
 timestamp = scale_config.timestamp;
 filename  = fullfile(results_dir, sprintf('N%d-%d_M%d_K%d_S%d_%s.mat', ...
     N_VALUES(1), N_VALUES(end), M, K, length(SEEDS), timestamp));
 
 fprintf('保存至: %s\n', filename);
-save(filename, 'scale_N_results', 'scale_config', '-v7.3');
+save(filename, 'scale_N_results', 'scale_config', 'param_snapshot', '-v7.3');
 fprintf('保存完成。\n\n');
 
 %% ===== 完整性检查 =====

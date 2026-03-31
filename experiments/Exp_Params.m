@@ -90,7 +90,7 @@ WORLD_ZMIN = 0;   WORLD_ZMAX = 0;
 %% ===== 智能体基础属性 =====
 agent_velocity    = 2;      % 速度（统一）
 agent_detprob_min = 0.75;   % 探测/感知概率下限
-agent_detprob_max = 0.1;    % 探测/感知概率上限
+agent_detprob_max = 0.95;    % 探测/感知概率上限
 agent_Emax_min    = 300;    % 最大能量下限
 agent_Emax_range  = 50;     % 最大能量随机浮动范围
 agent_fuel        = 1;      % 飞行燃料消耗系数 varpi（= agents.fuel）

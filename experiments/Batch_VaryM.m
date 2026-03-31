@@ -184,6 +184,19 @@ for mi = 1:length(M_VALUES)
             Value_Params = OCFUtils.init_value_params(N, M, K, num_task_types, task_type_demands, ...
                 OCF_alpha, OCF_Tmin, OCF_K_stable_max, obs_times, num_rounds);
             Value_Params = OCFUtils.apply_experiment_params(Value_Params, Common_Params, Algorithm_Params, seed);
+            base_effective_run = struct();
+            base_effective_run.N = N;
+            base_effective_run.M = M;
+            base_effective_run.K = K;
+            base_effective_run.seed = seed;
+            base_effective_run.scenario_cfg = scenario_cfg;
+            base_effective_run.AddPara = AddPara;
+            base_effective_run.Value_Params = Value_Params;
+            base_effective_run.task_type_demands = task_type_demands;
+            base_effective_run.num_rounds = num_rounds;
+            base_effective_run.max_inner_iter = MaxIter;
+            base_effective_run.obs_times = obs_times;
+            base_effective_run.num_task_types = num_task_types;
 
             %% -- 运行所有启用算法 --
             for ai = 1:num_algs
@@ -191,6 +204,19 @@ for mi = 1:length(M_VALUES)
                 aname = alg.name;
 
                 alg_entry = init_alg_entry(num_rounds);
+                alg_run = base_effective_run;
+                alg_run.algorithm_name = alg.name;
+                alg_run.algorithm_id = alg.id;
+                alg_entry.exp_params_snapshot = build_exp_params_snapshot(struct( ...
+                    'exp_params_source', fullfile(script_dir, 'Exp_Params.m'), ...
+                    'experiment_script', fullfile(script_dir, 'Batch_VaryM.m'), ...
+                    'experiment_name', 'Batch_VaryM', ...
+                    'common_config', Exp_Config.Common, ...
+                    'scenario_cfg_base', Exp_Config.ScenarioCfg, ...
+                    'experiment_cfg', cfg, ...
+                    'common_params', Common_Params, ...
+                    'algorithm_params', Algorithm_Params, ...
+                    'effective_run', alg_run));
 
                 try
                     rng(seed);

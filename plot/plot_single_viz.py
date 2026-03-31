@@ -595,6 +595,123 @@ def build_fulfillment_ratio_matrix(alloc_mat, demand_mat):
     return ratio
 
 
+def get_nested_field(data, *keys, default=None):
+    current = data
+    for key in keys:
+        if not isinstance(current, dict):
+            return default
+        current = current.get(key)
+        if current is None:
+            return default
+    return current
+
+
+def format_numeric_vector(values, max_items=12, precision=2):
+    arr = to_1d(values)
+    if arr.size == 0:
+        return '[]'
+
+    parts = []
+    for value in arr[:max_items]:
+        if not np.isfinite(value):
+            parts.append('nan')
+        elif abs(value - round(value)) < 1e-9:
+            parts.append(str(int(round(value))))
+        else:
+            parts.append(f'{value:.{precision}f}')
+
+    if arr.size > max_items:
+        parts.append('...')
+    return '[' + ' '.join(parts) + ']'
+
+
+def format_scalar_value(value, precision=3):
+    if isinstance(value, (bool, np.bool_)):
+        return 'True' if value else 'False'
+
+    arr = np.asarray(value).ravel() if value is not None else np.array([])
+    if arr.size == 1:
+        try:
+            numeric = float(arr[0])
+        except (TypeError, ValueError):
+            return str(arr[0])
+        if not np.isfinite(numeric):
+            return 'N/A'
+        if abs(numeric - round(numeric)) < 1e-9:
+            return str(int(round(numeric)))
+        return f'{numeric:.{precision}f}'
+
+    if isinstance(value, str):
+        return value
+    return format_numeric_vector(value, precision=precision)
+
+
+def print_exp_params_snapshot(snapshot):
+    if not isinstance(snapshot, dict) or not snapshot:
+        return
+
+    source = get_nested_field(snapshot, 'source', default={}) or {}
+    effective = get_nested_field(snapshot, 'effective_run', default={}) or {}
+    scenario_cfg = get_nested_field(snapshot, 'effective_run', 'scenario_cfg', default={}) or {}
+    add_para = get_nested_field(snapshot, 'effective_run', 'AddPara', default={}) or {}
+    value_params = get_nested_field(snapshot, 'effective_run', 'Value_Params', default={}) or {}
+
+    exp_name = source.get('experiment_name') or 'Unknown'
+    script_name = os.path.basename(str(source.get('experiment_script', ''))) if source.get('experiment_script') else ''
+    algorithm_name = effective.get('algorithm_name')
+
+    print("\n参数快照:")
+    if script_name:
+        print(f"  experiment           = {exp_name}  ({script_name})")
+    else:
+        print(f"  experiment           = {exp_name}")
+    if algorithm_name:
+        print(f"  algorithm            = {algorithm_name}")
+
+    run_parts = []
+    for key in ('N', 'M', 'K', 'seed'):
+        if key in effective:
+            run_parts.append(f"{key}={format_scalar_value(effective.get(key), precision=0)}")
+    if run_parts:
+        print(f"  effective_run        = {'  '.join(run_parts)}")
+
+    runtime_parts = []
+    for key in ('num_rounds', 'max_inner_iter', 'obs_times', 'num_task_types'):
+        if key in effective:
+            runtime_parts.append(f"{key}={format_scalar_value(effective.get(key), precision=0)}")
+    if 'resource_confidence' in value_params:
+        runtime_parts.append(
+            f"resource_confidence={format_scalar_value(value_params.get('resource_confidence'))}"
+        )
+    if runtime_parts:
+        print(f"  runtime              = {', '.join(runtime_parts)}")
+
+    addpara_parts = []
+    for key in ('enable_belief_update', 'control', 'demand_estimation_mode', 'demand_rounding_mode'):
+        if key in add_para:
+            addpara_parts.append(f"{key}={format_scalar_value(add_para.get(key))}")
+    if addpara_parts:
+        print(f"  AddPara              = {', '.join(addpara_parts)}")
+
+    if isinstance(scenario_cfg, dict):
+        if 'task_values' in scenario_cfg:
+            print(f"  task_values          = {format_numeric_vector(scenario_cfg.get('task_values'), precision=0)}")
+        if 'task_type_demand_max' in scenario_cfg:
+            print(f"  task_type_demand_max = {format_numeric_vector(scenario_cfg.get('task_type_demand_max'), precision=0)}")
+
+    ocf_keys = (
+        'OCF_T0_round', 'OCF_alpha', 'OCF_Tmin', 'OCF_T_decay',
+        'OCF_T_min_round', 'OCF_T_init_construction',
+        'OCF_K_stable_max', 'OCF_tabu_tenure', 'OCF_p_leave'
+    )
+    ocf_parts = []
+    for key in ocf_keys:
+        if key in value_params:
+            ocf_parts.append(f"{key}={format_scalar_value(value_params.get(key))}")
+    if ocf_parts:
+        print(f"  OCF params           = {', '.join(ocf_parts)}")
+
+
 def plot_task_resource_heatmap(matrix, save_path, cfg, colorbar_label,
                                center_value=None, vmin=None, vmax=None):
     if matrix.size == 0:
@@ -993,6 +1110,7 @@ def main():
     print(f"  coalition_utility     = {to_scalar(viz_data.get('coalition_utility')):.2f}")
     print(f"  total_completed_value = {to_scalar(viz_data.get('total_completed_value')):.2f}")
     print(f"  computation_time      = {to_scalar(viz_data.get('computation_time')):.2f} s")
+    print_exp_params_snapshot(viz_data.get('exp_params_snapshot'))
 
     basename = os.path.splitext(os.path.basename(mat_path))[0]
     parts    = basename.split('_')

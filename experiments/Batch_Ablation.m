@@ -218,6 +218,7 @@ for ni = 1:num_n
             entry.init_belief_vector = init_belief_vector;
             entry.success = false;
             entry.error = '';
+            entry.exp_params_snapshot = struct();
 
             if ~scene_ok
                 entry.error = scene_error;
@@ -232,6 +233,37 @@ for ni = 1:num_n
                     if isfield(AddPara_run, 'init_belief_tensor')
                         AddPara_run = rmfield(AddPara_run, 'init_belief_tensor');
                     end
+
+                    ablation_run = struct();
+                    ablation_run.N = N;
+                    ablation_run.M = M;
+                    ablation_run.K = K;
+                    ablation_run.seed = seed;
+                    ablation_run.condition = cond_name;
+                    ablation_run.enable_belief_update = cond_def.enable_belief_update;
+                    ablation_run.demand_estimation_mode = cond_def.demand_estimation_mode;
+                    ablation_run.demand_rounding_mode = cond_def.demand_rounding_mode;
+                    ablation_run.resource_confidence = resource_confidence_ablation;
+                    ablation_run.init_belief_mode = init_belief_mode;
+                    ablation_run.scenario_cfg = scenario_cfg;
+                    ablation_run.AddPara = AddPara_run;
+                    ablation_run.Value_Params = Value_Params_base;
+                    ablation_run.task_type_demands = task_type_demands;
+                    ablation_run.num_rounds = num_rounds;
+                    ablation_run.max_inner_iter = MaxIter;
+                    ablation_run.obs_times = obs_times;
+                    ablation_run.num_task_types = num_task_types;
+                    ablation_run.algorithm_name = 'OCF_SAtabu';
+                    entry.exp_params_snapshot = build_exp_params_snapshot(struct( ...
+                        'exp_params_source', fullfile(script_dir, 'Exp_Params.m'), ...
+                        'experiment_script', fullfile(script_dir, 'Batch_Ablation.m'), ...
+                        'experiment_name', 'Batch_Ablation', ...
+                        'common_config', Exp_Config.Common, ...
+                        'scenario_cfg_base', Exp_Config.ScenarioCfg, ...
+                        'experiment_cfg', cfg, ...
+                        'common_params', Common_Params, ...
+                        'algorithm_params', Algorithm_Params, ...
+                        'effective_run', ablation_run));
 
                     rng(seed);
                     tic;
