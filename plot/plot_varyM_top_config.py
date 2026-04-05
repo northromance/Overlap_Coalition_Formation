@@ -1,4 +1,4 @@
-"""
+﻿"""
 plot_varyM_top_config.py
 ========================
 从 Batch_VaryM.m 生成的 .mat 文件绘制论文图：
@@ -29,7 +29,7 @@ import glob
 import copy
 import numpy as np
 import matplotlib.pyplot as plt
-from plot_style_helper import PlotStyleHelper
+from plot_style_helper import PlotStyleHelper, build_results_figures_dir, cm_size_to_inch, infer_source_name
 from varym_result_aggregator import VaryMResultAggregator
 
 
@@ -37,102 +37,94 @@ from varym_result_aggregator import VaryMResultAggregator
 # 顶部可调参数区（建议以后优先在这里改）
 # ══════════════════════════════════════════════════════════════════════════════
 
-# ── 路径配置 ──────────────────────────────────────────────────────────────────
-SCRIPT_DIR  = os.path.dirname(os.path.abspath(__file__))
-ROOT_DIR    = os.path.dirname(SCRIPT_DIR)
-FIGURES_DIR = os.path.join(ROOT_DIR, 'figures', 'paper')
+# =========================
+# 顶部可调绘图参数
+# 建议优先在这里改尺寸、字体、图例和保存选项。
+# =========================
+
+# 路径配置
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))  # 当前脚本所在目录
+ROOT_DIR = os.path.dirname(SCRIPT_DIR)  # 项目根目录
+FIGURES_DIR = build_results_figures_dir(ROOT_DIR, 'varyM')  # 图片输出目录
 SEARCH_DIRS = [
-    os.path.join(ROOT_DIR, 'results', 'batch', 'varyM'),
-    os.path.join(ROOT_DIR, 'results', 'batch'),
+    os.path.join(ROOT_DIR, 'results', 'batch', 'varyM'),  # 优先搜索 varyM 实验结果目录
+    os.path.join(ROOT_DIR, 'results', 'batch'),  # 兜底搜索通用 batch 目录
 ]
 
-# Optional manual input selector.
-# None  -> auto-pick the latest run/cache under SEARCH_DIRS.
-# Name  -> resolve by run folder name, e.g. '20260329_190314_N8_M8-20_K6_S11'.
-# Path  -> absolute/relative run dir, cache file, or legacy MAT file.
-
-
-# PREFERRED_INPUT = None
+# 手动输入选择器
+# - None: 自动选择 SEARCH_DIRS 下最新的运行目录或缓存
+# - 名称: 按运行目录名匹配，例如 '20260329_190314_N8_M8-20_K6_S11'
+# - 路径: 直接指定运行目录、缓存文件或旧版 MAT 文件
 PREFERRED_INPUT = '20260329_190314_N8_M8-20_K6_S11'
 
-# ── 算法显示样式（颜色 / 点型 / 线型 / 图例名）────────────────────────────────
+# 算法显示样式：颜色 / marker / 线型 / 图例名
 ALG_STYLE = {
-    'Huo2025':    dict(color='#4878CF', marker='o', ls='-',  label='Huo2025'),
-    'Qi2023':     dict(color='#6ACC65', marker='s', ls='--', label='Qi2023'),
-    'Shi2024':    dict(color='#D65F5F', marker='^', ls='-.', label='Shi2024'),
-    'OCF_SAtabu': dict(color='#B47CC7', marker='D', ls='-',  label='Ours (OCF-SA)'),
+    'Huo2025': dict(color='#4878CF', marker='o', ls='-', label='Huo2025'),
+    'Qi2023': dict(color='#6ACC65', marker='s', ls='--', label='Qi2023'),
+    'Shi2024': dict(color='#D65F5F', marker='^', ls='-.', label='Shi2024'),
+    'OCF_SAtabu': dict(color='#B47CC7', marker='D', ls='-', label='Ours (OCF-SA)'),
 }
-DEFAULT_STYLE = dict(color='#888888', marker='x', ls=':', label='Unknown')
+DEFAULT_STYLE = dict(color='#888888', marker='x', ls=':', label='Unknown')  # 未知算法的兜底样式
 
-# ── 全局绘图参数 ──────────────────────────────────────────────────────────────
+# 全局绘图参数
 PLOT_GLOBAL = {
-    # 图尺寸
-    'figsize': (5.5, 4.2),
-
-    # 线条 / 点 / 误差棒
-    'linewidth': 1.8,
-    'markersize': 4,
-    'markeredgewidth': 0.8,
-    'capsize': 1,
-    'show_errorbar_varyM': False,  # fig1c / fig1d / fig1e 是否显示均值±std 误差棒
-    'show_markers_fig2d': False,  # fig2d 是否在收敛曲线上显示数据点
-    'markevery_fig2d': None,  # fig2d 每隔多少个点显示一个 marker；None 表示全部
-    'show_fig2d_band': True,   # 控制 fig2d 是否显示半透明误差带
-    'fig2d_band_alpha': 0.18,
-
-    # 字体与版式
-    'font_family': ['Times New Roman', 'SimSun', 'DejaVu Sans'],  # 全局字体族；可改成 ['Arial']、['SimHei'] 等
+    'figsize_cm': (13.97, 10.67),  # 单张图尺寸（宽, 高），单位 cm
+    'linewidth': 1.8,  # 主曲线线宽
+    'markersize': 4,  # marker 大小
+    'markeredgewidth': 0.8,  # marker 边框线宽
+    'capsize': 1,  # 误差棒帽宽
+    'show_errorbar_varyM': False,  # fig1c/fig1d/fig1e 是否显示 mean±std 误差棒
+    'show_markers_fig2d': False,  # fig2d 是否显示 marker
+    'markevery_fig2d': None,  # fig2d 的 marker 抽样步长；None 表示全部点
+    'show_fig2d_band': True,  # fig2d 是否显示阴影带
+    'fig2d_band_alpha': 0.18,  # fig2d 阴影带透明度
+    'font_family': ['Times New Roman', 'SimSun', 'DejaVu Sans'],  # 全局字体候选顺序
     'font_style': 'normal',  # 字体样式：normal / italic / oblique
     'font_weight': 'normal',  # 全局默认字重：normal / bold
-    'xlabel_fontsize': 11,
-    'ylabel_fontsize': 11,
+    'xlabel_fontsize': 11,  # x 轴标题字号
+    'ylabel_fontsize': 11,  # y 轴标题字号
     'label_fontweight': 'normal',  # 坐标轴标题字重
-    'show_titles': False,  # 全局标题总开关；False 时所有图都不显示标题
-    'title_fontsize': 12,
-    'title_fontweight': 'bold',  # 图标题字重
-    'title_pad': 8,
-    'tick_fontsize': 10,
+    'show_titles': False,  # 全局标题总开关；False 时所有子图都不显示标题
+    'title_fontsize': 12,  # 标题字号
+    'title_fontweight': 'bold',  # 标题字重
+    'title_pad': 8,  # 标题与坐标轴之间的间距
+    'tick_fontsize': 10,  # 刻度字号
     'tick_fontweight': 'normal',  # 刻度字重
-    'legend_fontsize': 9,
+    'legend_fontsize': 9,  # 图例字号
     'legend_fontweight': 'normal',  # 图例字重
-    'legend_loc': 'best',  # 图例位置，例如 'best' / 'upper right' / 'lower left'
-    'legend_bbox_to_anchor': None,  # 图例锚点，例如 (1.02, 1.0)；None 表示不用锚点
+    'legend_loc': 'best',  # 图例位置
+    'legend_bbox_to_anchor': None,  # 图例锚点；None 表示不额外指定
     'legend_ncol': 1,  # 图例列数
-    'legend_borderaxespad': 0.3,  # 图例与坐标轴边缘的间距
-    'legend_handlelength': 2.0,  # 图例中示意线段的长度
-    'legend_labelspacing': 0.4,  # 图例条目之间的垂直间距
-
-    # 网格 / 图例 / 边框
-    'show_grid': True,
-    'grid_linestyle': '--',
-    'grid_linewidth': 0.6,
-    'grid_alpha': 0.4,
-    'show_legend': True,
-    'legend_framealpha': 0.85,
-    'legend_edgecolor': '#cccccc',
-    'hide_top_spine': True,
-    'hide_right_spine': True,
-
-    # 保存参数
-    'save_format': 'eps',  # 保存格式，例如 'eps' / 'png' / 'pdf' / 'svg'
-    'save_dpi': 150,
-    'save_bbox_inches': 'tight',
-    'timestamp_first_in_name': True,  # 文件名是否把时间戳放前面，便于按名称排序
-
-    # 画布
-    'tight_layout': True,
+    'legend_borderaxespad': 0.3,  # 图例与坐标轴边界的间距
+    'legend_handlelength': 2.0,  # 图例示意线长度
+    'legend_labelspacing': 0.4,  # 图例条目垂直间距
+    'show_grid': True,  # 是否显示网格
+    'grid_linestyle': '--',  # 网格线型
+    'grid_linewidth': 0.6,  # 网格线宽
+    'grid_alpha': 0.4,  # 网格透明度
+    'show_legend': True,  # 全局图例总开关
+    'legend_framealpha': 0.85,  # 图例边框透明度
+    'legend_edgecolor': '#cccccc',  # 图例边框颜色
+    'hide_top_spine': True,  # 是否隐藏上边框
+    'hide_right_spine': True,  # 是否隐藏右边框
+    'save_format': 'eps',  # 主保存格式
+    'save_formats': ['png', 'eps'],  # 实际输出格式列表
+    'save_dpi': 150,  # 位图输出 dpi
+    'save_bbox_inches': 'tight',  # 保存时裁掉多余白边
+    'timestamp_first_in_name': True,  # True 表示时间戳放在文件名前面
+    'tight_layout': True,  # 保存前是否执行 tight_layout
 }
 
-# ── 每个图单独控制（坐标轴 / 刻度 / 标题 / 范围）──────────────────────────────
-# 说明：
-#   xlim / ylim = None 表示自动
-#   xticks / yticks = None 表示自动
-#   use_fixed_M_xticks = True 表示 x 轴刻度强制使用 M_values
-#   bottom_zero = True 常用于完成度图让 y 轴从 0 开始
+# 各子图单独控制
+# - show_title: 当前图是否允许标题，仍受 PLOT_GLOBAL['show_titles'] 总开关控制
+# - xlim / ylim = None: 自动范围
+# - xticks / yticks = None: 自动刻度
+# - use_fixed_M_xticks = True: 强制使用 M_values 作为 x 轴刻度
+# - bottom_zero = True: y 轴下界至少为 0
 FIGURE_CONFIG = {
     'fig1c': {
         'show_title': True,
-        'title': 'Fig. 1c — Utility vs. M',
+        'title': 'Fig. 1c - Utility vs. M',
         'xlabel': 'Number of Tasks (M)',
         'ylabel': 'Final Coalition Utility',
         'xlim': None,
@@ -144,7 +136,7 @@ FIGURE_CONFIG = {
     },
     'fig1d': {
         'show_title': True,
-        'title': 'Fig. 1d — Completion vs. M',
+        'title': 'Fig. 1d - Completion vs. M',
         'xlabel': 'Number of Tasks (M)',
         'ylabel': 'Avg. Task Completion Degree',
         'xlim': None,
@@ -156,7 +148,7 @@ FIGURE_CONFIG = {
     },
     'fig1e': {
         'show_title': True,
-        'title': 'Fig. 1e — Total Completed Value vs. M',
+        'title': 'Fig. 1e - Total Completed Value vs. M',
         'xlabel': 'Number of Tasks (M)',
         'ylabel': 'Total Completed Value',
         'xlim': None,
@@ -168,7 +160,7 @@ FIGURE_CONFIG = {
     },
     'fig2d': {
         'show_title': True,
-        'title_template': 'Fig. 2d — Convergence (M={m_target})',
+        'title_template': 'Fig. 2d - Convergence (M={m_target})',
         'xlabel': 'Round',
         'ylabel': 'Coalition Utility',
         'xlim': None,
@@ -182,7 +174,6 @@ FIGURE_CONFIG = {
 
 os.makedirs(FIGURES_DIR, exist_ok=True)
 STYLE_HELPER = PlotStyleHelper(PLOT_GLOBAL, FIGURES_DIR)
-
 
 # ══════════════════════════════════════════════════════════════════════════════
 # 工具函数
@@ -297,7 +288,8 @@ def get_marker_kwargs(show_markers, marker, markevery=None):
 
 def build_output_path(ts, stem):
     """按配置生成输出文件路径。"""
-    return STYLE_HELPER.build_output_path(ts, stem)
+    _ = ts
+    return STYLE_HELPER.build_output_stem(stem)
 
 
 def apply_common_style(ax, cfg, title=None):
@@ -317,6 +309,14 @@ def apply_axis_controls(ax, cfg, m_values=None):
 
 def finalize_and_save(fig, save_path):
     STYLE_HELPER.finalize_and_save(fig, save_path)
+
+
+def configure_output_dir(source_name):
+    global FIGURES_DIR
+    FIGURES_DIR = build_results_figures_dir(ROOT_DIR, 'varyM', source_name)
+    os.makedirs(FIGURES_DIR, exist_ok=True)
+    STYLE_HELPER.set_figures_dir(FIGURES_DIR)
+    return FIGURES_DIR
 
 
 def resolve_input_selector(input_selector, search_dirs=None):
@@ -474,7 +474,7 @@ def extract_convergence(results, config, m_target=None):
 def _plot_scalar_vs_M(fig_key, metric_key, M_values, alg_names, metrics, save_path):
     """通用：画某个标量指标 vs M 的折线图（均值 ± std）。"""
     cfg = merge_figure_config(fig_key)
-    fig, ax = plt.subplots(figsize=PLOT_GLOBAL['figsize'])
+    fig, ax = plt.subplots(figsize=cm_size_to_inch(PLOT_GLOBAL['figsize_cm']))
 
     for aname in alg_names:
         st  = ALG_STYLE.get(aname, DEFAULT_STYLE)
@@ -525,7 +525,7 @@ def plot_fig2d(mean_curves, std_curves, num_rounds, m_target, alg_names, save_pa
         'fig2d',
         title=FIGURE_CONFIG['fig2d']['title_template'].format(m_target=m_target),
     )
-    fig, ax = plt.subplots(figsize=PLOT_GLOBAL['figsize'])
+    fig, ax = plt.subplots(figsize=cm_size_to_inch(PLOT_GLOBAL['figsize_cm']))
     rounds = np.arange(1, num_rounds + 1)
 
     for aname in alg_names:
@@ -590,6 +590,8 @@ def main(input_path=None):
 
     print("\n加载数据...")
     results, config, run_meta = aggregator.load_results(input_path=input_path)
+    output_source = run_meta.get('run_name') or infer_source_name(run_meta.get('source_path'), fallback='varyM')
+    configure_output_dir(output_source)
 
     print(f"  数据来源  = {run_meta.get('source_path', '')}")
     if run_meta.get('source_type') == 'run_dir':
@@ -610,8 +612,6 @@ def main(input_path=None):
     print(f"  alg_names = {alg_names}")
     print(f"  形状      = {nM}×{nS} (M×seed)")
 
-    ts = get_timestamp_tag(config, run_meta)
-
     print("\n提取指标...")
     M_values, alg_names, metrics = extract_final_metrics(results, config)
 
@@ -619,17 +619,17 @@ def main(input_path=None):
 
     plot_fig1c(
         M_values, alg_names, metrics,
-        build_output_path(ts, 'fig1c_utility_varyM'),
+        build_output_path(None, 'fig1c_utility'),
     )
 
     plot_fig1d(
         M_values, alg_names, metrics,
-        build_output_path(ts, 'fig1d_completion_varyM'),
+        build_output_path(None, 'fig1d_completion'),
     )
 
     plot_fig1e(
         M_values, alg_names, metrics,
-        build_output_path(ts, 'fig1e_completed_value_varyM'),
+        build_output_path(None, 'fig1e_completed_value'),
     )
 
     mean_curves, std_curves, num_rounds, m_target = extract_convergence(
@@ -637,7 +637,7 @@ def main(input_path=None):
     )
     plot_fig2d(
         mean_curves, std_curves, num_rounds, m_target, alg_names,
-        build_output_path(ts, f'fig2d_convergence_M{m_target}'),
+        build_output_path(None, 'fig2d_convergence'),
     )
     print("\n完成。图窗已弹出，关闭后程序退出。")
     plt.show()
@@ -645,3 +645,6 @@ def main(input_path=None):
 
 if __name__ == '__main__':
     main()
+
+
+

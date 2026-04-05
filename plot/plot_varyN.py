@@ -1,4 +1,4 @@
-"""
+﻿"""
 plot_varyN.py
 =============
 从 Batch_VaryN.m 生成的 .mat 文件绘制论文图：
@@ -21,7 +21,7 @@ import glob
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.ticker as mticker
-from plot_style_helper import PlotStyleHelper
+from plot_style_helper import PlotStyleHelper, build_results_figures_dir, cm_size_to_inch, infer_source_name
 
 try:
     import mat73
@@ -29,11 +29,15 @@ except ImportError:
     sys.exit("缺少依赖，请先执行: pip install mat73")
 
 
-# ── 路径配置 ──────────────────────────────────────────────────────────────────
-SCRIPT_DIR  = os.path.dirname(os.path.abspath(__file__))
-ROOT_DIR    = os.path.dirname(SCRIPT_DIR)
-FIGURES_DIR = os.path.join(ROOT_DIR, 'figures', 'paper')
-# 搜索数据文件的目录（按优先级）
+# =========================
+# 顶部可调绘图参数
+# 这里集中放置尺寸、线宽、字号和保存设置。
+# =========================
+
+# 路径配置
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+ROOT_DIR = os.path.dirname(SCRIPT_DIR)
+FIGURES_DIR = build_results_figures_dir(ROOT_DIR, 'varyN')
 SEARCH_DIRS = [
     os.path.join(ROOT_DIR, 'results', 'batch', 'varyN'),
     os.path.join(ROOT_DIR, 'results', 'batch'),
@@ -41,42 +45,44 @@ SEARCH_DIRS = [
 
 os.makedirs(FIGURES_DIR, exist_ok=True)
 
-# ── 算法显示样式 ───────────────────────────────────────────────────────────────
+# 算法显示样式：颜色 / marker / 线型 / 图例名
 ALG_STYLE = {
-    'Huo2025':    dict(color='#4878CF', marker='o', ls='-',   label='Huo2025'),
-    'Qi2023':     dict(color='#6ACC65', marker='s', ls='--',  label='Qi2023'),
-    'Shi2024':    dict(color='#D65F5F', marker='^', ls='-.',  label='Shi2024'),
-    'OCF_SAtabu': dict(color='#B47CC7', marker='D', ls='-',   label='Ours (OCF-SA)'),
+    'Huo2025': dict(color='#4878CF', marker='o', ls='-', label='Huo2025'),
+    'Qi2023': dict(color='#6ACC65', marker='s', ls='--', label='Qi2023'),
+    'Shi2024': dict(color='#D65F5F', marker='^', ls='-.', label='Shi2024'),
+    'OCF_SAtabu': dict(color='#B47CC7', marker='D', ls='-', label='Ours (OCF-SA)'),
 }
 DEFAULT_STYLE = dict(color='#888888', marker='x', ls=':', label='Unknown')
 
-# ── 画图通用参数 ───────────────────────────────────────────────────────────────
-FIG_W, FIG_H = 5.5, 4.2
-LW    = 1.8   # linewidth
-MS    = 7     # markersize
-CAPS  = 4     # capsize for errorbar
+# 单图尺寸与线条参数
+FIGSIZE_CM = (13.97, 10.67)  # 主图尺寸（宽, 高），单位 cm
+LW = 1.8  # 主曲线线宽
+MS = 7  # marker 大小
+CAPS = 4  # 误差棒帽宽
+
+# 交给 PlotStyleHelper 的通用样式适配器
 PLOT_GLOBAL_ADAPTER = {
-    'xlabel_fontsize': 11,
-    'ylabel_fontsize': 11,
-    'title_fontsize': 12,
-    'title_pad': 8,
-    'tick_fontsize': 10,
-    'legend_fontsize': 9,
-    'show_grid': True,
-    'grid_linestyle': '--',
-    'grid_linewidth': 0.6,
-    'grid_alpha': 0.4,
-    'show_legend': True,
-    'legend_framealpha': 0.85,
-    'legend_edgecolor': '#cccccc',
-    'hide_top_spine': True,
-    'hide_right_spine': True,
-    'save_dpi': 150,
-    'save_bbox_inches': 'tight',
-    'tight_layout': True,
+    'xlabel_fontsize': 11,  # x 轴标题字号
+    'ylabel_fontsize': 11,  # y 轴标题字号
+    'title_fontsize': 12,  # 标题字号
+    'title_pad': 8,  # 标题与坐标轴之间的间距
+    'tick_fontsize': 10,  # 刻度字号
+    'legend_fontsize': 9,  # 图例字号
+    'show_grid': True,  # 是否显示网格
+    'grid_linestyle': '--',  # 网格线型
+    'grid_linewidth': 0.6,  # 网格线宽
+    'grid_alpha': 0.4,  # 网格透明度
+    'show_legend': True,  # 是否显示图例
+    'legend_framealpha': 0.85,  # 图例边框透明度
+    'legend_edgecolor': '#cccccc',  # 图例边框颜色
+    'hide_top_spine': True,  # 是否隐藏上边框
+    'hide_right_spine': True,  # 是否隐藏右边框
+    'save_formats': ['png', 'eps'],  # 实际输出格式列表
+    'save_dpi': 150,  # 位图输出 dpi
+    'save_bbox_inches': 'tight',  # 保存时裁掉多余白边
+    'tight_layout': True,  # 保存前是否执行 tight_layout
 }
 STYLE_HELPER = PlotStyleHelper(PLOT_GLOBAL_ADAPTER, FIGURES_DIR)
-
 
 # ══════════════════════════════════════════════════════════════════════════════
 # 工具函数
@@ -302,9 +308,22 @@ def finalize_and_save(fig, save_path):
     STYLE_HELPER.finalize_and_save(fig, save_path)
 
 
+def build_output_stem(stem):
+    return STYLE_HELPER.build_output_stem(stem)
+
+
+def configure_output_dir(mat_path):
+    global FIGURES_DIR
+    source_name = infer_source_name(mat_path, fallback='varyN')
+    FIGURES_DIR = build_results_figures_dir(ROOT_DIR, 'varyN', source_name)
+    os.makedirs(FIGURES_DIR, exist_ok=True)
+    STYLE_HELPER.set_figures_dir(FIGURES_DIR)
+    return FIGURES_DIR
+
+
 def plot_fig1a(N_values, alg_names, metrics, save_path):
     """图1a：变N效用（mean ± std 折线图）"""
-    fig, ax = plt.subplots(figsize=(FIG_W, FIG_H))
+    fig, ax = plt.subplots(figsize=cm_size_to_inch(FIGSIZE_CM))
 
     for aname in alg_names:
         st  = ALG_STYLE.get(aname, DEFAULT_STYLE)
@@ -323,7 +342,7 @@ def plot_fig1a(N_values, alg_names, metrics, save_path):
 
 def plot_fig1b(N_values, alg_names, metrics, save_path):
     """图1b：变N完成度（mean ± std 折线图）"""
-    fig, ax = plt.subplots(figsize=(FIG_W, FIG_H))
+    fig, ax = plt.subplots(figsize=cm_size_to_inch(FIGSIZE_CM))
 
     for aname in alg_names:
         st  = ALG_STYLE.get(aname, DEFAULT_STYLE)
@@ -343,7 +362,7 @@ def plot_fig1b(N_values, alg_names, metrics, save_path):
 
 def plot_fig2c(mean_curves, num_rounds, n_target, alg_names, save_path):
     """图2c：效用收敛曲线（对指定N均值化）"""
-    fig, ax = plt.subplots(figsize=(FIG_W, FIG_H))
+    fig, ax = plt.subplots(figsize=cm_size_to_inch(FIGSIZE_CM))
     rounds = np.arange(1, num_rounds + 1)
 
     for aname in alg_names:
@@ -373,7 +392,7 @@ def plot_fig3a(mean_curr, std_curr, mean_best, std_best, n_target, save_path):
         print("  ! 内循环数据为空（OCF_SAtabu 未记录 inner_loop），跳过图3a")
         return
 
-    fig, ax = plt.subplots(figsize=(FIG_W, FIG_H))
+    fig, ax = plt.subplots(figsize=cm_size_to_inch(FIGSIZE_CM))
     ref = mean_curr if mean_curr is not None else mean_best
     iters = np.arange(1, len(ref) + 1)
 
@@ -407,6 +426,7 @@ def plot_fig3a(mean_curr, std_curr, mean_best, std_best, n_target, save_path):
 
 def main():
     mat_path = find_mat_file(sys.argv)
+    configure_output_dir(mat_path)
 
     print(f"\n加载数据...")
     raw = mat73.loadmat(mat_path)
@@ -435,22 +455,22 @@ def main():
 
     # 图1a
     plot_fig1a(N_values, alg_names, metrics,
-               os.path.join(FIGURES_DIR, f'fig1a_utility_varyN_{ts}.png'))
+               build_output_stem('fig1a_utility'))
 
     # 图1b
     plot_fig1b(N_values, alg_names, metrics,
-               os.path.join(FIGURES_DIR, f'fig1b_completion_varyN_{ts}.png'))
+               build_output_stem('fig1b_completion'))
 
     # 图2c：收敛曲线（取最大 N）
     mean_curves, num_rounds, n_target = extract_convergence(
         results, config, n_target=n_conv)
     plot_fig2c(mean_curves, num_rounds, n_target, alg_names,
-               os.path.join(FIGURES_DIR, f'fig2c_convergence_N{n_target}_{ts}.png'))
+               build_output_stem('fig2c_convergence'))
 
     # 图3a：OCF_SAtabu 内循环（取最大 N）
     mc, sc, mb, sb, nt = extract_inner_loop(results, config, n_target=n_conv)
     plot_fig3a(mc, sc, mb, sb, nt,
-               os.path.join(FIGURES_DIR, f'fig3a_innerloop_N{nt}_{ts}.png'))
+               build_output_stem('fig3a_innerloop'))
 
     print(f"\n完成。图窗已弹出，关闭后程序退出。")
     plt.show()
@@ -458,3 +478,5 @@ def main():
 
 if __name__ == '__main__':
     main()
+
+

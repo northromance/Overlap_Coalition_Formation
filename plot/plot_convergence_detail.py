@@ -36,7 +36,7 @@ import sys
 import matplotlib.pyplot as plt
 import numpy as np
 
-from plot_style_helper import PlotStyleHelper
+from plot_style_helper import PlotStyleHelper, build_results_figures_dir, cm_size_to_inch, infer_source_name
 from varym_result_aggregator import VaryMResultAggregator
 
 try:
@@ -45,9 +45,14 @@ except ImportError:
     mat73 = None
 
 
+# =========================
+# 顶部可调绘图参数
+# 建议优先在这里改输入选择、默认指标、曲线细节和图尺寸。
+# =========================
+
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 ROOT_DIR = os.path.dirname(SCRIPT_DIR)
-FIGURES_DIR = os.path.join(ROOT_DIR, "figures", "paper")
+FIGURES_DIR = build_results_figures_dir(ROOT_DIR, "detail")
 SEARCH_DIRS_VARYN = [
     os.path.join(ROOT_DIR, "results", "batch", "varyN"),
     os.path.join(ROOT_DIR, "results", "batch"),
@@ -57,65 +62,45 @@ SEARCH_DIRS_VARYM = [
     os.path.join(ROOT_DIR, "results", "batch"),
 ]
 
-# =========================
-# 顶部可调参数区
-# =========================
-# 输入来源:
+# 输入来源
 # - None: 自动搜索最新结果
-# - run name: 例如 "20260329_190314_N8_M8-20_K6_S11"
+# - 运行名: 例如 "20260329_190314_N8_M8-20_K6_S11"
 # - 文件名: 例如 "N4-16_M10_K6_S21_20260329_115653.mat"
-# - 相对路径 / 绝对路径: 指向具体的 VaryN MAT 或 VaryM run_dir
+# - 相对/绝对路径: 指向具体的 varyN MAT 或 varyM 运行目录
 PREFERRED_INPUT = '20260329_190314_N8_M8-20_K6_S11'
 
-# 结果家族:
-# - "auto"  : 自动识别 VaryN / VaryM
-# - "varyN" : 强制按 VaryN 读取
-# - "varyM" : 强制按 VaryM 读取
+# 结果家族
+# - "auto": 自动识别 varyN / varyM
+# - "varyN": 强制按 varyN 读取
+# - "varyM": 强制按 varyM 读取
 DEFAULT_FAMILY = "auto"
 
-# 默认目标规模:
-# - DEFAULT_N 仅对 VaryN 生效; None 表示取最大 N
-# - DEFAULT_M 仅对 VaryM 生效; None 表示取最大 M
-# 可选参数补充:
-# - DEFAULT_N 可填 None 或结果文件中的具体 N 值
-#   例如按当前 Exp_Params.m, 常见可选值为 4 / 6 / 8 / 10 / 12 / 14 / 16
-# - DEFAULT_M 可填 None 或结果文件中的具体 M 值
-#   例如按当前结果可写 14 / 16; 更稳妥的做法是以实际结果文件中的 M_values 为准
+# 默认目标规模
+# - DEFAULT_N 仅对 varyN 生效；None 表示取最大的 N
+# - DEFAULT_M 仅对 varyM 生效；None 表示取最大的 M
 DEFAULT_N = None
 DEFAULT_M = 16
 
-# 默认 seed 模式:
-# - "mean" : 对当前 N/M 下所有有效 seed 求均值
-# - 整数     : 只画某一个 seed 的真实轨迹
+# 默认 seed 模式
+# - "mean": 对当前 N/M 下所有有效 seed 求平均
+# - 整数: 只画某一个 seed 的真实轨迹
 DEFAULT_SEED = "mean"
 
-# 默认指标:
-# - "utility"
-# - "completion"
-# - "cost"
-# - "completed_value"
+# 默认指标：utility / completion / cost / completed_value
 DEFAULT_METRIC = "completion"
 
-# 是否在脚本结束后弹出图窗:
-# - True  : 交互环境下显示图窗
-# - False : 只保存图片，不弹窗
+# 是否在脚本结束后弹出图窗
 AUTO_SHOW_FIGURE = True
 
-# 曲线细节显示:
-# - 平均曲线时是否显示 std 阴影带
-# - 阴影带透明度
-# - marker 稀疏显示阈值与步长
+# 曲线细节设置
 CURVE_DETAIL_CONFIG = {
-    "show_mean_band": True,
-    "band_alpha": 0.16,
-    "markevery_divisor": 10,
-    "markevery_threshold": 12,
+    "show_mean_band": True,  # 平均曲线是否显示阴影带
+    "band_alpha": 0.16,  # 阴影带透明度
+    "markevery_divisor": 10,  # 自动抽样 marker 时的分母
+    "markevery_threshold": 12,  # 点数低于该阈值时每个点都显示 marker
 }
 
-# =========================
-# 样式与绘图配置
-# =========================
-# 这里控制算法颜色 / 点型 / 线型 / 图例名字
+# 算法显示样式：颜色 / marker / 线型 / 图例名
 ALG_STYLE = {
     "Huo2025": dict(color="#4878CF", marker="o", ls="-", label="Huo2025"),
     "Qi2023": dict(color="#6ACC65", marker="s", ls="--", label="Qi2023"),
@@ -124,11 +109,7 @@ ALG_STYLE = {
 }
 DEFAULT_STYLE = dict(color="#888888", marker="x", ls=":", label="Unknown")
 
-# 指标定义:
-# - curve_field: 数据结构中的字段名
-# - ylabel     : y 轴标题
-# - title_name : 图标题中的指标名
-# - stem       : 自动输出文件名中的标识
+# 指标定义
 METRIC_SPECS = {
     "utility": {
         "curve_field": "convergence_utility",
@@ -156,33 +137,33 @@ METRIC_SPECS = {
     },
 }
 
-# 全局绘图样式:
-# - 图尺寸 / 线宽 / 字号 / 网格 / 保存格式等
+# 全局绘图参数
 PLOT_GLOBAL = {
-    "figsize": (6.2, 4.6),
-    "linewidth": 2.0,
-    "markersize": 4,
-    "markeredgewidth": 0.8,
-    "xlabel_fontsize": 11,
-    "ylabel_fontsize": 11,
-    "title_fontsize": 12,
-    "title_pad": 8,
-    "tick_fontsize": 10,
-    "legend_fontsize": 9,
-    "show_titles": True,
-    "show_grid": True,
-    "grid_linestyle": "--",
-    "grid_linewidth": 0.6,
-    "grid_alpha": 0.35,
-    "show_legend": True,
-    "legend_framealpha": 0.85,
-    "legend_edgecolor": "#cccccc",
-    "hide_top_spine": True,
-    "hide_right_spine": True,
-    "save_format": "png",
-    "save_dpi": 150,
-    "save_bbox_inches": "tight",
-    "tight_layout": True,
+    "figsize_cm": (15.75, 11.68),  # 单张图尺寸（宽, 高），单位 cm
+    "linewidth": 2.0,  # 主曲线线宽
+    "markersize": 4,  # marker 大小
+    "markeredgewidth": 0.8,  # marker 边框线宽
+    "xlabel_fontsize": 11,  # x 轴标题字号
+    "ylabel_fontsize": 11,  # y 轴标题字号
+    "title_fontsize": 12,  # 标题字号
+    "title_pad": 8,  # 标题与坐标轴之间的间距
+    "tick_fontsize": 10,  # 刻度字号
+    "legend_fontsize": 9,  # 图例字号
+    "show_titles": True,  # 是否显示标题
+    "show_grid": True,  # 是否显示网格
+    "grid_linestyle": "--",  # 网格线型
+    "grid_linewidth": 0.6,  # 网格线宽
+    "grid_alpha": 0.35,  # 网格透明度
+    "show_legend": True,  # 是否显示图例
+    "legend_framealpha": 0.85,  # 图例边框透明度
+    "legend_edgecolor": "#cccccc",  # 图例边框颜色
+    "hide_top_spine": True,  # 是否隐藏上边框
+    "hide_right_spine": True,  # 是否隐藏右边框
+    "save_format": "png",  # 主保存格式
+    "save_formats": ["png", "eps"],  # 实际输出格式列表
+    "save_dpi": 150,  # 位图输出 dpi
+    "save_bbox_inches": "tight",  # 保存时裁掉多余白边
+    "tight_layout": True,  # 保存前是否执行 tight_layout
 }
 
 os.makedirs(FIGURES_DIR, exist_ok=True)
@@ -397,6 +378,7 @@ def load_varyn_dataset(input_path=None):
         "alg_names": parse_str_list(config.get("alg_names", [])),
         "num_rounds": to_int(config.get("num_rounds"), default=0),
         "source_path": path,
+        "run_name": config.get("run_name"),
         "timestamp": get_timestamp_token(config, path),
     }
 
@@ -416,6 +398,7 @@ def load_varym_dataset(input_path=None):
         "alg_names": parse_str_list(config.get("alg_names", [])),
         "num_rounds": to_int(config.get("num_rounds"), default=0),
         "source_path": source_path,
+        "run_name": run_meta.get("run_name") or config.get("run_name"),
         "timestamp": get_timestamp_token(config, source_path),
     }
 
@@ -583,22 +566,24 @@ def summarize_curves(curves, seed_mode):
 def build_default_output_path(dataset, target_value, seed_mode, metric_key):
     metric_stem = METRIC_SPECS[metric_key]["stem"]
     seed_token = "mean" if seed_mode == "mean" else f"seed{seed_mode}"
-    stem = (
-        f"detail_convergence_{metric_stem}_{dataset['family']}_"
-        f"{dataset['target_name']}{target_value}_{seed_token}_{dataset['timestamp']}"
-    )
-    return os.path.join(FIGURES_DIR, f"{stem}.png")
+    stem = f"detail_convergence_{metric_stem}_{dataset['target_name']}{target_value}_{seed_token}"
+    return STYLE_HELPER.build_output_stem(stem)
 
 
 def normalize_output_path(output_path):
     if output_path is None:
         return None
 
-    normalized = os.path.abspath(output_path)
-    root, ext = os.path.splitext(normalized)
-    if not ext:
-        normalized = root + ".png"
-    return normalized
+    return os.path.abspath(output_path)
+
+
+def configure_output_dir(dataset):
+    global FIGURES_DIR
+    source_name = dataset.get("run_name") or infer_source_name(dataset.get("source_path"), fallback=dataset["family"])
+    FIGURES_DIR = build_results_figures_dir(ROOT_DIR, dataset["family"], source_name)
+    os.makedirs(FIGURES_DIR, exist_ok=True)
+    STYLE_HELPER.set_figures_dir(FIGURES_DIR)
+    return FIGURES_DIR
 
 
 def plot_detail_convergence(dataset, target_value, seed_mode, metric_key, output_path=None):
@@ -606,7 +591,7 @@ def plot_detail_convergence(dataset, target_value, seed_mode, metric_key, output
     curves = collect_curves(dataset, target_value, seed_mode, metric_key)
     summary = summarize_curves(curves, seed_mode)
 
-    fig, ax = plt.subplots(figsize=PLOT_GLOBAL["figsize"])
+    fig, ax = plt.subplots(figsize=cm_size_to_inch(PLOT_GLOBAL["figsize_cm"]))
     rounds = np.arange(1, dataset["num_rounds"] + 1)
 
     plotted = 0
@@ -725,6 +710,7 @@ def main(argv=None):
     args = parse_args(argv or sys.argv[1:])
 
     dataset = load_dataset(args.input_path, family=args.family)
+    configure_output_dir(dataset)
     target_value = resolve_target_value(dataset, n_value=args.n, m_value=args.m)
     seed_mode = resolve_seed_mode(dataset, args.seed)
 
@@ -735,6 +721,10 @@ def main(argv=None):
     print(f"  seed mode   = {seed_mode}")
     print(f"  metric      = {args.metric}")
     print(f"  algorithms  = {dataset['alg_names']}")
+    if args.output:
+        print(f"  custom out  = {os.path.abspath(args.output)}")
+    else:
+        print(f"  figure dir  = {FIGURES_DIR}")
 
     save_path = plot_detail_convergence(
         dataset,

@@ -1,0 +1,2709 @@
+{
+  "source_mat_path": "e:\\Overlap_Coalition_Formation\\results\\batch\\varyN\\N4-16_M10_K6_S21_20260329_115653.mat",
+  "output_dir": "e:\\Overlap_Coalition_Formation\\results\\figs\\varyN\\N4-16_M10_K6_S21_20260329_115653",
+  "selected_n_values": [
+    4,
+    6,
+    8,
+    10,
+    12,
+    16
+  ],
+  "all_n_values": [
+    4,
+    6,
+    8,
+    10,
+    12,
+    14,
+    16
+  ],
+  "alg_names": [
+    "Huo2025",
+    "Qi2023",
+    "Shi2024",
+    "OCF_SAtabu"
+  ],
+  "figures": {
+    "fig1a": {
+      "status": "generated",
+      "figure_type": "line_chart",
+      "x_axis": "Number of Agents",
+      "left_y_axis": "Final Coalition Utility",
+      "series": [
+        {
+          "name": "Huo2025",
+          "algorithm": "Huo2025",
+          "series_kind": "line",
+          "style": {
+            "color": "#9B9B9B",
+            "marker": "o",
+            "ls": "--",
+            "linewidth": 1,
+            "markersize": 4.0,
+            "markerfacecolor": "#9B9B9B",
+            "markeredgecolor": "#9B9B9B",
+            "markeredgewidth": 1.2
+          },
+          "points": [
+            {
+              "x_label": "4",
+              "x_value": 4,
+              "mean": 3028.8166634358186,
+              "std": 825.0684526750208
+            },
+            {
+              "x_label": "6",
+              "x_value": 6,
+              "mean": 4225.546890729219,
+              "std": 963.0088861761769
+            },
+            {
+              "x_label": "8",
+              "x_value": 8,
+              "mean": 5194.937225613965,
+              "std": 1020.197497020784
+            },
+            {
+              "x_label": "10",
+              "x_value": 10,
+              "mean": 6078.097945532117,
+              "std": 981.7827589862966
+            },
+            {
+              "x_label": "12",
+              "x_value": 12,
+              "mean": 6818.493167360568,
+              "std": 1171.9897003565263
+            },
+            {
+              "x_label": "14",
+              "x_value": 14,
+              "mean": 7372.590579088899,
+              "std": 1255.5399236814017
+            },
+            {
+              "x_label": "16",
+              "x_value": 16,
+              "mean": 7863.548842468424,
+              "std": 1262.526741887753
+            }
+          ]
+        },
+        {
+          "name": "Qi2023",
+          "algorithm": "Qi2023",
+          "series_kind": "line",
+          "style": {
+            "color": "#A2DFF8",
+            "marker": "s",
+            "ls": "--",
+            "linewidth": 1,
+            "markersize": 4.0,
+            "markerfacecolor": "#A2DFF8",
+            "markeredgecolor": "#A2DFF8",
+            "markeredgewidth": 1.2
+          },
+          "points": [
+            {
+              "x_label": "4",
+              "x_value": 4,
+              "mean": 5813.062590377561,
+              "std": 1157.9248331365886
+            },
+            {
+              "x_label": "6",
+              "x_value": 6,
+              "mean": 7274.63374711722,
+              "std": 1254.876551704222
+            },
+            {
+              "x_label": "8",
+              "x_value": 8,
+              "mean": 7822.4764175874225,
+              "std": 1283.806439428354
+            },
+            {
+              "x_label": "10",
+              "x_value": 10,
+              "mean": 8088.954209005942,
+              "std": 1477.6673364324326
+            },
+            {
+              "x_label": "12",
+              "x_value": 12,
+              "mean": 8111.988249961654,
+              "std": 1411.8621124630106
+            },
+            {
+              "x_label": "14",
+              "x_value": 14,
+              "mean": 8172.814238635443,
+              "std": 1524.5187127482955
+            },
+            {
+              "x_label": "16",
+              "x_value": 16,
+              "mean": 8155.982361016642,
+              "std": 1655.0203584678331
+            }
+          ]
+        },
+        {
+          "name": "Shi2024",
+          "algorithm": "Shi2024",
+          "series_kind": "line",
+          "style": {
+            "color": "#9DABD2",
+            "marker": "^",
+            "ls": "-.",
+            "linewidth": 1,
+            "markersize": 4.0,
+            "markerfacecolor": "#9DABD2",
+            "markeredgecolor": "#9DABD2",
+            "markeredgewidth": 1.2
+          },
+          "points": [
+            {
+              "x_label": "4",
+              "x_value": 4,
+              "mean": 5946.664172108632,
+              "std": 1312.2797453955138
+            },
+            {
+              "x_label": "6",
+              "x_value": 6,
+              "mean": 6989.802473438348,
+              "std": 1525.7899974595546
+            },
+            {
+              "x_label": "8",
+              "x_value": 8,
+              "mean": 7845.995149136886,
+              "std": 1511.8074652408222
+            },
+            {
+              "x_label": "10",
+              "x_value": 10,
+              "mean": 8148.884444650554,
+              "std": 1448.750701852668
+            },
+            {
+              "x_label": "12",
+              "x_value": 12,
+              "mean": 8011.730850147376,
+              "std": 1620.741517388517
+            },
+            {
+              "x_label": "14",
+              "x_value": 14,
+              "mean": 8196.782954647168,
+              "std": 1626.241767616603
+            },
+            {
+              "x_label": "16",
+              "x_value": 16,
+              "mean": 8132.762133879123,
+              "std": 1622.3020776911992
+            }
+          ]
+        },
+        {
+          "name": "Ours (OCF-SA)",
+          "algorithm": "OCF_SAtabu",
+          "series_kind": "line",
+          "style": {
+            "color": "#555B9C",
+            "marker": "o",
+            "ls": "-",
+            "linewidth": 1,
+            "markersize": 4.0,
+            "markerfacecolor": "none",
+            "markeredgecolor": "#555B9C",
+            "markeredgewidth": 1.8
+          },
+          "points": [
+            {
+              "x_label": "4",
+              "x_value": 4,
+              "mean": 6073.61877227594,
+              "std": 1265.8620829406932
+            },
+            {
+              "x_label": "6",
+              "x_value": 6,
+              "mean": 7624.521432579773,
+              "std": 1169.4549671253742
+            },
+            {
+              "x_label": "8",
+              "x_value": 8,
+              "mean": 8198.33490387258,
+              "std": 1415.7231856348205
+            },
+            {
+              "x_label": "10",
+              "x_value": 10,
+              "mean": 8478.807366380197,
+              "std": 1502.722373405791
+            },
+            {
+              "x_label": "12",
+              "x_value": 12,
+              "mean": 8656.20896121986,
+              "std": 1558.4349040473742
+            },
+            {
+              "x_label": "14",
+              "x_value": 14,
+              "mean": 8566.662073794965,
+              "std": 1495.5062450791604
+            },
+            {
+              "x_label": "16",
+              "x_value": 16,
+              "mean": 8661.849005890064,
+              "std": 1505.9817367348867
+            }
+          ]
+        }
+      ]
+    },
+    "fig1b": {
+      "status": "generated",
+      "figure_type": "line_chart",
+      "x_axis": "Number of Agents",
+      "left_y_axis": "Task Completion Degree",
+      "series": [
+        {
+          "name": "Huo2025",
+          "algorithm": "Huo2025",
+          "series_kind": "line",
+          "style": {
+            "color": "#9B9B9B",
+            "marker": "o",
+            "ls": "--",
+            "linewidth": 1,
+            "markersize": 4.0,
+            "markerfacecolor": "#9B9B9B",
+            "markeredgecolor": "#9B9B9B",
+            "markeredgewidth": 1.2
+          },
+          "points": [
+            {
+              "x_label": "4",
+              "x_value": 4,
+              "mean": 0.20880253212396072,
+              "std": 0.04349228829894495
+            },
+            {
+              "x_label": "6",
+              "x_value": 6,
+              "mean": 0.3259185563114134,
+              "std": 0.06526479646119362
+            },
+            {
+              "x_label": "8",
+              "x_value": 8,
+              "mean": 0.44743915343915336,
+              "std": 0.07694160888556045
+            },
+            {
+              "x_label": "10",
+              "x_value": 10,
+              "mean": 0.5631256613756612,
+              "std": 0.08395729840725163
+            },
+            {
+              "x_label": "12",
+              "x_value": 12,
+              "mean": 0.6848403250188964,
+              "std": 0.08059707061954646
+            },
+            {
+              "x_label": "14",
+              "x_value": 14,
+              "mean": 0.7624527588813302,
+              "std": 0.058001308940501026
+            },
+            {
+              "x_label": "16",
+              "x_value": 16,
+              "mean": 0.8276666666666667,
+              "std": 0.05177224498526258
+            }
+          ]
+        },
+        {
+          "name": "Qi2023",
+          "algorithm": "Qi2023",
+          "series_kind": "line",
+          "style": {
+            "color": "#A2DFF8",
+            "marker": "s",
+            "ls": "--",
+            "linewidth": 1,
+            "markersize": 4.0,
+            "markerfacecolor": "#A2DFF8",
+            "markeredgecolor": "#A2DFF8",
+            "markeredgewidth": 1.2
+          },
+          "points": [
+            {
+              "x_label": "4",
+              "x_value": 4,
+              "mean": 0.6262588813303098,
+              "std": 0.10705652039146503
+            },
+            {
+              "x_label": "6",
+              "x_value": 6,
+              "mean": 0.7928968253968255,
+              "std": 0.09213848342292182
+            },
+            {
+              "x_label": "8",
+              "x_value": 8,
+              "mean": 0.8735736961451246,
+              "std": 0.06889686184198575
+            },
+            {
+              "x_label": "10",
+              "x_value": 10,
+              "mean": 0.928312358276644,
+              "std": 0.049319126958745935
+            },
+            {
+              "x_label": "12",
+              "x_value": 12,
+              "mean": 0.9500317460317462,
+              "std": 0.03918037424368906
+            },
+            {
+              "x_label": "14",
+              "x_value": 14,
+              "mean": 0.9717311035525322,
+              "std": 0.024112462589228494
+            },
+            {
+              "x_label": "16",
+              "x_value": 16,
+              "mean": 0.9841660997732427,
+              "std": 0.012676749123277787
+            }
+          ]
+        },
+        {
+          "name": "Shi2024",
+          "algorithm": "Shi2024",
+          "series_kind": "line",
+          "style": {
+            "color": "#9DABD2",
+            "marker": "^",
+            "ls": "-.",
+            "linewidth": 1,
+            "markersize": 4.0,
+            "markerfacecolor": "#9DABD2",
+            "markeredgecolor": "#9DABD2",
+            "markeredgewidth": 1.2
+          },
+          "points": [
+            {
+              "x_label": "4",
+              "x_value": 4,
+              "mean": 0.6290430839002268,
+              "std": 0.09118301160143202
+            },
+            {
+              "x_label": "6",
+              "x_value": 6,
+              "mean": 0.7582012471655328,
+              "std": 0.10391179326230414
+            },
+            {
+              "x_label": "8",
+              "x_value": 8,
+              "mean": 0.867762282690854,
+              "std": 0.06588415941661759
+            },
+            {
+              "x_label": "10",
+              "x_value": 10,
+              "mean": 0.9299848828420259,
+              "std": 0.04590929118687544
+            },
+            {
+              "x_label": "12",
+              "x_value": 12,
+              "mean": 0.9536634542705972,
+              "std": 0.04022379480654294
+            },
+            {
+              "x_label": "14",
+              "x_value": 14,
+              "mean": 0.9745619803476947,
+              "std": 0.019457556567330427
+            },
+            {
+              "x_label": "16",
+              "x_value": 16,
+              "mean": 0.9755500755857897,
+              "std": 0.021798590577068754
+            }
+          ]
+        },
+        {
+          "name": "Ours (OCF-SA)",
+          "algorithm": "OCF_SAtabu",
+          "series_kind": "line",
+          "style": {
+            "color": "#555B9C",
+            "marker": "o",
+            "ls": "-",
+            "linewidth": 1,
+            "markersize": 4.0,
+            "markerfacecolor": "none",
+            "markeredgecolor": "#555B9C",
+            "markeredgewidth": 1.8
+          },
+          "points": [
+            {
+              "x_label": "4",
+              "x_value": 4,
+              "mean": 0.6377403628117913,
+              "std": 0.09222463863128257
+            },
+            {
+              "x_label": "6",
+              "x_value": 6,
+              "mean": 0.807655328798186,
+              "std": 0.08838753826941535
+            },
+            {
+              "x_label": "8",
+              "x_value": 8,
+              "mean": 0.9077125850340138,
+              "std": 0.05549599245426275
+            },
+            {
+              "x_label": "10",
+              "x_value": 10,
+              "mean": 0.9489726001511715,
+              "std": 0.0311972316097477
+            },
+            {
+              "x_label": "12",
+              "x_value": 12,
+              "mean": 0.9773012093726379,
+              "std": 0.024143461358980448
+            },
+            {
+              "x_label": "14",
+              "x_value": 14,
+              "mean": 0.9855402494331064,
+              "std": 0.011636422153751104
+            },
+            {
+              "x_label": "16",
+              "x_value": 16,
+              "mean": 0.9901007180650039,
+              "std": 0.008036382490082363
+            }
+          ]
+        }
+      ]
+    },
+    "fig1c": {
+      "status": "generated",
+      "figure_type": "line_chart",
+      "x_axis": "Number of Agents",
+      "left_y_axis": "Total Completed Value",
+      "series": [
+        {
+          "name": "Huo2025",
+          "algorithm": "Huo2025",
+          "series_kind": "line",
+          "style": {
+            "color": "#9B9B9B",
+            "marker": "o",
+            "ls": "--",
+            "linewidth": 1,
+            "markersize": 4.0,
+            "markerfacecolor": "#9B9B9B",
+            "markeredgecolor": "#9B9B9B",
+            "markeredgewidth": 1.2
+          },
+          "points": [
+            {
+              "x_label": "4",
+              "x_value": 4,
+              "mean": 3429.6749811035525,
+              "std": 837.2410956732998
+            },
+            {
+              "x_label": "6",
+              "x_value": 6,
+              "mean": 4834.257369614513,
+              "std": 989.5651911769743
+            },
+            {
+              "x_label": "8",
+              "x_value": 8,
+              "mean": 6001.865079365079,
+              "std": 1009.063956524634
+            },
+            {
+              "x_label": "10",
+              "x_value": 10,
+              "mean": 7116.005291005292,
+              "std": 975.1598976971408
+            },
+            {
+              "x_label": "12",
+              "x_value": 12,
+              "mean": 8082.7324263038545,
+              "std": 1192.3186165787947
+            },
+            {
+              "x_label": "14",
+              "x_value": 14,
+              "mean": 8910.708616780044,
+              "std": 1278.5124940663386
+            },
+            {
+              "x_label": "16",
+              "x_value": 16,
+              "mean": 9624.338624338625,
+              "std": 1217.8412735142929
+            }
+          ]
+        },
+        {
+          "name": "Qi2023",
+          "algorithm": "Qi2023",
+          "series_kind": "line",
+          "style": {
+            "color": "#A2DFF8",
+            "marker": "s",
+            "ls": "--",
+            "linewidth": 1,
+            "markersize": 4.0,
+            "markerfacecolor": "#A2DFF8",
+            "markeredgecolor": "#A2DFF8",
+            "markeredgewidth": 1.2
+          },
+          "points": [
+            {
+              "x_label": "4",
+              "x_value": 4,
+              "mean": 7011.857520786092,
+              "std": 1168.9410428838787
+            },
+            {
+              "x_label": "6",
+              "x_value": 6,
+              "mean": 9016.137566137568,
+              "std": 1273.796169680928
+            },
+            {
+              "x_label": "8",
+              "x_value": 8,
+              "mean": 9986.103552532124,
+              "std": 1263.6969328381313
+            },
+            {
+              "x_label": "10",
+              "x_value": 10,
+              "mean": 10690.71806500378,
+              "std": 1513.257741042629
+            },
+            {
+              "x_label": "12",
+              "x_value": 12,
+              "mean": 10967.142857142857,
+              "std": 1567.797616913258
+            },
+            {
+              "x_label": "14",
+              "x_value": 14,
+              "mean": 11220.362811791383,
+              "std": 1766.0486976944785
+            },
+            {
+              "x_label": "16",
+              "x_value": 16,
+              "mean": 11360.62358276644,
+              "std": 1749.530313593797
+            }
+          ]
+        },
+        {
+          "name": "Shi2024",
+          "algorithm": "Shi2024",
+          "series_kind": "line",
+          "style": {
+            "color": "#9DABD2",
+            "marker": "^",
+            "ls": "-.",
+            "linewidth": 1,
+            "markersize": 4.0,
+            "markerfacecolor": "#9DABD2",
+            "markeredgecolor": "#9DABD2",
+            "markeredgewidth": 1.2
+          },
+          "points": [
+            {
+              "x_label": "4",
+              "x_value": 4,
+              "mean": 7174.72411186697,
+              "std": 1351.42948315168
+            },
+            {
+              "x_label": "6",
+              "x_value": 6,
+              "mean": 8750.479969765682,
+              "std": 1581.1386268624685
+            },
+            {
+              "x_label": "8",
+              "x_value": 8,
+              "mean": 10084.676870748299,
+              "std": 1629.1560844277449
+            },
+            {
+              "x_label": "10",
+              "x_value": 10,
+              "mean": 10757.647392290251,
+              "std": 1509.4167438474328
+            },
+            {
+              "x_label": "12",
+              "x_value": 12,
+              "mean": 11046.483371126227,
+              "std": 1710.8116222445265
+            },
+            {
+              "x_label": "14",
+              "x_value": 14,
+              "mean": 11295.72373393802,
+              "std": 1768.2967915086133
+            },
+            {
+              "x_label": "16",
+              "x_value": 16,
+              "mean": 11322.99886621315,
+              "std": 1832.78652764636
+            }
+          ]
+        },
+        {
+          "name": "Ours (OCF-SA)",
+          "algorithm": "OCF_SAtabu",
+          "series_kind": "line",
+          "style": {
+            "color": "#555B9C",
+            "marker": "o",
+            "ls": "-",
+            "linewidth": 1,
+            "markersize": 4.0,
+            "markerfacecolor": "none",
+            "markeredgecolor": "#555B9C",
+            "markeredgewidth": 1.8
+          },
+          "points": [
+            {
+              "x_label": "4",
+              "x_value": 4,
+              "mean": 7296.249055177626,
+              "std": 1272.5196748004248
+            },
+            {
+              "x_label": "6",
+              "x_value": 6,
+              "mean": 9345.22297808012,
+              "std": 1219.9740318274903
+            },
+            {
+              "x_label": "8",
+              "x_value": 8,
+              "mean": 10353.98715041572,
+              "std": 1490.310112019515
+            },
+            {
+              "x_label": "10",
+              "x_value": 10,
+              "mean": 10980.391156462585,
+              "std": 1637.3175138830886
+            },
+            {
+              "x_label": "12",
+              "x_value": 12,
+              "mean": 11296.844293272865,
+              "std": 1733.8513497783679
+            },
+            {
+              "x_label": "14",
+              "x_value": 14,
+              "mean": 11367.392290249434,
+              "std": 1717.4797538459989
+            },
+            {
+              "x_label": "16",
+              "x_value": 16,
+              "mean": 11425.903250188965,
+              "std": 1796.6476082614527
+            }
+          ]
+        }
+      ]
+    },
+    "fig1d": {
+      "status": "generated",
+      "figure_type": "dual_axis_bar_line_combo",
+      "x_axis": "Number of Agents",
+      "left_y_axis": "Final Coalition Utility",
+      "right_y_axis": null,
+      "show_completion_line": false,
+      "show_errorbar": true,
+      "errorbar_mode": "sem",
+      "series": [
+        {
+          "name": "Huo2025",
+          "algorithm": "Huo2025",
+          "series_kind": "bar",
+          "style": {
+            "color": "#9B9B9B",
+            "alpha": 0.8,
+            "bar_width": 0.22,
+            "use_bar_spacing": false,
+            "bar_offset_step": 0.22,
+            "show_bar_edge": false,
+            "edgecolor": "none",
+            "edgewidth": 0.0,
+            "errorbar_color": "#000000",
+            "errorbar_linewidth": 0.5,
+            "errorbar_capthick": 0.3,
+            "capsize": 2,
+            "errorbar_mode": "sem"
+          },
+          "points": [
+            {
+              "x_label": "4",
+              "x_index": 0,
+              "x_value": 4,
+              "mean": 3028.8166634358186,
+              "std": 825.0684526750208,
+              "errorbar": 180.04469704301778
+            },
+            {
+              "x_label": "6",
+              "x_index": 1,
+              "x_value": 6,
+              "mean": 4225.546890729219,
+              "std": 963.0088861761769,
+              "errorbar": 210.14576741987827
+            },
+            {
+              "x_label": "8",
+              "x_index": 2,
+              "x_value": 8,
+              "mean": 5194.937225613965,
+              "std": 1020.197497020784,
+              "errorbar": 222.6253454239156
+            },
+            {
+              "x_label": "10",
+              "x_index": 3,
+              "x_value": 10,
+              "mean": 6078.097945532117,
+              "std": 981.7827589862966,
+              "errorbar": 214.24256233606144
+            },
+            {
+              "x_label": "12",
+              "x_index": 4,
+              "x_value": 12,
+              "mean": 6818.493167360568,
+              "std": 1171.9897003565263,
+              "errorbar": 255.74911979011407
+            },
+            {
+              "x_label": "16",
+              "x_index": 5,
+              "x_value": 16,
+              "mean": 7863.548842468424,
+              "std": 1262.526741887753,
+              "errorbar": 275.50592198126674
+            }
+          ]
+        },
+        {
+          "name": "Qi2023",
+          "algorithm": "Qi2023",
+          "series_kind": "bar",
+          "style": {
+            "color": "#A2DFF8",
+            "alpha": 0.8,
+            "bar_width": 0.22,
+            "use_bar_spacing": false,
+            "bar_offset_step": 0.22,
+            "show_bar_edge": false,
+            "edgecolor": "none",
+            "edgewidth": 0.0,
+            "errorbar_color": "#000000",
+            "errorbar_linewidth": 0.5,
+            "errorbar_capthick": 0.3,
+            "capsize": 2,
+            "errorbar_mode": "sem"
+          },
+          "points": [
+            {
+              "x_label": "4",
+              "x_index": 0,
+              "x_value": 4,
+              "mean": 5813.062590377561,
+              "std": 1157.9248331365886,
+              "errorbar": 252.6799141389299
+            },
+            {
+              "x_label": "6",
+              "x_index": 1,
+              "x_value": 6,
+              "mean": 7274.63374711722,
+              "std": 1254.876551704222,
+              "errorbar": 273.8365136195126
+            },
+            {
+              "x_label": "8",
+              "x_index": 2,
+              "x_value": 8,
+              "mean": 7822.4764175874225,
+              "std": 1283.806439428354,
+              "errorbar": 280.14953268343675
+            },
+            {
+              "x_label": "10",
+              "x_index": 3,
+              "x_value": 10,
+              "mean": 8088.954209005942,
+              "std": 1477.6673364324326,
+              "errorbar": 322.45344862692383
+            },
+            {
+              "x_label": "12",
+              "x_index": 4,
+              "x_value": 12,
+              "mean": 8111.988249961654,
+              "std": 1411.8621124630106,
+              "errorbar": 308.0935714858096
+            },
+            {
+              "x_label": "16",
+              "x_index": 5,
+              "x_value": 16,
+              "mean": 8155.982361016642,
+              "std": 1655.0203584678331,
+              "errorbar": 361.1550509224664
+            }
+          ]
+        },
+        {
+          "name": "Shi2024",
+          "algorithm": "Shi2024",
+          "series_kind": "bar",
+          "style": {
+            "color": "#9DABD2",
+            "alpha": 0.8,
+            "bar_width": 0.22,
+            "use_bar_spacing": false,
+            "bar_offset_step": 0.22,
+            "show_bar_edge": false,
+            "edgecolor": "none",
+            "edgewidth": 0.0,
+            "errorbar_color": "#000000",
+            "errorbar_linewidth": 0.5,
+            "errorbar_capthick": 0.3,
+            "capsize": 2,
+            "errorbar_mode": "sem"
+          },
+          "points": [
+            {
+              "x_label": "4",
+              "x_index": 0,
+              "x_value": 4,
+              "mean": 5946.664172108632,
+              "std": 1312.2797453955138,
+              "errorbar": 286.36291743963426
+            },
+            {
+              "x_label": "6",
+              "x_index": 1,
+              "x_value": 6,
+              "mean": 6989.802473438348,
+              "std": 1525.7899974595546,
+              "errorbar": 332.9546741888042
+            },
+            {
+              "x_label": "8",
+              "x_index": 2,
+              "x_value": 8,
+              "mean": 7845.995149136886,
+              "std": 1511.8074652408222,
+              "errorbar": 329.9034355078756
+            },
+            {
+              "x_label": "10",
+              "x_index": 3,
+              "x_value": 10,
+              "mean": 8148.884444650554,
+              "std": 1448.750701852668,
+              "errorbar": 316.1433216362025
+            },
+            {
+              "x_label": "12",
+              "x_index": 4,
+              "x_value": 12,
+              "mean": 8011.730850147376,
+              "std": 1620.741517388517,
+              "errorbar": 353.67479454240316
+            },
+            {
+              "x_label": "16",
+              "x_index": 5,
+              "x_value": 16,
+              "mean": 8132.762133879123,
+              "std": 1622.3020776911992,
+              "errorbar": 354.0153367192405
+            }
+          ]
+        },
+        {
+          "name": "Ours (OCF-SA)",
+          "algorithm": "OCF_SAtabu",
+          "series_kind": "bar",
+          "style": {
+            "color": "#555B9C",
+            "alpha": 0.8,
+            "bar_width": 0.22,
+            "use_bar_spacing": false,
+            "bar_offset_step": 0.22,
+            "show_bar_edge": false,
+            "edgecolor": "none",
+            "edgewidth": 0.0,
+            "errorbar_color": "#000000",
+            "errorbar_linewidth": 0.5,
+            "errorbar_capthick": 0.3,
+            "capsize": 2,
+            "errorbar_mode": "sem"
+          },
+          "points": [
+            {
+              "x_label": "4",
+              "x_index": 0,
+              "x_value": 4,
+              "mean": 6073.61877227594,
+              "std": 1265.8620829406932,
+              "errorbar": 276.2337530690569
+            },
+            {
+              "x_label": "6",
+              "x_index": 1,
+              "x_value": 6,
+              "mean": 7624.521432579773,
+              "std": 1169.4549671253742,
+              "errorbar": 255.195995652101
+            },
+            {
+              "x_label": "8",
+              "x_index": 2,
+              "x_value": 8,
+              "mean": 8198.33490387258,
+              "std": 1415.7231856348205,
+              "errorbar": 308.93612672740875
+            },
+            {
+              "x_label": "10",
+              "x_index": 3,
+              "x_value": 10,
+              "mean": 8478.807366380197,
+              "std": 1502.722373405791,
+              "errorbar": 327.92090593503485
+            },
+            {
+              "x_label": "12",
+              "x_index": 4,
+              "x_value": 12,
+              "mean": 8656.20896121986,
+              "std": 1558.4349040473742,
+              "errorbar": 340.0783768313492
+            },
+            {
+              "x_label": "16",
+              "x_index": 5,
+              "x_value": 16,
+              "mean": 8661.849005890064,
+              "std": 1505.9817367348867,
+              "errorbar": 328.6321573242227
+            }
+          ]
+        }
+      ]
+    },
+    "fig1e": {
+      "status": "generated",
+      "figure_type": "dual_axis_bar_line_combo",
+      "x_axis": "Number of Agents",
+      "left_y_axis": "Total Completed Value",
+      "right_y_axis": null,
+      "show_completion_line": false,
+      "show_errorbar": true,
+      "errorbar_mode": "sem",
+      "series": [
+        {
+          "name": "Huo2025",
+          "algorithm": "Huo2025",
+          "series_kind": "bar",
+          "style": {
+            "color": "#9B9B9B",
+            "alpha": 0.8,
+            "bar_width": 0.22,
+            "use_bar_spacing": false,
+            "bar_offset_step": 0.22,
+            "show_bar_edge": false,
+            "edgecolor": "none",
+            "edgewidth": 0.0,
+            "errorbar_color": "#000000",
+            "errorbar_linewidth": 0.5,
+            "errorbar_capthick": 0.3,
+            "capsize": 2,
+            "errorbar_mode": "sem"
+          },
+          "points": [
+            {
+              "x_label": "4",
+              "x_index": 0,
+              "x_value": 4,
+              "mean": 3429.6749811035525,
+              "std": 837.2410956732998,
+              "errorbar": 182.70098551669815
+            },
+            {
+              "x_label": "6",
+              "x_index": 1,
+              "x_value": 6,
+              "mean": 4834.257369614513,
+              "std": 989.5651911769743,
+              "errorbar": 215.9408282696158
+            },
+            {
+              "x_label": "8",
+              "x_index": 2,
+              "x_value": 8,
+              "mean": 6001.865079365079,
+              "std": 1009.063956524634,
+              "errorbar": 220.19580770598878
+            },
+            {
+              "x_label": "10",
+              "x_index": 3,
+              "x_value": 10,
+              "mean": 7116.005291005292,
+              "std": 975.1598976971408,
+              "errorbar": 212.79733551821624
+            },
+            {
+              "x_label": "12",
+              "x_index": 4,
+              "x_value": 12,
+              "mean": 8082.7324263038545,
+              "std": 1192.3186165787947,
+              "errorbar": 260.1852529989217
+            },
+            {
+              "x_label": "16",
+              "x_index": 5,
+              "x_value": 16,
+              "mean": 9624.338624338625,
+              "std": 1217.8412735142929,
+              "errorbar": 265.7547533486032
+            }
+          ]
+        },
+        {
+          "name": "Qi2023",
+          "algorithm": "Qi2023",
+          "series_kind": "bar",
+          "style": {
+            "color": "#A2DFF8",
+            "alpha": 0.8,
+            "bar_width": 0.22,
+            "use_bar_spacing": false,
+            "bar_offset_step": 0.22,
+            "show_bar_edge": false,
+            "edgecolor": "none",
+            "edgewidth": 0.0,
+            "errorbar_color": "#000000",
+            "errorbar_linewidth": 0.5,
+            "errorbar_capthick": 0.3,
+            "capsize": 2,
+            "errorbar_mode": "sem"
+          },
+          "points": [
+            {
+              "x_label": "4",
+              "x_index": 0,
+              "x_value": 4,
+              "mean": 7011.857520786092,
+              "std": 1168.9410428838787,
+              "errorbar": 255.08384818838073
+            },
+            {
+              "x_label": "6",
+              "x_index": 1,
+              "x_value": 6,
+              "mean": 9016.137566137568,
+              "std": 1273.796169680928,
+              "errorbar": 277.9651127384603
+            },
+            {
+              "x_label": "8",
+              "x_index": 2,
+              "x_value": 8,
+              "mean": 9986.103552532124,
+              "std": 1263.6969328381313,
+              "errorbar": 275.7612785816316
+            },
+            {
+              "x_label": "10",
+              "x_index": 3,
+              "x_value": 10,
+              "mean": 10690.71806500378,
+              "std": 1513.257741042629,
+              "errorbar": 330.2199116336062
+            },
+            {
+              "x_label": "12",
+              "x_index": 4,
+              "x_value": 12,
+              "mean": 10967.142857142857,
+              "std": 1567.797616913258,
+              "errorbar": 342.12148827982776
+            },
+            {
+              "x_label": "16",
+              "x_index": 5,
+              "x_value": 16,
+              "mean": 11360.62358276644,
+              "std": 1749.530313593797,
+              "errorbar": 381.77881393635255
+            }
+          ]
+        },
+        {
+          "name": "Shi2024",
+          "algorithm": "Shi2024",
+          "series_kind": "bar",
+          "style": {
+            "color": "#9DABD2",
+            "alpha": 0.8,
+            "bar_width": 0.22,
+            "use_bar_spacing": false,
+            "bar_offset_step": 0.22,
+            "show_bar_edge": false,
+            "edgecolor": "none",
+            "edgewidth": 0.0,
+            "errorbar_color": "#000000",
+            "errorbar_linewidth": 0.5,
+            "errorbar_capthick": 0.3,
+            "capsize": 2,
+            "errorbar_mode": "sem"
+          },
+          "points": [
+            {
+              "x_label": "4",
+              "x_index": 0,
+              "x_value": 4,
+              "mean": 7174.72411186697,
+              "std": 1351.42948315168,
+              "errorbar": 294.9060906160772
+            },
+            {
+              "x_label": "6",
+              "x_index": 1,
+              "x_value": 6,
+              "mean": 8750.479969765682,
+              "std": 1581.1386268624685,
+              "errorbar": 345.0327353245619
+            },
+            {
+              "x_label": "8",
+              "x_index": 2,
+              "x_value": 8,
+              "mean": 10084.676870748299,
+              "std": 1629.1560844277449,
+              "errorbar": 355.51100360895276
+            },
+            {
+              "x_label": "10",
+              "x_index": 3,
+              "x_value": 10,
+              "mean": 10757.647392290251,
+              "std": 1509.4167438474328,
+              "errorbar": 329.38173732926816
+            },
+            {
+              "x_label": "12",
+              "x_index": 4,
+              "x_value": 12,
+              "mean": 11046.483371126227,
+              "std": 1710.8116222445265,
+              "errorbar": 373.32970279741613
+            },
+            {
+              "x_label": "16",
+              "x_index": 5,
+              "x_value": 16,
+              "mean": 11322.99886621315,
+              "std": 1832.78652764636,
+              "errorbar": 399.946809315939
+            }
+          ]
+        },
+        {
+          "name": "Ours (OCF-SA)",
+          "algorithm": "OCF_SAtabu",
+          "series_kind": "bar",
+          "style": {
+            "color": "#555B9C",
+            "alpha": 0.8,
+            "bar_width": 0.22,
+            "use_bar_spacing": false,
+            "bar_offset_step": 0.22,
+            "show_bar_edge": false,
+            "edgecolor": "none",
+            "edgewidth": 0.0,
+            "errorbar_color": "#000000",
+            "errorbar_linewidth": 0.5,
+            "errorbar_capthick": 0.3,
+            "capsize": 2,
+            "errorbar_mode": "sem"
+          },
+          "points": [
+            {
+              "x_label": "4",
+              "x_index": 0,
+              "x_value": 4,
+              "mean": 7296.249055177626,
+              "std": 1272.5196748004248,
+              "errorbar": 277.68655871873983
+            },
+            {
+              "x_label": "6",
+              "x_index": 1,
+              "x_value": 6,
+              "mean": 9345.22297808012,
+              "std": 1219.9740318274903,
+              "errorbar": 266.22015936809237
+            },
+            {
+              "x_label": "8",
+              "x_index": 2,
+              "x_value": 8,
+              "mean": 10353.98715041572,
+              "std": 1490.310112019515,
+              "errorbar": 325.21232844226404
+            },
+            {
+              "x_label": "10",
+              "x_index": 3,
+              "x_value": 10,
+              "mean": 10980.391156462585,
+              "std": 1637.3175138830886,
+              "errorbar": 357.2919735260078
+            },
+            {
+              "x_label": "12",
+              "x_index": 4,
+              "x_value": 12,
+              "mean": 11296.844293272865,
+              "std": 1733.8513497783679,
+              "errorbar": 378.35738353146314
+            },
+            {
+              "x_label": "16",
+              "x_index": 5,
+              "x_value": 16,
+              "mean": 11425.903250188965,
+              "std": 1796.6476082614527,
+              "errorbar": 392.06065057235594
+            }
+          ]
+        }
+      ]
+    },
+    "fig2c": {
+      "status": "generated",
+      "figure_type": "convergence_line_chart",
+      "x_axis": "Round",
+      "left_y_axis": "Coalition Utility",
+      "series": [
+        {
+          "name": "Huo2025",
+          "algorithm": "Huo2025",
+          "series_kind": "line",
+          "style": {
+            "color": "#9B9B9B",
+            "marker": "o",
+            "ls": "--",
+            "linewidth": 1,
+            "markersize": 4.0,
+            "markerfacecolor": "#9B9B9B",
+            "markeredgecolor": "#9B9B9B",
+            "markeredgewidth": 1.2
+          },
+          "points": [
+            {
+              "round": 1,
+              "value": 7014.173790713462
+            },
+            {
+              "round": 2,
+              "value": 7828.201448127591
+            },
+            {
+              "round": 3,
+              "value": 7839.143159900458
+            },
+            {
+              "round": 4,
+              "value": 7847.381457809449
+            },
+            {
+              "round": 5,
+              "value": 7844.307512918477
+            },
+            {
+              "round": 6,
+              "value": 7844.307512918477
+            },
+            {
+              "round": 7,
+              "value": 7847.49212684237
+            },
+            {
+              "round": 8,
+              "value": 7844.689665189476
+            },
+            {
+              "round": 9,
+              "value": 7847.687052994778
+            },
+            {
+              "round": 10,
+              "value": 7851.707416184635
+            },
+            {
+              "round": 11,
+              "value": 7851.978899422711
+            },
+            {
+              "round": 12,
+              "value": 7851.978899422711
+            },
+            {
+              "round": 13,
+              "value": 7851.707416184635
+            },
+            {
+              "round": 14,
+              "value": 7854.781361075606
+            },
+            {
+              "round": 15,
+              "value": 7851.707416184635
+            },
+            {
+              "round": 16,
+              "value": 7847.405925469304
+            },
+            {
+              "round": 17,
+              "value": 7851.978899422711
+            },
+            {
+              "round": 18,
+              "value": 7850.4798703602755
+            },
+            {
+              "round": 19,
+              "value": 7847.677408707381
+            },
+            {
+              "round": 20,
+              "value": 7847.405925469304
+            },
+            {
+              "round": 21,
+              "value": 7851.148387781293
+            },
+            {
+              "round": 22,
+              "value": 7851.41987101937
+            },
+            {
+              "round": 23,
+              "value": 7847.118380304039
+            },
+            {
+              "round": 24,
+              "value": 7851.148387781293
+            },
+            {
+              "round": 25,
+              "value": 7851.148387781293
+            },
+            {
+              "round": 26,
+              "value": 7847.118380304039
+            },
+            {
+              "round": 27,
+              "value": 7851.148387781293
+            },
+            {
+              "round": 28,
+              "value": 7851.148387781293
+            },
+            {
+              "round": 29,
+              "value": 7847.118380304039
+            },
+            {
+              "round": 30,
+              "value": 7847.118380304039
+            },
+            {
+              "round": 31,
+              "value": 7851.41987101937
+            },
+            {
+              "round": 32,
+              "value": 7846.846897065962
+            },
+            {
+              "round": 33,
+              "value": 7851.148387781293
+            },
+            {
+              "round": 34,
+              "value": 7851.41987101937
+            },
+            {
+              "round": 35,
+              "value": 7846.846897065962
+            },
+            {
+              "round": 36,
+              "value": 7847.118380304039
+            },
+            {
+              "round": 37,
+              "value": 7847.118380304039
+            },
+            {
+              "round": 38,
+              "value": 7851.148387781293
+            },
+            {
+              "round": 39,
+              "value": 7846.846897065962
+            },
+            {
+              "round": 40,
+              "value": 7847.118380304039
+            },
+            {
+              "round": 41,
+              "value": 7847.118380304039
+            },
+            {
+              "round": 42,
+              "value": 7851.41987101937
+            },
+            {
+              "round": 43,
+              "value": 7846.846897065962
+            },
+            {
+              "round": 44,
+              "value": 7847.118380304039
+            },
+            {
+              "round": 45,
+              "value": 7846.846897065962
+            },
+            {
+              "round": 46,
+              "value": 7851.41987101937
+            },
+            {
+              "round": 47,
+              "value": 7847.118380304039
+            },
+            {
+              "round": 48,
+              "value": 7847.118380304039
+            },
+            {
+              "round": 49,
+              "value": 7851.41987101937
+            },
+            {
+              "round": 50,
+              "value": 7863.548842468424
+            },
+            {
+              "round": 51,
+              "value": 7863.2773592303465
+            },
+            {
+              "round": 52,
+              "value": 7859.247351753093
+            },
+            {
+              "round": 53,
+              "value": 7863.548842468424
+            },
+            {
+              "round": 54,
+              "value": 7859.247351753093
+            },
+            {
+              "round": 55,
+              "value": 7863.548842468424
+            },
+            {
+              "round": 56,
+              "value": 7863.548842468424
+            },
+            {
+              "round": 57,
+              "value": 7858.975868515016
+            },
+            {
+              "round": 58,
+              "value": 7859.247351753093
+            },
+            {
+              "round": 59,
+              "value": 7859.247351753093
+            },
+            {
+              "round": 60,
+              "value": 7859.247351753093
+            },
+            {
+              "round": 61,
+              "value": 7859.247351753093
+            },
+            {
+              "round": 62,
+              "value": 7859.247351753093
+            },
+            {
+              "round": 63,
+              "value": 7863.2773592303465
+            },
+            {
+              "round": 64,
+              "value": 7859.247351753093
+            },
+            {
+              "round": 65,
+              "value": 7859.247351753093
+            },
+            {
+              "round": 66,
+              "value": 7859.247351753093
+            },
+            {
+              "round": 67,
+              "value": 7863.548842468424
+            },
+            {
+              "round": 68,
+              "value": 7859.247351753093
+            },
+            {
+              "round": 69,
+              "value": 7859.247351753093
+            },
+            {
+              "round": 70,
+              "value": 7863.548842468424
+            },
+            {
+              "round": 71,
+              "value": 7859.247351753093
+            },
+            {
+              "round": 72,
+              "value": 7859.247351753093
+            },
+            {
+              "round": 73,
+              "value": 7863.2773592303465
+            },
+            {
+              "round": 74,
+              "value": 7863.2773592303465
+            },
+            {
+              "round": 75,
+              "value": 7858.975868515016
+            },
+            {
+              "round": 76,
+              "value": 7858.975868515016
+            },
+            {
+              "round": 77,
+              "value": 7859.247351753093
+            },
+            {
+              "round": 78,
+              "value": 7858.975868515016
+            },
+            {
+              "round": 79,
+              "value": 7859.247351753093
+            },
+            {
+              "round": 80,
+              "value": 7863.548842468424
+            }
+          ]
+        },
+        {
+          "name": "Qi2023",
+          "algorithm": "Qi2023",
+          "series_kind": "line",
+          "style": {
+            "color": "#A2DFF8",
+            "marker": "s",
+            "ls": "--",
+            "linewidth": 1,
+            "markersize": 4.0,
+            "markerfacecolor": "#A2DFF8",
+            "markeredgecolor": "#A2DFF8",
+            "markeredgewidth": 1.2
+          },
+          "points": [
+            {
+              "round": 1,
+              "value": 6507.64586776845
+            },
+            {
+              "round": 2,
+              "value": 7830.906308880566
+            },
+            {
+              "round": 3,
+              "value": 7940.379937369556
+            },
+            {
+              "round": 4,
+              "value": 7998.162732042411
+            },
+            {
+              "round": 5,
+              "value": 8008.154891655319
+            },
+            {
+              "round": 6,
+              "value": 8020.566215396317
+            },
+            {
+              "round": 7,
+              "value": 8035.6359106471255
+            },
+            {
+              "round": 8,
+              "value": 8056.1996139291805
+            },
+            {
+              "round": 9,
+              "value": 8067.854190820061
+            },
+            {
+              "round": 10,
+              "value": 8085.74648599909
+            },
+            {
+              "round": 11,
+              "value": 8091.69886695147
+            },
+            {
+              "round": 12,
+              "value": 8093.2521549333305
+            },
+            {
+              "round": 13,
+              "value": 8098.926758107933
+            },
+            {
+              "round": 14,
+              "value": 8099.580165460516
+            },
+            {
+              "round": 15,
+              "value": 8122.861448253376
+            },
+            {
+              "round": 16,
+              "value": 8121.274146666074
+            },
+            {
+              "round": 17,
+              "value": 8126.8801978357715
+            },
+            {
+              "round": 18,
+              "value": 8126.8801978357715
+            },
+            {
+              "round": 19,
+              "value": 8126.8801978357715
+            },
+            {
+              "round": 20,
+              "value": 8129.291280240355
+            },
+            {
+              "round": 21,
+              "value": 8125.481756430831
+            },
+            {
+              "round": 22,
+              "value": 8138.517665220397
+            },
+            {
+              "round": 23,
+              "value": 8138.517665220397
+            },
+            {
+              "round": 24,
+              "value": 8140.983651614956
+            },
+            {
+              "round": 25,
+              "value": 8143.980057026773
+            },
+            {
+              "round": 26,
+              "value": 8143.980057026773
+            },
+            {
+              "round": 27,
+              "value": 8146.950143001407
+            },
+            {
+              "round": 28,
+              "value": 8148.497762049026
+            },
+            {
+              "round": 29,
+              "value": 8148.849778590984
+            },
+            {
+              "round": 30,
+              "value": 8148.849778590984
+            },
+            {
+              "round": 31,
+              "value": 8148.849778590984
+            },
+            {
+              "round": 32,
+              "value": 8148.849778590984
+            },
+            {
+              "round": 33,
+              "value": 8148.849778590984
+            },
+            {
+              "round": 34,
+              "value": 8148.849778590984
+            },
+            {
+              "round": 35,
+              "value": 8148.849778590984
+            },
+            {
+              "round": 36,
+              "value": 8148.849778590984
+            },
+            {
+              "round": 37,
+              "value": 8148.849778590984
+            },
+            {
+              "round": 38,
+              "value": 8148.849778590984
+            },
+            {
+              "round": 39,
+              "value": 8148.849778590984
+            },
+            {
+              "round": 40,
+              "value": 8148.849778590984
+            },
+            {
+              "round": 41,
+              "value": 8149.286286527492
+            },
+            {
+              "round": 42,
+              "value": 8149.286286527492
+            },
+            {
+              "round": 43,
+              "value": 8149.286286527492
+            },
+            {
+              "round": 44,
+              "value": 8150.757493291775
+            },
+            {
+              "round": 45,
+              "value": 8150.757493291775
+            },
+            {
+              "round": 46,
+              "value": 8150.757493291775
+            },
+            {
+              "round": 47,
+              "value": 8150.757493291775
+            },
+            {
+              "round": 48,
+              "value": 8150.757493291775
+            },
+            {
+              "round": 49,
+              "value": 8150.757493291775
+            },
+            {
+              "round": 50,
+              "value": 8150.757493291775
+            },
+            {
+              "round": 51,
+              "value": 8153.283948318231
+            },
+            {
+              "round": 52,
+              "value": 8153.283948318231
+            },
+            {
+              "round": 53,
+              "value": 8153.283948318231
+            },
+            {
+              "round": 54,
+              "value": 8153.283948318231
+            },
+            {
+              "round": 55,
+              "value": 8153.283948318231
+            },
+            {
+              "round": 56,
+              "value": 8153.283948318231
+            },
+            {
+              "round": 57,
+              "value": 8153.283948318231
+            },
+            {
+              "round": 58,
+              "value": 8153.283948318231
+            },
+            {
+              "round": 59,
+              "value": 8153.283948318231
+            },
+            {
+              "round": 60,
+              "value": 8153.283948318231
+            },
+            {
+              "round": 61,
+              "value": 8153.283948318231
+            },
+            {
+              "round": 62,
+              "value": 8153.283948318231
+            },
+            {
+              "round": 63,
+              "value": 8153.283948318231
+            },
+            {
+              "round": 64,
+              "value": 8153.283948318231
+            },
+            {
+              "round": 65,
+              "value": 8153.283948318231
+            },
+            {
+              "round": 66,
+              "value": 8153.283948318231
+            },
+            {
+              "round": 67,
+              "value": 8153.283948318231
+            },
+            {
+              "round": 68,
+              "value": 8153.283948318231
+            },
+            {
+              "round": 69,
+              "value": 8153.283948318231
+            },
+            {
+              "round": 70,
+              "value": 8153.283948318231
+            },
+            {
+              "round": 71,
+              "value": 8153.283948318231
+            },
+            {
+              "round": 72,
+              "value": 8153.283948318231
+            },
+            {
+              "round": 73,
+              "value": 8153.283948318231
+            },
+            {
+              "round": 74,
+              "value": 8153.283948318231
+            },
+            {
+              "round": 75,
+              "value": 8153.283948318231
+            },
+            {
+              "round": 76,
+              "value": 8153.283948318231
+            },
+            {
+              "round": 77,
+              "value": 8155.4268054610875
+            },
+            {
+              "round": 78,
+              "value": 8155.982361016642
+            },
+            {
+              "round": 79,
+              "value": 8155.982361016642
+            },
+            {
+              "round": 80,
+              "value": 8155.982361016642
+            }
+          ]
+        },
+        {
+          "name": "Shi2024",
+          "algorithm": "Shi2024",
+          "series_kind": "line",
+          "style": {
+            "color": "#9DABD2",
+            "marker": "^",
+            "ls": "-.",
+            "linewidth": 1,
+            "markersize": 4.0,
+            "markerfacecolor": "#9DABD2",
+            "markeredgecolor": "#9DABD2",
+            "markeredgewidth": 1.2
+          },
+          "points": [
+            {
+              "round": 1,
+              "value": 6873.970084041577
+            },
+            {
+              "round": 2,
+              "value": 7745.4429529432855
+            },
+            {
+              "round": 3,
+              "value": 7817.004317024939
+            },
+            {
+              "round": 4,
+              "value": 7843.79856718531
+            },
+            {
+              "round": 5,
+              "value": 7887.871610813756
+            },
+            {
+              "round": 6,
+              "value": 7891.8679171000795
+            },
+            {
+              "round": 7,
+              "value": 7920.1840667205315
+            },
+            {
+              "round": 8,
+              "value": 7939.915196019913
+            },
+            {
+              "round": 9,
+              "value": 7966.782361343574
+            },
+            {
+              "round": 10,
+              "value": 7981.709058887827
+            },
+            {
+              "round": 11,
+              "value": 7977.4632430546935
+            },
+            {
+              "round": 12,
+              "value": 7995.162661199599
+            },
+            {
+              "round": 13,
+              "value": 7986.082999481734
+            },
+            {
+              "round": 14,
+              "value": 7990.15573446111
+            },
+            {
+              "round": 15,
+              "value": 7993.593783185113
+            },
+            {
+              "round": 16,
+              "value": 8021.990465851085
+            },
+            {
+              "round": 17,
+              "value": 8032.5071144900785
+            },
+            {
+              "round": 18,
+              "value": 8041.905198957831
+            },
+            {
+              "round": 19,
+              "value": 8038.309945288267
+            },
+            {
+              "round": 20,
+              "value": 8040.522061404026
+            },
+            {
+              "round": 21,
+              "value": 8035.134863660663
+            },
+            {
+              "round": 22,
+              "value": 8034.173447483412
+            },
+            {
+              "round": 23,
+              "value": 8031.016593522437
+            },
+            {
+              "round": 24,
+              "value": 8034.537934851263
+            },
+            {
+              "round": 25,
+              "value": 8035.31630887936
+            },
+            {
+              "round": 26,
+              "value": 8049.600375289696
+            },
+            {
+              "round": 27,
+              "value": 8041.533029671108
+            },
+            {
+              "round": 28,
+              "value": 8035.864299704831
+            },
+            {
+              "round": 29,
+              "value": 8037.703984849657
+            },
+            {
+              "round": 30,
+              "value": 8061.390922680418
+            },
+            {
+              "round": 31,
+              "value": 8061.27187506137
+            },
+            {
+              "round": 32,
+              "value": 8057.18913351198
+            },
+            {
+              "round": 33,
+              "value": 8058.449254813853
+            },
+            {
+              "round": 34,
+              "value": 8056.706443129218
+            },
+            {
+              "round": 35,
+              "value": 8068.170717363114
+            },
+            {
+              "round": 36,
+              "value": 8069.910648285826
+            },
+            {
+              "round": 37,
+              "value": 8072.713125537316
+            },
+            {
+              "round": 38,
+              "value": 8067.789645364166
+            },
+            {
+              "round": 39,
+              "value": 8065.037865457595
+            },
+            {
+              "round": 40,
+              "value": 8067.07787790804
+            },
+            {
+              "round": 41,
+              "value": 8070.763850944294
+            },
+            {
+              "round": 42,
+              "value": 8070.434627143769
+            },
+            {
+              "round": 43,
+              "value": 8070.315579524721
+            },
+            {
+              "round": 44,
+              "value": 8069.83938904853
+            },
+            {
+              "round": 45,
+              "value": 8069.577718624343
+            },
+            {
+              "round": 46,
+              "value": 8072.148294925629
+            },
+            {
+              "round": 47,
+              "value": 8075.902028841879
+            },
+            {
+              "round": 48,
+              "value": 8078.613745381821
+            },
+            {
+              "round": 49,
+              "value": 8084.166356495698
+            },
+            {
+              "round": 50,
+              "value": 8081.694341687366
+            },
+            {
+              "round": 51,
+              "value": 8086.694341687366
+            },
+            {
+              "round": 52,
+              "value": 8087.05148454451
+            },
+            {
+              "round": 53,
+              "value": 8090.206086269135
+            },
+            {
+              "round": 54,
+              "value": 8090.801324364373
+            },
+            {
+              "round": 55,
+              "value": 8090.563229126278
+            },
+            {
+              "round": 56,
+              "value": 8091.2860538432615
+            },
+            {
+              "round": 57,
+              "value": 8105.00208182014
+            },
+            {
+              "round": 58,
+              "value": 8124.197354666571
+            },
+            {
+              "round": 59,
+              "value": 8124.908399155369
+            },
+            {
+              "round": 60,
+              "value": 8121.772759227839
+            },
+            {
+              "round": 61,
+              "value": 8121.653711608791
+            },
+            {
+              "round": 62,
+              "value": 8121.653711608791
+            },
+            {
+              "round": 63,
+              "value": 8123.619647168073
+            },
+            {
+              "round": 64,
+              "value": 8130.8341494631395
+            },
+            {
+              "round": 65,
+              "value": 8130.8341494631395
+            },
+            {
+              "round": 66,
+              "value": 8130.8341494631395
+            },
+            {
+              "round": 67,
+              "value": 8129.28653041552
+            },
+            {
+              "round": 68,
+              "value": 8135.853356825134
+            },
+            {
+              "round": 69,
+              "value": 8136.2234789016
+            },
+            {
+              "round": 70,
+              "value": 8133.310984226365
+            },
+            {
+              "round": 71,
+              "value": 8129.061868751165
+            },
+            {
+              "round": 72,
+              "value": 8133.600307793201
+            },
+            {
+              "round": 73,
+              "value": 8133.979871025212
+            },
+            {
+              "round": 74,
+              "value": 8127.471243670229
+            },
+            {
+              "round": 75,
+              "value": 8127.675137775185
+            },
+            {
+              "round": 76,
+              "value": 8127.43704253709
+            },
+            {
+              "round": 77,
+              "value": 8129.293619887573
+            },
+            {
+              "round": 78,
+              "value": 8132.749860544999
+            },
+            {
+              "round": 79,
+              "value": 8131.594771968124
+            },
+            {
+              "round": 80,
+              "value": 8132.762133879123
+            }
+          ]
+        },
+        {
+          "name": "Ours (OCF-SA)",
+          "algorithm": "OCF_SAtabu",
+          "series_kind": "line",
+          "style": {
+            "color": "#555B9C",
+            "marker": "o",
+            "ls": "-",
+            "linewidth": 1,
+            "markersize": 4.0,
+            "markerfacecolor": "none",
+            "markeredgecolor": "#555B9C",
+            "markeredgewidth": 1.8
+          },
+          "points": [
+            {
+              "round": 1,
+              "value": 6583.131940889232
+            },
+            {
+              "round": 2,
+              "value": 7841.028681686039
+            },
+            {
+              "round": 3,
+              "value": 8047.726766541851
+            },
+            {
+              "round": 4,
+              "value": 8089.997290105202
+            },
+            {
+              "round": 5,
+              "value": 8157.892632804693
+            },
+            {
+              "round": 6,
+              "value": 8139.529952715076
+            },
+            {
+              "round": 7,
+              "value": 8171.3491919372245
+            },
+            {
+              "round": 8,
+              "value": 8230.446272092897
+            },
+            {
+              "round": 9,
+              "value": 8290.634264991373
+            },
+            {
+              "round": 10,
+              "value": 8342.097010294463
+            },
+            {
+              "round": 11,
+              "value": 8325.192960938937
+            },
+            {
+              "round": 12,
+              "value": 8393.963036014815
+            },
+            {
+              "round": 13,
+              "value": 8401.810382950058
+            },
+            {
+              "round": 14,
+              "value": 8411.377177724586
+            },
+            {
+              "round": 15,
+              "value": 8450.498761495928
+            },
+            {
+              "round": 16,
+              "value": 8422.825146929123
+            },
+            {
+              "round": 17,
+              "value": 8476.140686054681
+            },
+            {
+              "round": 18,
+              "value": 8438.32718904579
+            },
+            {
+              "round": 19,
+              "value": 8476.333412951164
+            },
+            {
+              "round": 20,
+              "value": 8472.450417853353
+            },
+            {
+              "round": 21,
+              "value": 8529.223198620126
+            },
+            {
+              "round": 22,
+              "value": 8520.9923211428
+            },
+            {
+              "round": 23,
+              "value": 8549.380030095275
+            },
+            {
+              "round": 24,
+              "value": 8555.741762707434
+            },
+            {
+              "round": 25,
+              "value": 8553.117469315759
+            },
+            {
+              "round": 26,
+              "value": 8568.959503559543
+            },
+            {
+              "round": 27,
+              "value": 8587.161084196268
+            },
+            {
+              "round": 28,
+              "value": 8573.873086348623
+            },
+            {
+              "round": 29,
+              "value": 8595.95355839369
+            },
+            {
+              "round": 30,
+              "value": 8590.083891474022
+            },
+            {
+              "round": 31,
+              "value": 8601.368917467234
+            },
+            {
+              "round": 32,
+              "value": 8605.883251897687
+            },
+            {
+              "round": 33,
+              "value": 8607.307920373169
+            },
+            {
+              "round": 34,
+              "value": 8618.43803181461
+            },
+            {
+              "round": 35,
+              "value": 8622.379252572948
+            },
+            {
+              "round": 36,
+              "value": 8626.342419817862
+            },
+            {
+              "round": 37,
+              "value": 8625.918722321305
+            },
+            {
+              "round": 38,
+              "value": 8638.943896522982
+            },
+            {
+              "round": 39,
+              "value": 8639.695073993476
+            },
+            {
+              "round": 40,
+              "value": 8651.380745912393
+            },
+            {
+              "round": 41,
+              "value": 8653.68211625122
+            },
+            {
+              "round": 42,
+              "value": 8648.517680445753
+            },
+            {
+              "round": 43,
+              "value": 8648.638987459208
+            },
+            {
+              "round": 44,
+              "value": 8650.040216803362
+            },
+            {
+              "round": 45,
+              "value": 8643.933066605541
+            },
+            {
+              "round": 46,
+              "value": 8643.75446248495
+            },
+            {
+              "round": 47,
+              "value": 8650.75655282106
+            },
+            {
+              "round": 48,
+              "value": 8651.835143576644
+            },
+            {
+              "round": 49,
+              "value": 8652.97115862304
+            },
+            {
+              "round": 50,
+              "value": 8653.141097676818
+            },
+            {
+              "round": 51,
+              "value": 8653.135923509635
+            },
+            {
+              "round": 52,
+              "value": 8652.632356514701
+            },
+            {
+              "round": 53,
+              "value": 8655.138015458719
+            },
+            {
+              "round": 54,
+              "value": 8653.797329772218
+            },
+            {
+              "round": 55,
+              "value": 8654.56971417758
+            },
+            {
+              "round": 56,
+              "value": 8655.073281172514
+            },
+            {
+              "round": 57,
+              "value": 8653.92223168181
+            },
+            {
+              "round": 58,
+              "value": 8653.92223168181
+            },
+            {
+              "round": 59,
+              "value": 8653.92223168181
+            },
+            {
+              "round": 60,
+              "value": 8653.92223168181
+            },
+            {
+              "round": 61,
+              "value": 8653.92223168181
+            },
+            {
+              "round": 62,
+              "value": 8656.876963350674
+            },
+            {
+              "round": 63,
+              "value": 8656.988358522216
+            },
+            {
+              "round": 64,
+              "value": 8656.877634988561
+            },
+            {
+              "round": 65,
+              "value": 8657.416140693536
+            },
+            {
+              "round": 66,
+              "value": 8657.480203341853
+            },
+            {
+              "round": 67,
+              "value": 8659.384965246614
+            },
+            {
+              "round": 68,
+              "value": 8659.78842531208
+            },
+            {
+              "round": 69,
+              "value": 8659.78842531208
+            },
+            {
+              "round": 70,
+              "value": 8660.019514552538
+            },
+            {
+              "round": 71,
+              "value": 8658.706369662035
+            },
+            {
+              "round": 72,
+              "value": 8662.38163498412
+            },
+            {
+              "round": 73,
+              "value": 8662.22699933752
+            },
+            {
+              "round": 74,
+              "value": 8662.22699933752
+            },
+            {
+              "round": 75,
+              "value": 8662.30888457533
+            },
+            {
+              "round": 76,
+              "value": 8662.30888457533
+            },
+            {
+              "round": 77,
+              "value": 8661.849005890064
+            },
+            {
+              "round": 78,
+              "value": 8661.849005890064
+            },
+            {
+              "round": 79,
+              "value": 8661.849005890064
+            },
+            {
+              "round": 80,
+              "value": 8661.849005890064
+            }
+          ]
+        }
+      ]
+    },
+    "fig3a": {
+      "status": "skipped",
+      "figure_type": "inner_loop_line_chart",
+      "x_axis": "Inner Iteration",
+      "left_y_axis": "Utility",
+      "reason": "inner_loop data unavailable",
+      "series": []
+    }
+  }
+}

@@ -1,0 +1,288 @@
+{
+  "source_mat_path": "e:\\Overlap_Coalition_Formation\\results\\batch\\varyN\\N4-16_M10_K6_S21_20260329_115653.mat",
+  "output_dir": "e:\\Overlap_Coalition_Formation\\results\\figs\\varyN\\N4-16_M10_K6_S21_20260329_115653",
+  "selected_n_values": [
+    4,
+    6,
+    8,
+    10,
+    12,
+    16
+  ],
+  "alg_names": [
+    "Huo2025",
+    "Qi2023",
+    "Shi2024",
+    "OCF_SAtabu"
+  ],
+  "figures": {
+    "fig1d_utility_completion_combo": {
+      "left_metric": "Final Coalition Utility",
+      "right_metric": "Completion Rate",
+      "algorithms": {
+        "Huo2025": [
+          {
+            "N": 4,
+            "utility_value": 3028.8166634358186,
+            "completion_rate": 0.20880253212396072
+          },
+          {
+            "N": 6,
+            "utility_value": 4225.546890729219,
+            "completion_rate": 0.3259185563114134
+          },
+          {
+            "N": 8,
+            "utility_value": 5194.937225613965,
+            "completion_rate": 0.44743915343915336
+          },
+          {
+            "N": 10,
+            "utility_value": 6078.097945532117,
+            "completion_rate": 0.5631256613756612
+          },
+          {
+            "N": 12,
+            "utility_value": 6818.493167360568,
+            "completion_rate": 0.6848403250188964
+          },
+          {
+            "N": 16,
+            "utility_value": 7863.548842468424,
+            "completion_rate": 0.8276666666666667
+          }
+        ],
+        "Qi2023": [
+          {
+            "N": 4,
+            "utility_value": 5813.062590377561,
+            "completion_rate": 0.6262588813303098
+          },
+          {
+            "N": 6,
+            "utility_value": 7274.63374711722,
+            "completion_rate": 0.7928968253968255
+          },
+          {
+            "N": 8,
+            "utility_value": 7822.4764175874225,
+            "completion_rate": 0.8735736961451246
+          },
+          {
+            "N": 10,
+            "utility_value": 8088.954209005942,
+            "completion_rate": 0.928312358276644
+          },
+          {
+            "N": 12,
+            "utility_value": 8111.988249961654,
+            "completion_rate": 0.9500317460317462
+          },
+          {
+            "N": 16,
+            "utility_value": 8155.982361016642,
+            "completion_rate": 0.9841660997732427
+          }
+        ],
+        "Shi2024": [
+          {
+            "N": 4,
+            "utility_value": 5946.664172108632,
+            "completion_rate": 0.6290430839002268
+          },
+          {
+            "N": 6,
+            "utility_value": 6989.802473438348,
+            "completion_rate": 0.7582012471655328
+          },
+          {
+            "N": 8,
+            "utility_value": 7845.995149136886,
+            "completion_rate": 0.867762282690854
+          },
+          {
+            "N": 10,
+            "utility_value": 8148.884444650554,
+            "completion_rate": 0.9299848828420259
+          },
+          {
+            "N": 12,
+            "utility_value": 8011.730850147376,
+            "completion_rate": 0.9536634542705972
+          },
+          {
+            "N": 16,
+            "utility_value": 8132.762133879123,
+            "completion_rate": 0.9755500755857897
+          }
+        ],
+        "OCF_SAtabu": [
+          {
+            "N": 4,
+            "utility_value": 6073.61877227594,
+            "completion_rate": 0.6377403628117913
+          },
+          {
+            "N": 6,
+            "utility_value": 7624.521432579773,
+            "completion_rate": 0.807655328798186
+          },
+          {
+            "N": 8,
+            "utility_value": 8198.33490387258,
+            "completion_rate": 0.9077125850340138
+          },
+          {
+            "N": 10,
+            "utility_value": 8478.807366380197,
+            "completion_rate": 0.9489726001511715
+          },
+          {
+            "N": 12,
+            "utility_value": 8656.20896121986,
+            "completion_rate": 0.9773012093726379
+          },
+          {
+            "N": 16,
+            "utility_value": 8661.849005890064,
+            "completion_rate": 0.9901007180650039
+          }
+        ]
+      }
+    },
+    "fig1e_completed_value_completion_combo": {
+      "left_metric": "Total Completed Value",
+      "right_metric": "Completion Rate",
+      "algorithms": {
+        "Huo2025": [
+          {
+            "N": 4,
+            "completed_value": 3429.6749811035525,
+            "completion_rate": 0.20880253212396072
+          },
+          {
+            "N": 6,
+            "completed_value": 4834.257369614513,
+            "completion_rate": 0.3259185563114134
+          },
+          {
+            "N": 8,
+            "completed_value": 6001.865079365079,
+            "completion_rate": 0.44743915343915336
+          },
+          {
+            "N": 10,
+            "completed_value": 7116.005291005292,
+            "completion_rate": 0.5631256613756612
+          },
+          {
+            "N": 12,
+            "completed_value": 8082.7324263038545,
+            "completion_rate": 0.6848403250188964
+          },
+          {
+            "N": 16,
+            "completed_value": 9624.338624338625,
+            "completion_rate": 0.8276666666666667
+          }
+        ],
+        "Qi2023": [
+          {
+            "N": 4,
+            "completed_value": 7011.857520786092,
+            "completion_rate": 0.6262588813303098
+          },
+          {
+            "N": 6,
+            "completed_value": 9016.137566137568,
+            "completion_rate": 0.7928968253968255
+          },
+          {
+            "N": 8,
+            "completed_value": 9986.103552532124,
+            "completion_rate": 0.8735736961451246
+          },
+          {
+            "N": 10,
+            "completed_value": 10690.71806500378,
+            "completion_rate": 0.928312358276644
+          },
+          {
+            "N": 12,
+            "completed_value": 10967.142857142857,
+            "completion_rate": 0.9500317460317462
+          },
+          {
+            "N": 16,
+            "completed_value": 11360.62358276644,
+            "completion_rate": 0.9841660997732427
+          }
+        ],
+        "Shi2024": [
+          {
+            "N": 4,
+            "completed_value": 7174.72411186697,
+            "completion_rate": 0.6290430839002268
+          },
+          {
+            "N": 6,
+            "completed_value": 8750.479969765682,
+            "completion_rate": 0.7582012471655328
+          },
+          {
+            "N": 8,
+            "completed_value": 10084.676870748299,
+            "completion_rate": 0.867762282690854
+          },
+          {
+            "N": 10,
+            "completed_value": 10757.647392290251,
+            "completion_rate": 0.9299848828420259
+          },
+          {
+            "N": 12,
+            "completed_value": 11046.483371126227,
+            "completion_rate": 0.9536634542705972
+          },
+          {
+            "N": 16,
+            "completed_value": 11322.99886621315,
+            "completion_rate": 0.9755500755857897
+          }
+        ],
+        "OCF_SAtabu": [
+          {
+            "N": 4,
+            "completed_value": 7296.249055177626,
+            "completion_rate": 0.6377403628117913
+          },
+          {
+            "N": 6,
+            "completed_value": 9345.22297808012,
+            "completion_rate": 0.807655328798186
+          },
+          {
+            "N": 8,
+            "completed_value": 10353.98715041572,
+            "completion_rate": 0.9077125850340138
+          },
+          {
+            "N": 10,
+            "completed_value": 10980.391156462585,
+            "completion_rate": 0.9489726001511715
+          },
+          {
+            "N": 12,
+            "completed_value": 11296.844293272865,
+            "completion_rate": 0.9773012093726379
+          },
+          {
+            "N": 16,
+            "completed_value": 11425.903250188965,
+            "completion_rate": 0.9901007180650039
+          }
+        ]
+      }
+    }
+  }
+}

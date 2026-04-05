@@ -1,12 +1,67 @@
 import os
+import re
 
 import matplotlib.ticker as mticker
 from matplotlib import font_manager
 
 
+DEFAULT_SAVE_FORMATS = ("png", "eps")
+VECTOR_FORMATS = {"eps", "pdf", "ps", "svg"}
+CM_PER_INCH = 2.54
+
+
+def cm_to_inch(value_cm):
+    return float(value_cm) / CM_PER_INCH
+
+
+def cm_size_to_inch(size_cm):
+    if size_cm is None:
+        return None
+    width_cm, height_cm = size_cm
+    return cm_to_inch(width_cm), cm_to_inch(height_cm)
+
+
+def sanitize_path_component(name, default="unnamed"):
+    text = "" if name is None else str(name).strip()
+    if not text:
+        return default
+
+    text = text.replace("\\", "_").replace("/", "_")
+    text = re.sub(r"[^A-Za-z0-9._-]+", "_", text)
+    text = re.sub(r"_+", "_", text).strip("._-")
+    return text or default
+
+
+def build_results_figures_dir(root_dir, family, source_name=None):
+    base_dir = os.path.join(
+        root_dir,
+        "results",
+        "figs",
+        sanitize_path_component(family, default="misc"),
+    )
+    if source_name:
+        return os.path.join(base_dir, sanitize_path_component(source_name, default="result"))
+    return base_dir
+
+
+def infer_source_name(path, fallback="result"):
+    if not path:
+        return fallback
+
+    normalized = os.path.abspath(path)
+    if os.path.isdir(normalized):
+        return os.path.basename(normalized) or fallback
+
+    stem, _ = os.path.splitext(os.path.basename(normalized))
+    return stem or fallback
+
+
 class PlotStyleHelper:
     def __init__(self, plot_global, figures_dir=None):
         self.plot_global = plot_global or {}
+        self.figures_dir = figures_dir
+
+    def set_figures_dir(self, figures_dir):
         self.figures_dir = figures_dir
 
     def apply_rcparams(self):
@@ -90,6 +145,11 @@ class PlotStyleHelper:
         if self.figures_dir:
             return os.path.join(self.figures_dir, filename)
         return filename
+
+    def build_output_stem(self, stem):
+        if self.figures_dir:
+            return os.path.join(self.figures_dir, stem)
+        return stem
 
     def apply_common_style(
         self,
@@ -214,7 +274,7 @@ class PlotStyleHelper:
         if cfg.get('ylim') is not None:
             ax.set_ylim(*cfg['ylim'])
 
-        if cfg.get('bottom_zero', False):
+        if cfg.get('bottom_zero', False) and cfg.get('ylim') is None:
             _, ymax = ax.get_ylim()
             ax.set_ylim(bottom=0, top=ymax)
 
@@ -225,18 +285,62 @@ class PlotStyleHelper:
             else:
                 fig.tight_layout(rect=tight_layout_rect)
 
-        save_dir = os.path.dirname(save_path)
+        save_stem, save_formats = self._normalize_save_target(save_path)
+        save_dir = os.path.dirname(save_stem)
         if save_dir:
             os.makedirs(save_dir, exist_ok=True)
 
-        default_ext = os.path.splitext(save_path)[1].lstrip('.') or 'png'
-        fig.savefig(
-            save_path,
-            format=self.plot_global.get('save_format', default_ext),
-            dpi=self.plot_global.get('save_dpi', 150),
-            bbox_inches=self.plot_global.get('save_bbox_inches', 'tight'),
-        )
-        print(f'  [OK] {save_path}')
+        saved_paths = []
+        for ext in save_formats:
+            output_path = f'{save_stem}.{ext}'
+            save_kwargs = {
+                'format': ext,
+                'bbox_inches': self.plot_global.get('save_bbox_inches', 'tight'),
+            }
+            if ext not in VECTOR_FORMATS:
+                save_kwargs['dpi'] = self.plot_global.get('save_dpi', 150)
+            fig.savefig(output_path, **save_kwargs)
+            print(f'  [OK] {output_path}')
+            saved_paths.append(output_path)
+        return saved_paths
+
+    def _normalize_save_target(self, save_path):
+        normalized = os.path.abspath(save_path)
+        default_formats = self._get_default_save_formats()
+        stem, ext = os.path.splitext(normalized)
+        requested_ext = ext.lstrip('.').lower()
+
+        if requested_ext:
+            if requested_ext in default_formats:
+                formats = [requested_ext] + [fmt for fmt in default_formats if fmt != requested_ext]
+            else:
+                formats = [requested_ext]
+            return stem, formats
+
+        return normalized, default_formats
+
+    def _get_default_save_formats(self):
+        raw_formats = self.plot_global.get('save_formats')
+        if raw_formats is None:
+            legacy_format = self.plot_global.get('save_format')
+            if legacy_format:
+                if isinstance(legacy_format, (list, tuple)):
+                    raw_formats = legacy_format
+                else:
+                    raw_formats = DEFAULT_SAVE_FORMATS if str(legacy_format).lower() in DEFAULT_SAVE_FORMATS else [legacy_format]
+            else:
+                raw_formats = DEFAULT_SAVE_FORMATS
+
+        if isinstance(raw_formats, str):
+            raw_formats = [raw_formats]
+
+        normalized = []
+        for item in raw_formats:
+            fmt = str(item).strip().lstrip('.').lower()
+            if fmt and fmt not in normalized:
+                normalized.append(fmt)
+
+        return normalized or list(DEFAULT_SAVE_FORMATS)
 
     def _build_legend_prop(self):
         family = self.plot_global.get('font_family')

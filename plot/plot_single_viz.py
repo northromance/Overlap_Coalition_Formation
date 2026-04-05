@@ -29,7 +29,7 @@ import matplotlib.pyplot as plt
 import matplotlib.patches as mpatches
 from matplotlib.colors import Normalize, TwoSlopeNorm, to_hex, to_rgb
 from matplotlib.cm import ScalarMappable
-from plot_style_helper import PlotStyleHelper
+from plot_style_helper import PlotStyleHelper, build_results_figures_dir, cm_size_to_inch, infer_source_name
 
 try:
     import mat73
@@ -42,19 +42,25 @@ except ImportError:
 # ══════════════════════════════════════════════════════════════════════════════
 
 # ── 路径配置 ──────────────────────────────────────────────────────────────────
-SCRIPT_DIR  = os.path.dirname(os.path.abspath(__file__))
-ROOT_DIR    = os.path.dirname(SCRIPT_DIR)
-FIGURES_DIR = os.path.join(ROOT_DIR, 'figures', 'paper')
+# =========================
+# 顶部可调绘图参数
+# 建议优先在这里改颜色方案、子图尺寸、图例和保存设置。
+# =========================
+
+# 路径配置
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+ROOT_DIR = os.path.dirname(SCRIPT_DIR)
+FIGURES_DIR = build_results_figures_dir(ROOT_DIR, 'single_viz')
 SEARCH_DIRS = [
     os.path.join(ROOT_DIR, 'results', 'batch', 'visualize'),
     os.path.join(ROOT_DIR, 'results', 'batch'),
 ]
 
-# ── 任务类型颜色（甘特图 / 子图标题颜色）─────────────────────────────────────
+# 任务类型颜色（用于甘特图和子图标题）
 TASK_TYPE_COLOR = {
-    1: '#4878CF',   # 低价值 — 蓝
-    2: '#6ACC65',   # 中价值 — 绿
-    3: '#D65F5F',   # 高价值 — 红
+    1: '#4878CF',
+    2: '#6ACC65',
+    3: '#D65F5F',
 }
 TASK_TYPE_LABEL = {
     1: 'Type-1 (Low value)',
@@ -64,49 +70,54 @@ TASK_TYPE_LABEL = {
 DEFAULT_TASK_COLOR = '#AAAAAA'
 RESOURCE_COLORS = ['#4E79A7', '#F28E2B', '#59A14F', '#E15759', '#76B7B2', '#EDC948']
 
-# ── 图5a（热图网格）配置 ──────────────────────────────────────────────────────
+# fig5a 资源分配热图网格配置
 FIG5A_CONFIG = {
-    'show_title':     True,
-    'suptitle':       'Fig. 5a — Resource Allocation per Task  (SC matrix)',
-    'ncols':          5,         # 每行子图数（None → 自动 ceil(sqrt(M))）
-    'subplot_w':      2.6,       # 每个子图宽度（inch）
-    'subplot_h':      2.2,       # 每个子图高度（inch）
-    'cmap':           'Blues',   # 热图颜色映射
-    'shared_vmax':    True,      # True = 所有子图共享同一颜色上限，便于跨任务比较
-    'show_colorbar':  True,      # 是否显示统一 colorbar
-    'xlabel':         'Resource',
-    'ylabel':         'Agent',
-    'cell_annot':     False,     # True = 在每格写数值（N、K 较小时好看）
-    'cell_fontsize':  7,
-    'subplot_title_fontsize': 8, # 子图标题字号
-    'tick_fontsize':  7,
+    'show_title': True,
+    'suptitle': 'Fig. 5a - Resource Allocation per Task (SC matrix)',
+    'ncols': 5,  # 每行子图数；None 表示自动按 ceil(sqrt(M)) 计算
+    'subplot_w_cm': 6.60,  # 每个子图宽度，单位 cm
+    'subplot_h_cm': 5.59,  # 每个子图高度，单位 cm
+    'colorbar_extra_w_cm': 2.54,  # 显示 colorbar 时额外预留的宽度，单位 cm
+    'plain_extra_w_cm': 0.51,  # 不显示 colorbar 时额外预留的宽度，单位 cm
+    'cmap': 'Blues',  # 热图颜色映射
+    'shared_vmax': True,  # True 表示所有子图共用同一颜色上限
+    'show_colorbar': True,  # 是否显示统一 colorbar
+    'xlabel': 'Resource',
+    'ylabel': 'Agent',
+    'cell_annot': False,  # 是否在格内显示数值
+    'cell_fontsize': 7,
+    'subplot_title_fontsize': 8,  # 子图标题字号
+    'tick_fontsize': 7,
 }
 
-# ── 图5b（甘特图）配置 ────────────────────────────────────────────────────────
+# fig5b 甘特图配置
 FIG5B_CONFIG = {
-    'show_title':          True,
-    'title':               'Fig. 5b — Agent Task Execution Gantt',
-    'xlabel':              'Time',
-    'ylabel':              'Agent',
-    'color_mode':          'task_id_with_value_lightness',  # 'task_id_with_value_lightness' / 'task_type'
-    'bar_height':          0.55,  # 甘特条高度（0~1）
-    'label_min_width':     8.0,   # 时间宽度大于此值才在条上显示 Task ID
-    'show_task_id_label':  True,  # 是否在条上写任务 ID
-    'show_value_legend':   True,  # show compact value legend
-    'value_legend_mode':   'compact',  # 'compact' keeps a small legend only
-    'value_shade_order':   'high_darker',  # 'high_darker' / 'high_lighter'
-    'task_hue_offset':     0.08,  # base hue offset for task-id palette, 0~1
-    'task_color_saturation': 0.68,  # saturation for task bars, 0~1
-    'value_lightness_min': 0.42,  # darkest lightness for value encoding, 0~1
-    'value_lightness_max': 0.78,  # lightest lightness for value encoding, 0~1
-    'value_legend_hue':    0.58,  # neutral hue used by the value legend samples
-    'label_fontsize':      7,
-    'max_fig_width':       18.0,  # 图宽上限（inch）
-    'min_fig_width':       8.0,   # 图宽下限（inch）
-    'time_per_inch':       40.0,  # 每 inch 对应多少时间单位（自适应图宽用）
+    'show_title': True,
+    'title': 'Fig. 5b - Agent Task Execution Gantt',
+    'xlabel': 'Time',
+    'ylabel': 'Agent',
+    'color_mode': 'task_id_with_value_lightness',  # 'task_id_with_value_lightness' / 'task_type'
+    'bar_height': 0.55,  # 甘特条高度，0~1
+    'label_min_width': 8.0,  # 条宽大于该值才显示 Task ID，单位为时间轴数据值
+    'show_task_id_label': True,  # 是否在条上标 Task ID
+    'show_value_legend': True,  # 是否显示价值图例
+    'value_legend_mode': 'compact',  # 图例模式：compact / 其他自定义模式
+    'value_shade_order': 'high_darker',  # 高价值更深或更浅
+    'task_hue_offset': 0.08,
+    'task_color_saturation': 0.68,
+    'value_lightness_min': 0.42,
+    'value_lightness_max': 0.78,
+    'value_legend_hue': 0.58,
+    'label_fontsize': 7,
+    'max_fig_width_cm': 45.72,  # 图宽上限，单位 cm
+    'min_fig_width_cm': 20.32,  # 图宽下限，单位 cm
+    'time_per_cm': 15.75,  # 每 1 cm 容纳的时间单位数量
+    'min_fig_height_cm': 8.89,  # 图高下限，单位 cm
+    'per_agent_height_cm': 1.40,  # 每个智能体额外占用的高度，单位 cm
+    'base_fig_height_cm': 2.54,  # 甘特图基础高度，单位 cm
 }
 
-# ── 全局绘图参数 ──────────────────────────────────────────────────────────────
+# fig5c/5d/5e/5f 热图配置
 FIG5C_CONFIG = {
     'show_title': True,
     'title': 'Fig. 5c - Total Allocated Resource per Task',
@@ -148,28 +159,26 @@ FIG5F_CONFIG = {
     'value_fmt': '{:.0f}',
 }
 
+# 全局绘图参数
 PLOT_GLOBAL = {
-    'title_fontsize':     12,
-    'title_pad':           8,
-    'xlabel_fontsize':    11,
-    'ylabel_fontsize':    11,
-    'tick_fontsize':      10,
-    'legend_fontsize':     9,
-
-    'show_grid':          True,
-    'grid_linestyle':     '--',
-    'grid_linewidth':     0.5,
-    'grid_alpha':         0.35,
-
-    'show_legend':        True,
-    'legend_framealpha':  0.85,
-    'legend_edgecolor':   '#cccccc',
-
-    'hide_top_spine':     True,
-    'hide_right_spine':   True,
-
-    'save_dpi':           150,
-    'save_bbox_inches':   'tight',
+    'title_fontsize': 12,  # 标题字号
+    'title_pad': 8,  # 标题与坐标轴之间的间距
+    'xlabel_fontsize': 11,  # x 轴标题字号
+    'ylabel_fontsize': 11,  # y 轴标题字号
+    'tick_fontsize': 10,  # 刻度字号
+    'legend_fontsize': 9,  # 图例字号
+    'show_grid': True,  # 是否显示网格
+    'grid_linestyle': '--',  # 网格线型
+    'grid_linewidth': 0.5,  # 网格线宽
+    'grid_alpha': 0.35,  # 网格透明度
+    'show_legend': True,  # 是否显示图例
+    'legend_framealpha': 0.85,  # 图例边框透明度
+    'legend_edgecolor': '#cccccc',  # 图例边框颜色
+    'hide_top_spine': True,  # 是否隐藏上边框
+    'hide_right_spine': True,  # 是否隐藏右边框
+    'save_formats': ['png', 'eps'],  # 实际输出格式列表
+    'save_dpi': 150,  # 位图输出 dpi
+    'save_bbox_inches': 'tight',  # 保存时裁掉多余白边
 }
 
 os.makedirs(FIGURES_DIR, exist_ok=True)
@@ -280,6 +289,19 @@ def apply_common_style(ax, xlabel, ylabel, title=None):
 
 def finalize_and_save(fig, save_path):
     STYLE_HELPER.finalize_and_save(fig, save_path)
+
+
+def build_output_stem(stem):
+    return STYLE_HELPER.build_output_stem(stem)
+
+
+def configure_output_dir(mat_path):
+    global FIGURES_DIR
+    source_name = infer_source_name(mat_path, fallback='visualize')
+    FIGURES_DIR = build_results_figures_dir(ROOT_DIR, 'single_viz', source_name)
+    os.makedirs(FIGURES_DIR, exist_ok=True)
+    STYLE_HELPER.set_figures_dir(FIGURES_DIR)
+    return FIGURES_DIR
 
 
 def build_task_type_value_maps(task_info):
@@ -715,13 +737,13 @@ def print_exp_params_snapshot(snapshot):
 def plot_task_resource_heatmap(matrix, save_path, cfg, colorbar_label,
                                center_value=None, vmin=None, vmax=None):
     if matrix.size == 0:
-        print(f"  ! {os.path.basename(save_path)} 鏁版嵁涓虹┖锛岃烦杩?")
+        print(f"  ! {os.path.basename(save_path)} 数据为空，跳过")
         return
 
     M, K = matrix.shape
-    fig_w = max(6.5, 1.0 + 0.9 * K)
-    fig_h = max(4.2, 1.2 + 0.5 * M)
-    fig, ax = plt.subplots(figsize=(fig_w, fig_h))
+    fig_w = max(16.51, 2.54 + 2.29 * K)
+    fig_h = max(10.67, 3.05 + 1.27 * M)
+    fig, ax = plt.subplots(figsize=cm_size_to_inch((fig_w, fig_h)))
     finite_vals = matrix[np.isfinite(matrix)]
     cmap = plt.get_cmap(cfg['cmap']).copy()
     cmap.set_bad('#f2f2f2')
@@ -789,20 +811,20 @@ def plot_fig5e_stacked_compare(alloc_mat, demand_mat, task_info, save_path):
 
     cfg = FIG5E_CONFIG
     if alloc_mat.size == 0 or demand_mat.size == 0:
-        print("  ! fig5e 鏁版嵁涓虹┖锛岃烦杩?")
+        print("  ! fig5e 数据为空，跳过")
         return
 
     M = min(alloc_mat.shape[0], demand_mat.shape[0], task_info.get('M', alloc_mat.shape[0]))
     K = min(alloc_mat.shape[1], demand_mat.shape[1])
     if M == 0 or K == 0:
-        print("  ! fig5e 鏁版嵁缁村害鏃犳晥锛岃烦杩?")
+        print("  ! fig5e 数据维度无效，跳过")
         return
 
     x = np.arange(M, dtype=float)
     width = cfg['bar_width']
-    fig_w = max(8.0, min(16.0, 2.8 + 0.8 * M))
-    fig_h = 5.2
-    fig, ax = plt.subplots(figsize=(fig_w, fig_h))
+    fig_w = max(20.32, min(40.64, 7.11 + 2.03 * M))
+    fig_h = 13.21
+    fig, ax = plt.subplots(figsize=cm_size_to_inch((fig_w, fig_h)))
 
     bottom_demand = np.zeros(M)
     bottom_alloc = np.zeros(M)
@@ -928,9 +950,9 @@ def plot_fig5a(sc_list, task_info, N, K, save_path):
     ncols = min(ncols, M)
     nrows = int(np.ceil(M / ncols))
 
-    fig_w = ncols * cfg['subplot_w'] + (1.0 if cfg['show_colorbar'] else 0.2)
-    fig_h = nrows * cfg['subplot_h']
-    fig, axes = plt.subplots(nrows, ncols, figsize=(fig_w, fig_h))
+    fig_w = ncols * cfg['subplot_w_cm'] + (cfg['colorbar_extra_w_cm'] if cfg['show_colorbar'] else cfg['plain_extra_w_cm'])
+    fig_h = nrows * cfg['subplot_h_cm']
+    fig, axes = plt.subplots(nrows, ncols, figsize=cm_size_to_inch((fig_w, fig_h)))
     axes = np.array(axes).reshape(nrows, ncols)
 
     # 决定共享 vmax
@@ -1026,9 +1048,9 @@ def plot_fig5b(timing_list, task_info, N, save_path):
         for s, e in zip(ag['starts'], ag['execs']):
             t_max = max(t_max, float(s) + float(e))
 
-    fig_w = np.clip(t_max / cfg['time_per_inch'], cfg['min_fig_width'], cfg['max_fig_width'])
-    fig_h = max(3.5, N * 0.55 + 1.0)
-    fig, ax = plt.subplots(figsize=(fig_w, fig_h))
+    fig_w = np.clip(t_max / cfg['time_per_cm'], cfg['min_fig_width_cm'], cfg['max_fig_width_cm'])
+    fig_h = max(cfg['min_fig_height_cm'], N * cfg['per_agent_height_cm'] + cfg['base_fig_height_cm'])
+    fig, ax = plt.subplots(figsize=cm_size_to_inch((fig_w, fig_h)))
 
     # task_id → type 映射
     style_maps = build_fig5b_task_style_maps(task_info, cfg)
@@ -1096,6 +1118,7 @@ def plot_fig5b(timing_list, task_info, N, save_path):
 
 def main():
     mat_path = find_mat_file(sys.argv)
+    configure_output_dir(mat_path)
 
     print("\n加载数据...")
     raw      = mat73.loadmat(mat_path)
@@ -1111,10 +1134,6 @@ def main():
     print(f"  total_completed_value = {to_scalar(viz_data.get('total_completed_value')):.2f}")
     print(f"  computation_time      = {to_scalar(viz_data.get('computation_time')):.2f} s")
     print_exp_params_snapshot(viz_data.get('exp_params_snapshot'))
-
-    basename = os.path.splitext(os.path.basename(mat_path))[0]
-    parts    = basename.split('_')
-    ts       = '_'.join(parts[-2:]) if len(parts) >= 2 else 'ts'
 
     print("\n提取数据...")
     sc_list     = extract_sc_matrices(viz_data)
@@ -1135,32 +1154,32 @@ def main():
 
     plot_fig5a(
         sc_list, task_info, N, K,
-        os.path.join(FIGURES_DIR, f'fig5a_alloc_N{N}_M{M}_seed{seed}_{ts}.png'),
+        build_output_stem('fig5a_alloc'),
     )
     plot_fig5b(
         timing_list, task_info, N,
-        os.path.join(FIGURES_DIR, f'fig5b_gantt_N{N}_M{M}_seed{seed}_{ts}.png'),
+        build_output_stem('fig5b_gantt'),
     )
     plot_task_resource_heatmap(
         alloc_mat,
-        os.path.join(FIGURES_DIR, f'fig5c_allocsum_N{N}_M{M}_seed{seed}_{ts}.png'),
+        build_output_stem('fig5c_allocsum'),
         FIG5C_CONFIG,
         colorbar_label='Total allocated resource',
     )
     plot_task_resource_heatmap(
         gap_mat,
-        os.path.join(FIGURES_DIR, f'fig5d_gap_N{N}_M{M}_seed{seed}_{ts}.png'),
+        build_output_stem('fig5d_gap'),
         FIG5D_CONFIG,
         colorbar_label='Allocated - Demand',
         center_value=0.0,
     )
     plot_fig5e_ratio_heatmap(
         ratio_mat,
-        os.path.join(FIGURES_DIR, f'fig5e_ratio_N{N}_M{M}_seed{seed}_{ts}.png'),
+        build_output_stem('fig5e_ratio'),
     )
     plot_task_resource_heatmap(
         demand_mat,
-        os.path.join(FIGURES_DIR, f'fig5f_demand_N{N}_M{M}_seed{seed}_{ts}.png'),
+        build_output_stem('fig5f_demand'),
         FIG5F_CONFIG,
         colorbar_label='Task demand',
     )

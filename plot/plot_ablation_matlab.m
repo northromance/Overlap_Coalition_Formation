@@ -31,7 +31,7 @@ function [n_values, seeds, utility, completion] = plot_ablation_matlab(mat_path)
     % =========================
     SCRIPT_DIR = fileparts(mfilename('fullpath'));
     ROOT_DIR   = fileparts(SCRIPT_DIR);
-    FIGURES_DIR = fullfile(ROOT_DIR, 'figures', 'paper');
+    FIGURES_ROOT_DIR = fullfile(ROOT_DIR, 'results', 'figs', 'ablation');
     SEARCH_DIRS = {
         fullfile(ROOT_DIR, 'results', 'batch', 'ablation'), ...
         fullfile(ROOT_DIR, 'results', 'batch')
@@ -181,7 +181,7 @@ function [n_values, seeds, utility, completion] = plot_ablation_matlab(mat_path)
         ts = "ts";
     end
 
-    save_path = fullfile(FIGURES_DIR, sprintf('ablation_scatter_%s.png', ts));
+    save_path = fullfile(FIGURES_ROOT_DIR, char(basename), 'ablation_scatter.png');
     fprintf('\n绘图 → %s\n', save_path);
 
     plot_ablation_scatter(n_values, seeds, utility, completion, save_path, ...
@@ -303,6 +303,12 @@ function plot_ablation_scatter(n_values, seeds, utility, completion, save_path, 
         exportgraphics(fig, save_path, 'Resolution', PLOT_GLOBAL.save_dpi);
     catch
         print(fig, save_path, '-dpng', sprintf('-r%d', PLOT_GLOBAL.save_dpi));
+    end
+    eps_path = strrep(save_path, '.png', '.eps');
+    try
+        exportgraphics(fig, eps_path, 'ContentType', 'vector');
+    catch
+        print(fig, eps_path, '-depsc');
     end
     fprintf('  ✓ %s\n', save_path);
 end

@@ -1,16 +1,11 @@
 """
 plot_ablation.py
 ================
-Plot ablation results produced by Batch_Ablation.m.
+从 Batch_Ablation.m 的结果中绘制消融实验图，包括：
+  1. 端点散点图：最终联盟效用、最终任务完成率
+  2. 收敛曲线图：联盟效用随外层轮次变化的均值与波动
 
-Outputs:
-1. Endpoint scatter figure:
-   - final coalition utility
-   - final task completion rate
-2. Convergence figure:
-   - mean +/- std coalition utility over rounds
-
-Usage:
+用法:
   python plot_ablation.py
   python plot_ablation.py <ablation_run_name>
   python plot_ablation.py <path/to/ablation_run_dir>
@@ -30,9 +25,9 @@ except ImportError:
     h5py = None
 
 try:
-    from plot_style_helper import PlotStyleHelper
+    from plot_style_helper import PlotStyleHelper, build_results_figures_dir, cm_size_to_inch, infer_source_name
 except ImportError:
-    from .plot_style_helper import PlotStyleHelper
+    from .plot_style_helper import PlotStyleHelper, build_results_figures_dir, cm_size_to_inch, infer_source_name
 try:
     from ablation_result_aggregator import AblationResultAggregator
 except ImportError:
@@ -41,85 +36,51 @@ except ImportError:
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 ROOT_DIR = os.path.dirname(SCRIPT_DIR)
-FIGURES_DIR = os.path.join(ROOT_DIR, "figures", "paper")
+FIGURES_DIR = build_results_figures_dir(ROOT_DIR, "ablation")
 SEARCH_DIRS = [
     os.path.join(ROOT_DIR, "results", "batch", "ablation"),
     os.path.join(ROOT_DIR, "results", "batch"),
 ]
 
 # =========================
-# 输入与条件显示
+# 顶部可调绘图参数
+# 这里集中放置输入筛选、散点图布局、收敛阴影带和保存设置。
 # =========================
-# 指定输入来源:
-# - None / ""      : 自动读取最新的 ablation run_dir, 若不存在则回退到最新 legacy MAT
-# - run name       : 例如 "20260330_190655_N6-6_M10_K6_C3_S3"
-# - relative / abs : run_dir、cache 文件或 legacy MAT 路径
-# 示例:
-#   PREFERRED_INPUT = "20260330_190655_N6-6_M10_K6_C3_S3"
-#   PREFERRED_INPUT = r"results/batch/ablation/20260330_190655_N6-6_M10_K6_C3_S3"
+
+# 输入来源选择器。
+# - None / "": 自动选择最新的 ablation 运行目录；若不存在则回退到旧版 MAT。
+# - run name: 例如 "20260330_190655_N6-6_M10_K6_C3_S3"。
+# - relative / abs path: 直接指向运行目录、缓存文件或旧版 MAT 文件。
 PREFERRED_INPUT = None
 
-# 选择要展示的条件:
-# - None    : 显示当前输入中所有条件
-# - 列表     : 只按给定顺序显示这些条件
-# 示例:
-#   VISIBLE_CONDITIONS = ["belief_off", "belief_on_quantile"]
+# 条件筛选。
+# - None: 显示当前输入中的全部条件。
+# - 列表: 仅按给定顺序展示这些条件。
 VISIBLE_CONDITIONS = None
 
-# =========================
-# 散点图样本显示
-# =========================
-# 选择散点图中要展示的随机种子:
-# - None    : 显示全部 seed
-# - 列表     : 只显示这些实际 seed 值, 仅影响第一张散点图
-# 示例:
-# SCATTER_VISIBLE_SEEDS = list(range(2487, 2537))
-
+# 散点图可见的随机种子。
+# - None: 显示全部 seed。
+# - 列表: 仅显示给定 seed。
 SCATTER_VISIBLE_SEEDS = None
 
-# 散点图横坐标标签模式:
-# - "mc_id" : 显示连续 Monte Carlo ID, 如 MC 1, MC 2, ...
-# - "seed"  : 直接显示原始随机数种子
+# 散点图横轴标签模式。
+# - "mc_id": 使用连续 Monte Carlo 编号。
+# - "seed": 直接显示原始随机种子。
 SCATTER_XLABEL_MODE = "mc_id"
+SCATTER_MC_ID_START = 0  # Monte Carlo 编号起点，仅在 mc_id 模式下生效。
+SCATTER_MC_TICK_STEP = 5  # 横轴刻度步长；1 表示每个样本都显示。
+SCATTER_ALIGN_CONDITIONS = True  # True 表示同一样本的不同条件对齐在同一竖线上。
+SCATTER_SHOW_CONNECTION_LINES = False  # True 表示连接同一样本在不同条件下的散点。
 
-# Monte Carlo ID 的起始编号, 仅在 SCATTER_XLABEL_MODE = "mc_id" 时使用。
-SCATTER_MC_ID_START = 0
-
-# 横坐标标签的显示间隔:
-# - 1 表示每个样本都放一个刻度
-# - 4 表示只在 MC 1, 5, 9, ... 这些位置放刻度
-SCATTER_MC_TICK_STEP = 5
-
-# 是否让同一个 Monte Carlo 样本的不同条件落在同一条竖线上。
-SCATTER_ALIGN_CONDITIONS = True
-
-# 是否绘制同一样本内不同条件之间的连接线。
-SCATTER_SHOW_CONNECTION_LINES = False
-
-# =========================
-# 收敛图波动带显示
-# =========================
-# 是否显示第二张收敛图中的阴影带。
+# 收敛阴影带设置。
+# - CONV_SHOW_BAND: 是否绘制波动区域。
+# - CONV_BAND_MODE: "std" 使用均值±标准差，"percentile" 使用分位数区间。
 CONV_SHOW_BAND = True
-
-# 阴影带模式:
-# - "std"        : 显示 mean +/- CONV_BAND_SCALE * std
-# - "percentile" : 显示指定百分位区间, 中心线仍然是 mean
 CONV_BAND_MODE = "percentile"
+CONV_BAND_SCALE = 1.0  # std 模式下显示 mean ± scale * std。
+CONV_BAND_PERCENTILES = (30, 70)  # percentile 模式下显示的分位数区间。
 
-
-# 仅在 CONV_BAND_MODE = "std" 时使用:
-# 阴影带按多少倍标准差显示。论文正式图建议保持 1.0。
-CONV_BAND_SCALE = 1.0
-
-# 仅在 CONV_BAND_MODE = "percentile" 时使用:
-# 指定阴影带的百分位范围, 例如 (10, 90) 表示 10%-90% 区间。
-CONV_BAND_PERCENTILES = (30, 70)
-
-# =========================
-# 样式配置
-# =========================
-
+# 条件显示样式：颜色 / marker / 线宽 / 图例名称。
 CONDITION_STYLE_MAP = {
     "belief_off": {
         "color": "#C0392B",
@@ -157,20 +118,21 @@ CONDITION_STYLE_MAP = {
 FALLBACK_COLORS = ["#7A5195", "#EF5675", "#FFA600", "#4C78A8", "#72B7B2"]
 FALLBACK_MARKERS = ["s", "D", "P", "v", ">"]
 
-# 仅在开启 SCATTER_SHOW_CONNECTION_LINES 时生效。
-CONN_LINE = {"color": "#B3B3B3", "linewidth": 0.8, "alpha": 0.7, "zorder": 2}
-
-# 收敛图阴影带透明度。
-BAND_ALPHA = 0.16
-
+CONN_LINE = {"color": "#B3B3B3", "linewidth": 0.8, "alpha": 0.7, "zorder": 2}  # 连接线样式。
+BAND_ALPHA = 0.16  # 收敛阴影带透明度。
 ROW_YLABELS = ["Coalition Utility", "Task Completion Rate"]
 ROW_TITLES = ["Endpoint Utility", "Endpoint Completion"]
 
+# 全局绘图参数。
+# - 所有物理尺寸统一使用 cm，真正传给 Matplotlib 时再换算为英寸。
+# - subplot_w_cm / subplot_h_cm: 端点散点图单个子图尺寸，单位 cm。
+# - convergence_subplot_w_cm / convergence_subplot_h_cm: 收敛图单个子图尺寸，单位 cm。
+# - 其余字段控制字号、网格、图例和保存行为。
 PLOT_GLOBAL = {
-    "subplot_w": 3.5,
-    "subplot_h": 3.1,
-    "convergence_subplot_w": 3.6,
-    "convergence_subplot_h": 2.9,
+    "subplot_w_cm": 8.89,
+    "subplot_h_cm": 7.87,
+    "convergence_subplot_w_cm": 9.14,
+    "convergence_subplot_h_cm": 7.37,
     "xlabel_fontsize": 10,
     "ylabel_fontsize": 10,
     "title_fontsize": 11,
@@ -189,10 +151,20 @@ PLOT_GLOBAL = {
     "tight_layout": True,
     "save_dpi": 150,
     "save_format": "png",
+    "save_formats": ["png", "eps"],
     "save_bbox_inches": "tight",
 }
 
+os.makedirs(FIGURES_DIR, exist_ok=True)
 STYLE_HELPER = PlotStyleHelper(PLOT_GLOBAL, FIGURES_DIR)
+
+
+def configure_output_dir(source_name):
+    global FIGURES_DIR
+    FIGURES_DIR = build_results_figures_dir(ROOT_DIR, "ablation", source_name)
+    os.makedirs(FIGURES_DIR, exist_ok=True)
+    STYLE_HELPER.set_figures_dir(FIGURES_DIR)
+    return FIGURES_DIR
 
 
 def resolve_input_selector(input_selector):
@@ -869,9 +841,9 @@ def plot_ablation_scatter(
     num_s = len(display_seeds)
     x_positions, tick_positions, tick_labels, xlabel = _build_scatter_axis(display_seeds)
 
-    fig_w = PLOT_GLOBAL["subplot_w"] * num_n
-    fig_h = PLOT_GLOBAL["subplot_h"] * 2
-    fig, axes = plt.subplots(2, num_n, figsize=(fig_w, fig_h), squeeze=False)
+    fig_w = PLOT_GLOBAL["subplot_w_cm"] * num_n
+    fig_h = PLOT_GLOBAL["subplot_h_cm"] * 2
+    fig, axes = plt.subplots(2, num_n, figsize=cm_size_to_inch((fig_w, fig_h)), squeeze=False)
 
     for row, (data, ylabel) in enumerate(zip([utility, completion], ROW_YLABELS)):
         for col, n_value in enumerate(n_values):
@@ -972,9 +944,9 @@ def plot_ablation_convergence(n_values, condition_names, convergence, save_path)
     num_rounds = convergence.shape[-1]
     rounds = np.arange(1, num_rounds + 1)
 
-    fig_w = PLOT_GLOBAL["convergence_subplot_w"] * num_n
-    fig_h = PLOT_GLOBAL["convergence_subplot_h"]
-    fig, axes = plt.subplots(1, num_n, figsize=(fig_w, fig_h), squeeze=False)
+    fig_w = PLOT_GLOBAL["convergence_subplot_w_cm"] * num_n
+    fig_h = PLOT_GLOBAL["convergence_subplot_h_cm"]
+    fig, axes = plt.subplots(1, num_n, figsize=cm_size_to_inch((fig_w, fig_h)), squeeze=False)
 
     for col, n_value in enumerate(n_values):
         ax = axes[0][col]
@@ -1051,6 +1023,8 @@ def main(input_path=None):
 
     print("\nLoading ablation data...")
     n_values, seeds, condition_names, utility, completion, convergence, run_meta = load_ablation_data(input_path)
+    output_source = run_meta.get("run_name") or infer_source_name(run_meta.get("source_path"), fallback="ablation")
+    configure_output_dir(output_source)
     visible_conditions = _resolve_visible_conditions(condition_names)
 
     print(f"  Input path         = {run_meta.get('source_path', '')}")
@@ -1081,7 +1055,6 @@ def main(input_path=None):
         print(f"  valid[{cond_name}] utility={utility_valid} completion={completion_valid}")
     print(f"  convergence rounds = {convergence.shape[-1]}")
 
-    timestamp_token = _extract_timestamp_token(run_meta)
     visibility_token = _visibility_suffix(visible_conditions, _unique_preserve_order(condition_names))
     scatter_seed_token = _scatter_seed_suffix(
         [_normalize_seed_value(seed) for seed in scatter_display_seeds],
@@ -1090,10 +1063,11 @@ def main(input_path=None):
     scatter_base = f"ablation_scatter_{visibility_token}"
     if scatter_seed_token != "allseeds":
         scatter_base = f"{scatter_base}_{scatter_seed_token}"
-    scatter_path = STYLE_HELPER.build_output_path(timestamp_token, scatter_base)
-    convergence_path = STYLE_HELPER.build_output_path(timestamp_token, f"ablation_convergence_{visibility_token}")
+    scatter_path = STYLE_HELPER.build_output_stem(scatter_base)
+    convergence_path = STYLE_HELPER.build_output_stem(f"ablation_convergence_{visibility_token}")
 
-    print(f"\nPlotting endpoint scatter -> {scatter_path}")
+    print(f"\nFigure output dir      = {FIGURES_DIR}")
+    print(f"Plotting endpoint scatter -> {scatter_path}")
     plot_ablation_scatter(
         n_values,
         seeds,

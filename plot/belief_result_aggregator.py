@@ -339,6 +339,8 @@ class BeliefResultAggregator:
         return None
 
     def _looks_like_run_dir(self, path):
+        if not self._is_belief_path(path):
+            return False
         return (
             os.path.isfile(os.path.join(path, self.RUN_CONFIG_NAME))
             and os.path.isfile(os.path.join(path, self.PROGRESS_STATUS_NAME))

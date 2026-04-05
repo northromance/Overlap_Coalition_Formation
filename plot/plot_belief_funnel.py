@@ -24,27 +24,30 @@ import copy
 import matplotlib
 import numpy as np
 from belief_result_aggregator import BeliefResultAggregator
-from plot_style_helper import PlotStyleHelper
+from plot_style_helper import PlotStyleHelper, build_results_figures_dir, cm_size_to_inch, infer_source_name
 
+
+# =========================
+# 顶部可调绘图参数
+# 这里集中放置输入选择、轮次抽样、曲线样式和保存设置。
+# =========================
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 ROOT_DIR = os.path.dirname(SCRIPT_DIR)
-FIGURES_DIR = os.path.join(ROOT_DIR, "figures", "paper")
+FIGURES_DIR = build_results_figures_dir(ROOT_DIR, "belief")
 SEARCH_DIRS = [
     os.path.join(ROOT_DIR, "results", "batch", "belief"),  # belief 实验结果主目录
     os.path.join(ROOT_DIR, "results", "batch"),  # 兜底搜索目录
 ]
 
-# 顶部可调参数区
-# PREFERRED_INPUT:
-#   None / ""      -> 自动选择最新 belief run_dir；若没有再回退到最新旧 MAT
-#   run name       -> SEARCH_DIRS 下精确匹配同名 run_dir
-#   file name      -> SEARCH_DIRS 下精确匹配同名旧 MAT
-#   relative/abs   -> 直接使用 run_dir、cache 文件或旧 MAT 路径
+# 输入选择器
+# - None / "": 自动选择最新的 belief 运行目录；找不到时再回退到旧 MAT
+# - run name: 按目录名精确匹配
+# - file name: 按文件名精确匹配旧 MAT
+# - relative / abs path: 直接使用运行目录、缓存文件或旧 MAT 路径
 PREFERRED_INPUT = None
 
-# 任务类型颜色映射。
-# 若任务类型数超过这里显式给出的颜色，回退到 FALLBACK_COLORS 轮换取色。
+# 任务类型颜色映射
 TYPE_COLORS = {
     1: "#4878CF",
     2: "#6ACC65",
@@ -55,8 +58,7 @@ TYPE_COLORS = {
 }
 FALLBACK_COLORS = ["#4878CF", "#6ACC65", "#D65F5F", "#EE854A", "#C4AD66", "#956CB4"]
 
-# 判定当前 matplotlib backend 是否为非交互后端。
-# 若命中这些标记，show() 可能不会弹窗，只会保存文件。
+# 非交互后端标记：命中后 show() 可能不会弹窗，只会保存文件
 NON_INTERACTIVE_BACKEND_MARKERS = (
     "agg",
     "pdf",
@@ -68,102 +70,98 @@ NON_INTERACTIVE_BACKEND_MARKERS = (
     "module://matplotlib_inline",
 )
 
-# 若当前后端不可交互，则按顺序尝试切到这些 GUI backend。
+# 若当前后端不可交互，则按顺序尝试切换到这些 GUI 后端
 GUI_BACKEND_CANDIDATES = ("TkAgg", "QtAgg", "Qt5Agg")
 
-# 横轴抽样步长。
-# 1 表示每一轮都画；3 表示 round 0,3,6,...；最后一轮会强制保留。
+# 横轴抽样步长
+# 1 表示每一轮都画；3 表示只画 round 0/3/6/...，最后一轮会强制保留
 PLOT_EVERY_N_ROUNDS = 3
 
-# 局部绘图样式参数。
-# 这里主要放“曲线本体”相关控制项，供 belief funnel 单图直接使用。
+# belief funnel 单图样式
 PLOT_STYLE = {
-    "figsize": (3.5, 2.5),
-    "linewidth": 1.4,
-    "ref_linewidth": 1.0,
-    "ref_alpha": 0.85,
-    "band_alpha": 0.20,
-    "marker": "o",
-    "markersize": 3.5,
-    "markevery": 1,
-    "show_band": True,
-    "show_reference_line": True,
-    "grid_linestyle": "--",
-    "grid_linewidth": 0.45,
-    "grid_alpha": 0.25,
-    "title_fontsize": 8,      # 论文里通常可不写图内标题
-    "label_fontsize": 8,
-    "tick_fontsize": 8,
-    "legend_fontsize": 7.5,
-    "save_dpi": 600,
-    "y_padding_min": 20.0,
-    "y_padding_ratio": 0.05,
+    "figsize_cm": (8.89, 6.35),  # 单张图尺寸（宽, 高），单位 cm
+    "linewidth": 1.4,  # 主曲线线宽
+    "ref_linewidth": 1.0,  # 参考线线宽
+    "ref_alpha": 0.85,  # 参考线透明度
+    "band_alpha": 0.20,  # 阴影带透明度
+    "marker": "o",  # marker 形状
+    "markersize": 3.5,  # marker 大小
+    "markevery": 1,  # marker 抽样步长
+    "show_band": True,  # 是否显示阴影带
+    "show_reference_line": True,  # 是否显示参考线
+    "grid_linestyle": "--",  # 网格线型
+    "grid_linewidth": 0.45,  # 网格线宽
+    "grid_alpha": 0.25,  # 网格透明度
+    "title_fontsize": 8,  # 标题字号
+    "label_fontsize": 8,  # 坐标轴标题字号
+    "tick_fontsize": 8,  # 刻度字号
+    "legend_fontsize": 7.5,  # 图例字号
+    "save_dpi": 600,  # 位图输出 dpi
+    "y_padding_min": 20.0,  # y 轴最小留白，单位为数据值
+    "y_padding_ratio": 0.05,  # y 轴留白比例
 }
 os.makedirs(FIGURES_DIR, exist_ok=True)
 
+# 交给 PlotStyleHelper 的全局样式适配器
 PLOT_GLOBAL = {
-    # 字体与标题
-    "title_fontsize": PLOT_STYLE["title_fontsize"],
-    "title_fontweight": "bold",           # 标题字重
-    "title_pad": 8,                       # 标题与坐标轴上边距
-    "xlabel_fontsize": PLOT_STYLE["label_fontsize"],
-    "ylabel_fontsize": PLOT_STYLE["label_fontsize"],
-    "label_fontweight": "normal",         # 坐标轴标题字重
-    "tick_fontsize": PLOT_STYLE["tick_fontsize"],
-    "tick_fontweight": "normal",          # 刻度字重
-    "legend_fontsize": PLOT_STYLE["legend_fontsize"],
-    "legend_fontweight": "normal",        # 图例字重
-    "show_titles": True,                  # 全局标题总开关
-
-    # 网格与图例
-    "show_grid": True,                    # 是否显示网格
-    "grid_linestyle": PLOT_STYLE["grid_linestyle"],
-    "grid_linewidth": PLOT_STYLE["grid_linewidth"],
-    "grid_alpha": PLOT_STYLE["grid_alpha"],
-    "show_legend": True,                  # 全局图例总开关
-    "legend_loc": "best",                 # 图例位置
-    "legend_bbox_to_anchor": None,        # 图例锚点；None 表示不用锚点
-    "legend_ncol": 1,                     # 图例列数
-    "legend_borderaxespad": 0.3,          # 图例与坐标轴边界距离
-    "legend_handlelength": 2.0,           # 图例示意线长度
-    "legend_labelspacing": 0.4,           # 图例条目间距
-    "legend_framealpha": 0.9,             # 图例边框透明度
-    "legend_edgecolor": "#cccccc",        # 图例边框颜色
-
-    # 坐标轴边框
-    "hide_top_spine": True,               # 隐藏上边框
-    "hide_right_spine": True,             # 隐藏右边框
-
-    # 保存输出
-    "save_format": "eps",                 # 输出格式，可改为 png/pdf/svg
-    "save_dpi": PLOT_STYLE["save_dpi"],
-    "save_bbox_inches": "tight",         # 保存时裁掉多余白边
-    "timestamp_first_in_name": False,     # 文件名格式：False=stem_timestamp，True=timestamp_stem
-
-    # 画布布局
-    "tight_layout": True,                 # 保存前是否执行 tight_layout
+    "title_fontsize": PLOT_STYLE["title_fontsize"],  # 标题字号
+    "title_fontweight": "bold",  # 标题字重
+    "title_pad": 8,  # 标题与坐标轴之间的间距
+    "xlabel_fontsize": PLOT_STYLE["label_fontsize"],  # x 轴标题字号
+    "ylabel_fontsize": PLOT_STYLE["label_fontsize"],  # y 轴标题字号
+    "label_fontweight": "normal",  # 坐标轴标题字重
+    "tick_fontsize": PLOT_STYLE["tick_fontsize"],  # 刻度字号
+    "tick_fontweight": "normal",  # 刻度字重
+    "legend_fontsize": PLOT_STYLE["legend_fontsize"],  # 图例字号
+    "legend_fontweight": "normal",  # 图例字重
+    "show_titles": True,  # 是否显示标题
+    "show_grid": True,  # 是否显示网格
+    "grid_linestyle": PLOT_STYLE["grid_linestyle"],  # 网格线型
+    "grid_linewidth": PLOT_STYLE["grid_linewidth"],  # 网格线宽
+    "grid_alpha": PLOT_STYLE["grid_alpha"],  # 网格透明度
+    "show_legend": True,  # 是否显示图例
+    "legend_loc": "best",  # 图例位置
+    "legend_bbox_to_anchor": None,  # 图例锚点；None 表示不额外指定
+    "legend_ncol": 1,  # 图例列数
+    "legend_borderaxespad": 0.3,  # 图例与坐标轴边界的间距
+    "legend_handlelength": 2.0,  # 图例示意线长度
+    "legend_labelspacing": 0.4,  # 图例条目垂直间距
+    "legend_framealpha": 0.9,  # 图例边框透明度
+    "legend_edgecolor": "#cccccc",  # 图例边框颜色
+    "hide_top_spine": True,  # 是否隐藏上边框
+    "hide_right_spine": True,  # 是否隐藏右边框
+    "save_format": "eps",  # 主保存格式
+    "save_formats": ["png", "eps"],  # 实际输出格式列表
+    "save_dpi": PLOT_STYLE["save_dpi"],  # 位图输出 dpi
+    "save_bbox_inches": "tight",  # 保存时裁掉多余白边
+    "timestamp_first_in_name": False,  # False 表示文件名采用 stem_timestamp 形式
+    "tight_layout": True,  # 保存前是否执行 tight_layout
 }
 STYLE_HELPER = PlotStyleHelper(PLOT_GLOBAL, FIGURES_DIR)
 STYLE_HELPER_NO_LEGEND = PlotStyleHelper(dict(PLOT_GLOBAL, show_legend=False), FIGURES_DIR)
 
-# 每张图的显式配置。
-# 这里控制标题文本、坐标轴标签、坐标轴范围、是否从 0 开始等。
+# 单图显式配置
+# - show_title / show_legend: 当前图的局部开关，仍受全局总开关影响
+# - xlim / ylim = None: 自动范围
+# - xticks / yticks = None: 自动刻度
+# - bottom_zero = True: y 轴下界至少为 0
 FIGURE_CONFIG = {
     "belief_funnel": {
-        "show_title": True,   # 当前图标题开关；受全局 show_titles 共同控制
-        "show_legend": True,  # 当前图图例开关；受全局 show_legend 共同控制
-        "title_template": "Belief Funnel Convergence [{condition_name}]",  # 标题模板
-        "xlabel": "Communication round",  # x 轴标题
-        "ylabel": "Expected task value",  # y 轴标题
-        "xlim": None,      # x 轴范围；None 表示自动
-        "ylim": None,      # y 轴范围；None 表示自动
-        "xticks": None,    # x 轴刻度；None 表示自动
-        "yticks": None,    # y 轴刻度；None 表示自动
-        "bottom_zero": True,  # True 时若自动计算 y 轴下界，则不低于 0
+        "show_title": True,
+        "show_legend": True,
+        "title_template": "Belief Funnel Convergence [{condition_name}]",
+        "xlabel": "Communication round",
+        "ylabel": "Expected task value",
+        "xlim": None,
+        "ylim": None,
+        "xticks": None,
+        "yticks": None,
+        "bottom_zero": True,
     },
 }
 
-
+# 每张图的显式配置。
+# 这里控制标题文本、坐标轴标签、坐标轴范围、是否从 0 开始等。
 def merge_figure_config(fig_key, **kwargs):
     cfg = copy.deepcopy(FIGURE_CONFIG[fig_key])
     cfg.update(kwargs)
@@ -175,7 +173,8 @@ def apply_plot_rcparams():
 
 
 def build_output_path(timestamp, stem):
-    return STYLE_HELPER.build_output_path(timestamp, stem)
+    _ = timestamp
+    return STYLE_HELPER.build_output_stem(stem)
 
 
 def apply_common_style(ax, cfg, title=None, legend_handles=None, legend_labels=None):
@@ -198,6 +197,15 @@ def apply_axis_controls(ax, cfg):
 
 def finalize_and_save(fig, save_path):
     STYLE_HELPER.finalize_and_save(fig, save_path)
+
+
+def configure_output_dir(source_name):
+    global FIGURES_DIR
+    FIGURES_DIR = build_results_figures_dir(ROOT_DIR, "belief", source_name)
+    os.makedirs(FIGURES_DIR, exist_ok=True)
+    STYLE_HELPER.set_figures_dir(FIGURES_DIR)
+    STYLE_HELPER_NO_LEGEND.set_figures_dir(FIGURES_DIR)
+    return FIGURES_DIR
 
 
 def get_timestamp_tag(config, run_meta):
@@ -531,7 +539,7 @@ def plot_condition_funnel(condition_name, aggregated, task_type_values, save_pat
         "belief_funnel",
         title=FIGURE_CONFIG["belief_funnel"]["title_template"].format(condition_name=condition_name),
     )
-    fig, ax = plt.subplots(figsize=PLOT_STYLE["figsize"])
+    fig, ax = plt.subplots(figsize=cm_size_to_inch(PLOT_STYLE["figsize_cm"]))
     legend_handles = []
     legend_labels = []
     ymax_candidates = []
@@ -653,6 +661,8 @@ def main(input_path=None):
 
     print("\nLoading belief data...")
     results, config, run_meta = aggregator.load_results(input_path=input_path)
+    output_source = run_meta.get("run_name") or infer_source_name(run_meta.get("source_path"), fallback="belief")
+    configure_output_dir(output_source)
     print(f"  Source path = {run_meta.get('source_path', '')}")
     print(f"  Source type = {run_meta.get('source_type', '')}")
     if run_meta.get("run_name"):
@@ -669,10 +679,9 @@ def main(input_path=None):
 
     grouped, config, results = group_successful_entries(results, config)
     task_type_values = get_task_type_values(config, results)
-    timestamp = get_timestamp_tag(config, run_meta)
-
     print(f"Matplotlib backend: {plt.get_backend()}")
     print(f"Plot every N rounds: {PLOT_EVERY_N_ROUNDS}")
+    print(f"Figure output dir: {FIGURES_DIR}")
     print_condition_summary(grouped)
 
     figures = []
@@ -695,7 +704,7 @@ def main(input_path=None):
                 )
 
         save_path = build_output_path(
-            timestamp,
+            None,
             f"fig_belief_funnel_{sanitize_name(condition_name)}",
         )
         fig = plot_condition_funnel(condition_name, aggregated, task_type_values, save_path)
