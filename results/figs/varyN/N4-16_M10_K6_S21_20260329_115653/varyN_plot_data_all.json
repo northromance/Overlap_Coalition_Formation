@@ -7,6 +7,7 @@
     8,
     10,
     12,
+    14,
     16
   ],
   "all_n_values": [
@@ -19,10 +20,10 @@
     16
   ],
   "alg_names": [
-    "Huo2025",
-    "Qi2023",
-    "Shi2024",
-    "OCF_SAtabu"
+    "NOCF",
+    "PCG-TS",
+    "JSE-OCF",
+    "BHTA"
   ],
   "figures": {
     "fig1a": {
@@ -32,8 +33,8 @@
       "left_y_axis": "Final Coalition Utility",
       "series": [
         {
-          "name": "Huo2025",
-          "algorithm": "Huo2025",
+          "name": "NOCF",
+          "algorithm": "NOCF",
           "series_kind": "line",
           "style": {
             "color": "#9B9B9B",
@@ -91,8 +92,8 @@
           ]
         },
         {
-          "name": "Qi2023",
-          "algorithm": "Qi2023",
+          "name": "PCG-TS",
+          "algorithm": "PCG-TS",
           "series_kind": "line",
           "style": {
             "color": "#A2DFF8",
@@ -150,8 +151,8 @@
           ]
         },
         {
-          "name": "Shi2024",
-          "algorithm": "Shi2024",
+          "name": "JSE-OCF",
+          "algorithm": "JSE-OCF",
           "series_kind": "line",
           "style": {
             "color": "#9DABD2",
@@ -209,8 +210,8 @@
           ]
         },
         {
-          "name": "Ours (OCF-SA)",
-          "algorithm": "OCF_SAtabu",
+          "name": "BHTA",
+          "algorithm": "BHTA",
           "series_kind": "line",
           "style": {
             "color": "#555B9C",
@@ -276,8 +277,8 @@
       "left_y_axis": "Task Completion Degree",
       "series": [
         {
-          "name": "Huo2025",
-          "algorithm": "Huo2025",
+          "name": "NOCF",
+          "algorithm": "NOCF",
           "series_kind": "line",
           "style": {
             "color": "#9B9B9B",
@@ -335,8 +336,8 @@
           ]
         },
         {
-          "name": "Qi2023",
-          "algorithm": "Qi2023",
+          "name": "PCG-TS",
+          "algorithm": "PCG-TS",
           "series_kind": "line",
           "style": {
             "color": "#A2DFF8",
@@ -394,8 +395,8 @@
           ]
         },
         {
-          "name": "Shi2024",
-          "algorithm": "Shi2024",
+          "name": "JSE-OCF",
+          "algorithm": "JSE-OCF",
           "series_kind": "line",
           "style": {
             "color": "#9DABD2",
@@ -453,8 +454,8 @@
           ]
         },
         {
-          "name": "Ours (OCF-SA)",
-          "algorithm": "OCF_SAtabu",
+          "name": "BHTA",
+          "algorithm": "BHTA",
           "series_kind": "line",
           "style": {
             "color": "#555B9C",
@@ -520,8 +521,8 @@
       "left_y_axis": "Total Completed Value",
       "series": [
         {
-          "name": "Huo2025",
-          "algorithm": "Huo2025",
+          "name": "NOCF",
+          "algorithm": "NOCF",
           "series_kind": "line",
           "style": {
             "color": "#9B9B9B",
@@ -579,8 +580,8 @@
           ]
         },
         {
-          "name": "Qi2023",
-          "algorithm": "Qi2023",
+          "name": "PCG-TS",
+          "algorithm": "PCG-TS",
           "series_kind": "line",
           "style": {
             "color": "#A2DFF8",
@@ -638,8 +639,8 @@
           ]
         },
         {
-          "name": "Shi2024",
-          "algorithm": "Shi2024",
+          "name": "JSE-OCF",
+          "algorithm": "JSE-OCF",
           "series_kind": "line",
           "style": {
             "color": "#9DABD2",
@@ -697,8 +698,8 @@
           ]
         },
         {
-          "name": "Ours (OCF-SA)",
-          "algorithm": "OCF_SAtabu",
+          "name": "BHTA",
+          "algorithm": "BHTA",
           "series_kind": "line",
           "style": {
             "color": "#555B9C",
@@ -768,8 +769,8 @@
       "errorbar_mode": "sem",
       "series": [
         {
-          "name": "Huo2025",
-          "algorithm": "Huo2025",
+          "name": "NOCF",
+          "algorithm": "NOCF",
           "series_kind": "bar",
           "style": {
             "color": "#9B9B9B",
@@ -828,8 +829,16 @@
               "errorbar": 255.74911979011407
             },
             {
-              "x_label": "16",
+              "x_label": "14",
               "x_index": 5,
+              "x_value": 14,
+              "mean": 7372.590579088899,
+              "std": 1255.5399236814017,
+              "errorbar": 273.9812732528144
+            },
+            {
+              "x_label": "16",
+              "x_index": 6,
               "x_value": 16,
               "mean": 7863.548842468424,
               "std": 1262.526741887753,
@@ -838,8 +847,8 @@
           ]
         },
         {
-          "name": "Qi2023",
-          "algorithm": "Qi2023",
+          "name": "PCG-TS",
+          "algorithm": "PCG-TS",
           "series_kind": "bar",
           "style": {
             "color": "#A2DFF8",
@@ -898,8 +907,16 @@
               "errorbar": 308.0935714858096
             },
             {
-              "x_label": "16",
+              "x_label": "14",
               "x_index": 5,
+              "x_value": 14,
+              "mean": 8172.814238635443,
+              "std": 1524.5187127482955,
+              "errorbar": 332.67725712122393
+            },
+            {
+              "x_label": "16",
+              "x_index": 6,
               "x_value": 16,
               "mean": 8155.982361016642,
               "std": 1655.0203584678331,
@@ -908,8 +925,8 @@
           ]
         },
         {
-          "name": "Shi2024",
-          "algorithm": "Shi2024",
+          "name": "JSE-OCF",
+          "algorithm": "JSE-OCF",
           "series_kind": "bar",
           "style": {
             "color": "#9DABD2",
@@ -968,8 +985,16 @@
               "errorbar": 353.67479454240316
             },
             {
-              "x_label": "16",
+              "x_label": "14",
               "x_index": 5,
+              "x_value": 14,
+              "mean": 8196.782954647168,
+              "std": 1626.241767616603,
+              "errorbar": 354.8750475429461
+            },
+            {
+              "x_label": "16",
+              "x_index": 6,
               "x_value": 16,
               "mean": 8132.762133879123,
               "std": 1622.3020776911992,
@@ -978,8 +1003,8 @@
           ]
         },
         {
-          "name": "Ours (OCF-SA)",
-          "algorithm": "OCF_SAtabu",
+          "name": "BHTA",
+          "algorithm": "BHTA",
           "series_kind": "bar",
           "style": {
             "color": "#555B9C",
@@ -1038,8 +1063,16 @@
               "errorbar": 340.0783768313492
             },
             {
-              "x_label": "16",
+              "x_label": "14",
               "x_index": 5,
+              "x_value": 14,
+              "mean": 8566.662073794965,
+              "std": 1495.5062450791604,
+              "errorbar": 326.34621763592537
+            },
+            {
+              "x_label": "16",
+              "x_index": 6,
               "x_value": 16,
               "mean": 8661.849005890064,
               "std": 1505.9817367348867,
@@ -1060,8 +1093,8 @@
       "errorbar_mode": "sem",
       "series": [
         {
-          "name": "Huo2025",
-          "algorithm": "Huo2025",
+          "name": "NOCF",
+          "algorithm": "NOCF",
           "series_kind": "bar",
           "style": {
             "color": "#9B9B9B",
@@ -1120,8 +1153,16 @@
               "errorbar": 260.1852529989217
             },
             {
-              "x_label": "16",
+              "x_label": "14",
               "x_index": 5,
+              "x_value": 14,
+              "mean": 8910.708616780044,
+              "std": 1278.5124940663386,
+              "errorbar": 278.99429909551316
+            },
+            {
+              "x_label": "16",
+              "x_index": 6,
               "x_value": 16,
               "mean": 9624.338624338625,
               "std": 1217.8412735142929,
@@ -1130,8 +1171,8 @@
           ]
         },
         {
-          "name": "Qi2023",
-          "algorithm": "Qi2023",
+          "name": "PCG-TS",
+          "algorithm": "PCG-TS",
           "series_kind": "bar",
           "style": {
             "color": "#A2DFF8",
@@ -1190,8 +1231,16 @@
               "errorbar": 342.12148827982776
             },
             {
-              "x_label": "16",
+              "x_label": "14",
               "x_index": 5,
+              "x_value": 14,
+              "mean": 11220.362811791383,
+              "std": 1766.0486976944785,
+              "errorbar": 385.383420864911
+            },
+            {
+              "x_label": "16",
+              "x_index": 6,
               "x_value": 16,
               "mean": 11360.62358276644,
               "std": 1749.530313593797,
@@ -1200,8 +1249,8 @@
           ]
         },
         {
-          "name": "Shi2024",
-          "algorithm": "Shi2024",
+          "name": "JSE-OCF",
+          "algorithm": "JSE-OCF",
           "series_kind": "bar",
           "style": {
             "color": "#9DABD2",
@@ -1260,8 +1309,16 @@
               "errorbar": 373.32970279741613
             },
             {
-              "x_label": "16",
+              "x_label": "14",
               "x_index": 5,
+              "x_value": 14,
+              "mean": 11295.72373393802,
+              "std": 1768.2967915086133,
+              "errorbar": 385.87399515408407
+            },
+            {
+              "x_label": "16",
+              "x_index": 6,
               "x_value": 16,
               "mean": 11322.99886621315,
               "std": 1832.78652764636,
@@ -1270,8 +1327,8 @@
           ]
         },
         {
-          "name": "Ours (OCF-SA)",
-          "algorithm": "OCF_SAtabu",
+          "name": "BHTA",
+          "algorithm": "BHTA",
           "series_kind": "bar",
           "style": {
             "color": "#555B9C",
@@ -1330,8 +1387,16 @@
               "errorbar": 378.35738353146314
             },
             {
-              "x_label": "16",
+              "x_label": "14",
               "x_index": 5,
+              "x_value": 14,
+              "mean": 11367.392290249434,
+              "std": 1717.4797538459989,
+              "errorbar": 374.78480840730543
+            },
+            {
+              "x_label": "16",
+              "x_index": 6,
               "x_value": 16,
               "mean": 11425.903250188965,
               "std": 1796.6476082614527,
@@ -1348,8 +1413,8 @@
       "left_y_axis": "Coalition Utility",
       "series": [
         {
-          "name": "Huo2025",
-          "algorithm": "Huo2025",
+          "name": "NOCF",
+          "algorithm": "NOCF",
           "series_kind": "line",
           "style": {
             "color": "#9B9B9B",
@@ -1685,8 +1750,8 @@
           ]
         },
         {
-          "name": "Qi2023",
-          "algorithm": "Qi2023",
+          "name": "PCG-TS",
+          "algorithm": "PCG-TS",
           "series_kind": "line",
           "style": {
             "color": "#A2DFF8",
@@ -2022,8 +2087,8 @@
           ]
         },
         {
-          "name": "Shi2024",
-          "algorithm": "Shi2024",
+          "name": "JSE-OCF",
+          "algorithm": "JSE-OCF",
           "series_kind": "line",
           "style": {
             "color": "#9DABD2",
@@ -2359,8 +2424,8 @@
           ]
         },
         {
-          "name": "Ours (OCF-SA)",
-          "algorithm": "OCF_SAtabu",
+          "name": "BHTA",
+          "algorithm": "BHTA",
           "series_kind": "line",
           "style": {
             "color": "#555B9C",

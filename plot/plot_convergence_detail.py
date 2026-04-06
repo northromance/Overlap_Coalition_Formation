@@ -36,6 +36,11 @@ import sys
 import matplotlib.pyplot as plt
 import numpy as np
 
+from plot_unified_config import (
+    get_alg_display_name,
+    get_family_figure_config,
+    get_family_plot_config,
+)
 from plot_style_helper import PlotStyleHelper, build_results_figures_dir, cm_size_to_inch, infer_source_name
 from varym_result_aggregator import VaryMResultAggregator
 
@@ -93,82 +98,15 @@ DEFAULT_METRIC = "completion"
 AUTO_SHOW_FIGURE = True
 
 # 曲线细节设置
-CURVE_DETAIL_CONFIG = {
-    "show_mean_band": True,  # 平均曲线是否显示阴影带
-    "band_alpha": 0.16,  # 阴影带透明度
-    "markevery_divisor": 10,  # 自动抽样 marker 时的分母
-    "markevery_threshold": 12,  # 点数低于该阈值时每个点都显示 marker
-}
 
-# 算法显示样式：颜色 / marker / 线型 / 图例名
-ALG_STYLE = {
-    "Huo2025": dict(color="#4878CF", marker="o", ls="-", label="Huo2025"),
-    "Qi2023": dict(color="#6ACC65", marker="s", ls="--", label="Qi2023"),
-    "Shi2024": dict(color="#D65F5F", marker="^", ls="-.", label="Shi2024"),
-    "OCF_SAtabu": dict(color="#B47CC7", marker="D", ls="-", label="Ours (OCF-SA)"),
-}
-DEFAULT_STYLE = dict(color="#888888", marker="x", ls=":", label="Unknown")
-
-# 指标定义
-METRIC_SPECS = {
-    "utility": {
-        "curve_field": "convergence_utility",
-        "ylabel": "Coalition Utility",
-        "title_name": "Coalition Utility",
-        "stem": "utility",
-    },
-    "completion": {
-        "curve_field": "convergence_completion",
-        "ylabel": "Avg. Task Completion Degree",
-        "title_name": "Task Completion Degree",
-        "stem": "completion",
-    },
-    "cost": {
-        "curve_field": "convergence_cost",
-        "ylabel": "Total Global Cost",
-        "title_name": "Total Global Cost",
-        "stem": "cost",
-    },
-    "completed_value": {
-        "curve_field": "convergence_completed_value",
-        "ylabel": "Total Completed Value",
-        "title_name": "Total Completed Value",
-        "stem": "completed_value",
-    },
-}
-
-# 全局绘图参数
-PLOT_GLOBAL = {
-    "figsize_cm": (15.75, 11.68),  # 单张图尺寸（宽, 高），单位 cm
-    "linewidth": 2.0,  # 主曲线线宽
-    "markersize": 4,  # marker 大小
-    "markeredgewidth": 0.8,  # marker 边框线宽
-    "xlabel_fontsize": 11,  # x 轴标题字号
-    "ylabel_fontsize": 11,  # y 轴标题字号
-    "title_fontsize": 12,  # 标题字号
-    "title_pad": 8,  # 标题与坐标轴之间的间距
-    "tick_fontsize": 10,  # 刻度字号
-    "legend_fontsize": 9,  # 图例字号
-    "show_titles": True,  # 是否显示标题
-    "show_grid": True,  # 是否显示网格
-    "grid_linestyle": "--",  # 网格线型
-    "grid_linewidth": 0.6,  # 网格线宽
-    "grid_alpha": 0.35,  # 网格透明度
-    "show_legend": True,  # 是否显示图例
-    "legend_framealpha": 0.85,  # 图例边框透明度
-    "legend_edgecolor": "#cccccc",  # 图例边框颜色
-    "hide_top_spine": True,  # 是否隐藏上边框
-    "hide_right_spine": True,  # 是否隐藏右边框
-    "save_format": "png",  # 主保存格式
-    "save_formats": ["png", "eps"],  # 实际输出格式列表
-    "save_dpi": 150,  # 位图输出 dpi
-    "save_bbox_inches": "tight",  # 保存时裁掉多余白边
-    "tight_layout": True,  # 保存前是否执行 tight_layout
-}
-
+PLOT_CONFIG = get_family_plot_config('convergence_detail')
+PLOT_GLOBAL = PLOT_CONFIG['PLOT_GLOBAL']
+ALG_STYLE = PLOT_CONFIG['ALG_STYLE']
+DEFAULT_STYLE = PLOT_CONFIG['DEFAULT_STYLE']
+CURVE_DETAIL_CONFIG = PLOT_CONFIG['CURVE_DETAIL_STYLE']
+METRIC_SPECS = PLOT_CONFIG['METRIC_SPECS']
 os.makedirs(FIGURES_DIR, exist_ok=True)
 STYLE_HELPER = PlotStyleHelper(PLOT_GLOBAL, FIGURES_DIR)
-
 
 def warn(message):
     print(f"[WARN] {message}")
@@ -588,10 +526,15 @@ def configure_output_dir(dataset):
 
 def plot_detail_convergence(dataset, target_value, seed_mode, metric_key, output_path=None):
     metric_spec = METRIC_SPECS[metric_key]
+    cfg = get_family_figure_config(
+        "convergence_detail",
+        "detail_curve",
+        ylabel=metric_spec["ylabel"],
+    )
     curves = collect_curves(dataset, target_value, seed_mode, metric_key)
     summary = summarize_curves(curves, seed_mode)
 
-    fig, ax = plt.subplots(figsize=cm_size_to_inch(PLOT_GLOBAL["figsize_cm"]))
+    fig, ax = plt.subplots(figsize=cm_size_to_inch(cfg["figsize_cm"]))
     rounds = np.arange(1, dataset["num_rounds"] + 1)
 
     plotted = 0
@@ -639,12 +582,12 @@ def plot_detail_convergence(dataset, target_value, seed_mode, metric_key, output
             curve,
             color=style["color"],
             linestyle=style["ls"],
-            linewidth=PLOT_GLOBAL["linewidth"],
+            linewidth=cfg["linewidth"],
             marker=style["marker"],
-            markersize=PLOT_GLOBAL["markersize"],
-            markeredgewidth=PLOT_GLOBAL["markeredgewidth"],
+            markersize=cfg["markersize"],
+            markeredgewidth=cfg["markeredgewidth"],
             markevery=markevery,
-            label=style["label"],
+            label=get_alg_display_name(alg_name),
         )
         plotted += 1
 
@@ -660,6 +603,7 @@ def plot_detail_convergence(dataset, target_value, seed_mode, metric_key, output
     ax.set_xlim(1, max(dataset["num_rounds"], 1))
     STYLE_HELPER.apply_common_style(
         ax,
+        cfg=cfg,
         xlabel="Round",
         ylabel=metric_spec["ylabel"],
         title=title,

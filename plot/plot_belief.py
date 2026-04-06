@@ -23,7 +23,6 @@ plot_belief.py
   - 图2c 的子图网格布局、哪个 seed 用于单 seed 展示
 """
 
-import copy
 import glob
 import os
 import sys
@@ -31,7 +30,25 @@ import warnings
 
 import matplotlib.pyplot as plt
 import numpy as np
-from plot_style_helper import PlotStyleHelper, build_results_figures_dir, cm_size_to_inch, infer_source_name
+from plot_style_helper import (
+    PlotStyleHelper,
+    build_results_figures_dir,
+    cm_size_to_inch,
+    infer_source_name,
+    sanitize_path_component,
+)
+try:
+    from plot_unified_config import (
+        build_prefixed_stem,
+        get_family_figure_config,
+        get_family_plot_config,
+    )
+except ImportError:
+    from .plot_unified_config import (
+        build_prefixed_stem,
+        get_family_figure_config,
+        get_family_plot_config,
+    )
 
 try:
     import mat73
@@ -52,154 +69,29 @@ except ImportError:
 # 路径配置
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 ROOT_DIR = os.path.dirname(SCRIPT_DIR)
-FIGURES_DIR = build_results_figures_dir(ROOT_DIR, 'belief')
+FAMILY = 'belief'
+FIGURES_DIR = build_results_figures_dir(ROOT_DIR, FAMILY)
 SEARCH_DIRS = [
     os.path.join(ROOT_DIR, 'results', 'batch', 'belief'),
     os.path.join(ROOT_DIR, 'results', 'batch'),
 ]
+# fig2c ????
+FIG2C_SUBPLOT_NCOLS = None  # ???????None ????? ceil(sqrt(M)) ??
+FIG2C_SEED_IDX = 1  # ?????? seed ?? seed ???0 ?????
 
-# belief 条件显示样式：颜色 / 线型 / 图例名
-COND_STYLE = {
-    'uniform': dict(color='#4878CF', ls='-', label='Uniform prior'),
-    'heterogeneous': dict(color='#D65F5F', ls='--', label='Heterogeneous prior'),
-}
-DEFAULT_COND_STYLE = dict(color='#888888', ls=':', label='Unknown')
-
-# fig2c 中各智能体曲线的调色板（最多支持 20 个智能体）
-AGENT_COLORS = [
-    '#0D80D2', '#ff7f0e', '#2ca02c', '#d62728', '#9467bd',
-    '#8c564b', '#e377c2', '#7f7f7f', '#bcbd22', '#17becf',
-    '#aec7e8', '#ffbb78', '#98df8a', '#ff9896', '#c5b0d5',
-    '#c49c94', '#f7b6d2', '#c7c7c7', '#dbdb8d', '#9edae5',
-]
-TRUE_VALUE_STYLE = dict(color='#000000', ls=':', lw=2.0, label='True value')
-
-# fig2c 子图布局
-FIG2C_SUBPLOT_NCOLS = None  # 每行子图数量；None 表示自动按 ceil(sqrt(M)) 计算
-FIG2C_SEED_IDX = 1  # 用第几个成功 seed 做单 seed 展示，0 表示第一个
-
-# 全局绘图参数
-PLOT_GLOBAL = {
-    'figsize_cm': (13.97, 10.67),  # fig2a/fig2b 单图尺寸（宽, 高），单位 cm
-    'fig2c_subplot_size_cm': (8.13, 6.60),  # fig2c 每个子图的目标尺寸（宽, 高），单位 cm
-    'linewidth': 1.8,  # 主曲线线宽
-    'agent_linewidth': 1.2,  # fig2c 中智能体曲线线宽
-    'band_alpha': 0.18,  # 阴影带透明度
-    'show_band': True,  # 是否显示阴影带
-    'xlabel_fontsize': 11,  # x 轴标题字号
-    'ylabel_fontsize': 11,  # y 轴标题字号
-    'title_fontsize': 12,  # 标题字号
-    'title_pad': 8,  # 标题与坐标轴之间的间距
-    'tick_fontsize': 10,  # 刻度字号
-    'legend_fontsize': 9,  # 图例字号
-    'fig2c_title_fontsize': 9,  # fig2c 子图标题字号
-    'fig2c_legend_fontsize': 7,  # fig2c 图例字号
-    'show_grid': True,  # 是否显示网格
-    'grid_linestyle': '--',  # 网格线型
-    'grid_linewidth': 0.6,  # 网格线宽
-    'grid_alpha': 0.4,  # 网格透明度
-    'show_legend': True,  # 是否显示图例
-    'legend_framealpha': 0.85,  # 图例边框透明度
-    'legend_edgecolor': '#cccccc',  # 图例边框颜色
-    'hide_top_spine': True,  # 是否隐藏上边框
-    'hide_right_spine': True,  # 是否隐藏右边框
-    'save_formats': ['png', 'eps'],  # 实际输出格式列表
-    'save_dpi': 150,  # 位图输出 dpi
-    'save_bbox_inches': 'tight',  # 保存时裁掉多余白边
-    'tight_layout': True,  # 保存前是否执行 tight_layout
-}
-
-# 各子图单独控制
-# - show_title: 当前图是否允许标题，仍受全局 show_titles 影响
-# - xlim / ylim / xticks / yticks = None: 自动范围或自动刻度
-# - bottom_zero = True: y 轴下界至少为 0
-FIGURE_CONFIG = {
-    'fig2a': {
-        'show_title': True,
-        'title': 'Fig. 2a - Belief Error vs. Round',
-        'xlabel': 'Round',
-        'ylabel': 'Avg. L1 Belief Error',
-        'xlim': None,
-        'ylim': None,
-        'xticks': None,
-        'yticks': None,
-        'bottom_zero': True,
-    },
-    'fig2b': {
-        'show_title': True,
-        'title': 'Fig. 2b - Expected Value Prediction vs. Round',
-        'xlabel': 'Round',
-        'ylabel': 'Avg. Expected Task Value',
-        'xlim': None,
-        'ylim': None,
-        'xticks': None,
-        'yticks': None,
-        'bottom_zero': False,
-    },
-    'fig2c': {
-        'show_title': True,
-        'title_template': 'Task {m} (true={v:.0f})',
-        'suptitle_template': 'Fig. 2c - Per-agent Belief Convergence [{cond}]',
-        'xlabel': 'Round',
-        'ylabel': 'Expected Value',
-        'xlim': None,
-        'ylim': None,
-        'bottom_zero': False,
-    },
-}
-
-os.makedirs(FIGURES_DIR, exist_ok=True)
-
-AGENT_TRACE_STYLE = dict(color='#B7B7B7', lw=0.9, alpha=0.55, label='Agent traces')
 MIN_SEEDS_FOR_CI = 10
 CONV_THRESHOLD = 0.05
 CONV_STREAK = 3
 
-# 扩展图使用的附加配置
-PLOT_GLOBAL.update({
-    'summary_figsize_cm': (26.92, 11.18),  # 摘要图尺寸（宽, 高），单位 cm
-    'rep_figsize_per_panel_cm': (10.41, 9.91),  # 代表性子图每列尺寸（宽, 高），单位 cm
-    'appendix_cell_size_cm': (10.41, 7.62),  # 附录子图网格单元尺寸（宽, 高），单位 cm
-    'thin_linewidth': 1.0,  # 多 seed 细线线宽
-    'agent_mean_linewidth': 2.3,  # 智能体均值曲线线宽
-    'thin_alpha': 0.22,  # 多 seed 细线透明度
-    'marker': 'o',  # 主曲线 marker 形状
-    'markersize': 4.2,  # 主曲线 marker 大小
-    'subtitle_fontsize': 11,  # 总标题字号
-    'appendix_legend_fontsize': 8,  # 附录图例字号
-})
-
-FIGURE_CONFIG.update({
-    'summary_left': {
-        'show_title': True,
-        'title': '(a) Avg. L1 Belief Error',
-        'xlabel': 'Round',
-        'ylabel': 'Avg. L1 belief error',
-        'bottom_zero': True,
-    },
-    'summary_right': {
-        'show_title': True,
-        'title': '(b) Avg. Relative Value Error',
-        'xlabel': 'Round',
-        'ylabel': 'Avg. relative value error',
-        'bottom_zero': True,
-    },
-    'representative': {
-        'show_title': True,
-        'title': 'Fig. 2b - Representative Task Convergence',
-        'xlabel': 'Round',
-        'ylabel': 'Expected task value',
-        'bottom_zero': False,
-    },
-    'appendix_new': {
-        'show_title': True,
-        'title': 'Fig. 2c - Agent-level Trajectories on Representative Tasks',
-        'xlabel': 'Round',
-        'ylabel': 'Expected task value',
-        'bottom_zero': False,
-    },
-})
-
+PLOT_CONFIG = get_family_plot_config(FAMILY)
+PLOT_GLOBAL = PLOT_CONFIG['PLOT_GLOBAL']
+FIGURE_CONFIG = PLOT_CONFIG['FIGURE_CONFIG']
+COND_STYLE = PLOT_CONFIG['COND_STYLE']
+DEFAULT_COND_STYLE = PLOT_CONFIG['DEFAULT_COND_STYLE']
+AGENT_COLORS = PLOT_CONFIG['AGENT_COLORS']
+TRUE_VALUE_STYLE = PLOT_CONFIG['TRUE_VALUE_STYLE']
+AGENT_TRACE_STYLE = PLOT_CONFIG['AGENT_TRACE_STYLE']
+os.makedirs(FIGURES_DIR, exist_ok=True)
 STYLE_HELPER = PlotStyleHelper(PLOT_GLOBAL, FIGURES_DIR)
 STYLE_HELPER_NO_LEGEND = PlotStyleHelper(dict(PLOT_GLOBAL, show_legend=False), FIGURES_DIR)
 
@@ -337,9 +229,7 @@ def entry_condition_name(entry):
 
 def merge_figure_config(fig_key, **kwargs):
     """复制并补充每个图的配置，避免运行中修改全局字典。"""
-    cfg = copy.deepcopy(FIGURE_CONFIG[fig_key])
-    cfg.update(kwargs)
-    return cfg
+    return get_family_figure_config(FAMILY, fig_key, **kwargs)
 
 
 def apply_common_style(ax, cfg, title=None, legend_fontsize=None):
@@ -361,11 +251,30 @@ def finalize_and_save(fig, save_path, tight_layout_rect=None):
 
 def configure_output_dir(source_name):
     global FIGURES_DIR
-    FIGURES_DIR = build_results_figures_dir(ROOT_DIR, 'belief', source_name)
+    FIGURES_DIR = build_results_figures_dir(ROOT_DIR, FAMILY, source_name)
     os.makedirs(FIGURES_DIR, exist_ok=True)
     STYLE_HELPER.set_figures_dir(FIGURES_DIR)
     STYLE_HELPER_NO_LEGEND.set_figures_dir(FIGURES_DIR)
     return FIGURES_DIR
+
+
+def build_output_stem(stem):
+    return STYLE_HELPER.build_output_stem(build_prefixed_stem(FAMILY, stem))
+
+
+def build_png_output_path(stem):
+    return f"{build_output_stem(stem)}.png"
+
+
+def build_condition_token(name):
+    return sanitize_path_component(name, default='condition')
+
+
+def set_save_formats(formats):
+    normalized = list(formats)
+    PLOT_GLOBAL['save_formats'] = list(normalized)
+    STYLE_HELPER.plot_global['save_formats'] = list(normalized)
+    STYLE_HELPER_NO_LEGEND.plot_global['save_formats'] = list(normalized)
 
 
 def ffill(arr):
@@ -778,14 +687,16 @@ def plot_fig2c_per_condition(cond_name, ev_data, true_val, num_rounds, save_path
 
         # 子图标题
         v_str = f'{true_v:.0f}' if true_v is not None else '?'
-        ax.set_title(
-            cfg['title_template'].format(m=m + 1, v=true_v or 0),
-            fontsize=PLOT_GLOBAL['fig2c_title_fontsize'],
-        )
+        if PLOT_GLOBAL.get('show_titles', True) and cfg.get('show_title', True):
+            ax.set_title(
+                cfg['title_template'].format(m=m + 1, v=true_v or 0),
+                fontsize=PLOT_GLOBAL['fig2c_title_fontsize'],
+                pad=PLOT_GLOBAL['title_pad'],
+            )
 
-        ax.set_xlabel(cfg['xlabel'], fontsize=PLOT_GLOBAL['xlabel_fontsize'] - 1)
-        ax.set_ylabel(cfg['ylabel'], fontsize=PLOT_GLOBAL['ylabel_fontsize'] - 1)
-        ax.tick_params(labelsize=PLOT_GLOBAL['tick_fontsize'] - 1)
+        ax.set_xlabel(cfg['xlabel'], fontsize=PLOT_GLOBAL['xlabel_fontsize'])
+        ax.set_ylabel(cfg['ylabel'], fontsize=PLOT_GLOBAL['ylabel_fontsize'])
+        ax.tick_params(labelsize=PLOT_GLOBAL['tick_fontsize'])
 
         if PLOT_GLOBAL['show_grid']:
             ax.grid(True, linestyle=PLOT_GLOBAL['grid_linestyle'],
@@ -818,7 +729,7 @@ def plot_fig2c_per_condition(cond_name, ev_data, true_val, num_rounds, save_path
 
     # 整体标题
     cond_label = COND_STYLE.get(cond_name, DEFAULT_COND_STYLE).get('label', cond_name)
-    if cfg.get('show_title', True):
+    if PLOT_GLOBAL.get('show_titles', True) and cfg.get('show_title', True):
         fig.suptitle(
             cfg['suptitle_template'].format(cond=cond_label),
             fontsize=PLOT_GLOBAL['title_fontsize'],
@@ -1320,11 +1231,12 @@ def plot_representative_tasks(reference_entries, conditions, selected_tasks, rol
             framealpha=PLOT_GLOBAL['legend_framealpha'],
             edgecolor=PLOT_GLOBAL['legend_edgecolor'],
         )
-    fig.suptitle(
-        f"{FIGURE_CONFIG['representative']['title']}  [reference seed = {reference_seed}]",
-        fontsize=PLOT_GLOBAL['subtitle_fontsize'],
-        y=1.07,
-    )
+    if PLOT_GLOBAL.get('show_titles', True):
+        fig.suptitle(
+            f"{FIGURE_CONFIG['representative']['title']}  [reference seed = {reference_seed}]",
+            fontsize=PLOT_GLOBAL['subtitle_fontsize'],
+            y=1.07,
+        )
     finalize_and_save(fig, save_path, tight_layout_rect=(0.0, 0.0, 1.0, 0.88))
 
 
@@ -1409,7 +1321,7 @@ def plot_appendix_agent_examples(reference_entries, conditions, selected_tasks, 
             ax.set_xlim(0, num_rounds)
             ax.set_ylim(*y_limits)
             title = f"{role_map.get(task_idx, 'selected').title()} | T{task_idx + 1} | V={true_val:.0f}"
-            if row == 0:
+            if row == 0 and PLOT_GLOBAL.get('show_titles', True):
                 ax.set_title(title, fontsize=PLOT_GLOBAL['subtitle_fontsize'], pad=PLOT_GLOBAL['title_pad'])
 
             ylabel = f"{st['label']}\nExpected value" if col == 0 else ''
@@ -1433,11 +1345,12 @@ def plot_appendix_agent_examples(reference_entries, conditions, selected_tasks, 
             framealpha=PLOT_GLOBAL['legend_framealpha'],
             edgecolor=PLOT_GLOBAL['legend_edgecolor'],
         )
-    fig.suptitle(
-        f"{FIGURE_CONFIG['appendix_new']['title']}  [reference seed = {reference_seed}]",
-        fontsize=PLOT_GLOBAL['subtitle_fontsize'],
-        y=1.07,
-    )
+    if PLOT_GLOBAL.get('show_titles', True):
+        fig.suptitle(
+            f"{FIGURE_CONFIG['appendix_new']['title']}  [reference seed = {reference_seed}]",
+            fontsize=PLOT_GLOBAL['subtitle_fontsize'],
+            y=1.07,
+        )
     finalize_and_save(fig, save_path, tight_layout_rect=(0.0, 0.0, 1.0, 0.88))
 
 
@@ -1446,71 +1359,82 @@ def plot_appendix_agent_examples(reference_entries, conditions, selected_tasks, 
 # ══════════════════════════════════════════════════════════════════════════════
 
 def legacy_main():
+    STYLE_HELPER.apply_rcparams()
     mat_path = find_mat_file(sys.argv)
     source_name = infer_source_name(mat_path, fallback='belief')
     configure_output_dir(source_name)
+    original_save_formats = list(PLOT_GLOBAL.get('save_formats', ['png', 'eps']))
+    set_save_formats(['png'])
 
-    print("\n加载数据...")
-    raw     = mat73.loadmat(mat_path)
-    results = raw['belief_results']
-    config  = raw['belief_config']
+    try:
+        print("\n加载数据...")
+        raw     = mat73.loadmat(mat_path)
+        results = raw['belief_results']
+        config  = raw['belief_config']
 
-    conditions = parse_conditions(config)
-    num_rounds = int(to_scalar(config.get('num_rounds', 100)))
-    nC, nS     = get_belief_shape(results)
+        conditions = parse_conditions(config)
+        num_rounds = int(to_scalar(config.get('num_rounds', 100)))
+        nC, nS     = get_belief_shape(results)
 
-    print(f"  conditions = {conditions}")
-    print(f"  num_rounds = {num_rounds} (+ round 0)")
-    print(f"  形状       = {nC}×{nS} (条件×seed)")
+        print(f"  conditions = {conditions}")
+        print(f"  num_rounds = {num_rounds} (+ round 0)")
+        print(f"  形状       = {nC}×{nS} (条件×seed)")
 
     # 时间戳
-    basename = os.path.splitext(os.path.basename(mat_path))[0]
-    parts    = basename.split('_')
-    ts       = '_'.join(parts[-2:]) if len(parts) >= 2 else 'ts'
+        basename = os.path.splitext(os.path.basename(mat_path))[0]
+        parts    = basename.split('_')
+        ts       = '_'.join(parts[-2:]) if len(parts) >= 2 else 'ts'
 
     # ── 图2a / 图2b：跨 seed 均值 ± 误差带 ─────────────────────────────────
-    print("\n提取信念曲线（均值/误差）...")
-    conditions, num_rounds, task_values, belief_error, expected_value = \
-        extract_belief_curves(results, config)
+        print("\n提取信念曲线（均值/误差）...")
+        conditions, num_rounds, task_values, belief_error, expected_value = \
+            extract_belief_curves(results, config)
 
-    print(f"  task_values = {task_values}")
-    print(f"\n绘图 → {FIGURES_DIR}")
+        print(f"  task_values = {task_values}")
+        print(f"\n绘图 → {FIGURES_DIR}")
 
-    plot_fig2a(
-        conditions, num_rounds, belief_error,
-        os.path.join(FIGURES_DIR, f'fig2a_belief_error_{ts}.png'),
-    )
-    plot_fig2b(
-        conditions, num_rounds, expected_value,
-        os.path.join(FIGURES_DIR, f'fig2b_expected_value_{ts}.png'),
-    )
-
-    # ── 图2c：每任务·每智能体收敛图（单个 seed，每条件一张大图）─────────────
-    print(f"\n提取每智能体数据（seed_idx={FIG2C_SEED_IDX}）...")
-    per_agent = extract_per_agent_data(results, config, conditions,
-                                        seed_idx=FIG2C_SEED_IDX)
-
-    for cond_name in conditions:
-        if cond_name not in per_agent:
-            print(f"  跳过 {cond_name}（无有效数据）")
-            continue
-
-        ev_data  = per_agent[cond_name]['ev']       # [R, N, M]
-        true_val = per_agent[cond_name]['true_val']  # [M]
-
-        print(f"  绘制 fig2c [{cond_name}]: {ev_data.shape[2]} 个任务, "
-              f"{ev_data.shape[1]} 个智能体")
-
-        save_path = os.path.join(
-            FIGURES_DIR, f'fig2c_per_agent_{cond_name}_{ts}.png'
+        plot_fig2a(
+            conditions, num_rounds, belief_error,
+            build_png_output_path(f'belief_error_curve_{ts}'),
         )
-        plot_fig2c_per_condition(cond_name, ev_data, true_val, num_rounds, save_path)
+        plot_fig2b(
+            conditions, num_rounds, expected_value,
+            build_png_output_path(f'expected_value_curve_{ts}'),
+        )
 
-    print("\n完成。图窗已弹出，关闭后程序退出。")
-    plt.show()
+        # ── 图2c：每任务·每智能体收敛图（单个 seed，每条件一张大图）─────────────
+        print(f"\n提取每智能体数据（seed_idx={FIG2C_SEED_IDX}）...")
+        per_agent = extract_per_agent_data(
+            results,
+            config,
+            conditions,
+            seed_idx=FIG2C_SEED_IDX,
+        )
+
+        for cond_name in conditions:
+            if cond_name not in per_agent:
+                print(f"  跳过 {cond_name}（无有效数据）")
+                continue
+
+            ev_data  = per_agent[cond_name]['ev']       # [R, N, M]
+            true_val = per_agent[cond_name]['true_val']  # [M]
+
+            print(f"  绘制 fig2c [{cond_name}]: {ev_data.shape[2]} 个任务, "
+                  f"{ev_data.shape[1]} 个智能体")
+
+            save_path = build_png_output_path(
+                f'per_agent_belief_convergence_{build_condition_token(cond_name)}_{ts}'
+            )
+            plot_fig2c_per_condition(cond_name, ev_data, true_val, num_rounds, save_path)
+
+        print("\n完成。图窗已弹出，关闭后程序退出。")
+        plt.show()
+    finally:
+        set_save_formats(original_save_formats)
 
 
 def main():
+    STYLE_HELPER.apply_rcparams()
     mat_path = find_mat_file(sys.argv)
     source_name = infer_source_name(mat_path, fallback='belief')
     configure_output_dir(source_name)
@@ -1543,7 +1467,7 @@ def main():
         conditions,
         num_rounds,
         summary_data,
-        os.path.join(FIGURES_DIR, 'fig2a_summary_belief'),
+        build_output_stem('summary_belief_and_value_error'),
     )
 
     reference_seed, reference_entries = select_reference_seed(cond_entries, conditions, FIG2C_SEED_IDX)
@@ -1568,7 +1492,7 @@ def main():
             role_map,
             true_values,
             num_rounds,
-            os.path.join(FIGURES_DIR, 'fig2b_representative_tasks'),
+            build_output_stem('representative_task_convergence'),
             reference_seed=reference_seed,
         )
         plot_appendix_agent_examples(
@@ -1578,7 +1502,7 @@ def main():
             role_map,
             true_values,
             num_rounds,
-            os.path.join(FIGURES_DIR, 'fig2c_agent_examples'),
+            build_output_stem('agent_level_representative_task_trajectories'),
             reference_seed=reference_seed,
         )
 

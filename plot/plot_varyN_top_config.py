@@ -18,11 +18,11 @@ plot_varyN.py
   python plot_varyN_top_config.py path/to/varyN.mat   # 指定文件
 
 说明:
-  你可以直接在本文件最上方的“顶部可调参数区”中修改：
+  统一绘图配置已收敛到 plot_unified_config.py：
   - 图尺寸、线宽、字体、图例字号、输出 dpi
-  - 每个图的标题、坐标轴名称、坐标范围、刻度
-  - 是否显示网格、图例、标题
-  - 图3a 内循环两条线的颜色、线型、阴影透明度
+  - 各算法颜色、线型、marker
+  - 各图标题、坐标轴名称、坐标范围、刻度
+  - varyN 组合图和 varyM 柱状图的局部样式
 """
 
 import os
@@ -34,6 +34,16 @@ import re
 import numpy as np
 import matplotlib.pyplot as plt
 from datetime import datetime
+from plot_unified_config import (
+    get_family_plot_config,
+    get_family_figure_config,
+    build_prefixed_stem,
+    get_alg_display_name,
+    get_alg_display_names,
+    get_alg_plot_style as resolve_alg_plot_style,
+    get_bar_plot_style as resolve_bar_plot_style,
+    compute_error_values as compute_shared_error_values,
+)
 from plot_style_helper import (
     PlotStyleHelper,
     build_results_figures_dir,
@@ -48,12 +58,11 @@ except ImportError:
 
 
 # ══════════════════════════════════════════════════════════════════════════════
-# 顶部可调参数区（建议以后优先在这里改）
+# 统一绘图配置入口见 plot_unified_config.py
 # ══════════════════════════════════════════════════════════════════════════════
 
 # =========================
-# 顶部可调绘图参数
-# 建议优先在这里改尺寸、字体、图例和保存选项。
+# 这里只保留路径和 family 选择；样式主配置统一放在 plot_unified_config.py。
 # =========================
 
 # 路径配置
@@ -64,385 +73,16 @@ SEARCH_DIRS = [
     os.path.join(ROOT_DIR, 'results', 'batch', 'varyN'),  # 优先搜索 varyN 实验结果目录
     os.path.join(ROOT_DIR, 'results', 'batch'),  # 兜底搜索通用 batch 目录
 ]
-
-# 算法显示样式主配置
-# 这里是本文件最核心的“调色板”：
-# - fig1a / fig1b / fig1c 的折线样式直接读这里
-# - fig1d / fig1e 的柱状图颜色也直接读这里
-# - fig1d / fig1e 的右侧完成率折线默认也继承这里
-# 因此通常只需要维护这一套参数即可。
-#
-# 字段说明：
-# - color: 主颜色。普通折线用它，组合图柱子也用它。
-# - marker: 点的形状，如 'o' 圆点、's' 方块、'^' 三角、'D' 菱形。
-# - ls: 线型，如 '-' 实线、'--' 虚线、'-.' 点划线。
-# - lw: 该算法自己的线宽；若设置了，会优先于 PLOT_GLOBAL['linewidth']。
-# - ms: 该算法自己的 marker 大小；若设置了，会优先于 PLOT_GLOBAL['markersize']。
-# - mfc: marker face color，点内部填充色；写成 'none' 就是空心。
-# - mec: marker edge color，点边框颜色。
-# - mew: marker edge width，点边框线宽。
-# - label: 图例显示名称。
-# 一句话理解：
-# - color 控制线的主色；marker/mfc/mec/mew 控制点长什么样；lw/ms 控制线和点有多粗、多大。
-#
-# 常见调整：
-# - 想统一换色：改各算法的 color / mfc / mec
-# - 想把 OCF_SAtabu 从空心圆改成实心圆：把 mfc='none' 改成 mfc="#C92D2E"
-# - 想让组合图和普通图完全统一：保持 COMBO_CHART_STYLE['line_style_by_alg'] 为空字典
-# ALG_STYLE = {
-#     'Huo2025': dict(color="#797979", marker='o', ls='-', label='Huo2025'),
-#     'Qi2023': dict(color="#FFC570", marker='s', ls='--', label='Qi2023'),
-#     'Shi2024': dict(color="#006AF4", marker='^', ls='--', label='Shi2024'),
-#     'OCF_SAtabu': dict(color="#DA422A", marker='D', ls='-', label='Ours (OCF-SA)'),
-#     # DA422A
-# }
-
-ALG_STYLE = {
-    # 深灰：基线算法 1
-    'Huo2025': dict(
-        color="#9B9B9B",   # 主颜色：线条颜色；组合图柱子颜色默认也可复用它
-        marker='o',        # 点形状：'o' 表示圆点
-        ls='--',            # 线型：'-' 表示实线
-        lw=1,              # 线宽：值越大，折线越粗
-        ms=4.0,            # 点大小：值越大，marker 越大
-        mfc="#9B9B9B",     # 点内部填充色（marker face color）
-        mec="#9B9B9B",     # 点边框颜色（marker edge color）
-        mew=1.2,           # 点边框线宽（marker edge width）
-        label='Huo2025'    # 图例里显示的名称
-    ),
-    # 金黄：基线算法 2
-    'Qi2023': dict(
-        color="#A2DFF8",
-        marker='s',
-        ls='--',
-      lw=1,
-        ms=4.0,
-        mfc="#A2DFF8",
-        mec="#A2DFF8",
-        mew=1.2,
-        label='Qi2023'
-    ),
-    # 亮蓝：基线算法 3
-    'Shi2024': dict(
-        color="#9DABD2",
-        marker='^',
-        ls='-.',
-      lw=1,
-        ms=4.0,
-        mfc="#9DABD2",
-        mec="#9DABD2",
-        mew=1.2,
-        label='Shi2024'
-    ),
-    # 红色：本文方法；默认空心圆，便于与其余实心 marker 区分
-    'OCF_SAtabu': dict(
-        color="#555B9C",
-        marker='o',          # 圆点；配合 mfc='none' 为空心，配合 mfc="#C92D2E" 为实心
-        ls='-',
-      lw=1,
-        ms=4.0,
-        mfc='none',          # 空心
-        mec="#555B9C",       # 边框颜色
-        mew=1.8,
-        label='Ours (OCF-SA)'
-    ),
-}
-
-# ALG_STYLE = {
-#     'Huo2025': dict(color="#7F7F7F", marker='o', ls='-', label='Huo2025'),
-#     'Qi2023': dict(color="#006AF4", marker='s', ls='-', label='Qi2023'),
-#     'Shi2024': dict(color="#10E86E", marker='^', ls='-', label='Shi2024'),
-#     'OCF_SAtabu': dict(color="#DA422A", marker='D', ls='-', label='Ours (OCF-SA)'),
-#     # DA422A
-# }
-
-
-# ALG_STYLE = {
-#     'Huo2025': dict(color="#4BA05C", marker='o', ls='-', label='Huo2025'),
-#     'Qi2023': dict(color="#7EBBE2", marker='s', ls='--', label='Qi2023'),
-#     'Shi2024': dict(color="#778AC1", marker='^', ls='-.', label='Shi2024'),
-#     'OCF_SAtabu': dict(color="#DA422A", marker='D', ls='-', label='Ours (OCF-SA)'),
-#     # DA422A
-# }
-
-# 未知算法或 mat 文件里出现了未在 ALG_STYLE 中声明的算法时，回退到这套默认样式。
-# 一般不需要改；只有新增算法但暂时没做专门配色时，这里才会生效。
-DEFAULT_STYLE = dict(
-    color='#888888',
-    marker='x',
-    ls=':',
-    lw=1.3,
-    ms=4.0,
-    mfc='#888888',
-    mec='#888888',
-    mew=0.8,
-    label='Unknown',
-)  # 未知算法的兜底样式
-
-# 全局绘图参数
-# 所有物理尺寸统一使用 cm 配置，真正传给 Matplotlib 时再换算为英寸。
-# 注意：
-# - 这里的 linewidth / markersize / markeredgewidth 是“全局默认值”
-# - 若某个算法在 ALG_STYLE 里写了 lw / ms / mew，则优先使用算法自己的设置
-PLOT_GLOBAL = {
-    'figsize_cm': (8.76, 6.48),  # 单张图尺寸（宽, 高），单位 cm
-    'linewidth': 1.2,  # 主曲线线宽；IEEE 单栏图中保持清晰但不过粗
-    'markersize': 3.2,  # marker 大小；保证缩放后仍可辨识
-    'markeredgewidth': 0.9,  # marker 边框线宽
-    'capsize': 2,  # 误差棒帽宽
-    'show_errorbar_varyN': False,  # fig1a/fig1b/fig1c 是否显示 mean±std 误差棒
-    'show_markers_fig2c': False,  # fig2c 是否显示 marker
-    'show_markers_fig3a': False,  # fig3a 是否显示 marker
-    'markevery_fig2c': None,  # fig2c 的 marker 抽样步长；None 表示全部点
-    'markevery_fig3a': None,  # fig3a 的 marker 抽样步长；None 表示全部点
-    'font_family': ['Times New Roman', 'SimSun', 'DejaVu Sans'],  # 全局字体候选顺序
-    'font_style': 'normal',  # 字体样式：normal / italic / oblique
-    'font_weight': 'normal',  # 全局默认字重：normal / bold
-    'xlabel_fontsize': 8,  # x 轴标题字号；适合 IEEE 单栏插图
-    'ylabel_fontsize': 8,  # y 轴标题字号；适合 IEEE 单栏插图
-    'label_fontweight': 'normal',  # 坐标轴标题字重
-    'show_titles': False,  # 全局标题总开关；False 时所有子图都不显示标题
-    'title_fontsize': 8,  # 标题字号；当前标题默认关闭，仅保留统一配置
-    'title_fontweight': 'bold',  # 标题字重
-    'title_pad': 4,  # 标题与坐标轴之间的间距
-    'tick_fontsize': 8,  # 刻度字号；保证在论文缩放后仍可读
-    'tick_fontweight': 'normal',  # 刻度字重
-    'legend_fontsize': 7,  # 图例字号；适合 IEEE 插图
-    'legend_fontweight': 'normal',  # 图例字重
-    'legend_loc': 'best',  # 图例位置
-    'legend_bbox_to_anchor': None,  # 图例锚点；None 表示不额外指定
-    'legend_ncol': 2,  # 图例列数
-    'legend_borderaxespad': 0.2,  # 图例与坐标轴边界的间距
-    'legend_handlelength': 1.6,  # 图例示意线长度
-    'legend_labelspacing': 0.25,  # 图例条目垂直间距
-    'show_grid': False,  # 是否显示网格
-    'grid_linestyle': '--',  # 网格线型
-    'grid_linewidth': 0.4,  # 网格线宽
-    'grid_alpha': 0.22,  # 网格透明度
-    'show_legend': False,  # 全局图例总开关
-    'legend_framealpha': 0.92,  # 图例边框透明度
-    'legend_edgecolor': '#cccccc',  # 图例边框颜色
-    'hide_top_spine': False,  # 是否隐藏上边框
-    'hide_right_spine': False,  # 是否隐藏右边框
-    'save_format': 'eps',  # 主保存格式
-    'save_formats': ['eps', 'png'],  # 实际输出格式列表
-    'save_dpi': 300,  # 位图输出 dpi
-    'save_bbox_inches': None,  # 关闭自动裁白边，保证所有图导出的外框尺寸一致
-    'timestamp_first_in_name': True,  # True 表示时间戳放在文件名前面
-    'tight_layout': False,  # 关闭自动紧凑布局，改为使用下面的固定边距
-    'use_fixed_export_margins': True,  # 是否对所有图使用同一套固定边距
-    'export_margin_left_cm': 1.62,  # 图片左边缘到绘图区左侧的保留距离，单位 cm；按五位数刻度和左侧 ylabel 预留
-    'export_margin_right_cm': 0.98,  # 图片右边缘到绘图区右侧的保留距离，单位 cm；保证双Y轴图右侧副轴不拥挤
-    'export_margin_bottom_cm': 1.02,  # 图片下边缘到绘图区下侧的保留距离，单位 cm；保证 x 轴标题和刻度留白一致
-    'export_margin_top_cm': 0.30,  # 图片上边缘到绘图区上侧的保留距离，单位 cm；顶部留白适中，便于论文排版
-}
-
-# fig3a 内循环专用样式
-# 这一块只影响图3a，不影响 fig1a~fig1e。
-# 如果只想改内循环图的颜色，不要去改 ALG_STYLE，直接改这里。
-INNER_LOOP_STYLE = {
-    'current_label': 'Current Utility',  # 当前效用曲线的图例名称
-    'current_color': '#4878CF',  # 当前效用曲线颜色
-    'current_ls': '-',  # 当前效用曲线线型
-    'current_marker': 'o',  # 当前效用曲线 marker，仅在 show_markers_fig3a=True 时生效
-    'current_band_alpha': 0.15,  # 当前效用阴影带透明度
-    'best_label': 'Best Utility',  # 最优效用曲线的图例名称
-    'best_color': '#D65F5F',  # 最优效用曲线颜色
-    'best_ls': '--',  # 最优效用曲线线型
-    'best_marker': 's',  # 最优效用曲线 marker，仅在 show_markers_fig3a=True 时生效
-    'best_band_alpha': 0.15,  # 最优效用阴影带透明度
-    'round_label': 50,  # 标题里显示的 round 标签，不影响实际数据提取
-}
-
-# fig1d / fig1e 双Y轴组合图专用样式
-# 这一块不是主配色板，它主要控制组合图的“局部外观”：
-# - 柱子宽度、透明度
-# - 误差棒颜色和粗细
-# - 右侧完成率坐标轴范围
-# - 图例位置
-# - line_style_by_alg：仅在你想让组合图折线与 ALG_STYLE 不同时才填写
-#
-# 当前约定：
-# - bar_style_by_alg 只影响 fig1d / fig1e 的柱状图
-# - line_style_by_alg 只影响 fig1d / fig1e 的右侧完成率折线
-# - 如果这里只写了 color，而没有单独写 mfc / mec，
-#   则折线 marker 会默认与折线同色
-COMBO_CHART_STYLE = {
-    'selected_n_values': [4,  6, 8, 10, 12, 16],  # 组合图只画这些 N
-    'bar_width': 0.22,  # 分组柱状图中单个算法柱子的实际宽度
-    'use_bar_spacing': False ,  # 是否启用同组柱子之间的额外间距；False 时柱子按 bar_width 紧贴排列
-    'bar_offset_step': 0.19,  # 同一组相邻柱子的中心间距；略大于 bar_width 时柱子之间会留一点空隙
-    'bar_alpha': 0.8,  # 柱子透明度
-    'show_bar_edge': False,  # 是否给每个柱子额外绘制外侧边框
-    'bar_edgecolor': '#000000',  # 柱子外侧边框颜色
-    'bar_edgewidth': 0.5,  # 柱子外侧边框线宽
-    'errorbar_color': '#000000',  # 柱状图误差棒颜色；通常用黑色最清晰
-    'errorbar_linewidth': 0.5,  # 柱状图误差棒线宽
-    'errorbar_capthick': 0.3,  # 柱状图误差棒帽子线宽
-    'completion_ylim': (0.2, 1.3),  # 右侧完成率坐标轴范围
-    'completion_yticks': [0.2, 0.4, 0.6, 0.8, 1.0],  # 右侧完成率刻度
-    'legend_loc': 'upper center',  # 组合图图例位置
-    'legend_bbox_to_anchor': (0.5, 0.995),  # 组合图图例锚点，控制不越界
-    'legend_ncol': 2,  # 组合图图例列数
-    'bar_style_by_alg': {
-        # 这里只控制 fig1d / fig1e 的柱状图；不再依赖 ALG_STYLE
-        'Huo2025': {
-            'color': '#606060',
-            'label': 'Huo2025',
-        },
-        'Qi2023': {
-            'color': '#EFAF2E',
-            'label': 'Qi2023',
-        },
-        'Shi2024': {
-            'color': '#195CF8',
-            'label': 'Shi2024',
-        },
-        'OCF_SAtabu': {
-            'color': '#C92D2E',
-            'label': 'Ours (OCF-SA)',
-        },
-    },
-    'line_style_by_alg': {
-        # 这里只控制 fig1d / fig1e 的右侧完成率折线
-        'Huo2025': {
-            'color': "#7DBEE9",
-            'marker': 'o',
-            'ls': '-',
-            'linewidth': 1.4,
-            'markersize': 4.2,
-            'markeredgewidth': 1.0,
-        },
-        'Qi2023': {
-            'color': '#3091CB',
-            'marker': 's',
-            'ls': '--',
-            'linewidth': 1.4,
-            'markersize': 4.2,
-            'markeredgewidth': 1.0,
-        },
-        'Shi2024': {
-            'color': '#FDB385',
-            'marker': '^',
-            'ls': '-.',
-            'linewidth': 1.4,
-            'markersize': 4.2,
-            'markeredgewidth': 1.0,
-        },
-        'OCF_SAtabu': {
-            'color': '#CE692E',
-            'marker': 'o',
-            'ls': '-',
-            'linewidth': 1.6,
-            'markersize': 4.4,
-            'mfc': 'none',
-            'mec': '#C92D2E',
-            'markeredgewidth': 1.2,
-        },
-    },
-}
-
-# 各子图单独控制
-# - show_title: 当前图是否允许标题，仍受 PLOT_GLOBAL['show_titles'] 总开关控制
-# - title / title_template: 固定标题或动态标题模板
-# - xlim / ylim = None: 自动范围
-# - xticks / yticks = None: 自动刻度
-# - use_fixed_N_xticks = True: 强制使用 N_values 作为 x 轴刻度
-# - bottom_zero = True: y 轴下界至少为 0
-FIGURE_CONFIG = {
-    'fig1a': {
-        'show_title': True,
-        'title': 'Fig. 1a - Utility vs. N',
-        'xlabel': 'Number of Agents',
-        'ylabel': 'Final Coalition Utility',
-        'xlim': None,
-        'ylim': None,
-        'xticks': None,
-        'yticks': None,
-        'use_fixed_N_xticks': True,
-        'bottom_zero': False,
-    },
-    'fig1b': {
-        'show_title': True,
-        'title': 'Fig. 1b - Completion vs. N',
-        'xlabel': 'Number of Agents',
-        'ylabel': 'Task Completion Degree',
-        'xlim': None,
-        'ylim': [0.15,1.05],
-        'xticks': None,
-        'yticks': None,
-        'use_fixed_N_xticks': True,
-        'bottom_zero': True,
-    },
-    'fig1c': {
-        'show_title': True,
-        'title': 'Fig. 1c - Total Completed Value vs. N',
-        'xlabel': 'Number of Agents',
-        'ylabel': 'Total Completed Value',
-        'xlim': None,
-        'ylim': [3000,12000],
-        'xticks': None,
-        'yticks': None,
-        'use_fixed_N_xticks': True,
-        'bottom_zero': True,
-    },
-    'fig1d': {
-        'show_title': True,
-        'title': 'Fig. 1d - Utility and Completion vs. N',
-        'xlabel': 'Number of Agents',
-        'ylabel': 'Final Coalition Utility',
-        'right_ylabel': 'Completion Rate',
-        'show_completion_line': False,
-        'show_errorbar': True,
-        'errorbar_mode': 'sem',
-        'xlim': None,
-        'ylim': None,
-        'xticks': None,
-        'yticks': None,
-        'use_fixed_N_xticks': False,
-        'bottom_zero': True,
-    },
-    'fig1e': {
-        'show_title': True,
-        'title': 'Fig. 1e - Total Completed Value and Completion vs. N',
-        'xlabel': 'Number of Agents',
-        'ylabel': 'Total Completed Value',
-        'right_ylabel': 'Completion Rate',
-        'show_completion_line': False,
-        'show_errorbar': True,
-        'errorbar_mode': 'sem',
-        'xlim': None,
-        'ylim': [2500,12000],
-        'xticks': None,
-        'yticks': None,
-        'use_fixed_N_xticks': False,
-        'bottom_zero': True,
-    },
-    'fig2c': {
-        'show_title': True,
-        'title_template': 'Fig. 2c - Convergence (N={n_target})',
-        'xlabel': 'Round',
-        'ylabel': 'Coalition Utility',
-        'xlim': None,
-        'ylim': None,
-        'xticks': None,
-        'yticks': None,
-        'use_fixed_N_xticks': False,
-        'bottom_zero': False,
-    },
-    'fig3a': {
-        'show_title': True,
-        'title_template': 'Fig. 3a - Inner Loop (Round {round_label}, N={n_target})',
-        'xlabel': 'Inner Iteration',
-        'ylabel': 'Utility',
-        'xlim': None,
-        'ylim': None,
-        'xticks': None,
-        'yticks': None,
-        'use_fixed_N_xticks': False,
-        'bottom_zero': False,
-    },
-}
+FAMILY = 'varyN'
+PLOT_CONFIG = get_family_plot_config(FAMILY)
+ALG_STYLE = PLOT_CONFIG['ALG_STYLE']
+DEFAULT_STYLE = PLOT_CONFIG['DEFAULT_STYLE']
+PLOT_GLOBAL = PLOT_CONFIG['PLOT_GLOBAL']
+BAR_CHART_STYLE = PLOT_CONFIG['BAR_CHART_STYLE']
+INNER_LOOP_STYLE = PLOT_CONFIG['INNER_LOOP_STYLE']
+COMBO_CHART_STYLE = PLOT_CONFIG['COMBO_CHART_STYLE']
+FIGURE_CONFIG = PLOT_CONFIG['FIGURE_CONFIG']
+OUTPUT_PREFIX = PLOT_CONFIG['OUTPUT_PREFIX']
 
 os.makedirs(FIGURES_DIR, exist_ok=True)
 STYLE_HELPER = PlotStyleHelper(PLOT_GLOBAL, FIGURES_DIR)
@@ -541,10 +181,8 @@ def parse_N_values(config):
 
 
 def merge_figure_config(fig_key, **kwargs):
-    """复制并补充每个图的配置，避免运行中修改全局字典。"""
-    cfg = copy.deepcopy(FIGURE_CONFIG[fig_key])
-    cfg.update(kwargs)
-    return cfg
+    """Resolve one final figure config from unified config."""
+    return get_family_figure_config(FAMILY, fig_key, **kwargs)
 
 
 def get_text_style(size_key, weight_key):
@@ -565,7 +203,7 @@ def get_marker_kwargs(show_markers, marker, markevery=None):
 def build_output_path(ts, stem):
     """按配置生成输出文件路径。"""
     _ = ts
-    return STYLE_HELPER.build_output_stem(stem)
+    return STYLE_HELPER.build_output_stem(build_prefixed_stem(FAMILY, stem))
 
 
 def extract_timestamp_tag(mat_path):
@@ -710,19 +348,7 @@ def write_plot_data_json(output_path, payload):
 
 def get_alg_plot_style(aname):
     """读取算法折线样式，并支持 mfc/mec/lw/ms/mew。"""
-    base = ALG_STYLE.get(aname, DEFAULT_STYLE)
-    color = base.get('color', DEFAULT_STYLE['color'])
-    return {
-        'color': color,
-        'marker': base.get('marker', DEFAULT_STYLE['marker']),
-        'ls': base.get('ls', DEFAULT_STYLE['ls']),
-        'linewidth': base.get('lw', PLOT_GLOBAL['linewidth']),
-        'markersize': base.get('ms', PLOT_GLOBAL['markersize']),
-        'markerfacecolor': base.get('mfc', color),
-        'markeredgecolor': base.get('mec', color),
-        'markeredgewidth': base.get('mew', PLOT_GLOBAL['markeredgewidth']),
-        'label': base.get('label', aname),
-    }
+    return resolve_alg_plot_style(aname, ALG_STYLE, DEFAULT_STYLE, PLOT_GLOBAL)
 
 
 def build_completion_lookup(metrics, N_values, alg_names, selected_n_values):
@@ -732,7 +358,7 @@ def build_completion_lookup(metrics, N_values, alg_names, selected_n_values):
     for aname in alg_names:
         completion_values = metrics[aname]['completion'][selected_indices, :]
         completion_mu = np.nanmean(completion_values, axis=1)
-        lookup[aname] = {
+        lookup[get_alg_display_name(aname)] = {
             int(n_val): value
             for n_val, value in zip(selected_n_values, completion_mu)
         }
@@ -776,10 +402,11 @@ def build_combo_only_figure_data(
     show_completion_line = bool(figure_data.get('show_completion_line', True))
     bar_series_by_alg = {}
     line_series_by_alg = {}
+    display_alg_names = set(get_alg_display_names(alg_names))
 
     for series in figure_data.get('series', []):
         aname = series.get('algorithm')
-        if aname not in alg_names:
+        if aname not in display_alg_names:
             continue
         kind = series.get('series_kind')
         if kind == 'bar':
@@ -793,43 +420,44 @@ def build_combo_only_figure_data(
 
     algorithms = {}
     for aname in alg_names:
-        if aname not in bar_series_by_alg:
-            raise ValueError(f'{figure_name} 缺少算法 {aname} 的 bar 数据')
+        export_name = get_alg_display_name(aname)
+        if export_name not in bar_series_by_alg:
+            raise ValueError(f'{figure_name} 缺少算法 {export_name} 的 bar 数据')
 
         bar_points = build_combo_point_map(
-            bar_series_by_alg[aname].get('points', []),
+            bar_series_by_alg[export_name].get('points', []),
             value_key='mean',
             figure_name=figure_name,
-            aname=aname,
+            aname=export_name,
             series_kind='bar',
         )
 
         if show_completion_line:
-            if aname not in line_series_by_alg:
-                raise ValueError(f'{figure_name} 缺少算法 {aname} 的 completion line 数据')
+            if export_name not in line_series_by_alg:
+                raise ValueError(f'{figure_name} 缺少算法 {export_name} 的 completion line 数据')
             completion_points = build_combo_point_map(
-                line_series_by_alg[aname].get('points', []),
+                line_series_by_alg[export_name].get('points', []),
                 value_key='value',
                 figure_name=figure_name,
-                aname=aname,
+                aname=export_name,
                 series_kind='line',
             )
         else:
-            completion_points = completion_lookup.get(aname, {})
+            completion_points = completion_lookup.get(export_name, {})
 
         rows = []
         for n_val in selected_n_values:
             n_int = int(n_val)
             if n_int not in bar_points:
-                raise ValueError(f'{figure_name} 的算法 {aname} 缺少 N={n_int} 的柱状值')
+                raise ValueError(f'{figure_name} 的算法 {export_name} 缺少 N={n_int} 的柱状值')
             if n_int not in completion_points:
-                raise ValueError(f'{figure_name} 的算法 {aname} 缺少 N={n_int} 的完成率')
+                raise ValueError(f'{figure_name} 的算法 {export_name} 缺少 N={n_int} 的完成率')
             rows.append({
                 'N': n_int,
                 left_value_key: bar_points[n_int],
                 'completion_rate': completion_points[n_int],
             })
-        algorithms[aname] = rows
+        algorithms[export_name] = rows
 
     return {
         'left_metric': left_metric,
@@ -852,7 +480,7 @@ def build_combo_only_payload(plot_data, N_values, alg_names, metrics):
         'source_mat_path': plot_data.get('source_mat_path'),
         'output_dir': plot_data.get('output_dir'),
         'selected_n_values': selected_n_values,
-        'alg_names': list(alg_names),
+        'alg_names': get_alg_display_names(alg_names),
         'figures': {
             'fig1d_utility_completion_combo': build_combo_only_figure_data(
                 'fig1d',
@@ -904,38 +532,12 @@ def get_combo_line_style(aname):
 
 def get_combo_bar_style(aname):
     """读取组合图中某个算法的柱状图样式。"""
-    base = ALG_STYLE.get(aname, DEFAULT_STYLE)
-    custom = COMBO_CHART_STYLE.get('bar_style_by_alg', {}).get(aname, {})
-    return {
-        'color': custom.get('color', base.get('color', DEFAULT_STYLE['color'])),
-        'label': custom.get('label', base.get('label', aname)),
-    }
+    return resolve_bar_plot_style(aname, ALG_STYLE, DEFAULT_STYLE)
 
 
 def compute_combo_error_values(values_2d, errorbar_mode='std'):
     """按指定模式计算组合图柱状图误差棒。"""
-    mode = str(errorbar_mode or 'std').lower()
-    std = np.nanstd(values_2d, axis=1)
-
-    if mode == 'std':
-        return std, mode, std
-
-    valid_counts = np.sum(~np.isnan(values_2d), axis=1).astype(float)
-    sem = np.divide(
-        std,
-        np.sqrt(valid_counts),
-        out=np.full_like(std, np.nan, dtype=float),
-        where=valid_counts > 0,
-    )
-
-    if mode == 'sem':
-        return sem, mode, std
-    if mode == 'ci95':
-        return 1.96 * sem, mode, std
-
-    raise ValueError(
-        f"不支持的组合图误差棒模式: {errorbar_mode}；可选值为 'std' / 'sem' / 'ci95'"
-    )
+    return compute_shared_error_values(values_2d, errorbar_mode)
 
 
 def fill_curve_tail(curve):
@@ -969,11 +571,12 @@ def build_scalar_figure_data(fig_key, cfg, alg_names, metric_key, metrics, N_val
     series = []
     for aname in alg_names:
         st = get_alg_plot_style(aname)
+        export_name = get_alg_display_name(aname)
         means = np.nanmean(metrics[aname][metric_key], axis=1)
         stds = np.nanstd(metrics[aname][metric_key], axis=1)
         series.append({
             'name': st['label'],
-            'algorithm': aname,
+            'algorithm': export_name,
             'series_kind': 'line',
             'style': {
                 'color': st['color'],
@@ -1006,6 +609,7 @@ def build_convergence_figure_data(cfg, alg_names, mean_curves, num_rounds):
         if curve is None or np.all(np.isnan(curve)):
             continue
         st = get_alg_plot_style(aname)
+        export_name = get_alg_display_name(aname)
         points = []
         for round_idx, value in zip(rounds, curve):
             points.append({
@@ -1014,7 +618,7 @@ def build_convergence_figure_data(cfg, alg_names, mean_curves, num_rounds):
             })
         series.append({
             'name': st['label'],
-            'algorithm': aname,
+            'algorithm': export_name,
             'series_kind': 'line',
             'style': {
                 'color': st['color'],
@@ -1061,7 +665,7 @@ def build_inner_loop_figure_data(cfg, mean_curr, std_curr, mean_best, std_best):
             })
         series.append({
             'name': INNER_LOOP_STYLE['current_label'],
-            'algorithm': 'OCF_SAtabu',
+            'algorithm': get_alg_display_name('OCF_SAtabu'),
             'series_kind': 'line',
             'style': {
                 'color': INNER_LOOP_STYLE['current_color'],
@@ -1081,7 +685,7 @@ def build_inner_loop_figure_data(cfg, mean_curr, std_curr, mean_best, std_best):
             })
         series.append({
             'name': INNER_LOOP_STYLE['best_label'],
-            'algorithm': 'OCF_SAtabu',
+            'algorithm': get_alg_display_name('OCF_SAtabu'),
             'series_kind': 'line',
             'style': {
                 'color': INNER_LOOP_STYLE['best_color'],
@@ -1372,7 +976,8 @@ def plot_dual_axis_combo(fig_key, left_metric_key, N_values, alg_names, metrics,
     series = []
 
     for alg_idx, aname in enumerate(alg_names):
-        bar_style = ALG_STYLE.get(aname, DEFAULT_STYLE)
+        export_name = get_alg_display_name(aname)
+        bar_style = get_combo_bar_style(aname)
         line_style = get_combo_line_style(aname)
         x_positions = x_centers + offsets[alg_idx]
 
@@ -1419,7 +1024,7 @@ def plot_dual_axis_combo(fig_key, left_metric_key, N_values, alg_names, metrics,
             })
         series.append({
             'name': bar_style['label'],
-            'algorithm': aname,
+            'algorithm': export_name,
             'series_kind': 'bar',
             'style': {
                 'color': bar_style['color'],
@@ -1466,7 +1071,7 @@ def plot_dual_axis_combo(fig_key, left_metric_key, N_values, alg_names, metrics,
                 })
             series.append({
                 'name': bar_style['label'],
-                'algorithm': aname,
+                'algorithm': export_name,
                 'series_kind': 'line',
                 'style': line_style,
                 'points': line_points,
@@ -1484,11 +1089,6 @@ def plot_dual_axis_combo(fig_key, left_metric_key, N_values, alg_names, metrics,
         ax,
         cfg=cfg,
         title=cfg.get('title'),
-        legend_kwargs={
-            'loc': COMBO_CHART_STYLE['legend_loc'],
-            'bbox_to_anchor': COMBO_CHART_STYLE['legend_bbox_to_anchor'],
-            'ncol': COMBO_CHART_STYLE['legend_ncol'],
-        },
     )
     if show_completion_line and ax2 is not None:
         apply_secondary_axis_style(
@@ -1652,7 +1252,7 @@ def main():
         'output_dir': os.path.abspath(FIGURES_DIR),
         'selected_n_values': list(COMBO_CHART_STYLE['selected_n_values']),
         'all_n_values': list(N_values),
-        'alg_names': list(alg_names),
+        'alg_names': get_alg_display_names(alg_names),
         'figures': {},
     }
 
@@ -1694,7 +1294,7 @@ def main():
     mc, sc, mb, sb, nt = extract_inner_loop(results, config, n_target=n_conv)
     plot_data['figures']['fig3a'] = plot_fig3a(
         mc, sc, mb, sb, nt,
-        build_output_path(None, 'fig3a_innerloop'),
+        build_output_path(None, 'fig3a_inner_loop'),
     )
 
     write_plot_data_json(

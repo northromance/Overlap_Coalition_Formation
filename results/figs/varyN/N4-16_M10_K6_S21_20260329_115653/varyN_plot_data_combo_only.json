@@ -7,20 +7,21 @@
     8,
     10,
     12,
+    14,
     16
   ],
   "alg_names": [
-    "Huo2025",
-    "Qi2023",
-    "Shi2024",
-    "OCF_SAtabu"
+    "NOCF",
+    "PCG-TS",
+    "JSE-OCF",
+    "BHTA"
   ],
   "figures": {
     "fig1d_utility_completion_combo": {
       "left_metric": "Final Coalition Utility",
       "right_metric": "Completion Rate",
       "algorithms": {
-        "Huo2025": [
+        "NOCF": [
           {
             "N": 4,
             "utility_value": 3028.8166634358186,
@@ -47,12 +48,17 @@
             "completion_rate": 0.6848403250188964
           },
           {
+            "N": 14,
+            "utility_value": 7372.590579088899,
+            "completion_rate": 0.7624527588813302
+          },
+          {
             "N": 16,
             "utility_value": 7863.548842468424,
             "completion_rate": 0.8276666666666667
           }
         ],
-        "Qi2023": [
+        "PCG-TS": [
           {
             "N": 4,
             "utility_value": 5813.062590377561,
@@ -79,12 +85,17 @@
             "completion_rate": 0.9500317460317462
           },
           {
+            "N": 14,
+            "utility_value": 8172.814238635443,
+            "completion_rate": 0.9717311035525322
+          },
+          {
             "N": 16,
             "utility_value": 8155.982361016642,
             "completion_rate": 0.9841660997732427
           }
         ],
-        "Shi2024": [
+        "JSE-OCF": [
           {
             "N": 4,
             "utility_value": 5946.664172108632,
@@ -111,12 +122,17 @@
             "completion_rate": 0.9536634542705972
           },
           {
+            "N": 14,
+            "utility_value": 8196.782954647168,
+            "completion_rate": 0.9745619803476947
+          },
+          {
             "N": 16,
             "utility_value": 8132.762133879123,
             "completion_rate": 0.9755500755857897
           }
         ],
-        "OCF_SAtabu": [
+        "BHTA": [
           {
             "N": 4,
             "utility_value": 6073.61877227594,
@@ -143,6 +159,11 @@
             "completion_rate": 0.9773012093726379
           },
           {
+            "N": 14,
+            "utility_value": 8566.662073794965,
+            "completion_rate": 0.9855402494331064
+          },
+          {
             "N": 16,
             "utility_value": 8661.849005890064,
             "completion_rate": 0.9901007180650039
@@ -154,7 +175,7 @@
       "left_metric": "Total Completed Value",
       "right_metric": "Completion Rate",
       "algorithms": {
-        "Huo2025": [
+        "NOCF": [
           {
             "N": 4,
             "completed_value": 3429.6749811035525,
@@ -181,12 +202,17 @@
             "completion_rate": 0.6848403250188964
           },
           {
+            "N": 14,
+            "completed_value": 8910.708616780044,
+            "completion_rate": 0.7624527588813302
+          },
+          {
             "N": 16,
             "completed_value": 9624.338624338625,
             "completion_rate": 0.8276666666666667
           }
         ],
-        "Qi2023": [
+        "PCG-TS": [
           {
             "N": 4,
             "completed_value": 7011.857520786092,
@@ -213,12 +239,17 @@
             "completion_rate": 0.9500317460317462
           },
           {
+            "N": 14,
+            "completed_value": 11220.362811791383,
+            "completion_rate": 0.9717311035525322
+          },
+          {
             "N": 16,
             "completed_value": 11360.62358276644,
             "completion_rate": 0.9841660997732427
           }
         ],
-        "Shi2024": [
+        "JSE-OCF": [
           {
             "N": 4,
             "completed_value": 7174.72411186697,
@@ -245,12 +276,17 @@
             "completion_rate": 0.9536634542705972
           },
           {
+            "N": 14,
+            "completed_value": 11295.72373393802,
+            "completion_rate": 0.9745619803476947
+          },
+          {
             "N": 16,
             "completed_value": 11322.99886621315,
             "completion_rate": 0.9755500755857897
           }
         ],
-        "OCF_SAtabu": [
+        "BHTA": [
           {
             "N": 4,
             "completed_value": 7296.249055177626,
@@ -275,6 +311,11 @@
             "N": 12,
             "completed_value": 11296.844293272865,
             "completion_rate": 0.9773012093726379
+          },
+          {
+            "N": 14,
+            "completed_value": 11367.392290249434,
+            "completion_rate": 0.9855402494331064
           },
           {
             "N": 16,

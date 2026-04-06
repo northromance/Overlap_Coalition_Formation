@@ -29,6 +29,7 @@ import matplotlib.pyplot as plt
 import matplotlib.patches as mpatches
 from matplotlib.colors import Normalize, TwoSlopeNorm, to_hex, to_rgb
 from matplotlib.cm import ScalarMappable
+from plot_unified_config import build_prefixed_stem, get_family_figure_config, get_family_plot_config
 from plot_style_helper import PlotStyleHelper, build_results_figures_dir, cm_size_to_inch, infer_source_name
 
 try:
@@ -57,141 +58,27 @@ SEARCH_DIRS = [
 ]
 
 # 任务类型颜色（用于甘特图和子图标题）
-TASK_TYPE_COLOR = {
-    1: '#4878CF',
-    2: '#6ACC65',
-    3: '#D65F5F',
-}
-TASK_TYPE_LABEL = {
-    1: 'Type-1 (Low value)',
-    2: 'Type-2 (Med value)',
-    3: 'Type-3 (High value)',
-}
-DEFAULT_TASK_COLOR = '#AAAAAA'
-RESOURCE_COLORS = ['#4E79A7', '#F28E2B', '#59A14F', '#E15759', '#76B7B2', '#EDC948']
 
-# fig5a 资源分配热图网格配置
-FIG5A_CONFIG = {
-    'show_title': True,
-    'suptitle': 'Fig. 5a - Resource Allocation per Task (SC matrix)',
-    'ncols': 5,  # 每行子图数；None 表示自动按 ceil(sqrt(M)) 计算
-    'subplot_w_cm': 6.60,  # 每个子图宽度，单位 cm
-    'subplot_h_cm': 5.59,  # 每个子图高度，单位 cm
-    'colorbar_extra_w_cm': 2.54,  # 显示 colorbar 时额外预留的宽度，单位 cm
-    'plain_extra_w_cm': 0.51,  # 不显示 colorbar 时额外预留的宽度，单位 cm
-    'cmap': 'Blues',  # 热图颜色映射
-    'shared_vmax': True,  # True 表示所有子图共用同一颜色上限
-    'show_colorbar': True,  # 是否显示统一 colorbar
-    'xlabel': 'Resource',
-    'ylabel': 'Agent',
-    'cell_annot': False,  # 是否在格内显示数值
-    'cell_fontsize': 7,
-    'subplot_title_fontsize': 8,  # 子图标题字号
-    'tick_fontsize': 7,
-}
-
-# fig5b 甘特图配置
-FIG5B_CONFIG = {
-    'show_title': True,
-    'title': 'Fig. 5b - Agent Task Execution Gantt',
-    'xlabel': 'Time',
-    'ylabel': 'Agent',
-    'color_mode': 'task_id_with_value_lightness',  # 'task_id_with_value_lightness' / 'task_type'
-    'bar_height': 0.55,  # 甘特条高度，0~1
-    'label_min_width': 8.0,  # 条宽大于该值才显示 Task ID，单位为时间轴数据值
-    'show_task_id_label': True,  # 是否在条上标 Task ID
-    'show_value_legend': True,  # 是否显示价值图例
-    'value_legend_mode': 'compact',  # 图例模式：compact / 其他自定义模式
-    'value_shade_order': 'high_darker',  # 高价值更深或更浅
-    'task_hue_offset': 0.08,
-    'task_color_saturation': 0.68,
-    'value_lightness_min': 0.42,
-    'value_lightness_max': 0.78,
-    'value_legend_hue': 0.58,
-    'label_fontsize': 7,
-    'max_fig_width_cm': 45.72,  # 图宽上限，单位 cm
-    'min_fig_width_cm': 20.32,  # 图宽下限，单位 cm
-    'time_per_cm': 15.75,  # 每 1 cm 容纳的时间单位数量
-    'min_fig_height_cm': 8.89,  # 图高下限，单位 cm
-    'per_agent_height_cm': 1.40,  # 每个智能体额外占用的高度，单位 cm
-    'base_fig_height_cm': 2.54,  # 甘特图基础高度，单位 cm
-}
-
-# fig5c/5d/5e/5f 热图配置
-FIG5C_CONFIG = {
-    'show_title': True,
-    'title': 'Fig. 5c - Total Allocated Resource per Task',
-    'xlabel': 'Resource',
-    'ylabel': 'Task',
-    'cmap': 'YlGnBu',
-    'annot': True,
-    'value_fmt': '{:.0f}',
-}
-
-FIG5D_CONFIG = {
-    'show_title': True,
-    'title': 'Fig. 5d - Allocated Minus Demand per Task',
-    'xlabel': 'Resource',
-    'ylabel': 'Task',
-    'cmap': 'RdBu_r',
-    'annot': True,
-    'value_fmt': '{:+.0f}',
-}
-
-FIG5E_CONFIG = {
-    'show_title': True,
-    'title': 'Fig. 5e - Allocation-to-Demand Ratio per Task',
-    'xlabel': 'Resource',
-    'ylabel': 'Task',
-    'cmap': 'RdYlGn',
-    'annot': True,
-    'value_fmt': '{:.0%}',
-    'nan_text': '',
-}
-
-FIG5F_CONFIG = {
-    'show_title': True,
-    'title': 'Fig. 5f - True Resource Demand per Task',
-    'xlabel': 'Resource',
-    'ylabel': 'Task',
-    'cmap': 'Oranges',
-    'annot': True,
-    'value_fmt': '{:.0f}',
-}
-
-# 全局绘图参数
-PLOT_GLOBAL = {
-    'title_fontsize': 12,  # 标题字号
-    'title_pad': 8,  # 标题与坐标轴之间的间距
-    'xlabel_fontsize': 11,  # x 轴标题字号
-    'ylabel_fontsize': 11,  # y 轴标题字号
-    'tick_fontsize': 10,  # 刻度字号
-    'legend_fontsize': 9,  # 图例字号
-    'show_grid': True,  # 是否显示网格
-    'grid_linestyle': '--',  # 网格线型
-    'grid_linewidth': 0.5,  # 网格线宽
-    'grid_alpha': 0.35,  # 网格透明度
-    'show_legend': True,  # 是否显示图例
-    'legend_framealpha': 0.85,  # 图例边框透明度
-    'legend_edgecolor': '#cccccc',  # 图例边框颜色
-    'hide_top_spine': True,  # 是否隐藏上边框
-    'hide_right_spine': True,  # 是否隐藏右边框
-    'save_formats': ['png', 'eps'],  # 实际输出格式列表
-    'save_dpi': 150,  # 位图输出 dpi
-    'save_bbox_inches': 'tight',  # 保存时裁掉多余白边
-}
-
+FAMILY = 'single_viz'
+PLOT_CONFIG = get_family_plot_config(FAMILY)
+PLOT_GLOBAL = PLOT_CONFIG['PLOT_GLOBAL']
+TASK_STYLE = PLOT_CONFIG['TASK_STYLE']
+RESOURCE_STYLE = PLOT_CONFIG['RESOURCE_STYLE']
+TASK_TYPE_COLOR = TASK_STYLE['colors']
+TASK_TYPE_LABEL = TASK_STYLE['labels']
+DEFAULT_TASK_COLOR = TASK_STYLE['default_color']
+RESOURCE_COLORS = RESOURCE_STYLE['colors']
+FIG5A_CONFIG = get_family_figure_config(FAMILY, 'fig5a')
+FIG5B_CONFIG = get_family_figure_config(FAMILY, 'fig5b')
+FIG5C_CONFIG = get_family_figure_config(FAMILY, 'fig5c')
+FIG5D_CONFIG = get_family_figure_config(FAMILY, 'fig5d')
+FIG5E_CONFIG = get_family_figure_config(FAMILY, 'fig5e')
+FIG5F_CONFIG = get_family_figure_config(FAMILY, 'fig5f')
 os.makedirs(FIGURES_DIR, exist_ok=True)
-
 PLOT_STYLE_ADAPTER = dict(PLOT_GLOBAL)
 PLOT_STYLE_ADAPTER['show_grid'] = False
 PLOT_STYLE_ADAPTER['show_legend'] = False
 STYLE_HELPER = PlotStyleHelper(PLOT_STYLE_ADAPTER, FIGURES_DIR)
-
-
-# ══════════════════════════════════════════════════════════════════════════════
-# 工具函数
-# ══════════════════════════════════════════════════════════════════════════════
 
 def find_mat_file(argv):
     """优先命令行参数，否则在 SEARCH_DIRS 中找最新的 visualize .mat 文件。"""
@@ -285,14 +172,41 @@ def get_agent_field(struct_dict, field, idx):
 
 def apply_common_style(ax, xlabel, ylabel, title=None):
     STYLE_HELPER.apply_common_style(ax, xlabel=xlabel, ylabel=ylabel, title=title)
+    apply_spine_style(ax)
 
 
 def finalize_and_save(fig, save_path):
+    if PLOT_GLOBAL.get('use_fixed_export_margins', False):
+        fig_width_cm = fig.get_figwidth() * 2.54
+        fig_height_cm = fig.get_figheight() * 2.54
+
+        left_margin_cm = float(PLOT_GLOBAL.get('export_margin_left_cm', 1.58))
+        right_margin_cm = float(PLOT_GLOBAL.get('export_margin_right_cm', 1.23))
+        bottom_margin_cm = float(PLOT_GLOBAL.get('export_margin_bottom_cm', 1.17))
+        top_margin_cm = float(PLOT_GLOBAL.get('export_margin_top_cm', 0.26))
+
+        if left_margin_cm + right_margin_cm >= fig_width_cm:
+            raise ValueError(
+                f"固定导出边距非法: 左右边距之和 {left_margin_cm + right_margin_cm:.3f} cm "
+                f"必须小于图宽 {fig_width_cm:.3f} cm"
+            )
+        if bottom_margin_cm + top_margin_cm >= fig_height_cm:
+            raise ValueError(
+                f"固定导出边距非法: 上下边距之和 {bottom_margin_cm + top_margin_cm:.3f} cm "
+                f"必须小于图高 {fig_height_cm:.3f} cm"
+            )
+
+        fig.subplots_adjust(
+            left=left_margin_cm / fig_width_cm,
+            right=1.0 - right_margin_cm / fig_width_cm,
+            bottom=bottom_margin_cm / fig_height_cm,
+            top=1.0 - top_margin_cm / fig_height_cm,
+        )
     STYLE_HELPER.finalize_and_save(fig, save_path)
 
 
 def build_output_stem(stem):
-    return STYLE_HELPER.build_output_stem(stem)
+    return STYLE_HELPER.build_output_stem(build_prefixed_stem(FAMILY, stem))
 
 
 def configure_output_dir(mat_path):
@@ -302,6 +216,19 @@ def configure_output_dir(mat_path):
     os.makedirs(FIGURES_DIR, exist_ok=True)
     STYLE_HELPER.set_figures_dir(FIGURES_DIR)
     return FIGURES_DIR
+
+
+def apply_plot_rcparams():
+    STYLE_HELPER.apply_rcparams()
+
+
+def apply_spine_style(ax):
+    spine_color = PLOT_GLOBAL.get('spine_color', '#000000')
+    spine_linewidth = float(PLOT_GLOBAL.get('spine_linewidth', 0.8))
+    for spine in ax.spines.values():
+        spine.set_visible(True)
+        spine.set_color(spine_color)
+        spine.set_linewidth(spine_linewidth)
 
 
 def build_task_type_value_maps(task_info):
@@ -741,9 +668,7 @@ def plot_task_resource_heatmap(matrix, save_path, cfg, colorbar_label,
         return
 
     M, K = matrix.shape
-    fig_w = max(16.51, 2.54 + 2.29 * K)
-    fig_h = max(10.67, 3.05 + 1.27 * M)
-    fig, ax = plt.subplots(figsize=cm_size_to_inch((fig_w, fig_h)))
+    fig, ax = plt.subplots(figsize=cm_size_to_inch(PLOT_GLOBAL['figsize_cm']))
     finite_vals = matrix[np.isfinite(matrix)]
     cmap = plt.get_cmap(cfg['cmap']).copy()
     cmap.set_bad('#f2f2f2')
@@ -798,10 +723,9 @@ def plot_task_resource_heatmap(matrix, save_path, cfg, colorbar_label,
                        title=cfg['title'] if cfg.get('show_title', True) else None)
 
     cbar = fig.colorbar(im, ax=ax, fraction=0.045, pad=0.02)
-    cbar.set_label(colorbar_label, fontsize=PLOT_GLOBAL['tick_fontsize'])
+    cbar.set_label(colorbar_label, fontsize=PLOT_GLOBAL['ylabel_fontsize'])
     cbar.ax.tick_params(labelsize=PLOT_GLOBAL['tick_fontsize'] - 1)
-
-    fig.tight_layout()
+    apply_spine_style(cbar.ax)
     finalize_and_save(fig, save_path)
 
 
@@ -915,7 +839,6 @@ def plot_fig5e_stacked_compare(alloc_mat, demand_mat, task_info, save_path):
         ncols=min(K, 3),
     )
 
-    fig.tight_layout()
     finalize_and_save(fig, save_path)
 
 
@@ -993,20 +916,26 @@ def plot_fig5a(sc_list, task_info, N, K, save_path):
         deg       = task_info['degree'][m]              if m < len(task_info['degree']) else np.nan
         deg_str   = f'{deg*100:.0f}%' if not np.isnan(deg) else '?'
         t_color   = TASK_TYPE_COLOR.get(task_type, '#333333')
-        ax.set_title(f'T{m+1}  type={task_type}  v={task_val:.0f}  d={deg_str}',
-                     fontsize=cfg['subplot_title_fontsize'], color=t_color, pad=3)
+        ax.set_title(
+            f'T{m+1}  type={task_type}  v={task_val:.0f}  d={deg_str}',
+            fontsize=PLOT_GLOBAL['title_fontsize'],
+            color=t_color,
+            pad=3,
+            fontfamily=(PLOT_GLOBAL.get('font_family') or ['Times New Roman'])[0],
+        )
 
         # 轴刻度
         ax.set_xticks(range(cur_K))
         ax.set_xticklabels([f'R{k+1}' for k in range(cur_K)],
-                           fontsize=cfg['tick_fontsize'])
+                           fontsize=PLOT_GLOBAL['tick_fontsize'])
         ax.set_yticks(range(cur_N))
         ax.set_yticklabels([f'A{n+1}' for n in range(cur_N)],
-                           fontsize=cfg['tick_fontsize'])
+                           fontsize=PLOT_GLOBAL['tick_fontsize'])
         if row == nrows - 1:
-            ax.set_xlabel(cfg['xlabel'], fontsize=cfg['tick_fontsize'])
+            ax.set_xlabel(cfg['xlabel'], fontsize=PLOT_GLOBAL['xlabel_fontsize'])
         if col == 0:
-            ax.set_ylabel(cfg['ylabel'], fontsize=cfg['tick_fontsize'])
+            ax.set_ylabel(cfg['ylabel'], fontsize=PLOT_GLOBAL['ylabel_fontsize'])
+        apply_spine_style(ax)
 
     # 隐藏多余子图
     for m in range(M, nrows * ncols):
@@ -1021,14 +950,16 @@ def plot_fig5a(sc_list, task_info, N, K, save_path):
         sm   = ScalarMappable(cmap=cfg['cmap'], norm=norm)
         sm.set_array([])
         cb = fig.colorbar(sm, cax=cbar_ax)
-        cb.set_label('Allocated resource', fontsize=PLOT_GLOBAL['tick_fontsize'])
+        cb.set_label('Allocated resource', fontsize=PLOT_GLOBAL['ylabel_fontsize'])
         cb.ax.tick_params(labelsize=PLOT_GLOBAL['tick_fontsize'] - 1)
+        apply_spine_style(cb.ax)
     else:
-        fig.tight_layout()
+        fig.subplots_adjust(hspace=0.55, wspace=0.35)
 
     if cfg['show_title']:
         fig.suptitle(cfg['suptitle'],
-                     fontsize=PLOT_GLOBAL['title_fontsize'] + 1, y=1.02)
+                     fontsize=PLOT_GLOBAL['title_fontsize'], y=0.985,
+                     fontfamily=(PLOT_GLOBAL.get('font_family') or ['Times New Roman'])[0])
 
     finalize_and_save(fig, save_path)
 
@@ -1048,9 +979,7 @@ def plot_fig5b(timing_list, task_info, N, save_path):
         for s, e in zip(ag['starts'], ag['execs']):
             t_max = max(t_max, float(s) + float(e))
 
-    fig_w = np.clip(t_max / cfg['time_per_cm'], cfg['min_fig_width_cm'], cfg['max_fig_width_cm'])
-    fig_h = max(cfg['min_fig_height_cm'], N * cfg['per_agent_height_cm'] + cfg['base_fig_height_cm'])
-    fig, ax = plt.subplots(figsize=cm_size_to_inch((fig_w, fig_h)))
+    fig, ax = plt.subplots(figsize=cm_size_to_inch(PLOT_GLOBAL['figsize_cm']))
 
     # task_id → type 映射
     style_maps = build_fig5b_task_style_maps(task_info, cfg)
@@ -1108,7 +1037,6 @@ def plot_fig5b(timing_list, task_info, N, save_path):
     apply_common_style(ax, cfg['xlabel'], cfg['ylabel'],
                        title=cfg['title'] if cfg['show_title'] else None)
 
-    fig.tight_layout()
     finalize_and_save(fig, save_path)
 
 
@@ -1117,6 +1045,7 @@ def plot_fig5b(timing_list, task_info, N, save_path):
 # ══════════════════════════════════════════════════════════════════════════════
 
 def main():
+    apply_plot_rcparams()
     mat_path = find_mat_file(sys.argv)
     configure_output_dir(mat_path)
 
@@ -1154,32 +1083,32 @@ def main():
 
     plot_fig5a(
         sc_list, task_info, N, K,
-        build_output_stem('fig5a_alloc'),
+        build_output_stem('resource_allocation_matrix'),
     )
     plot_fig5b(
         timing_list, task_info, N,
-        build_output_stem('fig5b_gantt'),
+        build_output_stem('agent_task_gantt'),
     )
     plot_task_resource_heatmap(
         alloc_mat,
-        build_output_stem('fig5c_allocsum'),
+        build_output_stem('task_total_allocated_resource'),
         FIG5C_CONFIG,
         colorbar_label='Total allocated resource',
     )
     plot_task_resource_heatmap(
         gap_mat,
-        build_output_stem('fig5d_gap'),
+        build_output_stem('task_allocation_minus_demand'),
         FIG5D_CONFIG,
         colorbar_label='Allocated - Demand',
         center_value=0.0,
     )
     plot_fig5e_ratio_heatmap(
         ratio_mat,
-        build_output_stem('fig5e_ratio'),
+        build_output_stem('task_allocation_to_demand_ratio'),
     )
     plot_task_resource_heatmap(
         demand_mat,
-        build_output_stem('fig5f_demand'),
+        build_output_stem('task_true_resource_demand'),
         FIG5F_CONFIG,
         colorbar_label='Task demand',
     )

@@ -64,6 +64,17 @@ class PlotStyleHelper:
     def set_figures_dir(self, figures_dir):
         self.figures_dir = figures_dir
 
+    def _merge_cfg(self, cfg=None):
+        merged = dict(self.plot_global)
+        for key, value in (cfg or {}).items():
+            if isinstance(value, dict) and isinstance(merged.get(key), dict):
+                nested = dict(merged[key])
+                nested.update(value)
+                merged[key] = nested
+            else:
+                merged[key] = value
+        return merged
+
     def apply_rcparams(self):
         font_family = self.plot_global.get('font_family')
         font_style = self.plot_global.get('font_style')
@@ -93,28 +104,30 @@ class PlotStyleHelper:
         except Exception:
             pass
 
-    def get_text_style(self, size_key, weight_key, default_size=None, default_weight='normal'):
+    def get_text_style(self, size_key, weight_key, default_size=None, default_weight='normal', cfg=None):
+        merged = self._merge_cfg(cfg)
         style = {}
 
-        fontsize = self.plot_global.get(size_key, default_size)
+        fontsize = merged.get(size_key, default_size)
         if fontsize is not None:
             style['fontsize'] = fontsize
 
-        fontfamily = self.plot_global.get('font_family')
+        fontfamily = merged.get('font_family')
         if fontfamily:
             style['fontfamily'] = fontfamily
 
-        fontstyle = self.plot_global.get('font_style')
+        fontstyle = merged.get('font_style')
         if fontstyle:
             style['fontstyle'] = fontstyle
 
-        fontweight = self.plot_global.get(weight_key, default_weight)
+        fontweight = merged.get(weight_key, default_weight)
         if fontweight is not None:
             style['fontweight'] = fontweight
 
         return style
 
-    def get_marker_kwargs(self, show_markers, marker, markevery=None):
+    def get_marker_kwargs(self, show_markers, marker, markevery=None, cfg=None):
+        merged = self._merge_cfg(cfg)
         if not show_markers:
             return {}
 
@@ -122,11 +135,11 @@ class PlotStyleHelper:
             'marker': marker,
         }
 
-        markersize = self.plot_global.get('markersize')
+        markersize = merged.get('markersize')
         if markersize is not None:
             kwargs['ms'] = markersize
 
-        markeredgewidth = self.plot_global.get('markeredgewidth')
+        markeredgewidth = merged.get('markeredgewidth')
         if markeredgewidth is not None:
             kwargs['mew'] = markeredgewidth
 
@@ -162,46 +175,47 @@ class PlotStyleHelper:
         tick_fontsize_key='tick_fontsize',
     ):
         cfg = cfg or {}
+        merged = self._merge_cfg(cfg)
         legend_kwargs = dict(legend_kwargs or {})
 
-        xlabel = cfg.get('xlabel', xlabel)
-        ylabel = cfg.get('ylabel', ylabel)
-        title = cfg.get('title', title)
+        xlabel = merged.get('xlabel', xlabel)
+        ylabel = merged.get('ylabel', ylabel)
+        title = merged.get('title', title)
 
         if xlabel is not None:
             ax.set_xlabel(
                 xlabel,
-                **self.get_text_style('xlabel_fontsize', 'label_fontweight'),
+                **self.get_text_style('xlabel_fontsize', 'label_fontweight', cfg=merged),
             )
         if ylabel is not None:
             ax.set_ylabel(
                 ylabel,
-                **self.get_text_style('ylabel_fontsize', 'label_fontweight'),
+                **self.get_text_style('ylabel_fontsize', 'label_fontweight', cfg=merged),
             )
 
-        show_titles = self.plot_global.get('show_titles', True)
-        if show_titles and cfg.get('show_title', True) and title:
+        show_titles = merged.get('show_titles', True)
+        if show_titles and merged.get('show_title', True) and title:
             ax.set_title(
                 title,
-                pad=self.plot_global.get('title_pad', 8),
-                **self.get_text_style('title_fontsize', 'title_fontweight'),
+                pad=merged.get('title_pad', 8),
+                **self.get_text_style('title_fontsize', 'title_fontweight', cfg=merged),
             )
 
-        if self.plot_global.get('show_grid', False):
+        if merged.get('show_grid', False):
             ax.grid(
                 True,
-                linestyle=self.plot_global.get('grid_linestyle', '--'),
-                linewidth=self.plot_global.get('grid_linewidth', 0.6),
-                alpha=self.plot_global.get('grid_alpha', 0.4),
+                linestyle=merged.get('grid_linestyle', '--'),
+                linewidth=merged.get('grid_linewidth', 0.6),
+                alpha=merged.get('grid_alpha', 0.4),
             )
 
-        tick_fontsize = self.plot_global.get(tick_fontsize_key)
+        tick_fontsize = merged.get(tick_fontsize_key)
         if tick_fontsize is not None:
             ax.tick_params(labelsize=tick_fontsize)
 
-        font_family = self.plot_global.get('font_family')
-        font_style = self.plot_global.get('font_style')
-        tick_fontweight = self.plot_global.get('tick_fontweight')
+        font_family = merged.get('font_family')
+        font_style = merged.get('font_style')
+        tick_fontweight = merged.get('tick_fontweight')
         if font_family or font_style or tick_fontweight:
             for tick in ax.get_xticklabels() + ax.get_yticklabels():
                 if font_family:
@@ -211,7 +225,7 @@ class PlotStyleHelper:
                 if tick_fontweight:
                     tick.set_fontweight(tick_fontweight)
 
-        if self.plot_global.get('show_legend', False):
+        if merged.get('show_legend', False):
             explicit_handles = legend_kwargs.get('handles')
             explicit_labels = legend_kwargs.get('labels')
             handles, labels = ax.get_legend_handles_labels()
@@ -220,46 +234,112 @@ class PlotStyleHelper:
             if has_explicit_legend or (handles and labels):
                 legend_kwargs.setdefault(
                     'framealpha',
-                    self.plot_global.get('legend_framealpha', 0.85),
+                    merged.get('legend_framealpha', 0.85),
                 )
                 legend_kwargs.setdefault(
                     'edgecolor',
-                    self.plot_global.get('legend_edgecolor', '#cccccc'),
+                    merged.get('legend_edgecolor', '#cccccc'),
                 )
                 legend_kwargs.setdefault(
                     'loc',
-                    self.plot_global.get('legend_loc', 'best'),
+                    merged.get('legend_loc', 'best'),
                 )
 
-                bbox = self.plot_global.get('legend_bbox_to_anchor')
+                bbox = merged.get('legend_bbox_to_anchor')
                 if bbox is not None:
                     legend_kwargs.setdefault('bbox_to_anchor', bbox)
 
-                if 'ncol' not in legend_kwargs and self.plot_global.get('legend_ncol') is not None:
-                    legend_kwargs['ncol'] = self.plot_global.get('legend_ncol')
-                if 'borderaxespad' not in legend_kwargs and self.plot_global.get('legend_borderaxespad') is not None:
-                    legend_kwargs['borderaxespad'] = self.plot_global.get('legend_borderaxespad')
-                if 'handlelength' not in legend_kwargs and self.plot_global.get('legend_handlelength') is not None:
-                    legend_kwargs['handlelength'] = self.plot_global.get('legend_handlelength')
-                if 'labelspacing' not in legend_kwargs and self.plot_global.get('legend_labelspacing') is not None:
-                    legend_kwargs['labelspacing'] = self.plot_global.get('legend_labelspacing')
+                if 'ncol' not in legend_kwargs and merged.get('legend_ncol') is not None:
+                    legend_kwargs['ncol'] = merged.get('legend_ncol')
+                if 'borderaxespad' not in legend_kwargs and merged.get('legend_borderaxespad') is not None:
+                    legend_kwargs['borderaxespad'] = merged.get('legend_borderaxespad')
+                if 'handlelength' not in legend_kwargs and merged.get('legend_handlelength') is not None:
+                    legend_kwargs['handlelength'] = merged.get('legend_handlelength')
+                if 'labelspacing' not in legend_kwargs and merged.get('legend_labelspacing') is not None:
+                    legend_kwargs['labelspacing'] = merged.get('legend_labelspacing')
 
                 if 'prop' not in legend_kwargs and 'fontsize' not in legend_kwargs:
-                    prop = self._build_legend_prop()
+                    prop = self._build_legend_prop(merged)
                     if prop is not None:
                         legend_kwargs['prop'] = prop
-                    elif self.plot_global.get('legend_fontsize') is not None:
-                        legend_kwargs['fontsize'] = self.plot_global.get('legend_fontsize')
+                    elif merged.get('legend_fontsize') is not None:
+                        legend_kwargs['fontsize'] = merged.get('legend_fontsize')
 
                 ax.legend(**legend_kwargs)
 
-        if self.plot_global.get('hide_top_spine', False):
+        self.apply_spine_style(ax, cfg=merged)
+
+    def apply_spine_style(self, ax, cfg=None):
+        merged = self._merge_cfg(cfg)
+
+        spine_color = merged.get('spine_color')
+        spine_linewidth = merged.get('spine_linewidth')
+        for spine in ax.spines.values():
+            if spine_color is not None:
+                spine.set_color(spine_color)
+            if spine_linewidth is not None:
+                spine.set_linewidth(spine_linewidth)
+
+        if merged.get('hide_top_spine', False):
             ax.spines['top'].set_visible(False)
-        if self.plot_global.get('hide_right_spine', False):
+        if merged.get('hide_right_spine', False):
             ax.spines['right'].set_visible(False)
 
+    def add_figure_legend(self, fig, handles, labels, cfg=None, **legend_kwargs):
+        merged = self._merge_cfg(cfg)
+        if not handles or not labels:
+            return None
+
+        legend_kwargs = dict(legend_kwargs)
+        legend_kwargs.setdefault('framealpha', merged.get('legend_framealpha', 0.85))
+        legend_kwargs.setdefault('edgecolor', merged.get('legend_edgecolor', '#cccccc'))
+        legend_kwargs.setdefault('loc', merged.get('legend_loc', 'best'))
+
+        bbox = merged.get('legend_bbox_to_anchor')
+        if bbox is not None:
+            legend_kwargs.setdefault('bbox_to_anchor', bbox)
+
+        if 'ncol' not in legend_kwargs and merged.get('legend_ncol') is not None:
+            legend_kwargs['ncol'] = merged.get('legend_ncol')
+
+        if 'prop' not in legend_kwargs and 'fontsize' not in legend_kwargs:
+            prop = self._build_legend_prop(merged)
+            if prop is not None:
+                legend_kwargs['prop'] = prop
+            elif merged.get('legend_fontsize') is not None:
+                legend_kwargs['fontsize'] = merged.get('legend_fontsize')
+
+        return fig.legend(handles, labels, **legend_kwargs)
+
+    def apply_colorbar_style(self, cbar, cfg=None, label=None):
+        merged = self._merge_cfg(cfg)
+
+        if label is not None:
+            cbar.set_label(
+                label,
+                **self.get_text_style('ylabel_fontsize', 'label_fontweight', cfg=merged),
+            )
+
+        tick_fontsize = merged.get('tick_fontsize')
+        if tick_fontsize is not None:
+            cbar.ax.tick_params(labelsize=tick_fontsize)
+
+        font_family = merged.get('font_family')
+        font_style = merged.get('font_style')
+        tick_fontweight = merged.get('tick_fontweight')
+        if font_family or font_style or tick_fontweight:
+            for tick in cbar.ax.get_yticklabels() + cbar.ax.get_xticklabels():
+                if font_family:
+                    tick.set_fontfamily(font_family)
+                if font_style:
+                    tick.set_fontstyle(font_style)
+                if tick_fontweight:
+                    tick.set_fontweight(tick_fontweight)
+
+        self.apply_spine_style(cbar.ax, cfg=merged)
+
     def apply_axis_controls(self, ax, cfg=None, fixed_values=None, fixed_locator_key=None):
-        cfg = cfg or {}
+        cfg = self._merge_cfg(cfg)
 
         if fixed_locator_key and cfg.get(fixed_locator_key, False) and fixed_values is not None:
             ax.xaxis.set_major_locator(mticker.FixedLocator(fixed_values))
@@ -278,14 +358,15 @@ class PlotStyleHelper:
             _, ymax = ax.get_ylim()
             ax.set_ylim(bottom=0, top=ymax)
 
-    def finalize_and_save(self, fig, save_path, tight_layout_rect=None):
-        if self.plot_global.get('tight_layout', False):
+    def finalize_and_save(self, fig, save_path, tight_layout_rect=None, cfg=None):
+        merged = self._merge_cfg(cfg)
+        if merged.get('tight_layout', False):
             if tight_layout_rect is None:
                 fig.tight_layout()
             else:
                 fig.tight_layout(rect=tight_layout_rect)
 
-        save_stem, save_formats = self._normalize_save_target(save_path)
+        save_stem, save_formats = self._normalize_save_target(save_path, merged)
         save_dir = os.path.dirname(save_stem)
         if save_dir:
             os.makedirs(save_dir, exist_ok=True)
@@ -295,18 +376,18 @@ class PlotStyleHelper:
             output_path = f'{save_stem}.{ext}'
             save_kwargs = {
                 'format': ext,
-                'bbox_inches': self.plot_global.get('save_bbox_inches', 'tight'),
+                'bbox_inches': merged.get('save_bbox_inches', 'tight'),
             }
             if ext not in VECTOR_FORMATS:
-                save_kwargs['dpi'] = self.plot_global.get('save_dpi', 150)
+                save_kwargs['dpi'] = merged.get('save_dpi', 150)
             fig.savefig(output_path, **save_kwargs)
             print(f'  [OK] {output_path}')
             saved_paths.append(output_path)
         return saved_paths
 
-    def _normalize_save_target(self, save_path):
+    def _normalize_save_target(self, save_path, plot_global=None):
         normalized = os.path.abspath(save_path)
-        default_formats = self._get_default_save_formats()
+        default_formats = self._get_default_save_formats(plot_global=plot_global)
         stem, ext = os.path.splitext(normalized)
         requested_ext = ext.lstrip('.').lower()
 
@@ -319,10 +400,11 @@ class PlotStyleHelper:
 
         return normalized, default_formats
 
-    def _get_default_save_formats(self):
-        raw_formats = self.plot_global.get('save_formats')
+    def _get_default_save_formats(self, plot_global=None):
+        plot_global = plot_global or self.plot_global
+        raw_formats = plot_global.get('save_formats')
         if raw_formats is None:
-            legacy_format = self.plot_global.get('save_format')
+            legacy_format = plot_global.get('save_format')
             if legacy_format:
                 if isinstance(legacy_format, (list, tuple)):
                     raw_formats = legacy_format
@@ -342,11 +424,12 @@ class PlotStyleHelper:
 
         return normalized or list(DEFAULT_SAVE_FORMATS)
 
-    def _build_legend_prop(self):
-        family = self.plot_global.get('font_family')
-        style = self.plot_global.get('font_style')
-        weight = self.plot_global.get('legend_fontweight')
-        size = self.plot_global.get('legend_fontsize')
+    def _build_legend_prop(self, plot_global=None):
+        plot_global = plot_global or self.plot_global
+        family = plot_global.get('font_family')
+        style = plot_global.get('font_style')
+        weight = plot_global.get('legend_fontweight')
+        size = plot_global.get('legend_fontsize')
 
         if not any(v is not None for v in (family, style, weight, size)):
             return None

@@ -25,9 +25,33 @@ except ImportError:
     h5py = None
 
 try:
-    from plot_style_helper import PlotStyleHelper, build_results_figures_dir, cm_size_to_inch, infer_source_name
+    from plot_style_helper import (
+        PlotStyleHelper,
+        build_results_figures_dir,
+        cm_size_to_inch,
+        infer_source_name,
+        sanitize_path_component,
+    )
 except ImportError:
-    from .plot_style_helper import PlotStyleHelper, build_results_figures_dir, cm_size_to_inch, infer_source_name
+    from .plot_style_helper import (
+        PlotStyleHelper,
+        build_results_figures_dir,
+        cm_size_to_inch,
+        infer_source_name,
+        sanitize_path_component,
+    )
+try:
+    from plot_unified_config import (
+        build_prefixed_stem,
+        get_family_figure_config,
+        get_family_plot_config,
+    )
+except ImportError:
+    from .plot_unified_config import (
+        build_prefixed_stem,
+        get_family_figure_config,
+        get_family_plot_config,
+    )
 try:
     from ablation_result_aggregator import AblationResultAggregator
 except ImportError:
@@ -36,7 +60,8 @@ except ImportError:
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 ROOT_DIR = os.path.dirname(SCRIPT_DIR)
-FIGURES_DIR = build_results_figures_dir(ROOT_DIR, "ablation")
+FAMILY = "ablation"
+FIGURES_DIR = build_results_figures_dir(ROOT_DIR, FAMILY)
 SEARCH_DIRS = [
     os.path.join(ROOT_DIR, "results", "batch", "ablation"),
     os.path.join(ROOT_DIR, "results", "batch"),
@@ -81,90 +106,29 @@ CONV_BAND_SCALE = 1.0  # std 模式下显示 mean ± scale * std。
 CONV_BAND_PERCENTILES = (30, 70)  # percentile 模式下显示的分位数区间。
 
 # 条件显示样式：颜色 / marker / 线宽 / 图例名称。
-CONDITION_STYLE_MAP = {
-    "belief_off": {
-        "color": "#C0392B",
-        "marker": "o",
-        "markersize": 5,
-        "markeredgewidth": 1.8,
-        "linewidth": 2.0,
-        "label": "belief_off",
-    },
-    "belief_on": {
-        "color": "#2E6DB4",
-        "marker": "o",
-        "markersize": 5,
-        "markeredgewidth": 1.2,
-        "linewidth": 2.0,
-        "label": "belief_on",
-    },
-    "belief_on_quantile": {
-        "color": "#2E6DB4",
-        "marker": "o",
-        "markersize": 5,
-        "markeredgewidth": 1.2,
-        "linewidth": 2.0,
-        "label": "belief_on_quantile",
-    },
-    "belief_on_expected": {
-        "color": "#1F8A5B",
-        "marker": "^",
-        "markersize": 8.0,
-        "markeredgewidth": 1.2,
-        "linewidth": 2.0,
-        "label": "belief_on_expected",
-    },
-}
-FALLBACK_COLORS = ["#7A5195", "#EF5675", "#FFA600", "#4C78A8", "#72B7B2"]
-FALLBACK_MARKERS = ["s", "D", "P", "v", ">"]
 
-CONN_LINE = {"color": "#B3B3B3", "linewidth": 0.8, "alpha": 0.7, "zorder": 2}  # 连接线样式。
-BAND_ALPHA = 0.16  # 收敛阴影带透明度。
-ROW_YLABELS = ["Coalition Utility", "Task Completion Rate"]
-ROW_TITLES = ["Endpoint Utility", "Endpoint Completion"]
-
-# 全局绘图参数。
-# - 所有物理尺寸统一使用 cm，真正传给 Matplotlib 时再换算为英寸。
-# - subplot_w_cm / subplot_h_cm: 端点散点图单个子图尺寸，单位 cm。
-# - convergence_subplot_w_cm / convergence_subplot_h_cm: 收敛图单个子图尺寸，单位 cm。
-# - 其余字段控制字号、网格、图例和保存行为。
-PLOT_GLOBAL = {
-    "subplot_w_cm": 8.89,
-    "subplot_h_cm": 7.87,
-    "convergence_subplot_w_cm": 9.14,
-    "convergence_subplot_h_cm": 7.37,
-    "xlabel_fontsize": 10,
-    "ylabel_fontsize": 10,
-    "title_fontsize": 11,
-    "title_fontweight": "bold",
-    "label_fontweight": "normal",
-    "tick_fontsize": 9,
-    "tick_fontweight": "normal",
-    "legend_fontsize": 9,
-    "show_titles": True,
-    "show_grid": True,
-    "grid_alpha": 0.35,
-    "grid_linestyle": "--",
-    "hide_top_spine": True,
-    "hide_right_spine": True,
-    "show_legend": False,
-    "tight_layout": True,
-    "save_dpi": 150,
-    "save_format": "png",
-    "save_formats": ["png", "eps"],
-    "save_bbox_inches": "tight",
-}
-
+PLOT_CONFIG = get_family_plot_config(FAMILY)
+PLOT_GLOBAL = PLOT_CONFIG['PLOT_GLOBAL']
+CONDITION_STYLE_MAP = PLOT_CONFIG['CONDITION_STYLE_MAP']
+FALLBACK_COLORS = PLOT_CONFIG['FALLBACK_COLORS']
+FALLBACK_MARKERS = PLOT_CONFIG['FALLBACK_MARKERS']
+CONN_LINE = PLOT_CONFIG['CONN_LINE']
+ROW_YLABELS = PLOT_CONFIG['ROW_YLABELS']
+ROW_TITLES = PLOT_CONFIG['ROW_TITLES']
+BAND_ALPHA = PLOT_GLOBAL['band_alpha']
 os.makedirs(FIGURES_DIR, exist_ok=True)
 STYLE_HELPER = PlotStyleHelper(PLOT_GLOBAL, FIGURES_DIR)
 
-
 def configure_output_dir(source_name):
     global FIGURES_DIR
-    FIGURES_DIR = build_results_figures_dir(ROOT_DIR, "ablation", source_name)
+    FIGURES_DIR = build_results_figures_dir(ROOT_DIR, FAMILY, source_name)
     os.makedirs(FIGURES_DIR, exist_ok=True)
     STYLE_HELPER.set_figures_dir(FIGURES_DIR)
     return FIGURES_DIR
+
+
+def build_output_stem(stem):
+    return STYLE_HELPER.build_output_stem(build_prefixed_stem(FAMILY, stem))
 
 
 def resolve_input_selector(input_selector):
@@ -739,19 +703,24 @@ def _build_condition_offsets(num_visible):
 
 
 def _sanitize_token(text):
-    return re.sub(r"[^A-Za-z0-9_\\-]+", "-", text).strip("-") or "all"
+    token = sanitize_path_component(text, default="all")
+    token = token.replace("-", "_").replace(".", "_")
+    token = re.sub(r"_+", "_", token).strip("_")
+    return token or "all"
 
 
 def _visibility_suffix(visible_conditions, all_conditions):
     if visible_conditions == all_conditions:
-        return "all"
-    return "-".join(_sanitize_token(name) for name in visible_conditions)
+        return "all_conditions"
+    joined = "_".join(_sanitize_token(name) for name in visible_conditions)
+    return f"conditions_{joined}" if joined else "conditions"
 
 
 def _scatter_seed_suffix(display_seeds, all_seeds):
     if len(display_seeds) == len(all_seeds) and list(display_seeds) == list(all_seeds):
-        return "allseeds"
-    return "seedsel-" + "-".join(_sanitize_token(str(seed)) for seed in display_seeds)
+        return "all_seeds"
+    joined = "_".join(_sanitize_token(str(seed)) for seed in display_seeds)
+    return f"selected_seeds_{joined}" if joined else "selected_seeds"
 
 
 def _build_scatter_axis(display_seeds):
@@ -827,6 +796,7 @@ def plot_ablation_scatter(
     scatter_seed_indices=None,
     scatter_display_seeds=None,
 ):
+    cfg = get_family_figure_config(FAMILY, "endpoint_scatter")
     visible_conditions = _resolve_visible_conditions(condition_names)
     condition_styles = _build_condition_styles(condition_names)
     condition_indices = [condition_names.index(name) for name in visible_conditions]
@@ -885,6 +855,7 @@ def plot_ablation_scatter(
             ax.set_xlim(0.5 - margin, num_s + 0.5 + margin)
             STYLE_HELPER.apply_common_style(
                 ax,
+                cfg=cfg,
                 xlabel=xlabel,
                 ylabel=ylabel,
                 title=f"N = {n_value}",
@@ -905,37 +876,52 @@ def plot_ablation_scatter(
                 label=style["label"],
             )
         )
-    fig.legend(
-        handles=legend_handles,
+    STYLE_HELPER.add_figure_legend(
+        fig,
+        legend_handles,
+        [handle.get_label() for handle in legend_handles],
+        cfg=cfg,
         loc="upper center",
         ncol=max(1, min(3, len(legend_handles))),
-        framealpha=0.9,
-        edgecolor="#cccccc",
-        fontsize=PLOT_GLOBAL["legend_fontsize"],
         bbox_to_anchor=(0.5, 1.02),
     )
 
-    for row, title in enumerate(ROW_TITLES):
-        axes[row][0].annotate(
-            title,
-            xy=(0, 0.5),
-            xycoords="axes fraction",
-            xytext=(-0.28, 0.5),
-            textcoords="axes fraction",
-            fontsize=9,
-            fontweight="bold",
-            rotation=90,
-            va="center",
-            ha="center",
-            annotation_clip=False,
-        )
+    if cfg.get("show_titles", True) and cfg.get("show_title", True):
+        for row, title in enumerate(ROW_TITLES):
+            axes[row][0].annotate(
+                title,
+                xy=(0, 0.5),
+                xycoords="axes fraction",
+                xytext=(-0.28, 0.5),
+                textcoords="axes fraction",
+                fontsize=PLOT_GLOBAL["title_fontsize"],
+                fontweight=PLOT_GLOBAL["title_fontweight"],
+                rotation=90,
+                va="center",
+                ha="center",
+                annotation_clip=False,
+            )
 
-    fig.suptitle("Ablation endpoint comparison", fontsize=12, fontweight="bold", y=1.07)
+        fig.suptitle(
+            cfg["title"],
+            fontsize=cfg["title_fontsize"],
+            fontweight=cfg["title_fontweight"],
+            y=1.07,
+        )
     STYLE_HELPER.finalize_and_save(fig, save_path, tight_layout_rect=[0, 0, 1, 0.95])
     return fig
 
 
 def plot_ablation_convergence(n_values, condition_names, convergence, save_path):
+    cfg = get_family_figure_config(
+        FAMILY,
+        "convergence",
+        title=get_family_figure_config(
+            FAMILY,
+            "convergence",
+            band_desc=_describe_convergence_band(),
+        )["title_template"].format(band_desc=_describe_convergence_band()),
+    )
     visible_conditions = _resolve_visible_conditions(condition_names)
     condition_styles = _build_condition_styles(condition_names)
     condition_indices = [condition_names.index(name) for name in visible_conditions]
@@ -981,6 +967,7 @@ def plot_ablation_convergence(n_values, condition_names, convergence, save_path)
         ax.set_xlim(1, max(1, num_rounds))
         STYLE_HELPER.apply_common_style(
             ax,
+            cfg=cfg,
             xlabel="Round",
             ylabel="Coalition Utility",
             title=f"N = {n_value}",
@@ -992,22 +979,23 @@ def plot_ablation_convergence(n_values, condition_names, convergence, save_path)
         legend_handles.append(
             mlines.Line2D([], [], color=style["color"], linewidth=style["linewidth"], label=style["label"])
         )
-    fig.legend(
-        handles=legend_handles,
+    STYLE_HELPER.add_figure_legend(
+        fig,
+        legend_handles,
+        [handle.get_label() for handle in legend_handles],
+        cfg=cfg,
         loc="upper center",
         ncol=max(1, min(3, len(legend_handles))),
-        framealpha=0.9,
-        edgecolor="#cccccc",
-        fontsize=PLOT_GLOBAL["legend_fontsize"],
         bbox_to_anchor=(0.5, 1.02),
     )
 
-    fig.suptitle(
-        f"Ablation convergence by N ({_describe_convergence_band()})",
-        fontsize=12,
-        fontweight="bold",
-        y=1.08,
-    )
+    if cfg.get("show_titles", True) and cfg.get("show_title", True):
+        fig.suptitle(
+            cfg["title"],
+            fontsize=cfg["title_fontsize"],
+            fontweight=cfg["title_fontweight"],
+            y=1.08,
+        )
     STYLE_HELPER.finalize_and_save(fig, save_path, tight_layout_rect=[0, 0, 1, 0.94])
     return fig
 
@@ -1060,11 +1048,11 @@ def main(input_path=None):
         [_normalize_seed_value(seed) for seed in scatter_display_seeds],
         [_normalize_seed_value(seed) for seed in seeds],
     )
-    scatter_base = f"ablation_scatter_{visibility_token}"
-    if scatter_seed_token != "allseeds":
+    scatter_base = f"endpoint_scatter_{visibility_token}"
+    if scatter_seed_token != "all_seeds":
         scatter_base = f"{scatter_base}_{scatter_seed_token}"
-    scatter_path = STYLE_HELPER.build_output_stem(scatter_base)
-    convergence_path = STYLE_HELPER.build_output_stem(f"ablation_convergence_{visibility_token}")
+    scatter_path = build_output_stem(scatter_base)
+    convergence_path = build_output_stem(f"convergence_{visibility_token}")
 
     print(f"\nFigure output dir      = {FIGURES_DIR}")
     print(f"Plotting endpoint scatter -> {scatter_path}")
