@@ -26,7 +26,6 @@ from belief_result_aggregator import BeliefResultAggregator
 from plot_style_helper import (
     PlotStyleHelper,
     build_results_figures_dir,
-    cm_size_to_inch,
     infer_source_name,
     sanitize_path_component,
 )
@@ -123,6 +122,10 @@ def apply_common_style(ax, cfg, title=None, legend_handles=None, legend_labels=N
 
 def apply_axis_controls(ax, cfg):
     STYLE_HELPER.apply_axis_controls(ax, cfg=cfg)
+
+
+def create_single_axis_figure(cfg=None):
+    return STYLE_HELPER.create_single_axis_figure(cfg=cfg)
 
 
 def finalize_and_save(fig, save_path):
@@ -465,7 +468,7 @@ def plot_condition_funnel(condition_name, aggregated, task_type_values, save_pat
         "belief_funnel",
         title=FIGURE_CONFIG["belief_funnel"]["title_template"].format(condition_name=condition_name),
     )
-    fig, ax = plt.subplots(figsize=cm_size_to_inch(PLOT_STYLE["figsize_cm"]))
+    fig, ax = create_single_axis_figure(cfg)
     legend_handles = []
     legend_labels = []
     ymax_candidates = []

@@ -1,0 +1,83 @@
+{
+  "metadata": {
+    "source_path": "e:\\Overlap_Coalition_Formation\\results\\batch\\ablation\\20260330_190655_N6-6_M10_K6_C3_S3",
+    "source_type": "run_dir",
+    "run_name": "20260330_190655_N6-6_M10_K6_C3_S3",
+    "output_dir": "e:\\Overlap_Coalition_Formation\\results\\figs\\ablation\\20260330_190655_N6-6_M10_K6_C3_S3",
+    "fixed_M": 10,
+    "num_rounds": 40,
+    "all_conditions": [
+      "belief_off",
+      "belief_on_quantile",
+      "belief_on_expected"
+    ],
+    "exported_conditions": [
+      "belief_on_quantile",
+      "belief_off"
+    ],
+    "comparison": {
+      "belief_condition": "belief_on_quantile",
+      "baseline_condition": "belief_off"
+    },
+    "formulas": {
+      "delta_utility_pct": "((U_belief - U_no_belief) / U_no_belief) * 100, where U_belief=belief_on_quantile utility mean and U_no_belief=belief_off utility mean",
+      "delta_completion_abs": "CR_belief - CR_no_belief, where CR_belief=belief_on_quantile completion mean and CR_no_belief=belief_off completion mean"
+    }
+  },
+  "scatter_points_by_N": [
+    {
+      "N": 6,
+      "paired_seed_count": 3,
+      "points": [
+        {
+          "seed": 2486,
+          "belief_on_quantile": {
+            "utility": 6871.753131701447,
+            "completion": 0.9050370370370372
+          },
+          "belief_off": {
+            "utility": 4303.806035779751,
+            "completion": 0.7372407407407408
+          },
+          "comparison": {
+            "delta_utility_abs": 2567.947095921696,
+            "delta_utility_pct": 59.66688727542626,
+            "delta_completion_abs": 0.16779629629629644
+          }
+        },
+        {
+          "seed": 2487,
+          "belief_on_quantile": {
+            "utility": 7393.325987648216,
+            "completion": 0.774
+          },
+          "belief_off": {
+            "utility": 3490.3437075956663,
+            "completion": 0.5199999999999999
+          },
+          "comparison": {
+            "delta_utility_abs": 3902.98228005255,
+            "delta_utility_pct": 111.82229049703334,
+            "delta_completion_abs": 0.2540000000000001
+          }
+        },
+        {
+          "seed": 2488,
+          "belief_on_quantile": {
+            "utility": 7228.273989708989,
+            "completion": 0.6301388888888889
+          },
+          "belief_off": {
+            "utility": 3568.358777394122,
+            "completion": 0.36583333333333334
+          },
+          "comparison": {
+            "delta_utility_abs": 3659.9152123148665,
+            "delta_utility_pct": 102.56578557909486,
+            "delta_completion_abs": 0.26430555555555557
+          }
+        }
+      ]
+    }
+  ]
+}

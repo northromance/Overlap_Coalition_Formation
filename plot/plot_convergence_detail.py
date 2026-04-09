@@ -41,7 +41,7 @@ from plot_unified_config import (
     get_family_figure_config,
     get_family_plot_config,
 )
-from plot_style_helper import PlotStyleHelper, build_results_figures_dir, cm_size_to_inch, infer_source_name
+from plot_style_helper import PlotStyleHelper, build_results_figures_dir, infer_source_name
 from varym_result_aggregator import VaryMResultAggregator
 
 try:
@@ -534,7 +534,7 @@ def plot_detail_convergence(dataset, target_value, seed_mode, metric_key, output
     curves = collect_curves(dataset, target_value, seed_mode, metric_key)
     summary = summarize_curves(curves, seed_mode)
 
-    fig, ax = plt.subplots(figsize=cm_size_to_inch(cfg["figsize_cm"]))
+    fig, ax = STYLE_HELPER.create_single_axis_figure(cfg=cfg)
     rounds = np.arange(1, dataset["num_rounds"] + 1)
 
     plotted = 0

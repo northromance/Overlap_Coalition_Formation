@@ -49,7 +49,6 @@ from plot_unified_config import (
 from plot_style_helper import (
     PlotStyleHelper,
     build_results_figures_dir,
-    cm_size_to_inch,
     infer_source_name,
 )
 from varym_result_aggregator import VaryMResultAggregator
@@ -196,6 +195,10 @@ def legacy_build_output_path_unused(ts, stem):
 def apply_common_style(ax, cfg, title=None):
     """统一处理坐标轴标签、标题、网格、图例和边框。"""
     STYLE_HELPER.apply_common_style(ax, cfg=cfg, title=title)
+
+
+def create_single_axis_figure(cfg=None):
+    return STYLE_HELPER.create_single_axis_figure(cfg=cfg)
 
 
 def apply_axis_controls(ax, cfg, m_values=None):
@@ -704,7 +707,7 @@ def extract_convergence(results, config, m_target=None):
 def _plot_scalar_vs_M(fig_key, metric_key, M_values, alg_names, metrics, save_path):
     """通用：画某个标量指标 vs M 的折线图（均值 ± std）。"""
     cfg = merge_figure_config(fig_key)
-    fig, ax = plt.subplots(figsize=cm_size_to_inch(PLOT_GLOBAL['figsize_cm']))
+    fig, ax = create_single_axis_figure(cfg)
 
     for aname in alg_names:
         st = get_alg_plot_style(aname)
@@ -752,7 +755,7 @@ def _plot_scalar_vs_M(fig_key, metric_key, M_values, alg_names, metrics, save_pa
 def plot_grouped_bar_vs_M(fig_key, metric_key, M_values, alg_names, metrics, save_path):
     """通用：画某个标量指标 vs M 的纯分组柱状图（均值 ± std）。"""
     cfg = merge_figure_config(fig_key)
-    fig, ax = plt.subplots(figsize=cm_size_to_inch(PLOT_GLOBAL['figsize_cm']))
+    fig, ax = create_single_axis_figure(cfg)
     x_centers = np.arange(len(M_values), dtype=float)
     bar_width, offsets = get_bar_layout(len(alg_names))
     show_errorbar = bool(cfg.get('show_errorbar', True))
@@ -829,7 +832,7 @@ def plot_fig2d(mean_curves, std_curves, num_rounds, m_target, alg_names, save_pa
         'fig2d',
         title=FIGURE_CONFIG['fig2d']['title_template'].format(m_target=m_target),
     )
-    fig, ax = plt.subplots(figsize=cm_size_to_inch(PLOT_GLOBAL['figsize_cm']))
+    fig, ax = create_single_axis_figure(cfg)
     rounds = np.arange(1, num_rounds + 1)
 
     for aname in alg_names:

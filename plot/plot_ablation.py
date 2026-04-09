@@ -15,9 +15,11 @@ plot_ablation.py
 import os
 import re
 import sys
+import json
 
 import matplotlib.lines as mlines
 import matplotlib.pyplot as plt
+import matplotlib.ticker as mticker
 import numpy as np
 try:
     import h5py
@@ -118,6 +120,8 @@ ROW_TITLES = PLOT_CONFIG['ROW_TITLES']
 BAND_ALPHA = PLOT_GLOBAL['band_alpha']
 os.makedirs(FIGURES_DIR, exist_ok=True)
 STYLE_HELPER = PlotStyleHelper(PLOT_GLOBAL, FIGURES_DIR)
+JSON_BELIEF_CONDITION = "belief_on_quantile"
+JSON_BASELINE_CONDITION = "belief_off"
 
 def configure_output_dir(source_name):
     global FIGURES_DIR
@@ -129,6 +133,168 @@ def configure_output_dir(source_name):
 
 def build_output_stem(stem):
     return STYLE_HELPER.build_output_stem(build_prefixed_stem(FAMILY, stem))
+
+
+def _build_subplot_title(cfg, n_value):
+    template = cfg.get("subplot_title_template", "N = {n_value}")
+    return str(template).format(n_value=n_value)
+
+
+def _apply_subplots_adjust(fig, cfg):
+    adjust_kwargs = {}
+    for key in ("left", "right", "bottom", "top"):
+        cfg_key = f"subplots_adjust_{key}"
+        if cfg.get(cfg_key) is not None:
+            adjust_kwargs[key] = cfg[cfg_key]
+
+    if cfg.get("subplot_wspace") is not None:
+        adjust_kwargs["wspace"] = cfg["subplot_wspace"]
+    if cfg.get("subplot_hspace") is not None:
+        adjust_kwargs["hspace"] = cfg["subplot_hspace"]
+
+    if adjust_kwargs:
+        fig.subplots_adjust(**adjust_kwargs)
+
+
+def _draw_shared_ylabel(fig, axes, text, cfg, x_key):
+    if not text:
+        return
+
+    visible_axes = [ax for ax in np.asarray(axes).ravel() if ax.get_visible()]
+    if not visible_axes:
+        return
+
+    y0 = min(ax.get_position().y0 for ax in visible_axes)
+    y1 = max(ax.get_position().y1 for ax in visible_axes)
+    ylabel_style = STYLE_HELPER.get_text_style(
+        "ylabel_fontsize",
+        "label_fontweight",
+        cfg=cfg,
+    )
+    fig.text(
+        float(cfg.get(x_key, 0.02)),
+        0.5 * (y0 + y1),
+        text,
+        rotation="vertical",
+        va="center",
+        ha="center",
+        **ylabel_style,
+    )
+
+
+def _draw_shared_row_ylabels(fig, axes, row_labels, cfg):
+    ylabel_style = STYLE_HELPER.get_text_style(
+        "ylabel_fontsize",
+        "label_fontweight",
+        cfg=cfg,
+    )
+    x_pos = float(cfg.get("shared_row_ylabel_x", 0.02))
+
+    axes_arr = np.asarray(axes)
+    for row_idx, row_text in enumerate(row_labels):
+        row_axes = [ax for ax in axes_arr[row_idx].ravel() if ax.get_visible()]
+        if not row_axes or not row_text:
+            continue
+
+        y0 = min(ax.get_position().y0 for ax in row_axes)
+        y1 = max(ax.get_position().y1 for ax in row_axes)
+        fig.text(
+            x_pos,
+            0.5 * (y0 + y1),
+            row_text,
+            rotation="vertical",
+            va="center",
+            ha="center",
+            **ylabel_style,
+        )
+
+
+def _apply_scientific_utility_ticks(ax, cfg):
+    if not cfg.get("use_scientific_utility_ticks", False):
+        return
+
+    power = int(cfg.get("utility_tick_power", 3))
+    formatter = mticker.ScalarFormatter(useMathText=True)
+    formatter.set_scientific(True)
+    formatter.set_powerlimits((power, power))
+    formatter.set_useOffset(False)
+    ax.yaxis.set_major_formatter(formatter)
+    ax.ticklabel_format(axis="y", style="sci", scilimits=(power, power), useMathText=True)
+
+    offset_text = ax.yaxis.get_offset_text()
+    tick_fontsize = cfg.get("tick_fontsize")
+    if tick_fontsize is not None:
+        offset_text.set_fontsize(tick_fontsize)
+    font_family = cfg.get("font_family")
+    if font_family:
+        offset_text.set_fontfamily(font_family)
+    font_style = cfg.get("font_style")
+    if font_style:
+        offset_text.set_fontstyle(font_style)
+    tick_fontweight = cfg.get("tick_fontweight")
+    if tick_fontweight:
+        offset_text.set_fontweight(tick_fontweight)
+
+
+def _add_configured_legend(fig, active_axes, handles, labels, cfg):
+    if not cfg.get("show_legend", False) or not handles or not labels:
+        return None
+
+    legend_container = str(cfg.get("legend_container", "figure")).strip().lower()
+    if legend_container not in {"axes", "figure"}:
+        print(f"  ! invalid legend_container={cfg.get('legend_container')!r}; fallback to 'figure'")
+        legend_container = "figure"
+
+    if legend_container == "axes" and active_axes:
+        target_ax = active_axes[-1]
+        legend_subplot_index = cfg.get("legend_subplot_index", "last_active")
+        if legend_subplot_index != "last_active":
+            try:
+                legend_index = int(legend_subplot_index)
+            except (TypeError, ValueError):
+                legend_index = None
+
+            if legend_index is None or legend_index < 1 or legend_index > len(active_axes):
+                print(
+                    f"  ! invalid legend_subplot_index={legend_subplot_index!r}; "
+                    "fallback to last active subplot"
+                )
+            else:
+                target_ax = active_axes[legend_index - 1]
+
+        legend_kwargs = {
+            "handles": handles,
+            "labels": labels,
+            "loc": cfg.get("legend_loc", "best"),
+            "framealpha": cfg.get("legend_framealpha"),
+            "edgecolor": cfg.get("legend_edgecolor"),
+        }
+        if cfg.get("legend_fontsize") is not None:
+            legend_kwargs["fontsize"] = cfg["legend_fontsize"]
+        if cfg.get("legend_bbox_to_anchor") is not None:
+            legend_kwargs["bbox_to_anchor"] = cfg["legend_bbox_to_anchor"]
+        if cfg.get("legend_ncol") is not None:
+            legend_kwargs["ncol"] = cfg["legend_ncol"]
+        if cfg.get("legend_borderaxespad") is not None:
+            legend_kwargs["borderaxespad"] = cfg["legend_borderaxespad"]
+        if cfg.get("legend_handlelength") is not None:
+            legend_kwargs["handlelength"] = cfg["legend_handlelength"]
+        if cfg.get("legend_labelspacing") is not None:
+            legend_kwargs["labelspacing"] = cfg["legend_labelspacing"]
+
+        legend = target_ax.legend(**legend_kwargs)
+        STYLE_HELPER.style_legend(legend, cfg=cfg)
+        return legend
+
+    return STYLE_HELPER.add_figure_legend(
+        fig,
+        handles,
+        labels,
+        cfg=cfg,
+        loc=cfg.get("legend_loc", "best"),
+        bbox_to_anchor=cfg.get("legend_bbox_to_anchor"),
+        ncol=cfg.get("legend_ncol"),
+    )
 
 
 def resolve_input_selector(input_selector):
@@ -246,6 +412,36 @@ def _read_string_list(dataset, h5file):
     return [text] if text else []
 
 
+def _json_safe(value):
+    if isinstance(value, dict):
+        return {str(key): _json_safe(val) for key, val in value.items()}
+    if isinstance(value, list):
+        return [_json_safe(item) for item in value]
+    if isinstance(value, tuple):
+        return [_json_safe(item) for item in value]
+    if isinstance(value, np.ndarray):
+        return [_json_safe(item) for item in value.tolist()]
+    if isinstance(value, np.bool_):
+        return bool(value)
+    if isinstance(value, np.integer):
+        return int(value)
+    if isinstance(value, np.floating):
+        scalar = float(value)
+        return None if (np.isnan(scalar) or np.isinf(scalar)) else scalar
+    if isinstance(value, float):
+        return None if (np.isnan(value) or np.isinf(value)) else value
+    return value
+
+
+def _write_json(path, payload):
+    output_dir = os.path.dirname(path)
+    if output_dir:
+        os.makedirs(output_dir, exist_ok=True)
+    with open(path, "w", encoding="utf-8") as fp:
+        json.dump(_json_safe(payload), fp, ensure_ascii=False, indent=2)
+    print(f"  [OK] {path}")
+
+
 def _normalize_value(value):
     if isinstance(value, dict):
         return {key: _normalize_value(val) for key, val in value.items()}
@@ -334,6 +530,13 @@ def _to_curve(value):
         return np.array([])
 
 
+def _to_optional_int(value):
+    scalar = _to_scalar(value)
+    if np.isnan(scalar):
+        return None
+    return int(scalar)
+
+
 def _to_int_list(value):
     if value is None:
         return []
@@ -417,6 +620,7 @@ def _load_ablation_h5py_legacy(mat_path):
         config = h5file["ablation_config"]
         n_values_arr = _read_1d(config.get("N_values"), h5file)
         seeds_arr = _read_1d(config.get("seeds"), h5file)
+        fixed_m = _read_scalar(config.get("M"), h5file)
         num_rounds_cfg = int(_read_scalar(config.get("num_rounds"), h5file))
         configured_conditions = _read_string_list(config.get("conditions"), h5file)
 
@@ -499,6 +703,8 @@ def _load_ablation_h5py_legacy(mat_path):
         "used_cache": False,
         "cache_path": None,
         "param_snapshot": None,
+        "fixed_m": None if np.isnan(fixed_m) else int(fixed_m),
+        "num_rounds": int(num_rounds_cfg),
     }
     return n_values, seeds, condition_names, utility, completion, convergence, run_meta
 
@@ -564,6 +770,10 @@ def load_ablation_data(input_path=None):
         upto = min(max_rounds, curve.size)
         convergence[ni, si, ci, :upto] = curve[:upto]
 
+    run_meta = dict(run_meta or {})
+    run_meta["fixed_m"] = _to_optional_int(ablation_config.get("M"))
+    run_meta["num_rounds"] = int(max_rounds)
+
     return n_values, seeds, condition_names, utility, completion, convergence, run_meta
 
 
@@ -600,6 +810,194 @@ def _mean_and_std(curves_2d):
     return mean, std, valid
 
 
+def _resolve_required_condition_indices(condition_names):
+    missing = [
+        cond_name
+        for cond_name in (JSON_BELIEF_CONDITION, JSON_BASELINE_CONDITION)
+        if cond_name not in condition_names
+    ]
+    if missing:
+        raise SystemExit(
+            "Missing required ablation conditions for JSON export: "
+            f"{missing}. Available conditions: {condition_names}"
+        )
+
+    return (
+        condition_names.index(JSON_BELIEF_CONDITION),
+        condition_names.index(JSON_BASELINE_CONDITION),
+    )
+
+
+def _build_formula_metadata():
+    return {
+        "delta_utility_pct": (
+            "((U_belief - U_no_belief) / U_no_belief) * 100, "
+            "where U_belief=belief_on_quantile utility mean and "
+            "U_no_belief=belief_off utility mean"
+        ),
+        "delta_completion_abs": (
+            "CR_belief - CR_no_belief, "
+            "where CR_belief=belief_on_quantile completion mean and "
+            "CR_no_belief=belief_off completion mean"
+        ),
+    }
+
+
+def _build_json_metadata(run_meta, condition_names):
+    return {
+        "source_path": os.path.abspath(_to_string(run_meta.get("source_path"))),
+        "source_type": _to_string(run_meta.get("source_type")),
+        "run_name": _to_string(run_meta.get("run_name")),
+        "output_dir": os.path.abspath(FIGURES_DIR),
+        "fixed_M": run_meta.get("fixed_m"),
+        "num_rounds": run_meta.get("num_rounds"),
+        "all_conditions": list(condition_names),
+        "exported_conditions": [JSON_BELIEF_CONDITION, JSON_BASELINE_CONDITION],
+        "comparison": {
+            "belief_condition": JSON_BELIEF_CONDITION,
+            "baseline_condition": JSON_BASELINE_CONDITION,
+        },
+        "formulas": _build_formula_metadata(),
+    }
+
+
+def _compute_delta_utility_pct(belief_utility, baseline_utility):
+    if not np.isfinite(belief_utility) or not np.isfinite(baseline_utility):
+        return np.nan
+    if np.isclose(baseline_utility, 0.0):
+        return np.nan
+    return ((belief_utility - baseline_utility) / baseline_utility) * 100.0
+
+
+def _compute_paired_seed_mask(utility_row, completion_row, belief_idx, baseline_idx):
+    return (
+        np.isfinite(utility_row[:, belief_idx])
+        & np.isfinite(utility_row[:, baseline_idx])
+        & np.isfinite(completion_row[:, belief_idx])
+        & np.isfinite(completion_row[:, baseline_idx])
+    )
+
+
+def _compute_mean_std(values):
+    if values.size == 0:
+        return np.nan, np.nan
+    return float(np.mean(values)), float(np.std(values))
+
+
+def build_ablation_summary_payload(n_values, seeds, condition_names, utility, completion, run_meta):
+    belief_idx, baseline_idx = _resolve_required_condition_indices(condition_names)
+    summary_by_n = []
+
+    for ni, n_value in enumerate(n_values):
+        paired_mask = _compute_paired_seed_mask(utility[ni], completion[ni], belief_idx, baseline_idx)
+        belief_utility = utility[ni, paired_mask, belief_idx]
+        baseline_utility = utility[ni, paired_mask, baseline_idx]
+        belief_completion = completion[ni, paired_mask, belief_idx]
+        baseline_completion = completion[ni, paired_mask, baseline_idx]
+
+        belief_utility_mean, belief_utility_std = _compute_mean_std(belief_utility)
+        baseline_utility_mean, baseline_utility_std = _compute_mean_std(baseline_utility)
+        belief_completion_mean, belief_completion_std = _compute_mean_std(belief_completion)
+        baseline_completion_mean, baseline_completion_std = _compute_mean_std(baseline_completion)
+
+        summary_by_n.append(
+            {
+                "N": int(n_value),
+                "paired_seed_count": int(np.sum(paired_mask)),
+                JSON_BELIEF_CONDITION: {
+                    "utility_mean": belief_utility_mean,
+                    "utility_std": belief_utility_std,
+                    "completion_mean": belief_completion_mean,
+                    "completion_std": belief_completion_std,
+                },
+                JSON_BASELINE_CONDITION: {
+                    "utility_mean": baseline_utility_mean,
+                    "utility_std": baseline_utility_std,
+                    "completion_mean": baseline_completion_mean,
+                    "completion_std": baseline_completion_std,
+                },
+                "comparison": {
+                    "delta_utility_abs": belief_utility_mean - baseline_utility_mean,
+                    "delta_utility_pct": _compute_delta_utility_pct(
+                        belief_utility_mean,
+                        baseline_utility_mean,
+                    ),
+                    "delta_completion_abs": belief_completion_mean - baseline_completion_mean,
+                },
+            }
+        )
+
+    return {
+        "metadata": _build_json_metadata(run_meta, condition_names),
+        "summary_by_N": summary_by_n,
+    }
+
+
+def build_ablation_scatter_payload(
+    n_values,
+    seeds,
+    condition_names,
+    utility,
+    completion,
+    run_meta,
+    scatter_seed_indices=None,
+):
+    belief_idx, baseline_idx = _resolve_required_condition_indices(condition_names)
+    if scatter_seed_indices is None:
+        scatter_seed_indices = np.arange(len(seeds), dtype=int)
+    else:
+        scatter_seed_indices = np.asarray(scatter_seed_indices, dtype=int)
+    scatter_groups = []
+
+    for ni, n_value in enumerate(n_values):
+        paired_mask = _compute_paired_seed_mask(utility[ni], completion[ni], belief_idx, baseline_idx)
+        points = []
+        for si in scatter_seed_indices:
+            is_valid = bool(paired_mask[si])
+            if not is_valid:
+                continue
+
+            belief_utility = float(utility[ni, si, belief_idx])
+            baseline_utility = float(utility[ni, si, baseline_idx])
+            belief_completion = float(completion[ni, si, belief_idx])
+            baseline_completion = float(completion[ni, si, baseline_idx])
+
+            points.append(
+                {
+                    "seed": int(seeds[si]),
+                    JSON_BELIEF_CONDITION: {
+                        "utility": belief_utility,
+                        "completion": belief_completion,
+                    },
+                    JSON_BASELINE_CONDITION: {
+                        "utility": baseline_utility,
+                        "completion": baseline_completion,
+                    },
+                    "comparison": {
+                        "delta_utility_abs": belief_utility - baseline_utility,
+                        "delta_utility_pct": _compute_delta_utility_pct(
+                            belief_utility,
+                            baseline_utility,
+                        ),
+                        "delta_completion_abs": belief_completion - baseline_completion,
+                    },
+                }
+            )
+
+        scatter_groups.append(
+            {
+                "N": int(n_value),
+                "paired_seed_count": int(np.sum(paired_mask)),
+                "points": points,
+            }
+        )
+
+    return {
+        "metadata": _build_json_metadata(run_meta, condition_names),
+        "scatter_points_by_N": scatter_groups,
+    }
+
+
 def _unique_preserve_order(items):
     seen = set()
     result = []
@@ -616,7 +1014,10 @@ def _build_condition_styles(condition_names):
     fallback_idx = 0
     for cond_name in condition_names:
         if cond_name in CONDITION_STYLE_MAP:
-            styles[cond_name] = dict(CONDITION_STYLE_MAP[cond_name])
+            style = dict(CONDITION_STYLE_MAP[cond_name])
+            if style.get("legend_label") is None:
+                style["legend_label"] = style.get("label", cond_name)
+            styles[cond_name] = style
             continue
 
         styles[cond_name] = {
@@ -626,6 +1027,7 @@ def _build_condition_styles(condition_names):
             "markeredgewidth": 1.2,
             "linewidth": 2.0,
             "label": cond_name,
+            "legend_label": cond_name,
         }
         fallback_idx += 1
     return styles
@@ -797,6 +1199,8 @@ def plot_ablation_scatter(
     scatter_display_seeds=None,
 ):
     cfg = get_family_figure_config(FAMILY, "endpoint_scatter")
+    subplot_cfg_base = dict(cfg)
+    subplot_cfg_base["show_legend"] = False
     visible_conditions = _resolve_visible_conditions(condition_names)
     condition_styles = _build_condition_styles(condition_names)
     condition_indices = [condition_names.index(name) for name in visible_conditions]
@@ -811,13 +1215,29 @@ def plot_ablation_scatter(
     num_s = len(display_seeds)
     x_positions, tick_positions, tick_labels, xlabel = _build_scatter_axis(display_seeds)
 
-    fig_w = PLOT_GLOBAL["subplot_w_cm"] * num_n
-    fig_h = PLOT_GLOBAL["subplot_h_cm"] * 2
-    fig, axes = plt.subplots(2, num_n, figsize=cm_size_to_inch((fig_w, fig_h)), squeeze=False)
+    configured_row_labels = list(cfg.get("shared_row_ylabels", ROW_YLABELS))
+    row_specs = []
+    if cfg.get("show_utility_row", False):
+        utility_label = configured_row_labels[0] if configured_row_labels else ROW_YLABELS[0]
+        row_specs.append((utility, utility_label))
 
-    for row, (data, ylabel) in enumerate(zip([utility, completion], ROW_YLABELS)):
+    completion_label = (
+        configured_row_labels[1]
+        if len(configured_row_labels) > 1
+        else configured_row_labels[0] if configured_row_labels else ROW_YLABELS[-1]
+    )
+    row_specs.append((completion, completion_label))
+
+    num_rows = len(row_specs)
+    fig_w = cfg["subplot_w_cm"] * num_n
+    fig_h = cfg["subplot_h_cm"] * num_rows
+    fig, axes = plt.subplots(num_rows, num_n, figsize=cm_size_to_inch((fig_w, fig_h)), squeeze=False)
+    active_axes = []
+
+    for row, (data, row_ylabel) in enumerate(row_specs):
         for col, n_value in enumerate(n_values):
             ax = axes[row][col]
+            active_axes.append(ax)
 
             if SCATTER_SHOW_CONNECTION_LINES:
                 for scatter_idx, base_x in enumerate(x_positions):
@@ -853,13 +1273,18 @@ def plot_ablation_scatter(
             ax.set_xticks(tick_positions)
             ax.set_xticklabels(tick_labels)
             ax.set_xlim(0.5 - margin, num_s + 0.5 + margin)
+            subplot_cfg = dict(subplot_cfg_base)
+            subplot_cfg["title"] = _build_subplot_title(cfg, n_value)
+            subplot_cfg["ylabel"] = None if cfg.get("use_shared_row_ylabels", False) else row_ylabel
             STYLE_HELPER.apply_common_style(
                 ax,
-                cfg=cfg,
+                cfg=subplot_cfg,
                 xlabel=xlabel,
-                ylabel=ylabel,
-                title=f"N = {n_value}",
+                ylabel=None,
+                title=None,
             )
+            if row_ylabel == "Coalition Utility":
+                _apply_scientific_utility_ticks(ax, cfg)
 
     legend_handles = []
     for cond_name in visible_conditions:
@@ -873,42 +1298,28 @@ def plot_ablation_scatter(
                 color=style["color"],
                 markersize=style["markersize"],
                 markeredgewidth=style.get("markeredgewidth", 1.2),
-                label=style["label"],
+                label=style.get("legend_label", style["label"]),
             )
         )
-    STYLE_HELPER.add_figure_legend(
+    _apply_subplots_adjust(fig, cfg)
+    if cfg.get("use_shared_row_ylabels", False):
+        _draw_shared_row_ylabels(fig, axes, [label for _, label in row_specs], cfg)
+    _add_configured_legend(
         fig,
+        active_axes,
         legend_handles,
         [handle.get_label() for handle in legend_handles],
-        cfg=cfg,
-        loc="upper center",
-        ncol=max(1, min(3, len(legend_handles))),
-        bbox_to_anchor=(0.5, 1.02),
+        cfg,
     )
 
-    if cfg.get("show_titles", True) and cfg.get("show_title", True):
-        for row, title in enumerate(ROW_TITLES):
-            axes[row][0].annotate(
-                title,
-                xy=(0, 0.5),
-                xycoords="axes fraction",
-                xytext=(-0.28, 0.5),
-                textcoords="axes fraction",
-                fontsize=PLOT_GLOBAL["title_fontsize"],
-                fontweight=PLOT_GLOBAL["title_fontweight"],
-                rotation=90,
-                va="center",
-                ha="center",
-                annotation_clip=False,
-            )
-
+    if cfg.get("show_titles", True) and cfg.get("show_suptitle", cfg.get("show_title", True)):
         fig.suptitle(
             cfg["title"],
             fontsize=cfg["title_fontsize"],
             fontweight=cfg["title_fontweight"],
-            y=1.07,
+            y=cfg.get("suptitle_y", 0.98),
         )
-    STYLE_HELPER.finalize_and_save(fig, save_path, tight_layout_rect=[0, 0, 1, 0.95])
+    STYLE_HELPER.finalize_and_save(fig, save_path, tight_layout_rect=[0, 0, 1, 0.95], cfg=cfg)
     return fig
 
 
@@ -922,6 +1333,10 @@ def plot_ablation_convergence(n_values, condition_names, convergence, save_path)
             band_desc=_describe_convergence_band(),
         )["title_template"].format(band_desc=_describe_convergence_band()),
     )
+    subplot_cfg_base = dict(cfg)
+    subplot_cfg_base["show_legend"] = False
+    if cfg.get("use_shared_ylabel", False):
+        subplot_cfg_base["ylabel"] = None
     visible_conditions = _resolve_visible_conditions(condition_names)
     condition_styles = _build_condition_styles(condition_names)
     condition_indices = [condition_names.index(name) for name in visible_conditions]
@@ -930,12 +1345,14 @@ def plot_ablation_convergence(n_values, condition_names, convergence, save_path)
     num_rounds = convergence.shape[-1]
     rounds = np.arange(1, num_rounds + 1)
 
-    fig_w = PLOT_GLOBAL["convergence_subplot_w_cm"] * num_n
-    fig_h = PLOT_GLOBAL["convergence_subplot_h_cm"]
+    fig_w = cfg["convergence_subplot_w_cm"] * num_n
+    fig_h = cfg["convergence_subplot_h_cm"]
     fig, axes = plt.subplots(1, num_n, figsize=cm_size_to_inch((fig_w, fig_h)), squeeze=False)
+    active_axes = []
 
     for col, n_value in enumerate(n_values):
         ax = axes[0][col]
+        active_axes.append(ax)
 
         for cond_idx in condition_indices:
             cond_name = condition_names[cond_idx]
@@ -965,38 +1382,54 @@ def plot_ablation_convergence(n_values, condition_names, convergence, save_path)
                 )
 
         ax.set_xlim(1, max(1, num_rounds))
+        subplot_cfg = dict(subplot_cfg_base)
+        subplot_cfg["title"] = _build_subplot_title(cfg, n_value)
         STYLE_HELPER.apply_common_style(
             ax,
-            cfg=cfg,
-            xlabel="Round",
-            ylabel="Coalition Utility",
-            title=f"N = {n_value}",
+            cfg=subplot_cfg,
+            xlabel=cfg.get("xlabel", "Round"),
+            ylabel=None,
+            title=None,
         )
+        _apply_scientific_utility_ticks(ax, cfg)
 
     legend_handles = []
     for cond_name in visible_conditions:
         style = condition_styles[cond_name]
         legend_handles.append(
-            mlines.Line2D([], [], color=style["color"], linewidth=style["linewidth"], label=style["label"])
+            mlines.Line2D(
+                [],
+                [],
+                color=style["color"],
+                linewidth=style["linewidth"],
+                label=style.get("legend_label", style["label"]),
+            )
         )
-    STYLE_HELPER.add_figure_legend(
+    _apply_subplots_adjust(fig, cfg)
+    if cfg.get("use_shared_ylabel", False):
+        _draw_shared_ylabel(
+            fig,
+            axes,
+            cfg.get("shared_ylabel_text", cfg.get("ylabel")),
+            cfg,
+            "shared_ylabel_x",
+        )
+    _add_configured_legend(
         fig,
+        active_axes,
         legend_handles,
         [handle.get_label() for handle in legend_handles],
-        cfg=cfg,
-        loc="upper center",
-        ncol=max(1, min(3, len(legend_handles))),
-        bbox_to_anchor=(0.5, 1.02),
+        cfg,
     )
 
-    if cfg.get("show_titles", True) and cfg.get("show_title", True):
+    if cfg.get("show_titles", True) and cfg.get("show_suptitle", cfg.get("show_title", True)):
         fig.suptitle(
             cfg["title"],
             fontsize=cfg["title_fontsize"],
             fontweight=cfg["title_fontweight"],
-            y=1.08,
+            y=cfg.get("suptitle_y", 0.98),
         )
-    STYLE_HELPER.finalize_and_save(fig, save_path, tight_layout_rect=[0, 0, 1, 0.94])
+    STYLE_HELPER.finalize_and_save(fig, save_path, tight_layout_rect=[0, 0, 1, 0.94], cfg=cfg)
     return fig
 
 
@@ -1013,6 +1446,7 @@ def main(input_path=None):
     n_values, seeds, condition_names, utility, completion, convergence, run_meta = load_ablation_data(input_path)
     output_source = run_meta.get("run_name") or infer_source_name(run_meta.get("source_path"), fallback="ablation")
     configure_output_dir(output_source)
+    _resolve_required_condition_indices(condition_names)
     visible_conditions = _resolve_visible_conditions(condition_names)
 
     print(f"  Input path         = {run_meta.get('source_path', '')}")
@@ -1030,6 +1464,10 @@ def main(input_path=None):
     print(f"  N_values           = {n_values}")
     print(f"  seeds              = {seeds}")
     print(f"  conditions         = {condition_names}")
+    print(
+        "  JSON comparison    = "
+        f"{JSON_BELIEF_CONDITION} vs {JSON_BASELINE_CONDITION}"
+    )
     print(f"  visible_conditions = {visible_conditions}")
     scatter_seed_indices, scatter_display_seeds = _resolve_scatter_seed_selection(seeds)
     if SCATTER_VISIBLE_SEEDS is None:
@@ -1053,6 +1491,8 @@ def main(input_path=None):
         scatter_base = f"{scatter_base}_{scatter_seed_token}"
     scatter_path = build_output_stem(scatter_base)
     convergence_path = build_output_stem(f"convergence_{visibility_token}")
+    scatter_json_path = f"{scatter_path}.json"
+    convergence_json_path = f"{convergence_path}.json"
 
     print(f"\nFigure output dir      = {FIGURES_DIR}")
     print(f"Plotting endpoint scatter -> {scatter_path}")
@@ -1072,6 +1512,33 @@ def main(input_path=None):
         plot_ablation_convergence(n_values, condition_names, convergence, convergence_path)
     else:
         print("Skipping convergence figure: no convergence_utility data found.")
+
+    print(f"Writing endpoint scatter JSON -> {scatter_json_path}")
+    _write_json(
+        scatter_json_path,
+        build_ablation_scatter_payload(
+            n_values,
+            seeds,
+            condition_names,
+            utility,
+            completion,
+            run_meta,
+            scatter_seed_indices=scatter_seed_indices,
+        ),
+    )
+
+    print(f"Writing convergence summary JSON -> {convergence_json_path}")
+    _write_json(
+        convergence_json_path,
+        build_ablation_summary_payload(
+            n_values,
+            seeds,
+            condition_names,
+            utility,
+            completion,
+            run_meta,
+        ),
+    )
 
     print("\nDone.")
     plt.show()

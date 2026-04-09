@@ -47,7 +47,6 @@ from plot_unified_config import (
 from plot_style_helper import (
     PlotStyleHelper,
     build_results_figures_dir,
-    cm_size_to_inch,
     infer_source_name,
 )
 
@@ -218,6 +217,10 @@ def extract_timestamp_tag(mat_path):
 def apply_common_style(ax, cfg, title=None):
     """统一处理坐标轴标签、标题、网格、图例和边框。"""
     STYLE_HELPER.apply_common_style(ax, cfg=cfg, title=title)
+
+
+def create_single_axis_figure(cfg=None):
+    return STYLE_HELPER.create_single_axis_figure(cfg=cfg)
 
 
 def apply_axis_controls(ax, cfg, n_values=None):
@@ -839,7 +842,7 @@ def extract_inner_loop(results, config, n_target=None):
 def plot_fig1a(N_values, alg_names, metrics, save_path):
     """图1a：变N效用（mean ± std 折线图）"""
     cfg = merge_figure_config('fig1a')
-    fig, ax = plt.subplots(figsize=cm_size_to_inch(PLOT_GLOBAL['figsize_cm']))
+    fig, ax = create_single_axis_figure(cfg)
 
     for aname in alg_names:
         st = get_alg_plot_style(aname)
@@ -874,7 +877,7 @@ def plot_fig1a(N_values, alg_names, metrics, save_path):
 def plot_fig1b(N_values, alg_names, metrics, save_path):
     """图1b：变N完成度（mean ± std 折线图）"""
     cfg = merge_figure_config('fig1b')
-    fig, ax = plt.subplots(figsize=cm_size_to_inch(PLOT_GLOBAL['figsize_cm']))
+    fig, ax = create_single_axis_figure(cfg)
 
     for aname in alg_names:
         st = get_alg_plot_style(aname)
@@ -909,7 +912,7 @@ def plot_fig1b(N_values, alg_names, metrics, save_path):
 def plot_fig1c(N_values, alg_names, metrics, save_path):
     """Plot total completed value vs N."""
     cfg = merge_figure_config('fig1c')
-    fig, ax = plt.subplots(figsize=cm_size_to_inch(PLOT_GLOBAL['figsize_cm']))
+    fig, ax = create_single_axis_figure(cfg)
 
     for aname in alg_names:
         st = get_alg_plot_style(aname)
@@ -955,7 +958,7 @@ def plot_dual_axis_combo(fig_key, left_metric_key, N_values, alg_names, metrics,
     show_errorbar = bool(cfg.get('show_errorbar', True))
     errorbar_mode = str(cfg.get('errorbar_mode', 'std')).lower()
 
-    fig, ax = plt.subplots(figsize=cm_size_to_inch(PLOT_GLOBAL['figsize_cm']))
+    fig, ax = create_single_axis_figure(cfg)
     ax2 = ax.twinx() if show_completion_line else None
     if ax2 is not None:
         ax2.patch.set_alpha(0.0)
@@ -1117,7 +1120,7 @@ def plot_fig2c(mean_curves, num_rounds, n_target, alg_names, save_path):
         'fig2c',
         title=FIGURE_CONFIG['fig2c']['title_template'].format(n_target=n_target),
     )
-    fig, ax = plt.subplots(figsize=cm_size_to_inch(PLOT_GLOBAL['figsize_cm']))
+    fig, ax = create_single_axis_figure(cfg)
     rounds = np.arange(1, num_rounds + 1)
 
     for aname in alg_names:
@@ -1166,7 +1169,7 @@ def plot_fig3a(mean_curr, std_curr, mean_best, std_best, n_target, save_path):
         print("  ! 内循环数据为空（OCF_SAtabu 未记录 inner_loop），跳过图3a")
         return build_inner_loop_figure_data(cfg, mean_curr, std_curr, mean_best, std_best)
 
-    fig, ax = plt.subplots(figsize=cm_size_to_inch(PLOT_GLOBAL['figsize_cm']))
+    fig, ax = create_single_axis_figure(cfg)
     ref = mean_curr if mean_curr is not None else mean_best
     iters = np.arange(1, len(ref) + 1)
 

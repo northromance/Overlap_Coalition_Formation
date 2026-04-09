@@ -240,6 +240,18 @@ def apply_common_style(ax, cfg, title=None, legend_fontsize=None):
     STYLE_HELPER.apply_common_style(ax, cfg=cfg, title=title, legend_kwargs=legend_kwargs)
 
 
+def resolve_fontsize(size_key, cfg=None, default=None):
+    return STYLE_HELPER.resolve_fontsize(size_key, default=default, cfg=cfg)
+
+
+def style_legend(legend, cfg=None):
+    return STYLE_HELPER.style_legend(legend, cfg=cfg)
+
+
+def create_single_axis_figure(cfg=None):
+    return STYLE_HELPER.create_single_axis_figure(cfg=cfg)
+
+
 def apply_axis_controls(ax, cfg):
     """统一处理 xlim / ylim / xticks / yticks / 底部从 0 开始等。"""
     STYLE_HELPER.apply_axis_controls(ax, cfg=cfg)
@@ -581,7 +593,7 @@ def _plot_belief_curve(fig_key, data_dict, conditions, num_rounds, save_path, ti
     data_dict: {cond: {'mean': [R], 'std': [R]}}
     """
     cfg    = merge_figure_config(fig_key)
-    fig, ax = plt.subplots(figsize=cm_size_to_inch(PLOT_GLOBAL['figsize_cm']))
+    fig, ax = create_single_axis_figure(cfg)
     rounds  = np.arange(0, num_rounds + 1)
 
     for cond in conditions:
@@ -690,13 +702,13 @@ def plot_fig2c_per_condition(cond_name, ev_data, true_val, num_rounds, save_path
         if PLOT_GLOBAL.get('show_titles', True) and cfg.get('show_title', True):
             ax.set_title(
                 cfg['title_template'].format(m=m + 1, v=true_v or 0),
-                fontsize=PLOT_GLOBAL['fig2c_title_fontsize'],
-                pad=PLOT_GLOBAL['title_pad'],
+                fontsize=resolve_fontsize('subplot_title_fontsize', cfg=cfg),
+                pad=cfg.get('title_pad', PLOT_GLOBAL['title_pad']),
             )
 
         ax.set_xlabel(cfg['xlabel'], fontsize=PLOT_GLOBAL['xlabel_fontsize'])
         ax.set_ylabel(cfg['ylabel'], fontsize=PLOT_GLOBAL['ylabel_fontsize'])
-        ax.tick_params(labelsize=PLOT_GLOBAL['tick_fontsize'])
+        ax.tick_params(labelsize=resolve_fontsize('tick_fontsize', cfg=cfg))
 
         if PLOT_GLOBAL['show_grid']:
             ax.grid(True, linestyle=PLOT_GLOBAL['grid_linestyle'],
@@ -714,13 +726,14 @@ def plot_fig2c_per_condition(cond_name, ev_data, true_val, num_rounds, save_path
 
         # 仅在第一个子图显示图例
         if m == 0 and PLOT_GLOBAL['show_legend']:
-            ax.legend(
-                fontsize=PLOT_GLOBAL['fig2c_legend_fontsize'],
+            legend = ax.legend(
+                fontsize=resolve_fontsize('legend_fontsize', cfg=cfg),
                 framealpha=PLOT_GLOBAL['legend_framealpha'],
                 edgecolor=PLOT_GLOBAL['legend_edgecolor'],
                 loc='upper right',
                 ncol=2,
             )
+            style_legend(legend, cfg=cfg)
 
     # 隐藏多余的子图格
     for idx in range(M_dim, nrows * ncols):
@@ -732,7 +745,7 @@ def plot_fig2c_per_condition(cond_name, ev_data, true_val, num_rounds, save_path
     if PLOT_GLOBAL.get('show_titles', True) and cfg.get('show_title', True):
         fig.suptitle(
             cfg['suptitle_template'].format(cond=cond_label),
-            fontsize=PLOT_GLOBAL['title_fontsize'],
+            fontsize=resolve_fontsize('title_fontsize', cfg=cfg),
             y=1.01,
         )
 
@@ -1137,7 +1150,7 @@ def plot_summary_figure(conditions, num_rounds, summary_data, save_path):
 
     handles, labels = axes[0].get_legend_handles_labels()
     if handles:
-        fig.legend(
+        legend = fig.legend(
             handles,
             labels,
             loc='upper center',
@@ -1146,6 +1159,7 @@ def plot_summary_figure(conditions, num_rounds, summary_data, save_path):
             framealpha=PLOT_GLOBAL['legend_framealpha'],
             edgecolor=PLOT_GLOBAL['legend_edgecolor'],
         )
+        style_legend(legend, cfg=FIGURE_CONFIG['summary_left'])
     finalize_and_save(fig, save_path, tight_layout_rect=(0.0, 0.0, 1.0, 0.92))
 
 
@@ -1221,7 +1235,7 @@ def plot_representative_tasks(reference_entries, conditions, selected_tasks, rol
 
     handles, labels = axes[0].get_legend_handles_labels()
     if handles:
-        fig.legend(
+        legend = fig.legend(
             handles,
             labels,
             loc='upper center',
@@ -1231,10 +1245,11 @@ def plot_representative_tasks(reference_entries, conditions, selected_tasks, rol
             framealpha=PLOT_GLOBAL['legend_framealpha'],
             edgecolor=PLOT_GLOBAL['legend_edgecolor'],
         )
+        style_legend(legend, cfg=FIGURE_CONFIG['representative'])
     if PLOT_GLOBAL.get('show_titles', True):
         fig.suptitle(
             f"{FIGURE_CONFIG['representative']['title']}  [reference seed = {reference_seed}]",
-            fontsize=PLOT_GLOBAL['subtitle_fontsize'],
+            fontsize=resolve_fontsize('title_fontsize', cfg=FIGURE_CONFIG['representative']),
             y=1.07,
         )
     finalize_and_save(fig, save_path, tight_layout_rect=(0.0, 0.0, 1.0, 0.88))
@@ -1322,7 +1337,11 @@ def plot_appendix_agent_examples(reference_entries, conditions, selected_tasks, 
             ax.set_ylim(*y_limits)
             title = f"{role_map.get(task_idx, 'selected').title()} | T{task_idx + 1} | V={true_val:.0f}"
             if row == 0 and PLOT_GLOBAL.get('show_titles', True):
-                ax.set_title(title, fontsize=PLOT_GLOBAL['subtitle_fontsize'], pad=PLOT_GLOBAL['title_pad'])
+                ax.set_title(
+                    title,
+                    fontsize=resolve_fontsize('subplot_title_fontsize', cfg=FIGURE_CONFIG['appendix_new']),
+                    pad=FIGURE_CONFIG['appendix_new'].get('title_pad', PLOT_GLOBAL['title_pad']),
+                )
 
             ylabel = f"{st['label']}\nExpected value" if col == 0 else ''
             apply_axes_style(
@@ -1335,20 +1354,21 @@ def plot_appendix_agent_examples(reference_entries, conditions, selected_tasks, 
 
     handles, labels = axes[0][0].get_legend_handles_labels()
     if handles:
-        fig.legend(
+        legend = fig.legend(
             handles,
             labels,
             loc='upper center',
             bbox_to_anchor=(0.5, 1.00),
             ncol=max(1, len(labels)),
-            fontsize=PLOT_GLOBAL['appendix_legend_fontsize'],
+            fontsize=resolve_fontsize('legend_fontsize', cfg=FIGURE_CONFIG['appendix_new']),
             framealpha=PLOT_GLOBAL['legend_framealpha'],
             edgecolor=PLOT_GLOBAL['legend_edgecolor'],
         )
+        style_legend(legend, cfg=FIGURE_CONFIG['appendix_new'])
     if PLOT_GLOBAL.get('show_titles', True):
         fig.suptitle(
             f"{FIGURE_CONFIG['appendix_new']['title']}  [reference seed = {reference_seed}]",
-            fontsize=PLOT_GLOBAL['subtitle_fontsize'],
+            fontsize=resolve_fontsize('title_fontsize', cfg=FIGURE_CONFIG['appendix_new']),
             y=1.07,
         )
     finalize_and_save(fig, save_path, tight_layout_rect=(0.0, 0.0, 1.0, 0.88))

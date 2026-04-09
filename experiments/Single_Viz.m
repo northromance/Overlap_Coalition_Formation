@@ -27,6 +27,20 @@ feature('DefaultCharacterSet', 'UTF-8');
 %% =========================================================================
 
 %% ===== 路径初始化（须在 Exp_Params 之前）=====
+% Exported figure set handled by plot_single_viz.py:
+%   fig5a  resource allocation per task
+%   fig5b  agent task execution Gantt
+%   fig5c  total allocated resource
+%   fig5d  allocated minus demand
+%   fig5e  allocation-to-demand ratio
+%   fig5f  true task demand
+%   fig5g  initial agent/task layout
+%   fig5h  belief-implied expected task value
+%   fig5i  belief-value error convergence
+%   fig5j  coalition utility convergence
+%   fig5k  total global cost convergence
+%   fig5l  total completed value convergence
+%   fig5m  combined convergence curves
 script_dir = fileparts(mfilename('fullpath'));
 root_dir   = fileparts(script_dir);
 
@@ -104,6 +118,30 @@ fprintf('完成，耗时 %.2f s\n\n', comp_time);
 %% ===== 提取最终 SC =====
 num_r    = length(history_data.rounds);
 final_SC = history_data.rounds(num_r).SC;
+uniform_row = ones(1, num_task_types) / num_task_types;
+init_belief_tensor = repmat(reshape(uniform_row, [1, 1, num_task_types]), N, M, 1);
+if isfield(AddPara, 'init_belief_tensor') && ~isempty(AddPara.init_belief_tensor)
+    init_belief_tensor = AddPara.init_belief_tensor;
+    tensor_size = size(init_belief_tensor);
+    if numel(tensor_size) ~= 3 || tensor_size(1) ~= N || tensor_size(2) ~= M || tensor_size(3) ~= num_task_types
+        error('Single_Viz:initBeliefTensorSize', ...
+            'AddPara.init_belief_tensor must be [%d x %d x %d], got [%s].', ...
+            N, M, num_task_types, num2str(tensor_size));
+    end
+elseif isfield(AddPara, 'init_belief') && ~isempty(AddPara.init_belief)
+    init_belief = AddPara.init_belief;
+    belief_size = size(init_belief);
+    if isequal(belief_size, [num_task_types, N])
+        init_belief = init_belief.';
+        belief_size = size(init_belief);
+    end
+    if ~isequal(belief_size, [N, num_task_types])
+        error('Single_Viz:initBeliefSize', ...
+            'AddPara.init_belief must be [%d x %d], got [%s].', ...
+            N, num_task_types, num2str(belief_size));
+    end
+    init_belief_tensor = repmat(reshape(init_belief, [N, 1, num_task_types]), 1, M, 1);
+end
 
 %% ===== 计算全局时间同步（只调用一次）=====
 fprintf('计算时间同步...\n');
@@ -136,11 +174,23 @@ for i = 1:N
 end
 fprintf('\n');
 
+
+%% ===== 缁勮 viz_data =====
+
 %% ===== 组装 viz_data =====
 viz_data.N    = N;
 viz_data.M    = M;
 viz_data.K    = K;
 viz_data.seed = SEED;
+viz_data.algorithm_name = 'OCF_SAtabu';
+viz_data.world = WORLD;
+viz_data.world_bounds = struct( ...
+    'xmin', WORLD.XMIN, ...
+    'xmax', WORLD.XMAX, ...
+    'ymin', WORLD.YMIN, ...
+    'ymax', WORLD.YMAX ...
+);
+viz_data.task_type_values = scenario_cfg.task_values(:).';
 
 viz_data.agents = agents;   % struct array [1×N]
 viz_data.tasks  = tasks;    % struct array [1×M]
@@ -149,12 +199,25 @@ viz_data.final_SC                = final_SC;               % cell{M×1}，SC{m}=
 viz_data.timing                  = all_agents_results;     % struct array [1×N]      → 图5b
 viz_data.task_completion_degrees = task_completion_degrees; % [M×1]
 
+viz_data.init_belief_tensor = init_belief_tensor;
+
 convergence_utility = nan(num_r, 1);
+convergence_cost = nan(num_r, 1);
+convergence_completed_value = nan(num_r, 1);
+belief_history = nan(num_r, N, M, num_task_types);
 for r = 1:num_r
     convergence_utility(r) = history_data.rounds(r).coalition_utility;
+    convergence_cost(r) = history_data.rounds(r).total_global_cost;
+    convergence_completed_value(r) = history_data.rounds(r).total_completed_value;
+    if isfield(history_data.rounds(r), 'beliefs') && ~isempty(history_data.rounds(r).beliefs)
+        belief_history(r, :, :, :) = history_data.rounds(r).beliefs;
+    end
 end
 viz_data.convergence_utility   = convergence_utility;      % → 图5c
 viz_data.coalition_utility     = coalition_utility;
+viz_data.convergence_cost = convergence_cost;
+viz_data.convergence_completed_value = convergence_completed_value;
+viz_data.belief_history = belief_history;
 viz_data.total_global_cost     = total_global_cost;
 viz_data.total_completed_value = total_completed_value;
 viz_data.computation_time      = comp_time;

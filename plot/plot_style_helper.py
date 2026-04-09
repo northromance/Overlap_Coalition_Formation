@@ -8,6 +8,12 @@ from matplotlib import font_manager
 DEFAULT_SAVE_FORMATS = ("png", "eps")
 VECTOR_FORMATS = {"eps", "pdf", "ps", "svg"}
 CM_PER_INCH = 2.54
+FONT_SIZE_FALLBACK_KEYS = {
+    "subplot_title_fontsize": "title_fontsize",
+    "legend_title_fontsize": "legend_fontsize",
+    "colorbar_label_fontsize": "ylabel_fontsize",
+    "colorbar_tick_fontsize": "tick_fontsize",
+}
 
 
 def cm_to_inch(value_cm):
@@ -19,6 +25,13 @@ def cm_size_to_inch(size_cm):
         return None
     width_cm, height_cm = size_cm
     return cm_to_inch(width_cm), cm_to_inch(height_cm)
+
+
+def normalize_size_inch(size_value):
+    if size_value is None:
+        return None
+    width_in, height_in = size_value
+    return float(width_in), float(height_in)
 
 
 def sanitize_path_component(name, default="unnamed"):
@@ -75,10 +88,29 @@ class PlotStyleHelper:
                 merged[key] = value
         return merged
 
+    def resolve_fontsize(self, size_key, default=None, cfg=None):
+        merged = self._merge_cfg(cfg)
+        current_key = size_key
+        visited = set()
+
+        while current_key and current_key not in visited:
+            visited.add(current_key)
+            value = merged.get(current_key)
+            if value is not None:
+                return value
+            current_key = FONT_SIZE_FALLBACK_KEYS.get(current_key)
+
+        return default
+
     def apply_rcparams(self):
         font_family = self.plot_global.get('font_family')
         font_style = self.plot_global.get('font_style')
         font_weight = self.plot_global.get('font_weight')
+        base_fontsize = self.resolve_fontsize('tick_fontsize', cfg=self.plot_global)
+        title_fontsize = self.resolve_fontsize('title_fontsize', cfg=self.plot_global)
+        label_fontsize = self.resolve_fontsize('xlabel_fontsize', cfg=self.plot_global)
+        legend_fontsize = self.resolve_fontsize('legend_fontsize', cfg=self.plot_global)
+        legend_title_fontsize = self.resolve_fontsize('legend_title_fontsize', cfg=self.plot_global)
 
         if font_family:
             try:
@@ -101,14 +133,51 @@ class PlotStyleHelper:
         try:
             import matplotlib.pyplot as plt
             plt.rcParams['axes.unicode_minus'] = False
+            if base_fontsize is not None:
+                plt.rcParams['font.size'] = base_fontsize
+                plt.rcParams['xtick.labelsize'] = base_fontsize
+                plt.rcParams['ytick.labelsize'] = base_fontsize
+            if title_fontsize is not None:
+                plt.rcParams['axes.titlesize'] = title_fontsize
+                plt.rcParams['figure.titlesize'] = title_fontsize
+            if label_fontsize is not None:
+                plt.rcParams['axes.labelsize'] = label_fontsize
+            if legend_fontsize is not None:
+                plt.rcParams['legend.fontsize'] = legend_fontsize
+            if legend_title_fontsize is not None:
+                plt.rcParams['legend.title_fontsize'] = legend_title_fontsize
         except Exception:
             pass
+
+    def create_single_axis_figure(self, cfg=None, **subplot_kwargs):
+        merged = self._merge_cfg(cfg)
+
+        try:
+            import matplotlib.pyplot as plt
+        except Exception as exc:
+            raise RuntimeError("matplotlib.pyplot is required to create figures") from exc
+
+        figsize_in = normalize_size_inch(merged.get('figsize_in'))
+        if figsize_in is None:
+            figsize_in = cm_size_to_inch(merged.get('figsize_cm'))
+
+        fig, ax = plt.subplots(
+            figsize=figsize_in,
+            constrained_layout=bool(merged.get('constrained_layout', False)),
+            **subplot_kwargs,
+        )
+
+        axes_box_aspect = merged.get('axes_box_aspect')
+        if axes_box_aspect is not None and hasattr(ax, 'set_box_aspect'):
+            ax.set_box_aspect(float(axes_box_aspect))
+
+        return fig, ax
 
     def get_text_style(self, size_key, weight_key, default_size=None, default_weight='normal', cfg=None):
         merged = self._merge_cfg(cfg)
         style = {}
 
-        fontsize = merged.get(size_key, default_size)
+        fontsize = self.resolve_fontsize(size_key, default=default_size, cfg=merged)
         if fontsize is not None:
             style['fontsize'] = fontsize
 
@@ -185,11 +254,13 @@ class PlotStyleHelper:
         if xlabel is not None:
             ax.set_xlabel(
                 xlabel,
+                labelpad=merged.get('xlabel_pad'),
                 **self.get_text_style('xlabel_fontsize', 'label_fontweight', cfg=merged),
             )
         if ylabel is not None:
             ax.set_ylabel(
                 ylabel,
+                labelpad=merged.get('ylabel_pad'),
                 **self.get_text_style('ylabel_fontsize', 'label_fontweight', cfg=merged),
             )
 
@@ -209,7 +280,7 @@ class PlotStyleHelper:
                 alpha=merged.get('grid_alpha', 0.4),
             )
 
-        tick_fontsize = merged.get(tick_fontsize_key)
+        tick_fontsize = self.resolve_fontsize(tick_fontsize_key, cfg=merged)
         if tick_fontsize is not None:
             ax.tick_params(labelsize=tick_fontsize)
 
@@ -265,7 +336,12 @@ class PlotStyleHelper:
                     elif merged.get('legend_fontsize') is not None:
                         legend_kwargs['fontsize'] = merged.get('legend_fontsize')
 
-                ax.legend(**legend_kwargs)
+                legend = ax.legend(**legend_kwargs)
+                legend_cfg = merged
+                if legend_kwargs.get('fontsize') is not None:
+                    legend_cfg = dict(merged)
+                    legend_cfg['legend_fontsize'] = legend_kwargs['fontsize']
+                self.style_legend(legend, cfg=legend_cfg)
 
         self.apply_spine_style(ax, cfg=merged)
 
@@ -309,7 +385,13 @@ class PlotStyleHelper:
             elif merged.get('legend_fontsize') is not None:
                 legend_kwargs['fontsize'] = merged.get('legend_fontsize')
 
-        return fig.legend(handles, labels, **legend_kwargs)
+        legend = fig.legend(handles, labels, **legend_kwargs)
+        legend_cfg = merged
+        if legend_kwargs.get('fontsize') is not None:
+            legend_cfg = dict(merged)
+            legend_cfg['legend_fontsize'] = legend_kwargs['fontsize']
+        self.style_legend(legend, cfg=legend_cfg)
+        return legend
 
     def apply_colorbar_style(self, cbar, cfg=None, label=None):
         merged = self._merge_cfg(cfg)
@@ -317,10 +399,10 @@ class PlotStyleHelper:
         if label is not None:
             cbar.set_label(
                 label,
-                **self.get_text_style('ylabel_fontsize', 'label_fontweight', cfg=merged),
+                **self.get_text_style('colorbar_label_fontsize', 'label_fontweight', cfg=merged),
             )
 
-        tick_fontsize = merged.get('tick_fontsize')
+        tick_fontsize = self.resolve_fontsize('colorbar_tick_fontsize', cfg=merged)
         if tick_fontsize is not None:
             cbar.ax.tick_params(labelsize=tick_fontsize)
 
@@ -338,6 +420,40 @@ class PlotStyleHelper:
 
         self.apply_spine_style(cbar.ax, cfg=merged)
 
+    def style_legend(self, legend, cfg=None):
+        if legend is None:
+            return None
+
+        merged = self._merge_cfg(cfg)
+        label_fontsize = self.resolve_fontsize('legend_fontsize', cfg=merged)
+        title_fontsize = self.resolve_fontsize('legend_title_fontsize', cfg=merged)
+        font_family = merged.get('font_family')
+        font_style = merged.get('font_style')
+        font_weight = merged.get('legend_fontweight')
+
+        for text in legend.get_texts():
+            if label_fontsize is not None:
+                text.set_fontsize(label_fontsize)
+            if font_family:
+                text.set_fontfamily(font_family)
+            if font_style:
+                text.set_fontstyle(font_style)
+            if font_weight:
+                text.set_fontweight(font_weight)
+
+        title = legend.get_title()
+        if title is not None:
+            if title_fontsize is not None:
+                title.set_fontsize(title_fontsize)
+            if font_family:
+                title.set_fontfamily(font_family)
+            if font_style:
+                title.set_fontstyle(font_style)
+            if font_weight:
+                title.set_fontweight(font_weight)
+
+        return legend
+
     def apply_axis_controls(self, ax, cfg=None, fixed_values=None, fixed_locator_key=None):
         cfg = self._merge_cfg(cfg)
 
@@ -354,13 +470,23 @@ class PlotStyleHelper:
         if cfg.get('ylim') is not None:
             ax.set_ylim(*cfg['ylim'])
 
+        if cfg.get('left_zero', False) and cfg.get('xlim') is None:
+            _, xmax = ax.get_xlim()
+            ax.set_xlim(left=0, right=xmax)
+
         if cfg.get('bottom_zero', False) and cfg.get('ylim') is None:
             _, ymax = ax.get_ylim()
             ax.set_ylim(bottom=0, top=ymax)
 
     def finalize_and_save(self, fig, save_path, tight_layout_rect=None, cfg=None):
         merged = self._merge_cfg(cfg)
-        if merged.get('tight_layout', False):
+        constrained_layout_active = False
+        try:
+            constrained_layout_active = bool(fig.get_constrained_layout())
+        except Exception:
+            constrained_layout_active = False
+
+        if merged.get('tight_layout', False) and not constrained_layout_active:
             if tight_layout_rect is None:
                 fig.tight_layout()
             else:
@@ -376,8 +502,13 @@ class PlotStyleHelper:
             output_path = f'{save_stem}.{ext}'
             save_kwargs = {
                 'format': ext,
-                'bbox_inches': merged.get('save_bbox_inches', 'tight'),
             }
+            save_bbox_inches = merged.get('save_bbox_inches')
+            if save_bbox_inches is not None:
+                save_kwargs['bbox_inches'] = save_bbox_inches
+                save_pad_inches = merged.get('save_pad_inches')
+                if save_pad_inches is not None:
+                    save_kwargs['pad_inches'] = save_pad_inches
             if ext not in VECTOR_FORMATS:
                 save_kwargs['dpi'] = merged.get('save_dpi', 150)
             fig.savefig(output_path, **save_kwargs)
@@ -429,7 +560,7 @@ class PlotStyleHelper:
         family = plot_global.get('font_family')
         style = plot_global.get('font_style')
         weight = plot_global.get('legend_fontweight')
-        size = plot_global.get('legend_fontsize')
+        size = self.resolve_fontsize('legend_fontsize', cfg=plot_global)
 
         if not any(v is not None for v in (family, style, weight, size)):
             return None

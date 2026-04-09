@@ -6,7 +6,7 @@
 % 实验专属参数（SEEDS、N_VALUES、algorithms_to_run_ids 等）仍在各脚本中单独设置。
 
 %% ===== 通用超参数 =====
-num_rounds = 80;   % 外循环轮数（正式运行值；测试时在各脚本中覆盖此变量）
+num_rounds = 100;   % 外循环轮数（正式运行值；测试时在各脚本中覆盖此变量）
 MaxIter    = 80;   % 每轮最大内层迭代次数
 obs_times  = 50;    % 效用/观测统计参数（传入 OCFUtils.init_value_params）
 xp_Config = struct();
@@ -40,11 +40,11 @@ Shi_Gamma_max    = 40;   % Shi2024 最大 Boltzmann 系数
 Shi_p_leave      = 0.4;  % Shi2024 离开概率
 
 %% ===== OCF_SAtabu 专属参数 =====
-OCF_T0_round            = 130;   % OCF_SAtabu 每轮开始时的初始温度
+OCF_T0_round            = 100;   % OCF_SAtabu 每轮开始时的初始温度
 OCF_alpha               = 0.95;   % OCF_SAtabu 轮内退火冷却率
 OCF_Tmin                = 0.01;  % OCF_SAtabu 轮内最低温度
-OCF_T_decay             = 0.95;   % OCF_SAtabu 轮间温度衰减系数
-OCF_T_min_round         = 15;     % OCF_SAtabu 每轮初始温度下界
+OCF_T_decay             = 0.9;   % OCF_SAtabu 轮间温度衰减系数
+OCF_T_min_round         = 2;     % OCF_SAtabu 每轮初始温度下界
 OCF_T_init_construction = 2;     % OCF_SAtabu 初始构造温度
 OCF_K_stable_max        = 10;    % OCF_SAtabu 稳定性阈值
 OCF_tabu_tenure         = 5;    % OCF_SAtabu 禁忌期限
@@ -217,9 +217,9 @@ Exp_Config.Ablation.AddPara = struct( ...
     'control', 1);
 
 % Single_Viz
-Exp_Config.SingleViz.SEED = Exp_Config.Common.SEEDS(2);
-Exp_Config.SingleViz.N = 10;
-Exp_Config.SingleViz.M = 10;
+Exp_Config.SingleViz.SEED = Exp_Config.Common.SEEDS(5);
+Exp_Config.SingleViz.N = 5;
+Exp_Config.SingleViz.M = 8;
 Exp_Config.SingleViz.K = 6;
 Exp_Config.SingleViz.AddPara = struct( ...
     'verbose', 1, ...

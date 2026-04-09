@@ -1,0 +1,50 @@
+{
+  "metadata": {
+    "source_path": "e:\\Overlap_Coalition_Formation\\results\\batch\\ablation\\20260330_190655_N6-6_M10_K6_C3_S3",
+    "source_type": "run_dir",
+    "run_name": "20260330_190655_N6-6_M10_K6_C3_S3",
+    "output_dir": "e:\\Overlap_Coalition_Formation\\results\\figs\\ablation\\20260330_190655_N6-6_M10_K6_C3_S3",
+    "fixed_M": 10,
+    "num_rounds": 40,
+    "all_conditions": [
+      "belief_off",
+      "belief_on_quantile",
+      "belief_on_expected"
+    ],
+    "exported_conditions": [
+      "belief_on_quantile",
+      "belief_off"
+    ],
+    "comparison": {
+      "belief_condition": "belief_on_quantile",
+      "baseline_condition": "belief_off"
+    },
+    "formulas": {
+      "delta_utility_pct": "((U_belief - U_no_belief) / U_no_belief) * 100, where U_belief=belief_on_quantile utility mean and U_no_belief=belief_off utility mean",
+      "delta_completion_abs": "CR_belief - CR_no_belief, where CR_belief=belief_on_quantile completion mean and CR_no_belief=belief_off completion mean"
+    }
+  },
+  "summary_by_N": [
+    {
+      "N": 6,
+      "paired_seed_count": 3,
+      "belief_on_quantile": {
+        "utility_mean": 7164.451036352883,
+        "utility_std": 217.66118632167573,
+        "completion_mean": 0.7697253086419753,
+        "completion_std": 0.11226739717737914
+      },
+      "belief_off": {
+        "utility_mean": 3787.502840256513,
+        "utility_std": 366.46812508915855,
+        "completion_mean": 0.5410246913580247,
+        "completion_std": 0.15235352266860155
+      },
+      "comparison": {
+        "delta_utility_abs": 3376.9481960963703,
+        "delta_utility_pct": 89.16028155024863,
+        "delta_completion_abs": 0.22870061728395064
+      }
+    }
+  ]
+}

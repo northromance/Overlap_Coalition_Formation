@@ -1,0 +1,112 @@
+{
+  "metadata": {
+    "source_path": "e:\\Overlap_Coalition_Formation\\results\\batch\\ablation\\20260330_194746_N4-15_M15_K6_C2_S51",
+    "source_type": "run_dir",
+    "run_name": "20260330_194746_N4-15_M15_K6_C2_S51",
+    "output_dir": "e:\\Overlap_Coalition_Formation\\results\\figs\\ablation\\20260330_194746_N4-15_M15_K6_C2_S51",
+    "fixed_M": 15,
+    "num_rounds": 80,
+    "all_conditions": [
+      "belief_off",
+      "belief_on_quantile"
+    ],
+    "exported_conditions": [
+      "belief_on_quantile",
+      "belief_off"
+    ],
+    "comparison": {
+      "belief_condition": "belief_on_quantile",
+      "baseline_condition": "belief_off"
+    },
+    "formulas": {
+      "delta_utility_pct": "((U_belief - U_no_belief) / U_no_belief) * 100, where U_belief=belief_on_quantile utility mean and U_no_belief=belief_off utility mean",
+      "delta_completion_abs": "CR_belief - CR_no_belief, where CR_belief=belief_on_quantile completion mean and CR_no_belief=belief_off completion mean"
+    }
+  },
+  "summary_by_N": [
+    {
+      "N": 4,
+      "paired_seed_count": 51,
+      "belief_on_quantile": {
+        "utility_mean": 6221.130025627552,
+        "utility_std": 1668.8697739795011,
+        "completion_mean": 0.4635829961614275,
+        "completion_std": 0.0904248454677376
+      },
+      "belief_off": {
+        "utility_mean": 4504.9892819658635,
+        "utility_std": 1424.5057286414346,
+        "completion_mean": 0.41858265898952185,
+        "completion_std": 0.0844196149265935
+      },
+      "comparison": {
+        "delta_utility_abs": 1716.1407436616882,
+        "delta_utility_pct": 38.094224786097776,
+        "delta_completion_abs": 0.04500033717190566
+      }
+    },
+    {
+      "N": 8,
+      "paired_seed_count": 51,
+      "belief_on_quantile": {
+        "utility_mean": 9244.009544943565,
+        "utility_std": 1719.3027596477789,
+        "completion_mean": 0.7255323685029567,
+        "completion_std": 0.07844517798179623
+      },
+      "belief_off": {
+        "utility_mean": 6207.881133431129,
+        "utility_std": 1756.3262105875128,
+        "completion_mean": 0.604076563958917,
+        "completion_std": 0.09960487536883961
+      },
+      "comparison": {
+        "delta_utility_abs": 3036.1284115124363,
+        "delta_utility_pct": 48.90764411003392,
+        "delta_completion_abs": 0.1214558045440397
+      }
+    },
+    {
+      "N": 12,
+      "paired_seed_count": 51,
+      "belief_on_quantile": {
+        "utility_mean": 10514.64373746293,
+        "utility_std": 1769.4351674092782,
+        "completion_mean": 0.8409272227409483,
+        "completion_std": 0.06421585799682948
+      },
+      "belief_off": {
+        "utility_mean": 6454.229777640945,
+        "utility_std": 1973.7256599253883,
+        "completion_mean": 0.6573362900715841,
+        "completion_std": 0.1022855720232191
+      },
+      "comparison": {
+        "delta_utility_abs": 4060.4139598219845,
+        "delta_utility_pct": 62.91089873943234,
+        "delta_completion_abs": 0.18359093266936422
+      }
+    },
+    {
+      "N": 15,
+      "paired_seed_count": 51,
+      "belief_on_quantile": {
+        "utility_mean": 10767.311828174514,
+        "utility_std": 2049.2673454908145,
+        "completion_mean": 0.8774261852889303,
+        "completion_std": 0.06532888450824553
+      },
+      "belief_off": {
+        "utility_mean": 6372.142207392922,
+        "utility_std": 2028.740355273235,
+        "completion_mean": 0.6645078327627347,
+        "completion_std": 0.10729834373365943
+      },
+      "comparison": {
+        "delta_utility_abs": 4395.169620781592,
+        "delta_utility_pct": 68.97475727522752,
+        "delta_completion_abs": 0.21291835252619562
+      }
+    }
+  ]
+}
