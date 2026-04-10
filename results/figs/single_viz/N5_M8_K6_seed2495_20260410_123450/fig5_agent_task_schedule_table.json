@@ -1,0 +1,1297 @@
+{
+  "source_mat_path": "e:\\Overlap_Coalition_Formation\\results\\batch\\visualize\\N5_M8_K6_seed2495_20260410_123450.mat",
+  "output_dir": "e:\\Overlap_Coalition_Formation\\results\\figs\\single_viz\\N5_M8_K6_seed2495_20260410_123450",
+  "dimensions": {
+    "N": 5,
+    "M": 8,
+    "K": 6
+  },
+  "table": {
+    "name": "agent_task_schedule_with_carry_demand",
+    "task_order_rule": "priority_desc_then_task_id_asc",
+    "resource_labels": [
+      "R1",
+      "R2",
+      "R3",
+      "R4",
+      "R5",
+      "R6"
+    ],
+    "columns": [
+      {
+        "task_id": 4,
+        "task_label": "T4",
+        "task_priority": 8,
+        "task_value": 1000,
+        "header_text": "T4 (P8, V1000)"
+      },
+      {
+        "task_id": 6,
+        "task_label": "T6",
+        "task_priority": 7,
+        "task_value": 500,
+        "header_text": "T6 (P7, V500)"
+      },
+      {
+        "task_id": 1,
+        "task_label": "T1",
+        "task_priority": 6,
+        "task_value": 500,
+        "header_text": "T1 (P6, V500)"
+      },
+      {
+        "task_id": 2,
+        "task_label": "T2",
+        "task_priority": 5,
+        "task_value": 2000,
+        "header_text": "T2 (P5, V2000)"
+      },
+      {
+        "task_id": 8,
+        "task_label": "T8",
+        "task_priority": 4,
+        "task_value": 500,
+        "header_text": "T8 (P4, V500)"
+      },
+      {
+        "task_id": 7,
+        "task_label": "T7",
+        "task_priority": 3,
+        "task_value": 500,
+        "header_text": "T7 (P3, V500)"
+      },
+      {
+        "task_id": 3,
+        "task_label": "T3",
+        "task_priority": 2,
+        "task_value": 500,
+        "header_text": "T3 (P2, V500)"
+      },
+      {
+        "task_id": 5,
+        "task_label": "T5",
+        "task_priority": 1,
+        "task_value": 2000,
+        "header_text": "T5 (P1, V2000)"
+      }
+    ],
+    "agents": [
+      {
+        "agent_id": 1,
+        "agent_label": "A1",
+        "capacity_vector": [
+          2,
+          0,
+          2,
+          1,
+          1,
+          2
+        ],
+        "capacity_text_plain": "2,0,2,1,1,2",
+        "capacity_text_bracketed": "[2,0,2,1,1,2]",
+        "cells": [
+          {
+            "task_id": 4,
+            "executed": false,
+            "allocation_vector_raw": [
+              0,
+              0,
+              0,
+              0,
+              0,
+              0
+            ],
+            "allocation_vector": null,
+            "allocation_text": "--",
+            "start_time": null,
+            "end_time": null,
+            "execution_time": null,
+            "start_text": "--",
+            "end_text": "--"
+          },
+          {
+            "task_id": 6,
+            "executed": true,
+            "allocation_vector_raw": [
+              2,
+              0,
+              2,
+              0,
+              0,
+              0
+            ],
+            "allocation_vector": [
+              2,
+              0,
+              2,
+              0,
+              0,
+              0
+            ],
+            "allocation_text": "[2,0,2,0,0,0]",
+            "start_time": 34.677081768799404,
+            "end_time": 84.67708176879941,
+            "execution_time": 50.0,
+            "start_text": "34.7",
+            "end_text": "84.7"
+          },
+          {
+            "task_id": 1,
+            "executed": false,
+            "allocation_vector_raw": [
+              0,
+              0,
+              0,
+              0,
+              0,
+              0
+            ],
+            "allocation_vector": null,
+            "allocation_text": "--",
+            "start_time": null,
+            "end_time": null,
+            "execution_time": null,
+            "start_text": "--",
+            "end_text": "--"
+          },
+          {
+            "task_id": 2,
+            "executed": false,
+            "allocation_vector_raw": [
+              0,
+              0,
+              0,
+              0,
+              0,
+              0
+            ],
+            "allocation_vector": null,
+            "allocation_text": "--",
+            "start_time": null,
+            "end_time": null,
+            "execution_time": null,
+            "start_text": "--",
+            "end_text": "--"
+          },
+          {
+            "task_id": 8,
+            "executed": true,
+            "allocation_vector_raw": [
+              2,
+              0,
+              2,
+              0,
+              0,
+              0
+            ],
+            "allocation_vector": [
+              2,
+              0,
+              2,
+              0,
+              0,
+              0
+            ],
+            "allocation_text": "[2,0,2,0,0,0]",
+            "start_time": 107.17708176879941,
+            "end_time": 157.1770817687994,
+            "execution_time": 50.0,
+            "start_text": "107.2",
+            "end_text": "157.2"
+          },
+          {
+            "task_id": 7,
+            "executed": false,
+            "allocation_vector_raw": [
+              0,
+              0,
+              0,
+              0,
+              0,
+              0
+            ],
+            "allocation_vector": null,
+            "allocation_text": "--",
+            "start_time": null,
+            "end_time": null,
+            "execution_time": null,
+            "start_text": "--",
+            "end_text": "--"
+          },
+          {
+            "task_id": 3,
+            "executed": true,
+            "allocation_vector_raw": [
+              2,
+              0,
+              0,
+              0,
+              1,
+              0
+            ],
+            "allocation_vector": [
+              2,
+              0,
+              0,
+              0,
+              1,
+              0
+            ],
+            "allocation_text": "[2,0,0,0,1,0]",
+            "start_time": 230.86387635863704,
+            "end_time": 280.86387635863707,
+            "execution_time": 50.0,
+            "start_text": "230.9",
+            "end_text": "280.9"
+          },
+          {
+            "task_id": 5,
+            "executed": false,
+            "allocation_vector_raw": [
+              0,
+              0,
+              0,
+              0,
+              0,
+              0
+            ],
+            "allocation_vector": null,
+            "allocation_text": "--",
+            "start_time": null,
+            "end_time": null,
+            "execution_time": null,
+            "start_text": "--",
+            "end_text": "--"
+          }
+        ]
+      },
+      {
+        "agent_id": 2,
+        "agent_label": "A2",
+        "capacity_vector": [
+          2,
+          1,
+          4,
+          1,
+          4,
+          1
+        ],
+        "capacity_text_plain": "2,1,4,1,4,1",
+        "capacity_text_bracketed": "[2,1,4,1,4,1]",
+        "cells": [
+          {
+            "task_id": 4,
+            "executed": false,
+            "allocation_vector_raw": [
+              0,
+              0,
+              0,
+              0,
+              0,
+              0
+            ],
+            "allocation_vector": null,
+            "allocation_text": "--",
+            "start_time": null,
+            "end_time": null,
+            "execution_time": null,
+            "start_text": "--",
+            "end_text": "--"
+          },
+          {
+            "task_id": 6,
+            "executed": true,
+            "allocation_vector_raw": [
+              0,
+              0,
+              0,
+              0,
+              4,
+              0
+            ],
+            "allocation_vector": [
+              0,
+              0,
+              0,
+              0,
+              4,
+              0
+            ],
+            "allocation_text": "[0,0,0,0,4,0]",
+            "start_time": 34.677081768799404,
+            "end_time": 84.67708176879941,
+            "execution_time": 35.0,
+            "start_text": "34.7",
+            "end_text": "84.7"
+          },
+          {
+            "task_id": 1,
+            "executed": false,
+            "allocation_vector_raw": [
+              0,
+              0,
+              0,
+              0,
+              0,
+              0
+            ],
+            "allocation_vector": null,
+            "allocation_text": "--",
+            "start_time": null,
+            "end_time": null,
+            "execution_time": null,
+            "start_text": "--",
+            "end_text": "--"
+          },
+          {
+            "task_id": 2,
+            "executed": false,
+            "allocation_vector_raw": [
+              0,
+              0,
+              0,
+              0,
+              0,
+              0
+            ],
+            "allocation_vector": null,
+            "allocation_text": "--",
+            "start_time": null,
+            "end_time": null,
+            "execution_time": null,
+            "start_text": "--",
+            "end_text": "--"
+          },
+          {
+            "task_id": 8,
+            "executed": true,
+            "allocation_vector_raw": [
+              0,
+              0,
+              0,
+              0,
+              4,
+              0
+            ],
+            "allocation_vector": [
+              0,
+              0,
+              0,
+              0,
+              4,
+              0
+            ],
+            "allocation_text": "[0,0,0,0,4,0]",
+            "start_time": 107.17708176879941,
+            "end_time": 157.1770817687994,
+            "execution_time": 35.0,
+            "start_text": "107.2",
+            "end_text": "157.2"
+          },
+          {
+            "task_id": 7,
+            "executed": true,
+            "allocation_vector_raw": [
+              2,
+              0,
+              4,
+              0,
+              4,
+              0
+            ],
+            "allocation_vector": [
+              2,
+              0,
+              4,
+              0,
+              4,
+              0
+            ],
+            "allocation_text": "[2,0,4,0,4,0]",
+            "start_time": 180.33955141260034,
+            "end_time": 230.33955141260034,
+            "execution_time": 50.0,
+            "start_text": "180.3",
+            "end_text": "230.3"
+          },
+          {
+            "task_id": 3,
+            "executed": false,
+            "allocation_vector_raw": [
+              0,
+              0,
+              0,
+              0,
+              0,
+              0
+            ],
+            "allocation_vector": null,
+            "allocation_text": "--",
+            "start_time": null,
+            "end_time": null,
+            "execution_time": null,
+            "start_text": "--",
+            "end_text": "--"
+          },
+          {
+            "task_id": 5,
+            "executed": true,
+            "allocation_vector_raw": [
+              2,
+              1,
+              4,
+              1,
+              4,
+              1
+            ],
+            "allocation_vector": [
+              2,
+              1,
+              4,
+              1,
+              4,
+              1
+            ],
+            "allocation_text": "[2,1,4,1,4,1]",
+            "start_time": 232.57561939010014,
+            "end_time": 297.57561939010014,
+            "execution_time": 65.0,
+            "start_text": "232.6",
+            "end_text": "297.6"
+          }
+        ]
+      },
+      {
+        "agent_id": 3,
+        "agent_label": "A3",
+        "capacity_vector": [
+          4,
+          1,
+          1,
+          2,
+          0,
+          2
+        ],
+        "capacity_text_plain": "4,1,1,2,0,2",
+        "capacity_text_bracketed": "[4,1,1,2,0,2]",
+        "cells": [
+          {
+            "task_id": 4,
+            "executed": true,
+            "allocation_vector_raw": [
+              4,
+              0,
+              1,
+              2,
+              0,
+              2
+            ],
+            "allocation_vector": [
+              4,
+              0,
+              1,
+              2,
+              0,
+              2
+            ],
+            "allocation_text": "[4,0,1,2,0,2]",
+            "start_time": 31.34086788842964,
+            "end_time": 96.34086788842964,
+            "execution_time": 60.0,
+            "start_text": "31.3",
+            "end_text": "96.3"
+          },
+          {
+            "task_id": 6,
+            "executed": false,
+            "allocation_vector_raw": [
+              0,
+              0,
+              0,
+              0,
+              0,
+              0
+            ],
+            "allocation_vector": null,
+            "allocation_text": "--",
+            "start_time": null,
+            "end_time": null,
+            "execution_time": null,
+            "start_text": "--",
+            "end_text": "--"
+          },
+          {
+            "task_id": 1,
+            "executed": false,
+            "allocation_vector_raw": [
+              0,
+              0,
+              0,
+              0,
+              0,
+              0
+            ],
+            "allocation_vector": null,
+            "allocation_text": "--",
+            "start_time": null,
+            "end_time": null,
+            "execution_time": null,
+            "start_text": "--",
+            "end_text": "--"
+          },
+          {
+            "task_id": 2,
+            "executed": true,
+            "allocation_vector_raw": [
+              0,
+              1,
+              1,
+              2,
+              0,
+              2
+            ],
+            "allocation_vector": [
+              0,
+              1,
+              1,
+              2,
+              0,
+              2
+            ],
+            "allocation_text": "[0,1,1,2,0,2]",
+            "start_time": 137.48694911131162,
+            "end_time": 202.48694911131162,
+            "execution_time": 65.0,
+            "start_text": "137.5",
+            "end_text": "202.5"
+          },
+          {
+            "task_id": 8,
+            "executed": false,
+            "allocation_vector_raw": [
+              0,
+              0,
+              0,
+              0,
+              0,
+              0
+            ],
+            "allocation_vector": null,
+            "allocation_text": "--",
+            "start_time": null,
+            "end_time": null,
+            "execution_time": null,
+            "start_text": "--",
+            "end_text": "--"
+          },
+          {
+            "task_id": 7,
+            "executed": false,
+            "allocation_vector_raw": [
+              0,
+              0,
+              0,
+              0,
+              0,
+              0
+            ],
+            "allocation_vector": null,
+            "allocation_text": "--",
+            "start_time": null,
+            "end_time": null,
+            "execution_time": null,
+            "start_text": "--",
+            "end_text": "--"
+          },
+          {
+            "task_id": 3,
+            "executed": false,
+            "allocation_vector_raw": [
+              0,
+              0,
+              0,
+              0,
+              0,
+              0
+            ],
+            "allocation_vector": null,
+            "allocation_text": "--",
+            "start_time": null,
+            "end_time": null,
+            "execution_time": null,
+            "start_text": "--",
+            "end_text": "--"
+          },
+          {
+            "task_id": 5,
+            "executed": true,
+            "allocation_vector_raw": [
+              0,
+              1,
+              0,
+              0,
+              0,
+              2
+            ],
+            "allocation_vector": [
+              0,
+              1,
+              0,
+              0,
+              0,
+              2
+            ],
+            "allocation_text": "[0,1,0,0,0,2]",
+            "start_time": 232.57561939010014,
+            "end_time": 297.57561939010014,
+            "execution_time": 65.0,
+            "start_text": "232.6",
+            "end_text": "297.6"
+          }
+        ]
+      },
+      {
+        "agent_id": 4,
+        "agent_label": "A4",
+        "capacity_vector": [
+          0,
+          2,
+          3,
+          0,
+          1,
+          0
+        ],
+        "capacity_text_plain": "0,2,3,0,1,0",
+        "capacity_text_bracketed": "[0,2,3,0,1,0]",
+        "cells": [
+          {
+            "task_id": 4,
+            "executed": true,
+            "allocation_vector_raw": [
+              0,
+              2,
+              0,
+              0,
+              0,
+              0
+            ],
+            "allocation_vector": [
+              0,
+              2,
+              0,
+              0,
+              0,
+              0
+            ],
+            "allocation_text": "[0,2,0,0,0,0]",
+            "start_time": 31.34086788842964,
+            "end_time": 96.34086788842964,
+            "execution_time": 65.0,
+            "start_text": "31.3",
+            "end_text": "96.3"
+          },
+          {
+            "task_id": 6,
+            "executed": false,
+            "allocation_vector_raw": [
+              0,
+              0,
+              0,
+              0,
+              0,
+              0
+            ],
+            "allocation_vector": null,
+            "allocation_text": "--",
+            "start_time": null,
+            "end_time": null,
+            "execution_time": null,
+            "start_text": "--",
+            "end_text": "--"
+          },
+          {
+            "task_id": 1,
+            "executed": false,
+            "allocation_vector_raw": [
+              0,
+              0,
+              0,
+              0,
+              0,
+              0
+            ],
+            "allocation_vector": null,
+            "allocation_text": "--",
+            "start_time": null,
+            "end_time": null,
+            "execution_time": null,
+            "start_text": "--",
+            "end_text": "--"
+          },
+          {
+            "task_id": 2,
+            "executed": true,
+            "allocation_vector_raw": [
+              0,
+              2,
+              3,
+              0,
+              1,
+              0
+            ],
+            "allocation_vector": [
+              0,
+              2,
+              3,
+              0,
+              1,
+              0
+            ],
+            "allocation_text": "[0,2,3,0,1,0]",
+            "start_time": 137.48694911131162,
+            "end_time": 202.48694911131162,
+            "execution_time": 65.0,
+            "start_text": "137.5",
+            "end_text": "202.5"
+          },
+          {
+            "task_id": 8,
+            "executed": false,
+            "allocation_vector_raw": [
+              0,
+              0,
+              0,
+              0,
+              0,
+              0
+            ],
+            "allocation_vector": null,
+            "allocation_text": "--",
+            "start_time": null,
+            "end_time": null,
+            "execution_time": null,
+            "start_text": "--",
+            "end_text": "--"
+          },
+          {
+            "task_id": 7,
+            "executed": false,
+            "allocation_vector_raw": [
+              0,
+              0,
+              0,
+              0,
+              0,
+              0
+            ],
+            "allocation_vector": null,
+            "allocation_text": "--",
+            "start_time": null,
+            "end_time": null,
+            "execution_time": null,
+            "start_text": "--",
+            "end_text": "--"
+          },
+          {
+            "task_id": 3,
+            "executed": true,
+            "allocation_vector_raw": [
+              0,
+              0,
+              3,
+              0,
+              1,
+              0
+            ],
+            "allocation_vector": [
+              0,
+              0,
+              3,
+              0,
+              1,
+              0
+            ],
+            "allocation_text": "[0,0,3,0,1,0]",
+            "start_time": 230.86387635863704,
+            "end_time": 280.86387635863707,
+            "execution_time": 50.0,
+            "start_text": "230.9",
+            "end_text": "280.9"
+          },
+          {
+            "task_id": 5,
+            "executed": false,
+            "allocation_vector_raw": [
+              0,
+              0,
+              0,
+              0,
+              0,
+              0
+            ],
+            "allocation_vector": null,
+            "allocation_text": "--",
+            "start_time": null,
+            "end_time": null,
+            "execution_time": null,
+            "start_text": "--",
+            "end_text": "--"
+          }
+        ]
+      },
+      {
+        "agent_id": 5,
+        "agent_label": "A5",
+        "capacity_vector": [
+          2,
+          4,
+          3,
+          2,
+          3,
+          1
+        ],
+        "capacity_text_plain": "2,4,3,2,3,1",
+        "capacity_text_bracketed": "[2,4,3,2,3,1]",
+        "cells": [
+          {
+            "task_id": 4,
+            "executed": false,
+            "allocation_vector_raw": [
+              0,
+              0,
+              0,
+              0,
+              0,
+              0
+            ],
+            "allocation_vector": null,
+            "allocation_text": "--",
+            "start_time": null,
+            "end_time": null,
+            "execution_time": null,
+            "start_text": "--",
+            "end_text": "--"
+          },
+          {
+            "task_id": 6,
+            "executed": false,
+            "allocation_vector_raw": [
+              0,
+              0,
+              0,
+              0,
+              0,
+              0
+            ],
+            "allocation_vector": null,
+            "allocation_text": "--",
+            "start_time": null,
+            "end_time": null,
+            "execution_time": null,
+            "start_text": "--",
+            "end_text": "--"
+          },
+          {
+            "task_id": 1,
+            "executed": true,
+            "allocation_vector_raw": [
+              2,
+              0,
+              3,
+              0,
+              3,
+              0
+            ],
+            "allocation_vector": [
+              2,
+              0,
+              3,
+              0,
+              3,
+              0
+            ],
+            "allocation_text": "[2,0,3,0,3,0]",
+            "start_time": 16.15549442140351,
+            "end_time": 66.15549442140352,
+            "execution_time": 50.0,
+            "start_text": "16.2",
+            "end_text": "66.2"
+          },
+          {
+            "task_id": 2,
+            "executed": true,
+            "allocation_vector_raw": [
+              2,
+              4,
+              3,
+              0,
+              3,
+              0
+            ],
+            "allocation_vector": [
+              2,
+              4,
+              3,
+              0,
+              3,
+              0
+            ],
+            "allocation_text": "[2,4,3,0,3,0]",
+            "start_time": 137.48694911131162,
+            "end_time": 202.48694911131162,
+            "execution_time": 65.0,
+            "start_text": "137.5",
+            "end_text": "202.5"
+          },
+          {
+            "task_id": 8,
+            "executed": false,
+            "allocation_vector_raw": [
+              0,
+              0,
+              0,
+              0,
+              0,
+              0
+            ],
+            "allocation_vector": null,
+            "allocation_text": "--",
+            "start_time": null,
+            "end_time": null,
+            "execution_time": null,
+            "start_text": "--",
+            "end_text": "--"
+          },
+          {
+            "task_id": 7,
+            "executed": false,
+            "allocation_vector_raw": [
+              0,
+              0,
+              0,
+              0,
+              0,
+              0
+            ],
+            "allocation_vector": null,
+            "allocation_text": "--",
+            "start_time": null,
+            "end_time": null,
+            "execution_time": null,
+            "start_text": "--",
+            "end_text": "--"
+          },
+          {
+            "task_id": 3,
+            "executed": false,
+            "allocation_vector_raw": [
+              0,
+              0,
+              0,
+              0,
+              0,
+              0
+            ],
+            "allocation_vector": null,
+            "allocation_text": "--",
+            "start_time": null,
+            "end_time": null,
+            "execution_time": null,
+            "start_text": "--",
+            "end_text": "--"
+          },
+          {
+            "task_id": 5,
+            "executed": true,
+            "allocation_vector_raw": [
+              0,
+              4,
+              3,
+              0,
+              3,
+              1
+            ],
+            "allocation_vector": [
+              0,
+              4,
+              3,
+              0,
+              3,
+              1
+            ],
+            "allocation_text": "[0,4,3,0,3,1]",
+            "start_time": 232.57561939010014,
+            "end_time": 297.57561939010014,
+            "execution_time": 65.0,
+            "start_text": "232.6",
+            "end_text": "297.6"
+          }
+        ]
+      }
+    ],
+    "summary_rows": {
+      "demand": [
+        {
+          "task_id": 4,
+          "task_label": "T4",
+          "vector": [
+            3,
+            2,
+            1,
+            4,
+            0,
+            2
+          ],
+          "text": "[3,2,1,4,0,2]"
+        },
+        {
+          "task_id": 6,
+          "task_label": "T6",
+          "vector": [
+            2,
+            0,
+            1,
+            0,
+            2,
+            0
+          ],
+          "text": "[2,0,1,0,2,0]"
+        },
+        {
+          "task_id": 1,
+          "task_label": "T1",
+          "vector": [
+            2,
+            0,
+            1,
+            0,
+            2,
+            0
+          ],
+          "text": "[2,0,1,0,2,0]"
+        },
+        {
+          "task_id": 2,
+          "task_label": "T2",
+          "vector": [
+            1,
+            7,
+            7,
+            1,
+            6,
+            4
+          ],
+          "text": "[1,7,7,1,6,4]"
+        },
+        {
+          "task_id": 8,
+          "task_label": "T8",
+          "vector": [
+            2,
+            0,
+            1,
+            0,
+            2,
+            0
+          ],
+          "text": "[2,0,1,0,2,0]"
+        },
+        {
+          "task_id": 7,
+          "task_label": "T7",
+          "vector": [
+            2,
+            0,
+            1,
+            0,
+            2,
+            0
+          ],
+          "text": "[2,0,1,0,2,0]"
+        },
+        {
+          "task_id": 3,
+          "task_label": "T3",
+          "vector": [
+            2,
+            0,
+            1,
+            0,
+            2,
+            0
+          ],
+          "text": "[2,0,1,0,2,0]"
+        },
+        {
+          "task_id": 5,
+          "task_label": "T5",
+          "vector": [
+            1,
+            7,
+            7,
+            1,
+            6,
+            4
+          ],
+          "text": "[1,7,7,1,6,4]"
+        }
+      ],
+      "allocated": [
+        {
+          "task_id": 4,
+          "task_label": "T4",
+          "vector": [
+            4,
+            2,
+            1,
+            2,
+            0,
+            2
+          ],
+          "text": "[4,2,1,2,0,2]"
+        },
+        {
+          "task_id": 6,
+          "task_label": "T6",
+          "vector": [
+            2,
+            0,
+            2,
+            0,
+            4,
+            0
+          ],
+          "text": "[2,0,2,0,4,0]"
+        },
+        {
+          "task_id": 1,
+          "task_label": "T1",
+          "vector": [
+            2,
+            0,
+            3,
+            0,
+            3,
+            0
+          ],
+          "text": "[2,0,3,0,3,0]"
+        },
+        {
+          "task_id": 2,
+          "task_label": "T2",
+          "vector": [
+            2,
+            7,
+            7,
+            2,
+            4,
+            2
+          ],
+          "text": "[2,7,7,2,4,2]"
+        },
+        {
+          "task_id": 8,
+          "task_label": "T8",
+          "vector": [
+            2,
+            0,
+            2,
+            0,
+            4,
+            0
+          ],
+          "text": "[2,0,2,0,4,0]"
+        },
+        {
+          "task_id": 7,
+          "task_label": "T7",
+          "vector": [
+            2,
+            0,
+            4,
+            0,
+            4,
+            0
+          ],
+          "text": "[2,0,4,0,4,0]"
+        },
+        {
+          "task_id": 3,
+          "task_label": "T3",
+          "vector": [
+            2,
+            0,
+            3,
+            0,
+            2,
+            0
+          ],
+          "text": "[2,0,3,0,2,0]"
+        },
+        {
+          "task_id": 5,
+          "task_label": "T5",
+          "vector": [
+            2,
+            6,
+            7,
+            1,
+            7,
+            4
+          ],
+          "text": "[2,6,7,1,7,4]"
+        }
+      ],
+      "completion": [
+        {
+          "task_id": 4,
+          "task_label": "T4",
+          "value": 0.9,
+          "text": "90.0%"
+        },
+        {
+          "task_id": 6,
+          "task_label": "T6",
+          "value": 1.0,
+          "text": "100.0%"
+        },
+        {
+          "task_id": 1,
+          "task_label": "T1",
+          "value": 1.0,
+          "text": "100.0%"
+        },
+        {
+          "task_id": 2,
+          "task_label": "T2",
+          "value": 0.8611111111111112,
+          "text": "86.1%"
+        },
+        {
+          "task_id": 8,
+          "task_label": "T8",
+          "value": 1.0,
+          "text": "100.0%"
+        },
+        {
+          "task_id": 7,
+          "task_label": "T7",
+          "value": 1.0,
+          "text": "100.0%"
+        },
+        {
+          "task_id": 3,
+          "task_label": "T3",
+          "value": 1.0,
+          "text": "100.0%"
+        },
+        {
+          "task_id": 5,
+          "task_label": "T5",
+          "value": 0.9761904761904763,
+          "text": "97.6%"
+        }
+      ]
+    }
+  }
+}

@@ -43,8 +43,8 @@ Shi_p_leave      = 0.4;  % Shi2024 离开概率
 OCF_T0_round            = 100;   % OCF_SAtabu 每轮开始时的初始温度
 OCF_alpha               = 0.95;   % OCF_SAtabu 轮内退火冷却率
 OCF_Tmin                = 0.01;  % OCF_SAtabu 轮内最低温度
-OCF_T_decay             = 0.9;   % OCF_SAtabu 轮间温度衰减系数
-OCF_T_min_round         = 2;     % OCF_SAtabu 每轮初始温度下界
+OCF_T_decay             = 0.95;   % OCF_SAtabu 轮间温度衰减系数
+OCF_T_min_round         = 5;     % OCF_SAtabu 每轮初始温度下界
 OCF_T_init_construction = 2;     % OCF_SAtabu 初始构造温度
 OCF_K_stable_max        = 10;    % OCF_SAtabu 稳定性阈值
 OCF_tabu_tenure         = 5;    % OCF_SAtabu 禁忌期限
@@ -217,7 +217,7 @@ Exp_Config.Ablation.AddPara = struct( ...
     'control', 1);
 
 % Single_Viz
-Exp_Config.SingleViz.SEED = Exp_Config.Common.SEEDS(5);
+Exp_Config.SingleViz.SEED = Exp_Config.Common.SEEDS(10);
 Exp_Config.SingleViz.N = 5;
 Exp_Config.SingleViz.M = 8;
 Exp_Config.SingleViz.K = 6;
