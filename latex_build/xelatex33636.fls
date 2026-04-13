@@ -1,0 +1,5 @@
+PWD E:/TII_latex/TII_Articles_LaTeX_Template/TII-Articles-LaTeX-template
+INPUT d:/texlive/texlive/2026/texmf.cnf
+INPUT d:/texlive/texlive/2026/texmf-dist/web2c/texmf.cnf
+INPUT d:/texlive/texlive/2026/texmf-var/web2c/xetex/xelatex.fmt
+INPUT tii-articles-template.tex
