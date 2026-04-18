@@ -69,45 +69,22 @@ e-mail to keywords@ieee.org or visit \underline
     \label{tab:notations}
     \footnotesize
     \setlength{\tabcolsep}{4pt}
-    \begin{tabular}{l p{4.8cm}}
+    \begin{tabular}{p{3.1cm} p{3.5cm}}
         \toprule
         \textbf{Notation} & \textbf{Description} \\
         \midrule
-        $N, M$ & Number of robots and tasks \\
-        $Z, K$ & Number of capability dimensions and task types \\
-        $\mathcal{R}$ & Set of robots \\
-        $\mathcal{T}$ & Set of tasks \\
-        $\mathcal{Z}$ & Set of capability dimensions \\
-        $\mathcal{K}$ & Set of task types \\
-        $\mathcal{P}$ & Task-priority list \\
-        $\mathcal{L}_m$ & Demand vector of task $m$ \\
-        $\mathcal{D}_k$ & Demand vector of task type $k$ \\
+        $N, M, \mathcal{R}, \mathcal{T}$ & Numbers and sets of robots and tasks \\
+        $Z, K, \mathcal{Z}, \mathcal{K}$ & Numbers and index sets of capability dimensions and task types \\
         $\mathcal{G}_n$ & Capability vector of robot $n$ \\
-        $\mathcal{B}_{n}^m$ & Belief vector of robot $n$ over type of task $m$ \\
-        $\widehat{\mathcal{V}}_{n,m}$ & Expected value of task $m$ by robot $n$ \\
-        $\widehat{\mathcal{L}}_{n,m}$ & Expected demand vector of task $m$ by robot $n$ \\
-        $\mathcal{SC}$ & Global overlapping coalition structure \\
-        $\mathcal{A}_m$ & Coalition for task $m$ \\
-        $A_m^{(n)}$ & Capability vector contributed by robot $n$ to task $m$ \\
-        $\operatorname{Mem}(\mathcal{A}_m)$ & Member set of coalition for task $m$ \\
-        $\|A_m^{(n)}\|_1$ & 1-norm of robot $n$'s allocation to task $m$ \\
+        $\mathcal{L}_m, \mathcal{D}_k$ & Task demand vector and task-type demand template \\
+        $\mathcal{V}_k, \widehat{\mathcal{V}}_{n,m}$ & Base task-type value and expected task value \\
+        $\mathcal{B}_{n}^m, \widehat{\mathcal{L}}_{n,m}$ & Local belief and induced expected demand \\
+        $\mathcal{A}_m, A_m^{(n)}$ & Task coalition and robot $n$'s allocated capability vector \\
+        $\operatorname{Mem}(\mathcal{A}_m), \mathcal{SC}$ & Coalition member set and global overlapping coalition structure \\
         $\varsigma_{n,m}$ & Task completion degree estimated by robot $n$ \\
-        $\mathcal{V}_k$ & Base value of task type $k$ \\
-        $U$ & Global total utility \\
-        $u_n^m(\mathcal{A}_m)$ & Expected utility of robot $n$ in coalition for task $m$ \\
-        $E_{n,m}^{Cost}$ & Total cost of robot $n$ for task $m$ \\
-        $E_{n,m}^{move}$ & Movement cost of robot $n$ to task $m$ \\
-        $E_{n,m}^{wait}$ & Waiting cost of robot $n$ at task $m$ \\
-        $E_{n,m}^{exec}$ & Execution cost of robot $n$ for task $m$ \\
-        $\varpi, \gamma, \beta$ & Unit cost coefficients (move, wait, exec) \\
-        $E_n^{max}$ & Energy budget of robot $n$ \\
-        $AT_{n,m}$ & Arrival time of robot $n$ at task $m$ \\
-        $ST_m$ & Synchronized start time of coalition for task $m$ \\
-        $FT_{n,m}$ & Finish time of robot $n$'s part in task $m$ \\
-        $FT_m$ & Finish time of coalition for task $m$ \\
-        $T_{n,m}^{\mathrm{exec}}$ & Execution duration of robot $n$ for task $m$ \\
-        $T_{n,m}^{\mathrm{pre}}$ & Pre-sync waiting time of robot $n$ at task $m$ \\
-        $T_{n,m}^{\mathrm{post}}$ & Post-sync waiting time of robot $n$ at task $m$ \\
+        $u_n^m(\mathcal{A}_m), U$ & Individual expected utility and global total utility \\
+        $E_{n,m}^{Cost}, E_n^{max}$ & Task execution cost and robot energy budget \\
+        $\mathcal{P}$ & Task-priority list \\
         \bottomrule
     \end{tabular}
 \end{table}
