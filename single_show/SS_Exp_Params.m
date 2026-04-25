@@ -68,7 +68,7 @@ else
 end
 
 %% ===== 智能体基础属性 =====
-agent_velocity    = 10;
+agent_velocity    = 15;
 agent_detprob_min = 0.75;
 agent_detprob_max = 0.95;
 agent_Emax_min    = 500;
@@ -78,7 +78,7 @@ agent_wait_fuel   = 1;
 agent_beta        = 1;
 
 %% ===== 智能体资源能力范围 =====
-min_resource_value = 0;
+min_resource_value = 3;
 max_resource_value = 4;
 
 %% ===== 任务资源需求模板参数 =====
@@ -88,7 +88,7 @@ task_type3_demand_max = 8;
 task_type_demand_max  = [task_type1_demand_max, task_type2_demand_max, task_type3_demand_max];
 
 %% ===== 各资源类型的执行时间（K=6 维）=====
-resource_exec_time = [20, 25, 20, 25, 15, 18];
+resource_exec_time = [10, 20, 20, 20, 15, 15];
 
 %% ===== 统一场景配置 =====
 Exp_Config.ScenarioCfg.num_task_types        = num_task_types;
@@ -116,12 +116,23 @@ Exp_Config.ScenarioCfg.min_resource_value = min_resource_value;
 Exp_Config.ScenarioCfg.max_resource_value = max_resource_value;
 
 %% ===== SingleViz 实验配置 =====
-Exp_Config.SingleViz.SEED = 2450;   % 原 SEEDS(10)，SEEDS = 2486:2536
+Exp_Config.SingleViz.SEED = 2430;   % 原 SEEDS(10)，SEEDS = 2486:2536
 Exp_Config.SingleViz.N = 5;
 Exp_Config.SingleViz.M = 5;
 Exp_Config.SingleViz.K = 6;
 Exp_Config.SingleViz.dt_sample  = 0.1;  % 轨迹采样间隔（时间单位）；越小帧越密
-Exp_Config.ScenarioCfg.task_spread_mode = 'grid_jitter';  % 任务均匀分布（实物演示）
+Exp_Config.ScenarioCfg.task_spread_mode = 'manual';       % 'manual'=手动坐标，'grid_jitter'=自动均匀分布
+
+% ===== 手动任务点坐标（M×2，单位 cm）=====
+% 行数须等于 Exp_Config.SingleViz.M；改回 'grid_jitter' 时此项不生效
+Exp_Config.ScenarioCfg.manual_task_positions = [
+    120, 125;   % 任务 1
+    240,  55;   % 任务 2
+    250, 170;   % 任务 3
+    160, 180;   % 任务 4
+    300, 100;   % 任务 5
+];
+
 Exp_Config.ScenarioCfg.min_task_agent_dist = 40;          % 任务离机器人初始位置最小距离（cm）
 Exp_Config.SingleViz.AddPara = struct( ...
     'verbose', 1, ...

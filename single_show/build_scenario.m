@@ -94,10 +94,15 @@ end
 task_priorities = randperm(M);
 tasks = struct();
 
-% 位置模式：'grid_jitter' 均匀铺满地图，'random' 纯随机（默认）
+% 位置模式：'manual' 手动坐标，'grid_jitter' 均匀铺满地图，'random' 纯随机（默认）
 spread_mode = 'random';
 if isfield(cfg, 'task_spread_mode') && ~isempty(cfg.task_spread_mode)
     spread_mode = cfg.task_spread_mode;
+end
+
+manual_pos = [];
+if isfield(cfg, 'manual_task_positions') && ~isempty(cfg.manual_task_positions)
+    manual_pos = cfg.manual_task_positions;   % M×2，单位 cm
 end
 
 if strcmp(spread_mode, 'grid_jitter')
@@ -117,7 +122,10 @@ end
 for j = 1:M
     tasks(j).id       = j;
     tasks(j).priority = task_priorities(j);
-    if strcmp(spread_mode, 'grid_jitter')
+    if strcmp(spread_mode, 'manual') && ~isempty(manual_pos) && j <= size(manual_pos, 1)
+        tasks(j).x = manual_pos(j, 1);
+        tasks(j).y = manual_pos(j, 2);
+    elseif strcmp(spread_mode, 'grid_jitter')
         col = mod(j-1, ncols);
         row = floor((j-1) / ncols);
         cx  = xlo + (col + 0.5) * cell_w;
