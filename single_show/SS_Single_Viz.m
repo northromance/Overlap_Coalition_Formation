@@ -73,6 +73,12 @@ scenario_cfg = Exp_Config.ScenarioCfg;
 scenario_cfg.N = N;
 scenario_cfg.M = M;
 scenario_cfg.K = K;
+if isfield(cfg, 'agent_init_positions') && ~isempty(cfg.agent_init_positions)
+    scenario_cfg.agent_init_positions = cfg.agent_init_positions;
+end
+if isfield(cfg, 'agent_robot_ids') && ~isempty(cfg.agent_robot_ids)
+    scenario_cfg.agent_robot_ids = cfg.agent_robot_ids;
+end
 [WORLD, tasks, agents, task_type_demands] = build_scenario(SEED, scenario_cfg); %#ok<ASGLU>
 
 Value_Params = SS_OCFUtils.init_value_params(N, M, K, num_task_types, task_type_demands, ...
@@ -301,6 +307,9 @@ fprintf('保存完成。\n\n');
 
 %% ===== 导出轨迹 JSON =====
 gen_traj_json(viz_data, 1, fullfile(results_dir, 'trajectory.json'));
+
+%% ===== 导出轨迹 CSV =====
+gen_track_csv(viz_data, cfg.dt_sample, results_dir);
 
 %% ===== 验证检查 =====
 fprintf('--- 验证检查 ---\n');

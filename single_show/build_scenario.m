@@ -93,11 +93,41 @@ end
 %% Tasks generation（生成 M 个任务）
 task_priorities = randperm(M);
 tasks = struct();
+
+% 位置模式：'grid_jitter' 均匀铺满地图，'random' 纯随机（默认）
+spread_mode = 'random';
+if isfield(cfg, 'task_spread_mode') && ~isempty(cfg.task_spread_mode)
+    spread_mode = cfg.task_spread_mode;
+end
+
+if strcmp(spread_mode, 'grid_jitter')
+    margin = 0.10;   % 离边界留白比例
+    jitter = 0.50;   % 格内抖动幅度（0=格心，1=满格；0.5 保证最小间距约 cell_size/2）
+    xlo = WORLD.XMIN + margin * (WORLD.XMAX - WORLD.XMIN);
+    xhi = WORLD.XMAX - margin * (WORLD.XMAX - WORLD.XMIN);
+    ylo = WORLD.YMIN + margin * (WORLD.YMAX - WORLD.YMIN);
+    yhi = WORLD.YMAX - margin * (WORLD.YMAX - WORLD.YMIN);
+    aspect = (xhi - xlo) / max(yhi - ylo, 1e-9);
+    ncols  = max(1, round(sqrt(M * aspect)));
+    nrows  = ceil(M / ncols);
+    cell_w = (xhi - xlo) / ncols;
+    cell_h = (yhi - ylo) / nrows;
+end
+
 for j = 1:M
     tasks(j).id       = j;
     tasks(j).priority = task_priorities(j);
-    tasks(j).x = round(rand() * (WORLD.XMAX - WORLD.XMIN) + WORLD.XMIN);
-    tasks(j).y = round(rand() * (WORLD.YMAX - WORLD.YMIN) + WORLD.YMIN);
+    if strcmp(spread_mode, 'grid_jitter')
+        col = mod(j-1, ncols);
+        row = floor((j-1) / ncols);
+        cx  = xlo + (col + 0.5) * cell_w;
+        cy  = ylo + (row + 0.5) * cell_h;
+        tasks(j).x = round(cx + (rand()-0.5) * jitter * cell_w);
+        tasks(j).y = round(cy + (rand()-0.5) * jitter * cell_h);
+    else
+        tasks(j).x = round(rand() * (WORLD.XMAX - WORLD.XMIN) + WORLD.XMIN);
+        tasks(j).y = round(rand() * (WORLD.YMAX - WORLD.YMIN) + WORLD.YMIN);
+    end
     tasks(j).type     = randi(num_task_types, 1, 1);
     tasks(j).value    = WORLD.value(tasks(j).type);
     tasks(j).resource_demand      = task_type_demands(tasks(j).type, :);
@@ -108,15 +138,57 @@ end
 
 %% Agents generation（生成 N 个智能体）
 agents = struct();
+has_init_pos  = isfield(cfg, 'agent_init_positions') && ~isempty(cfg.agent_init_positions);
+has_robot_ids = isfield(cfg, 'agent_robot_ids')      && ~isempty(cfg.agent_robot_ids);
+init_pos = [];
+if has_init_pos
+    init_pos = cfg.agent_init_positions;  % [Np × 2]，x_cm / y_cm（已按 robot_id 升序）
+end
 for i = 1:N
     agents(i).id        = i;
     agents(i).vel       = cfg.agent_velocity;
-    agents(i).x = round(rand() * (WORLD.XMAX - WORLD.XMIN) + WORLD.XMIN);
-    agents(i).y = round(rand() * (WORLD.YMAX - WORLD.YMIN) + WORLD.YMIN);
+    if has_init_pos && i <= size(init_pos, 1)
+        agents(i).x = init_pos(i, 1);
+        agents(i).y = init_pos(i, 2);
+    else
+        agents(i).x = round(rand() * (WORLD.XMAX - WORLD.XMIN) + WORLD.XMIN);
+        agents(i).y = round(rand() * (WORLD.YMAX - WORLD.YMIN) + WORLD.YMIN);
+    end
+    if has_robot_ids && i <= length(cfg.agent_robot_ids)
+        agents(i).robot_id = cfg.agent_robot_ids(i);
+    end
     agents(i).detprob   = cfg.agent_detprob_min + (cfg.agent_detprob_max - cfg.agent_detprob_min) * rand();
     agents(i).resources = randi([cfg.min_resource_value, cfg.max_resource_value], K, 1);
     agents(i).Emax      = cfg.agent_Emax_min + cfg.agent_Emax_range * rand();
     agents(i).fuel      = cfg.agent_fuel;
     agents(i).wait_fuel = cfg.agent_wait_fuel;
     agents(i).beta      = cfg.agent_beta;
+end
+
+%% Post-process: 确保任务点距所有机器人初始位置 >= min_task_agent_dist
+if isfield(cfg, 'min_task_agent_dist') && cfg.min_task_agent_dist > 0
+    min_d = cfg.min_task_agent_dist;
+    for j = 1:M
+        for iter_adj = 1:30
+            any_viol = false;
+            for i = 1:N
+                dx = tasks(j).x - agents(i).x;
+                dy = tasks(j).y - agents(i).y;
+                dist = sqrt(dx^2 + dy^2);
+                if dist < min_d
+                    if dist > 1e-9
+                        dir = [dx, dy] / dist;
+                    else
+                        dir = [cos(j*pi/M), sin(j*pi/M)];
+                    end
+                    tasks(j).x = round(agents(i).x + min_d * dir(1));
+                    tasks(j).y = round(agents(i).y + min_d * dir(2));
+                    tasks(j).x = max(WORLD.XMIN, min(WORLD.XMAX, tasks(j).x));
+                    tasks(j).y = max(WORLD.YMIN, min(WORLD.YMAX, tasks(j).y));
+                    any_viol = true;
+                end
+            end
+            if ~any_viol, break; end
+        end
+    end
 end

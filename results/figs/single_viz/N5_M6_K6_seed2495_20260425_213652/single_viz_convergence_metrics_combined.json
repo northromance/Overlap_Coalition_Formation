@@ -1,0 +1,30 @@
+{
+  "metadata": {
+    "source_mat_path": "e:\\Overlap_Coalition_Formation\\single_show\\results\\N5_M6_K6_seed2495_20260425_213652.mat",
+    "run_name": "N5_M6_K6_seed2495_20260425_213652",
+    "output_dir": "e:\\Overlap_Coalition_Formation\\results\\figs\\single_viz\\N5_M6_K6_seed2495_20260425_213652",
+    "round_basis": "first_actual_iteration_to_last_actual_iteration",
+    "note": "exclude prepended plotting origin at round 0"
+  },
+  "convergence_utility": {
+    "label": "Coalition Utility",
+    "first_iteration_index": 1,
+    "last_iteration_index": 30,
+    "first_iteration_value": 5658.908005264999,
+    "last_iteration_value": 6278.933119661318
+  },
+  "convergence_cost": {
+    "label": "Total Global Cost",
+    "first_iteration_index": 1,
+    "last_iteration_index": 30,
+    "first_iteration_value": 856.9650106080169,
+    "last_iteration_value": 708.3684676402703
+  },
+  "convergence_completed_value": {
+    "label": "Total Completed Value",
+    "first_iteration_index": 1,
+    "last_iteration_index": 30,
+    "first_iteration_value": 6515.873015873016,
+    "last_iteration_value": 6987.301587301588
+  }
+}

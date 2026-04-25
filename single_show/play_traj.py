@@ -1,340 +1,222 @@
 """
-play_traj.py  —  多轮次轨迹动画（MATLAB PlotClass 风格）
-左图=地图轨迹, 右图=甘特时间线；每轮次顺序播放，轮间自动重置
+play_traj.py  —  从 track_round_*.csv 播放仿真/实物轨迹动画
 
 用法:
-    python play_traj.py                          # 交互播放（默认 results/trajectory.json）
-    python play_traj.py path/to/traj.json
+    python play_traj.py                    # 播放 results/ 下的所有轮次（sim 坐标）
+    python play_traj.py --real             # 使用真实摄像头坐标 (real_x/real_y)
+    python play_traj.py --results DIR      # 指定 CSV 目录
     python play_traj.py --save demo.gif --fps 12
     python play_traj.py --save demo.mp4 --fps 20
-    python play_traj.py --pause 15               # 轮次间暂停帧数（默认 10）
+    python play_traj.py --pause 15         # 轮次间暂停帧数（默认 10）
 """
 
-import json
+import csv
+import glob
+import re
 import argparse
 import pathlib
 import matplotlib
 import matplotlib.pyplot as plt
-import matplotlib.patches as mpatches
 import matplotlib.animation as animation
-
-COLOR_FUTURE = (0.90, 0.90, 0.90)
-COLOR_WAIT   = (1.00, 1.00, 0.00)
-COLOR_ACTIVE = (0.00, 1.00, 0.00)
-BAR_HEIGHT   = 0.6
-MIN_BAR_W    = 0.5   # 等待段最小宽度（秒），小于此不渲染
+import matplotlib.patches as mpatches
 
 
-def load_json(path):
-    with open(path, 'r', encoding='utf-8') as f:
-        return json.load(f)
-
-
-def agent_color_palette(N):
-    cmap = matplotlib.colormaps.get_cmap('tab10').resampled(max(N, 1))
-    return [cmap(i) for i in range(N)]
-
-
-def to_list(v):
-    if v is None:
+def load_tasks(results_dir):
+    """读取 tasks.csv，返回 [{id, x, y, type, value}, ...]，不存在则返回空列表。"""
+    path = pathlib.Path(results_dir) / 'tasks.csv'
+    if not path.exists():
         return []
-    return v if isinstance(v, list) else [v]
+    tasks = []
+    with open(path, 'r', encoding='utf-8') as f:
+        reader = csv.DictReader(f)
+        for row in reader:
+            tasks.append({
+                'id':    int(row['task_id']),
+                'x':     float(row['x']),
+                'y':     float(row['y']),
+                'type':  int(row['type']),
+                'value': int(row['value']),
+            })
+    return tasks
 
 
-# ------------------------------------------------------------------ #
-#  主函数
-# ------------------------------------------------------------------ #
-def build_figure(data, pause_frames=10):
-    meta  = data['meta']
-    tasks = data['tasks']
-    N     = meta['N']
-    dt    = meta['dt']
-    world = meta['world']
+def load_rounds(results_dir, use_real=False):
+    """读取所有 track_round_*.csv，按轮次编号排序，返回轮次列表。"""
+    pattern = str(pathlib.Path(results_dir) / 'track_round_*.csv')
+    files = sorted(
+        glob.glob(pattern),
+        key=lambda p: int(re.search(r'track_round_(\d+)', p).group(1))
+    )
+    if not files:
+        raise FileNotFoundError(f'No track_round_*.csv found in {results_dir}')
 
-    # 判断单/多轮次
-    multi = 'rounds' in data
-    if multi:
-        rounds = data['rounds']
-        num_rounds = len(rounds)
-    else:
-        rounds = [{'round_id': 1, 'T_max': meta['T_max'],
-                   'coalition_utility': None,
-                   'agents': data['agents']}]
-        num_rounds = 1
+    rounds = []
+    for fpath in files:
+        round_id = int(re.search(r'track_round_(\d+)', fpath).group(1))
+        robots = {}  # robot_id -> [(x, y), ...]
+        with open(fpath, 'r', encoding='utf-8') as f:
+            reader = csv.DictReader(f)
+            for row in reader:
+                rid = int(row['robot_id'])
+                if use_real:
+                    x = float(row['sim_x'])
+                    y = float(row['sim_y'])
+                else:
+                    x = float(row['real_x'])
+                    y = float(row['real_y'])
+                robots.setdefault(rid, []).append((x, y))
+        rounds.append({'round_id': round_id, 'robots': robots})
+        n_frames = min(len(v) for v in robots.values()) if robots else 0
+        print(f'  Round {round_id}: {len(robots)} robots, {n_frames} frames  ({fpath})')
 
-    agent_colors = agent_color_palette(N)
-    task_lookup  = {tk['id']: tk for tk in tasks}
+    return rounds
 
-    # ------ 全局帧序列: (round_idx, local_fi, is_pause) ------
+
+def agent_color_palette(robot_ids):
+    cmap = matplotlib.colormaps.get_cmap('tab10').resampled(max(len(robot_ids), 1))
+    return {rid: cmap(i) for i, rid in enumerate(sorted(robot_ids))}
+
+
+def build_figure(rounds, tasks=None, pause_frames=10):
+    # 收集所有 robot_id
+    all_rids = set()
+    for rnd in rounds:
+        all_rids.update(rnd['robots'].keys())
+    all_rids = sorted(all_rids)
+    colors = agent_color_palette(all_rids)
+    num_rounds = len(rounds)
+
+    # 全局帧序列: (round_idx, local_fi, is_pause)
     global_frames = []
     for r, rnd in enumerate(rounds):
-        n_frames_r = len(rnd['agents'][0]['frames'])
+        n_frames_r = min(len(v) for v in rnd['robots'].values()) if rnd['robots'] else 0
         for fi in range(n_frames_r):
             global_frames.append((r, fi, False))
-        # 轮次间暂停（最后一轮不加）
         if r < num_rounds - 1:
             for _ in range(pause_frames):
-                global_frames.append((r, n_frames_r - 1, True))  # 冻结最后一帧
-
+                global_frames.append((r, n_frames_r - 1, True))
     total_frames = len(global_frames)
 
-    # ------ 最大 T_max（用于甘特 x 轴） ------
-    T_max_global = max(rnd['T_max'] for rnd in rounds)
-
-    # ================================================================== #
-    #  画布
-    # ================================================================== #
-    fig, (ax_map, ax_gantt) = plt.subplots(1, 2, figsize=(13, 6))
-    fig.patch.set_facecolor('white')
-    sup = fig.suptitle('', fontsize=13, fontweight='bold')
-
-    # ================================================================== #
-    #  左图：地图视图（静态部分）
-    # ================================================================== #
-    ax_map.set_title('Agent Trajectories (Map View)', fontsize=11)
-    ax_map.set_xlabel('X (cm)')
-    ax_map.set_ylabel('Y (cm)')
-    ax_map.grid(True)
-    ax_map.set_facecolor('white')
-
-    task_xs = [tk['x'] for tk in tasks]
-    task_ys = [tk['y'] for tk in tasks]
-    ax_map.scatter(task_xs, task_ys, s=50, c='blue', zorder=5,
-                   edgecolors='black', linewidths=0.7)
-    for tk in tasks:
-        ax_map.text(tk['x'] + 2, tk['y'] + 2, f"T{tk['id']}", fontsize=8, zorder=6)
-
-    # 起点标记（所有轮次共用）
-    start_positions = [(rnd['agents'][i]['start_x'], rnd['agents'][i]['start_y'])
-                       for i in range(N)]
-    for sx, sy in start_positions:
-        ax_map.plot(sx, sy, 's', markersize=8, markeredgecolor='red',
-                    markerfacecolor='none', linewidth=1.5, zorder=6)
-
-    all_x = task_xs + [p[0] for p in start_positions]
-    all_y = task_ys + [p[1] for p in start_positions]
+    # 计算地图范围
+    all_x, all_y = [], []
+    for rnd in rounds:
+        for pts in rnd['robots'].values():
+            all_x.extend(p[0] for p in pts)
+            all_y.extend(p[1] for p in pts)
     margin = 15
-    ax_map.set_xlim(min(all_x) - margin, max(all_x) + margin)
-    ax_map.set_ylim(min(all_y) - margin, max(all_y) + margin)
-    ax_map.set_aspect('equal', adjustable='datalim')
+    x_lo = min(all_x) - margin
+    x_hi = max(all_x) + margin
+    y_lo = min(all_y) - margin
+    y_hi = max(all_y) + margin
 
-    # ------ 规划路线虚线（每轮次一组，初始不可见）------
-    route_lines = []   # route_lines[r][i] = Line2D
-    for r, rnd in enumerate(rounds):
-        row = []
-        for i, ag in enumerate(rnd['agents']):
-            col = agent_colors[i]
-            seq = to_list(ag.get('task_sequence', []))
-            if seq:
-                rx = [ag['start_x']] + [task_lookup[t]['x'] for t in seq] + [ag['start_x']]
-                ry = [ag['start_y']] + [task_lookup[t]['y'] for t in seq] + [ag['start_y']]
-            else:
-                rx = [ag['start_x']]
-                ry = [ag['start_y']]
-            line, = ax_map.plot(rx, ry, '--',
-                                color=(*col[:3], 0.25), linewidth=1.0, zorder=2,
-                                visible=(r == 0))
-            row.append(line)
-        route_lines.append(row)
+    # ------------------------------------------------------------------ #
+    #  画布（单幅地图）
+    # ------------------------------------------------------------------ #
+    fig, ax = plt.subplots(figsize=(8, 7))
+    fig.patch.set_facecolor('white')
+    ax.set_title('Agent Trajectories', fontsize=11)
+    ax.set_xlabel('X (cm)')
+    ax.set_ylabel('Y (cm)')
+    ax.grid(True)
+    ax.set_facecolor('white')
+    ax.set_xlim(x_lo, x_hi)
+    ax.set_ylim(y_lo, y_hi)
+    ax.set_aspect('equal', adjustable='datalim')
 
-    # ------ 动态 marker + trail ------
-    h_markers = []
-    h_trails  = []
-    trail_x   = [[rounds[0]['agents'][i]['start_x']] for i in range(N)]
-    trail_y   = [[rounds[0]['agents'][i]['start_y']] for i in range(N)]
+    sup = fig.suptitle('', fontsize=12, fontweight='bold')
+    ax.text(0.5, -0.08, '空格=暂停/继续   ←/→=逐帧（暂停时）   +/↑=加速   -/↓=减速   Q=关闭',
+            transform=ax.transAxes, ha='center', fontsize=9, color='gray')
 
-    for i in range(N):
-        col = agent_colors[i]
-        sx, sy = start_positions[i]
-        trail, = ax_map.plot([sx], [sy], '-',
-                             color=(*col[:3], 0.5), linewidth=1.5, zorder=4)
-        marker, = ax_map.plot(sx, sy, 'o',
-                              markersize=10, markerfacecolor=col,
-                              markeredgecolor='black', linewidth=2, zorder=7)
-        h_markers.append(marker)
-        h_trails.append(trail)
+    # 任务点
+    if tasks:
+        task_xs = [t['x'] for t in tasks]
+        task_ys = [t['y'] for t in tasks]
+        ax.scatter(task_xs, task_ys, s=80, c='steelblue', marker='*',
+                   zorder=5, edgecolors='navy', linewidths=0.7, label='Task')
+        for t in tasks:
+            ax.text(t['x'] + 3, t['y'] + 3,
+                    f"T{t['id']}(v={t['value']})", fontsize=7, zorder=6, color='navy')
 
-    # ================================================================== #
-    #  右图：甘特视图（每轮次预构建，初始不可见）
-    # ================================================================== #
-    ax_gantt.set_title('Execution Timeline (Gantt View)', fontsize=11)
-    ax_gantt.set_xlabel('Time (s)')
-    ax_gantt.set_ylabel('Agent ID')
-    ax_gantt.grid(True)
-    ax_gantt.set_xlim(0, T_max_global * 1.05)
-    ax_gantt.set_ylim(0, N + 1)
-    ax_gantt.set_yticks(range(1, N + 1))
-    ax_gantt.invert_yaxis()
+    # 起点标记（第 1 轮第 0 帧各机器人位置）
+    rnd0 = rounds[0]
+    for rid in all_rids:
+        if rid in rnd0['robots'] and rnd0['robots'][rid]:
+            sx, sy = rnd0['robots'][rid][0]
+            ax.plot(sx, sy, 's', markersize=8,
+                    markeredgecolor='red', markerfacecolor='none',
+                    linewidth=1.5, zorder=6)
 
-    # wait_patches[r][i][j], exec_patches[r][i][j]
-    all_wait = []
-    all_exec = []
+    # 动态 marker + trail
+    h_markers = {}
+    h_trails  = {}
+    trail_x   = {rid: [] for rid in all_rids}
+    trail_y   = {rid: [] for rid in all_rids}
 
-    for r, rnd in enumerate(rounds):
-        rnd_wait, rnd_exec = [], []
-        for i, ag in enumerate(rnd['agents']):
-            seq = to_list(ag.get('task_sequence',   []))
-            at  = to_list(ag.get('arrival_times',   []))
-            st  = to_list(ag.get('start_times',     []))
-            ct  = to_list(ag.get('completion_times',[]))
+    for rid in all_rids:
+        col = colors[rid]
+        sx, sy = (rnd0['robots'][rid][0] if rid in rnd0['robots'] and rnd0['robots'][rid]
+                  else (0.0, 0.0))
+        trail, = ax.plot([sx], [sy], '-',
+                         color=(*col[:3], 0.5), linewidth=1.5, zorder=4)
+        marker, = ax.plot(sx, sy, 'o',
+                          markersize=10, markerfacecolor=col,
+                          markeredgecolor='black', linewidth=2, zorder=7,
+                          label=f'Robot {rid}')
+        h_markers[rid] = marker
+        h_trails[rid]  = trail
+        trail_x[rid]   = [sx]
+        trail_y[rid]   = [sy]
 
-            row_w, row_e = [], []
-            y_lo = (i + 1) - BAR_HEIGHT / 2
-            y_hi = (i + 1) + BAR_HEIGHT / 2
-            ys   = [y_lo, y_lo, y_hi, y_hi]
+    ax.legend(loc='upper right', fontsize=9)
 
-            for j in range(len(seq)):
-                tid      = seq[j]
-                t_arrive = at[j] if j < len(at) else st[j]
-                t_start  = st[j]
-                t_done   = ct[j]
-
-                w_width = t_start - t_arrive
-                if w_width > MIN_BAR_W:
-                    xs_w = [t_arrive, t_start, t_start, t_arrive]
-                    pw = mpatches.Polygon(list(zip(xs_w, ys)), closed=True,
-                                         facecolor=COLOR_FUTURE,
-                                         edgecolor='black', linewidth=0.5,
-                                         zorder=3, visible=(r == 0))
-                    ax_gantt.add_patch(pw)
-                else:
-                    pw = None
-                row_w.append(pw)
-
-                xs_e = [t_start, t_done, t_done, t_start]
-                pe = mpatches.Polygon(list(zip(xs_e, ys)), closed=True,
-                                      facecolor=COLOR_FUTURE,
-                                      edgecolor='black', linewidth=0.5,
-                                      zorder=3, visible=(r == 0))
-                ax_gantt.add_patch(pe)
-                if r == 0:   # 标签只画一次（轮次切换时重新设文本无意义，轮次内相对位置相同）
-                    ax_gantt.text((t_start + t_done) / 2, i + 1,
-                                  f'T{tid}', ha='center', va='center',
-                                  fontsize=8, color='black', zorder=5,
-                                  visible=True)
-                row_e.append(pe)
-            rnd_wait.append(row_w)
-            rnd_exec.append(row_e)
-        all_wait.append(rnd_wait)
-        all_exec.append(rnd_exec)
-
-    h_cursor, = ax_gantt.plot([0, 0], [0, N + 1], 'r-', linewidth=2, zorder=6)
-
-    # ================================================================== #
-    #  帧缓存
-    # ================================================================== #
-    frame_cache = []   # frame_cache[r][i][fi] = (x, y, state)
-    for r, rnd in enumerate(rounds):
-        round_cache = []
-        for ag in rnd['agents']:
-            round_cache.append([(fr['x'], fr['y'], fr['state'])
-                                 for fr in ag['frames']])
-        frame_cache.append(round_cache)
-
-    # ================================================================== #
-    #  状态
-    # ================================================================== #
-    prev_state   = ['idle'] * N
     current_round = [0]
+    last_gfi = [0]
 
     def switch_round(new_r):
         old_r = current_round[0]
         if new_r == old_r:
             return
-        # 隐藏旧轮次
-        for i in range(N):
-            route_lines[old_r][i].set_visible(False)
-            for pw in all_wait[old_r][i]:
-                if pw is not None: pw.set_visible(False)
-            for pe in all_exec[old_r][i]:
-                pe.set_visible(False)
-        # 显示新轮次
-        for i in range(N):
-            route_lines[new_r][i].set_visible(True)
-            for pw in all_wait[new_r][i]:
-                if pw is not None: pw.set_visible(True)
-            for pe in all_exec[new_r][i]:
-                pe.set_visible(True)
-        # 重置 trail
         rnd_new = rounds[new_r]
-        for i in range(N):
-            trail_x[i].clear()
-            trail_y[i].clear()
-            trail_x[i].append(rnd_new['agents'][i]['start_x'])
-            trail_y[i].append(rnd_new['agents'][i]['start_y'])
-            prev_state[i] = 'idle'
+        for rid in all_rids:
+            trail_x[rid].clear()
+            trail_y[rid].clear()
+            if rid in rnd_new['robots'] and rnd_new['robots'][rid]:
+                sx, sy = rnd_new['robots'][rid][0]
+            else:
+                sx, sy = 0.0, 0.0
+            trail_x[rid].append(sx)
+            trail_y[rid].append(sy)
         current_round[0] = new_r
 
-    # ================================================================== #
-    #  更新函数
-    # ================================================================== #
     def update(gfi):
+        last_gfi[0] = gfi
         r, fi, is_pause = global_frames[gfi]
         switch_round(r)
 
         rnd = rounds[r]
-        t = fi * dt
-        T_max_r = rnd['T_max']
-        cu = rnd.get('coalition_utility', None)
+        rid_id = rnd['round_id']
+        n_frames_r = min(len(v) for v in rnd['robots'].values()) if rnd['robots'] else 0
+        sup.set_text(f'Round {rid_id}  |  Frame {fi + 1} / {n_frames_r}')
 
-        if multi:
-            cu_str = f' | Utility={cu:.1f}' if cu is not None and cu == cu else ''
-            sup.set_text(
-                f'Round {r+1}/{num_rounds}{cu_str} | '
-                f'Time {min(t, T_max_r):.1f} / {T_max_r:.1f} s'
-            )
-        else:
-            sup.set_text(f'Simulation Time: {min(t, T_max_r):.1f} / {T_max_r:.1f} s')
+        artists = [sup]
+        for rid in all_rids:
+            if rid not in rnd['robots'] or not rnd['robots'][rid]:
+                continue
+            pts = rnd['robots'][rid]
+            fi_clamped = min(fi, len(pts) - 1)
+            x, y = pts[fi_clamped]
 
-        h_cursor.set_xdata([t, t])
+            # trail: append when moving (position changed from previous frame)
+            if fi_clamped > 0:
+                px, py = pts[fi_clamped - 1]
+                if x != px or y != py:
+                    trail_x[rid].append(x)
+                    trail_y[rid].append(y)
+            h_trails[rid].set_data(trail_x[rid], trail_y[rid])
+            h_markers[rid].set_data([x], [y])
+            artists += [h_markers[rid], h_trails[rid]]
 
-        for i in range(N):
-            col = agent_colors[i]
-            x, y, state = frame_cache[r][i][fi]
-
-            # marker
-            if state == 'waiting':
-                fc = COLOR_WAIT
-            elif state == 'executing':
-                fc = COLOR_ACTIVE
-            else:
-                fc = col
-            h_markers[i].set_data([x], [y])
-            h_markers[i].set_markerfacecolor(fc)
-
-            # trail
-            if state in ('flying', 'returning'):
-                trail_x[i].append(x)
-                trail_y[i].append(y)
-            elif prev_state[i] in ('flying', 'returning'):
-                trail_x[i].append(x)
-                trail_y[i].append(y)
-            h_trails[i].set_data(trail_x[i], trail_y[i])
-            prev_state[i] = state
-
-            # 甘特着色
-            ag = rnd['agents'][i]
-            at_list = to_list(ag.get('arrival_times',   []))
-            st_list = to_list(ag.get('start_times',     []))
-            ct_list = to_list(ag.get('completion_times',[]))
-
-            for j, pe in enumerate(all_exec[r][i]):
-                t_arrive = at_list[j] if j < len(at_list) else st_list[j]
-                t_start  = st_list[j]
-                t_done   = ct_list[j]
-
-                pw = all_wait[r][i][j]
-                if pw is not None:
-                    pw.set_facecolor(COLOR_FUTURE if t < t_arrive else COLOR_WAIT)
-
-                if t < t_start:
-                    pe.set_facecolor(COLOR_FUTURE)
-                elif t < t_done:
-                    pe.set_facecolor(COLOR_ACTIVE)
-                else:
-                    pe.set_facecolor(col)
-
-        return h_markers + h_trails + [h_cursor, sup]
+        return artists
 
     ani = animation.FuncAnimation(
         fig, update,
@@ -344,33 +226,80 @@ def build_figure(data, pause_frames=10):
         repeat=True
     )
 
-    plt.tight_layout(rect=[0, 0, 1, 0.94])
+    # 键盘控制
+    paused   = [False]
+    interval = [80]   # ms，初始帧间隔
+
+    def _update_title_hint():
+        fps_cur = round(1000 / interval[0])
+        base = sup.get_text().split('  【')[0]
+        hint = '  【已暂停】' if paused[0] else f'  [{fps_cur} fps]'
+        sup.set_text(base + hint)
+        fig.canvas.draw_idle()
+
+    def on_key(event):
+        if event.key == ' ':
+            if paused[0]:
+                ani.resume()
+            else:
+                ani.pause()
+            paused[0] = not paused[0]
+            _update_title_hint()
+        elif event.key in ('+', '=', 'up'):      # 加速
+            interval[0] = max(20, interval[0] - 20)
+            ani.event_source.interval = interval[0]
+            _update_title_hint()
+        elif event.key in ('-', 'down'):           # 减速
+            interval[0] = min(500, interval[0] + 20)
+            ani.event_source.interval = interval[0]
+            _update_title_hint()
+        elif event.key in ('right', '.') and paused[0]:   # 逐帧前进
+            nfi = min(last_gfi[0] + 1, total_frames - 1)
+            update(nfi)
+            _update_title_hint()
+            fig.canvas.draw_idle()
+        elif event.key in ('left', ',') and paused[0]:    # 逐帧后退
+            nfi = max(last_gfi[0] - 1, 0)
+            update(nfi)
+            _update_title_hint()
+            fig.canvas.draw_idle()
+        elif event.key in ('q', 'Q', 'escape'):
+            plt.close(fig)
+
+    fig.canvas.mpl_connect('key_press_event', on_key)
+
+    plt.tight_layout(rect=[0, 0, 1, 0.92])
     return fig, ani
 
 
 def main():
-    parser = argparse.ArgumentParser(description='多轮次轨迹动画播放器')
-    parser.add_argument('json', nargs='?',
-                        default=str(pathlib.Path(__file__).parent /
-                                    'results' / 'trajectory.json'))
-    parser.add_argument('--save', metavar='FILE')
+    parser = argparse.ArgumentParser(description='track_round_*.csv 轨迹动画播放器')
+    parser.add_argument('--results', metavar='DIR',
+                        default=str(pathlib.Path(__file__).parent / 'results'),
+                        help='包含 track_round_*.csv 的目录（默认 results/）')
+    parser.add_argument('--real', action='store_true',
+                        help='使用 sim_x/sim_y 而非 real_x/real_y（即摄像头实测坐标替换算法坐标）')
+    parser.add_argument('--save', metavar='FILE',
+                        help='保存为 gif 或 mp4')
     parser.add_argument('--fps',   type=int, default=12)
     parser.add_argument('--pause', type=int, default=10,
                         help='轮次间暂停帧数（默认 10）')
     args = parser.parse_args()
 
-    print(f'读取: {args.json}')
-    data = load_json(args.json)
-    meta = data['meta']
+    coord_mode = 'real (real_x/real_y)' if args.real else 'sim (sim_x/sim_y)'
+    print(f'结果目录: {args.results}')
+    print(f'坐标模式: {coord_mode}')
 
-    if 'rounds' in data:
-        print(f"  多轮次模式: {len(data['rounds'])} 轮  "
-              f"N={meta['N']} M={meta['M']} dt={meta['dt']}")
+    rounds = load_rounds(args.results, use_real=args.real)
+    print(f'共加载 {len(rounds)} 个轮次\n')
+
+    tasks = load_tasks(args.results)
+    if tasks:
+        print(f'任务点: {len(tasks)} 个  (来自 tasks.csv)')
     else:
-        print(f"  单轮次模式: N={meta['N']} M={meta['M']} "
-              f"T_max={meta.get('T_max', '?')} dt={meta['dt']}")
+        print('未找到 tasks.csv，不绘制任务点（请重新运行 SS_Single_Viz.m 生成）')
 
-    fig, ani = build_figure(data, pause_frames=args.pause)
+    fig, ani = build_figure(rounds, tasks=tasks, pause_frames=args.pause)
 
     if args.save:
         print(f'保存至: {args.save}  fps={args.fps}')
