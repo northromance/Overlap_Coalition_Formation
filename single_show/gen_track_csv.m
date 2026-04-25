@@ -60,6 +60,16 @@ for r = round_ids
         prev_adj_pos(i,:) = [agents(i).x, agents(i).y];
     end
 
+    % 相位切换检测：记录上帧 nat_pos 及各机器人是否处于静止（等待）状态
+    prev_nat_pos       = prev_adj_pos;
+    prev_is_stationary = true(N, 1);
+
+    % 出发修正状态（以 APF 实际位置为飞行起点，消除任务切换突变）
+    fly_actual_start = nan(N, 2);   % P_A：等待阶段结束时的 APF 位置
+    fly_nat_start    = nan(N, 2);   % T_A：对应的任务中心
+    fly_dest         = nan(N, 2);   % T_B：目标任务中心
+    fly_correcting   = false(N, 1);
+
     out_path = fullfile(out_dir, sprintf('track_round_%d.csv', r));
     fid = fopen(out_path, 'w', 'n', 'UTF-8');
     if fid == -1
@@ -83,6 +93,49 @@ for r = round_ids
             pos_nat(i, :) = [px, py];
         end
 
+        % 相位切换检测 + nat_pos 出发修正
+        pos_nat_raw   = pos_nat;   % 保存原始 nat_pos，用于下帧相位比较
+        is_stationary = true(N, 1);
+        for i = 1:N
+            is_stationary(i) = norm(pos_nat(i,:) - prev_nat_pos(i,:)) < 1e-6;
+
+            if ~is_stationary(i) && prev_is_stationary(i)
+                % 等待→飞行：记录 APF 实际位置 P_A 和目标 T_B
+                fly_actual_start(i,:) = prev_adj_pos(i,:);   % P_A
+                fly_nat_start(i,:)    = prev_nat_pos(i,:);   % T_A
+                fly_correcting(i)     = true;
+                % 查找目标任务中心 T_B
+                ct_i  = timing_r(i).completion_times(:);
+                seq_i = timing_r(i).task_sequence;
+                j_done = sum(ct_i <= t_cur + 1e-6);
+                if j_done < numel(seq_i)
+                    fly_dest(i,:) = [tasks(seq_i(j_done+1)).x, tasks(seq_i(j_done+1)).y];
+                else
+                    fly_dest(i,:) = [agents(i).x, agents(i).y];  % 归航
+                end
+
+            elseif is_stationary(i) && fly_correcting(i)
+                fly_correcting(i) = false;   % 飞行→等待：已到达，清除修正
+            end
+        end
+
+        % 将 nat_pos 调整为从 P_A 出发、以 T_B 为终点（progress 插值）
+        % 机器人从 APF 实际位置平滑飞向下一任务，消除任务切换时的突变
+        for i = 1:N
+            if fly_correcting(i) && ~is_stationary(i)
+                T_A = fly_nat_start(i,:);
+                P_A = fly_actual_start(i,:);
+                T_B = fly_dest(i,:);
+                total_dist = norm(T_B - T_A);
+                if total_dist > 1e-6
+                    progress = min(1, max(0, norm(pos_nat(i,:) - T_A) / total_dist));
+                else
+                    progress = 1;
+                end
+                pos_nat(i,:) = P_A + progress * (T_B - P_A);
+            end
+        end
+
         % Step 2: APF 全场调整（从上帧位置出发，吸引+排斥，保证连续性）
         pos_adj = apf_adjust(pos_nat, prev_adj_pos, 40.0);
 
@@ -90,7 +143,9 @@ for r = round_ids
         for i = 1:N
             all_frames(end+1, :) = [frame_t, rid_list(i), pos_adj(i,1), pos_adj(i,2)];
         end
-        prev_adj_pos = pos_adj;
+        prev_adj_pos       = pos_adj;
+        prev_nat_pos       = pos_nat_raw;   % 用原始 nat_pos 做下帧相位检测
+        prev_is_stationary = is_stationary;
     end
 
     % 重编帧号为 0, 10, 20, ...
