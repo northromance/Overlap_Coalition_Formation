@@ -93,6 +93,7 @@ FIG5K_CONFIG = get_family_figure_config(FAMILY, 'fig5k')
 FIG5L_CONFIG = get_family_figure_config(FAMILY, 'fig5l')
 FIG5M_CONFIG = get_family_figure_config(FAMILY, 'fig5m')
 FIG5N_CONFIG = get_family_figure_config(FAMILY, 'fig5n')
+FIG5O_CONFIG = get_family_figure_config(FAMILY, 'fig5o')
 os.makedirs(FIGURES_DIR, exist_ok=True)
 PLOT_STYLE_ADAPTER = dict(PLOT_GLOBAL)
 PLOT_STYLE_ADAPTER['show_grid'] = False
@@ -650,6 +651,130 @@ def build_fig5b_legend_handles(cfg, style_maps, used_types):
             )
         )
     return handles
+
+
+def trajectory_as_list(value):
+    """Normalize JSON scalar/list schedule fields to a flat Python list."""
+    if value is None:
+        return []
+    if isinstance(value, list):
+        return value
+    if isinstance(value, tuple):
+        return list(value)
+    if isinstance(value, np.ndarray):
+        return value.ravel().tolist()
+    return [value]
+
+
+def positive_int_or_none(value):
+    number = to_scalar(value, default=np.nan)
+    if not np.isfinite(number):
+        return None
+    result = int(round(number))
+    return result if result > 0 else None
+
+
+def resolve_trajectory_json_path(mat_path):
+    candidates = []
+    if mat_path:
+        candidates.append(os.path.join(os.path.dirname(os.path.abspath(mat_path)), 'trajectory.json'))
+    candidates.append(os.path.join(SCRIPT_DIR, 'results', 'trajectory.json'))
+
+    seen = set()
+    for candidate in candidates:
+        normalized = os.path.abspath(candidate)
+        if normalized in seen:
+            continue
+        seen.add(normalized)
+        if os.path.isfile(normalized):
+            return normalized
+    return None
+
+
+def load_trajectory_schedule(mat_path):
+    trajectory_path = resolve_trajectory_json_path(mat_path)
+    if trajectory_path is None:
+        print('  ! skip static round gantt: trajectory.json not found beside the .mat file or in single_show/results')
+        return None
+
+    try:
+        with open(trajectory_path, 'r', encoding='utf-8') as fp:
+            payload = json.load(fp)
+    except (OSError, json.JSONDecodeError) as exc:
+        print(f'  ! skip static round gantt: failed to read {trajectory_path}: {exc}')
+        return None
+
+    rounds = payload.get('rounds', []) if isinstance(payload, dict) else []
+    if not isinstance(rounds, list) or not rounds:
+        print(f'  ! skip static round gantt: no rounds found in {trajectory_path}')
+        return None
+
+    print(f'  static round gantt schedule: {len(rounds)} rounds from {trajectory_path}')
+    return payload
+
+
+def collect_trajectory_task_ids(trajectory_payload):
+    task_ids = set()
+    if not isinstance(trajectory_payload, dict):
+        return []
+
+    for task in trajectory_payload.get('tasks', []) or []:
+        if isinstance(task, dict):
+            task_id = positive_int_or_none(task.get('id'))
+            if task_id is not None:
+                task_ids.add(task_id)
+
+    for round_data in trajectory_payload.get('rounds', []) or []:
+        if not isinstance(round_data, dict):
+            continue
+        for ag in round_data.get('agents', []) or []:
+            if not isinstance(ag, dict):
+                continue
+            for raw_tid in trajectory_as_list(ag.get('task_sequence', [])):
+                task_id = positive_int_or_none(raw_tid)
+                if task_id is not None:
+                    task_ids.add(task_id)
+
+    return sorted(task_ids)
+
+
+def build_trajectory_task_color_map(task_ids, cfg):
+    task_ids = sorted({int(tid) for tid in task_ids if int(tid) > 0})
+    if not task_ids:
+        return {}
+
+    cmap_name = cfg.get('task_cmap', 'Set2')
+    base_cmap = plt.get_cmap(cmap_name)
+    try:
+        cmap = base_cmap.resampled(max(len(task_ids), 1))
+    except AttributeError:
+        cmap = plt.get_cmap(cmap_name, max(len(task_ids), 1))
+    return {tid: cmap(idx) for idx, tid in enumerate(task_ids)}
+
+
+def get_trajectory_round_id(round_data, fallback_idx):
+    if not isinstance(round_data, dict):
+        return int(fallback_idx)
+    round_id = positive_int_or_none(round_data.get('round_id'))
+    return round_id if round_id is not None else int(fallback_idx)
+
+
+def get_trajectory_agent_id(agent_data, fallback_idx):
+    if isinstance(agent_data, dict):
+        agent_id = positive_int_or_none(agent_data.get('id'))
+        if agent_id is not None:
+            return agent_id
+    return int(fallback_idx)
+
+
+def get_sorted_trajectory_agents(round_data):
+    agents = round_data.get('agents', []) if isinstance(round_data, dict) else []
+    sorted_agents = []
+    for idx, ag in enumerate(agents or [], start=1):
+        if isinstance(ag, dict):
+            sorted_agents.append((get_trajectory_agent_id(ag, idx), ag))
+    sorted_agents.sort(key=lambda item: item[0])
+    return sorted_agents
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -1514,15 +1639,19 @@ def build_belief_value_payload(viz_data, task_info, N, M):
         true_task_values = true_task_values[:n_tasks]
 
     mean_expected_values = np.nanmean(expected_values, axis=1)
-    value_error = np.nanmean(
-        np.abs(expected_values - true_task_values[np.newaxis, np.newaxis, :]),
-        axis=(1, 2),
-    )
+    abs_value_error = np.abs(expected_values - true_task_values[np.newaxis, np.newaxis, :])
+    task_value_error = np.nanmean(abs_value_error, axis=1)
+    value_error_mean = np.nanmean(task_value_error, axis=1)
+    value_error_std = np.nanstd(task_value_error, axis=1)
+    value_error = np.nanmean(abs_value_error, axis=(1, 2))
 
     return {
         'rounds': np.arange(beliefs.shape[0], dtype=int),
         'mean_expected_values': mean_expected_values,
         'true_task_values': true_task_values,
+        'task_value_error': task_value_error,
+        'value_error_mean': value_error_mean,
+        'value_error_std': value_error_std,
         'value_error': value_error,
     }
 
@@ -1557,17 +1686,35 @@ def apply_spatial_axis_limits(ax, cfg, world_bounds):
     configured_xlim = cfg.get('xlim')
     configured_ylim = cfg.get('ylim')
 
+    if world_bounds is not None:
+        try:
+            bounds = np.asarray(world_bounds, dtype=float).ravel()
+        except (TypeError, ValueError):
+            bounds = np.array([], dtype=float)
+
+        if bounds.size >= 4:
+            xmin, xmax, ymin, ymax = bounds[:4]
+            if np.all(np.isfinite([xmin, xmax, ymin, ymax])) and xmax > xmin and ymax > ymin:
+                try:
+                    x_margin_ratio = float(cfg.get('x_margin_ratio', 0.05))
+                except (TypeError, ValueError):
+                    x_margin_ratio = 0.05
+                try:
+                    y_margin_ratio = float(cfg.get('y_margin_ratio', 0.05))
+                except (TypeError, ValueError):
+                    y_margin_ratio = 0.05
+
+                x_margin = max(1.0, (xmax - xmin) * x_margin_ratio)
+                y_margin = max(1.0, (ymax - ymin) * y_margin_ratio)
+                ax.set_xlim(xmin - x_margin, xmax + x_margin)
+                ax.set_ylim(ymin - y_margin, ymax + y_margin)
+                return
+
     if configured_xlim is not None:
         ax.set_xlim(*configured_xlim)
-    elif world_bounds is not None:
-        xmin, xmax, _, _ = world_bounds
-        ax.set_xlim(xmin, xmax)
 
     if configured_ylim is not None:
         ax.set_ylim(*configured_ylim)
-    elif world_bounds is not None:
-        _, _, ymin, ymax = world_bounds
-        ax.set_ylim(ymin, ymax)
 
 
 def build_spatial_legend_handles(cfg):
@@ -1760,6 +1907,229 @@ def plot_fig5n_scheduled_paths(agent_layout, task_layout, timing_list, world_bou
     finalize_and_save(fig, save_path, cfg=cfg)
 
 
+def plot_static_round_gantt(round_data, round_idx, task_color_map, save_path):
+    cfg = FIG5O_CONFIG
+    sorted_agents = get_sorted_trajectory_agents(round_data)
+    round_id = get_trajectory_round_id(round_data, round_idx)
+    if not sorted_agents:
+        print(f'  ! skip static round gantt round {round_id}: no agent schedule data')
+        return False
+
+    fig, ax = create_single_axis_figure(cfg)
+    ax.set_facecolor(cfg.get('axes_facecolor', '#f7f7f7'))
+
+    bar_h = float(cfg.get('bar_height', 0.55))
+    min_segment_duration = float(cfg.get('min_segment_duration', 0.01))
+    task_alpha = float(cfg.get('task_alpha', 0.9))
+    task_fallback_color = cfg.get('task_fallback_color', '#7ec8a0')
+    t_max = to_scalar(round_data.get('T_max') if isinstance(round_data, dict) else None, default=np.nan)
+    if not np.isfinite(t_max) or t_max <= 0:
+        t_max = 1.0
+
+    shown_tasks = set()
+    for row_idx, (agent_id, ag) in enumerate(sorted_agents):
+        prev_end = 0.0
+        tasks_seq = trajectory_as_list(ag.get('task_sequence', []))
+        arr_times = trajectory_as_list(ag.get('arrival_times', []))
+        start_times = trajectory_as_list(ag.get('start_times', []))
+        comp_times = trajectory_as_list(ag.get('completion_times', []))
+        segment_count = min(len(tasks_seq), len(arr_times), len(start_times), len(comp_times))
+
+        for seg_idx in range(segment_count):
+            task_id = positive_int_or_none(tasks_seq[seg_idx])
+            arr = to_scalar(arr_times[seg_idx], default=np.nan)
+            st = to_scalar(start_times[seg_idx], default=np.nan)
+            ct = to_scalar(comp_times[seg_idx], default=np.nan)
+            if task_id is None or not (np.isfinite(arr) and np.isfinite(st) and np.isfinite(ct)):
+                continue
+
+            fly_dur = arr - prev_end
+            wait_dur = st - arr
+            exec_dur = ct - st
+
+            if fly_dur > min_segment_duration:
+                ax.barh(
+                    row_idx,
+                    fly_dur,
+                    left=prev_end,
+                    height=bar_h,
+                    color=cfg.get('fly_color', '#c8c8c8'),
+                    edgecolor='none',
+                    align='center',
+                    zorder=2,
+                )
+            if wait_dur > min_segment_duration:
+                ax.barh(
+                    row_idx,
+                    wait_dur,
+                    left=arr,
+                    height=bar_h,
+                    color=cfg.get('wait_color', '#f4a460'),
+                    edgecolor='none',
+                    align='center',
+                    zorder=2,
+                )
+            if exec_dur > min_segment_duration:
+                task_color = task_color_map.get(task_id, task_fallback_color)
+                ax.barh(
+                    row_idx,
+                    exec_dur,
+                    left=st,
+                    height=bar_h,
+                    color=task_color,
+                    edgecolor='none',
+                    alpha=task_alpha,
+                    align='center',
+                    zorder=3,
+                )
+                if cfg.get('show_task_id_label', True) and exec_dur >= float(cfg.get('label_min_width', 8.0)):
+                    ax.text(
+                        st + exec_dur / 2.0,
+                        row_idx,
+                        f'T{task_id}',
+                        ha='center',
+                        va='center',
+                        fontsize=cfg.get('label_fontsize', 7),
+                        fontweight=cfg.get('task_label_fontweight', 'bold'),
+                        color=cfg.get('task_label_color', '#000000'),
+                        zorder=4,
+                    )
+                shown_tasks.add(task_id)
+
+            prev_end = ct
+            t_max = max(t_max, arr, st, ct)
+
+    robot_prefix = cfg.get('robot_label_prefix', 'R')
+    ax.set_yticks(range(len(sorted_agents)))
+    ax.set_yticklabels([f'{robot_prefix}{agent_id}' for agent_id, _ag in sorted_agents])
+    ax.set_ylim(-0.65, len(sorted_agents) - 0.35)
+    ax.set_xlim(0.0, t_max * (1.0 + float(cfg.get('xlim_expand_ratio', 0.05))))
+
+    if cfg.get('show_x_grid', True):
+        ax.xaxis.grid(
+            True,
+            linestyle=cfg.get('grid_linestyle', '--'),
+            color=cfg.get('grid_color', '#d8d8d8'),
+            linewidth=cfg.get('grid_linewidth', PLOT_GLOBAL.get('grid_linewidth', 0.5)),
+            alpha=cfg.get('grid_alpha', PLOT_GLOBAL.get('grid_alpha', 0.35)),
+            zorder=0,
+        )
+    ax.set_axisbelow(True)
+
+    legend_handles = [
+        mpatches.Patch(color=cfg.get('fly_color', '#c8c8c8'), label=cfg.get('legend_label_flying', 'Flying')),
+        mpatches.Patch(color=cfg.get('wait_color', '#f4a460'), label=cfg.get('legend_label_waiting', 'Waiting')),
+    ]
+    for task_id in sorted(shown_tasks):
+        legend_handles.append(
+            mpatches.Patch(
+                color=task_color_map.get(task_id, task_fallback_color),
+                label=f'T{task_id}',
+                alpha=task_alpha,
+            )
+        )
+
+    plot_cfg = dict(cfg)
+    plot_cfg['title'] = str(cfg.get('title', 'Round {round_id} - Schedule')).format(round_id=round_id)
+    legend_kwargs = None
+    if cfg.get('show_legend', True):
+        legend_kwargs = {
+            'handles': legend_handles,
+            'labels': [handle.get_label() for handle in legend_handles],
+            'loc': cfg.get('legend_loc', 'upper right'),
+            'fontsize': resolve_fontsize('legend_fontsize', cfg=cfg),
+            'framealpha': cfg.get('legend_framealpha', PLOT_GLOBAL.get('legend_framealpha', 0.85)),
+            'edgecolor': cfg.get('legend_edgecolor', PLOT_GLOBAL.get('legend_edgecolor', '#cccccc')),
+            'ncol': cfg.get('legend_ncol', 2),
+        }
+
+    apply_common_style(ax, cfg=plot_cfg, legend_kwargs=legend_kwargs)
+    finalize_and_save(fig, save_path, cfg=cfg)
+    plt.close(fig)
+    return True
+
+
+def get_selected_static_gantt_round_ids(cfg):
+    selected_ids = []
+    for raw_id in trajectory_as_list(cfg.get('selected_round_ids')):
+        round_id = positive_int_or_none(raw_id)
+        if round_id is not None and round_id not in selected_ids:
+            selected_ids.append(round_id)
+    return selected_ids
+
+
+def cleanup_unselected_static_round_gantt_outputs(selected_round_ids):
+    if not selected_round_ids:
+        return
+
+    selected_round_ids = set(int(round_id) for round_id in selected_round_ids)
+    filename_prefix = build_prefixed_stem(FAMILY, 'round_')
+    filename_suffix = '_schedule_gantt'
+    pattern = os.path.join(FIGURES_DIR, f'{filename_prefix}*{filename_suffix}.*')
+    deleted_count = 0
+
+    for output_path in glob.glob(pattern):
+        stem = os.path.splitext(os.path.basename(output_path))[0]
+        if not (stem.startswith(filename_prefix) and stem.endswith(filename_suffix)):
+            continue
+
+        round_text = stem[len(filename_prefix):-len(filename_suffix)]
+        try:
+            round_id = int(round_text)
+        except ValueError:
+            continue
+
+        if round_id in selected_round_ids:
+            continue
+
+        try:
+            os.remove(output_path)
+            deleted_count += 1
+        except OSError as exc:
+            print(f'  ! static round gantt: failed to delete stale output {output_path}: {exc}')
+
+    if deleted_count > 0:
+        print(f'  static round gantt: deleted {deleted_count} stale unselected files')
+
+
+def plot_all_static_round_gantts(trajectory_payload):
+    if not isinstance(trajectory_payload, dict):
+        return
+
+    rounds = trajectory_payload.get('rounds', [])
+    if not isinstance(rounds, list) or not rounds:
+        return
+
+    cfg = FIG5O_CONFIG
+    task_ids = collect_trajectory_task_ids(trajectory_payload)
+    task_color_map = build_trajectory_task_color_map(task_ids, cfg)
+    selected_round_ids = get_selected_static_gantt_round_ids(cfg)
+    selected_round_set = set(selected_round_ids)
+    missing_round_ids = set(selected_round_ids)
+    generated_count = 0
+
+    if selected_round_ids:
+        cleanup_unselected_static_round_gantt_outputs(selected_round_ids)
+
+    for round_idx, round_data in enumerate(rounds, start=1):
+        round_id = get_trajectory_round_id(round_data, round_idx)
+        if selected_round_set and round_id not in selected_round_set:
+            continue
+
+        save_path = build_output_stem(f'round_{round_id:03d}_schedule_gantt')
+        if plot_static_round_gantt(round_data, round_idx, task_color_map, save_path):
+            generated_count += 1
+            missing_round_ids.discard(round_id)
+
+    if missing_round_ids:
+        print(f'  ! static round gantt: selected rounds not found: {sorted(missing_round_ids)}')
+
+    if selected_round_ids:
+        print(f'  static round gantt: generated {generated_count} selected figures ({selected_round_ids})')
+    else:
+        print(f'  static round gantt: generated {generated_count} figures')
+
+
 def plot_fig5h_expected_task_value(payload, task_layout, save_path):
     cfg = FIG5H_CONFIG
     subplot_cfg = dict(cfg)
@@ -1913,6 +2283,97 @@ def plot_fig5h_expected_task_value(payload, task_layout, save_path):
         if cfg.get(cfg_key) is not None:
             adjust_kwargs[key] = cfg[cfg_key]
     fig.subplots_adjust(**adjust_kwargs)
+    finalize_and_save(fig, save_path, cfg=cfg)
+
+
+def plot_fig5h_belief_value_error_band(payload, save_path):
+    cfg = dict(FIG5H_CONFIG)
+    cfg.update({
+        'title': 'Fig. 9 - Belief Value Error Convergence',
+        'xlabel': 'Round',
+        'ylabel': 'Mean Absolute Value Error',
+        'show_legend': True,
+        'legend_loc': 'upper right',
+        'legend_bbox_to_anchor': None,
+        'legend_ncol': 1,
+        'bottom_zero': True,
+        'left_zero': True,
+        'curve_label': 'Mean abs. value error',
+        'curve_color': FIG5I_CONFIG.get('curve_color', cfg.get('curve_color')),
+        'curve_linestyle': FIG5I_CONFIG.get('curve_linestyle', cfg.get('curve_linestyle', '-')),
+        'curve_marker': FIG5I_CONFIG.get('curve_marker', cfg.get('curve_marker', 'o')),
+        'curve_markerfacecolor': FIG5I_CONFIG.get('curve_markerfacecolor', cfg.get('curve_markerfacecolor')),
+        'curve_markeredgewidth': FIG5I_CONFIG.get('curve_markeredgewidth', cfg.get('curve_markeredgewidth', 1.0)),
+        'curve_markevery_step': FIG5I_CONFIG.get('curve_markevery_step', cfg.get('curve_markevery_step')),
+        'curve_marker_rounds': FIG5I_CONFIG.get('curve_marker_rounds', cfg.get('curve_marker_rounds')),
+        'band_label': 'Task-wise \u00b11 SD',
+        'band_alpha': 0.18,
+        'prepend_origin_zero': False,
+        'use_shared_ylabel': False,
+    })
+    cfg['band_color'] = cfg['curve_color']
+
+    rounds = np.asarray(payload.get('rounds'), dtype=float).ravel()
+    mean_error = np.asarray(
+        payload.get('value_error_mean', payload.get('value_error')),
+        dtype=float,
+    ).ravel()
+    error_std = np.asarray(payload.get('value_error_std'), dtype=float).ravel()
+
+    if rounds.size == 0 or mean_error.size == 0 or error_std.size == 0:
+        print('  ! skip fig5h: belief value error-band payload is empty')
+        return
+
+    usable_len = min(rounds.size, mean_error.size, error_std.size)
+    rounds = rounds[:usable_len]
+    mean_error = mean_error[:usable_len]
+    error_std = error_std[:usable_len]
+    valid_mask = np.isfinite(rounds) & np.isfinite(mean_error) & np.isfinite(error_std)
+    if not np.any(valid_mask):
+        print('  ! skip fig5h: belief value error-band payload has no finite values')
+        return
+
+    lower = np.maximum(0.0, mean_error - error_std)
+    upper = mean_error + error_std
+
+    fig, ax = create_single_axis_figure(cfg)
+    band = ax.fill_between(
+        rounds,
+        lower,
+        upper,
+        where=valid_mask,
+        interpolate=True,
+        color=cfg['band_color'],
+        alpha=cfg['band_alpha'],
+        linewidth=0,
+        label=cfg['band_label'],
+        zorder=1,
+    )
+    curve_markevery = resolve_curve_markevery(rounds, cfg)
+    line, = ax.plot(
+        rounds,
+        mean_error,
+        color=cfg['curve_color'],
+        linestyle=cfg['curve_linestyle'],
+        linewidth=cfg['linewidth'],
+        marker=cfg['curve_marker'],
+        markersize=PLOT_GLOBAL['markersize'],
+        markerfacecolor=cfg['curve_markerfacecolor'],
+        markeredgewidth=cfg['curve_markeredgewidth'],
+        markevery=curve_markevery,
+        label=cfg['curve_label'],
+        zorder=2,
+    )
+
+    STYLE_HELPER.apply_axis_controls(ax, cfg=cfg)
+    apply_common_style(
+        ax,
+        cfg=cfg,
+        legend_kwargs={
+            'handles': [line, band],
+            'labels': [cfg['curve_label'], cfg['band_label']],
+        },
+    )
     finalize_and_save(fig, save_path, cfg=cfg)
 
 
@@ -2514,6 +2975,7 @@ def main():
     print(f"  timing:   {len(timing_list)} 个智能体，其中 {active_agents} 个有任务分配")
 
     print(f"\n绘图 → {FIGURES_DIR}")
+    trajectory_payload = load_trajectory_schedule(mat_path)
     table_json_path = os.path.join(FIGURES_DIR, 'fig5_agent_task_schedule_table.json')
     write_plot_data_json(
         table_json_path,
@@ -2559,6 +3021,8 @@ def main():
         timing_list, task_info, N,
         build_output_stem('agent_task_gantt'),
     )
+    if trajectory_payload is not None:
+        plot_all_static_round_gantts(trajectory_payload)
     plot_task_resource_heatmap(
         alloc_mat,
         build_output_stem('task_total_allocated_resource'),
@@ -2596,9 +3060,8 @@ def main():
     )
 
     if belief_payload is not None:
-        plot_fig5h_expected_task_value(
+        plot_fig5h_belief_value_error_band(
             belief_payload,
-            task_layout,
             build_output_stem('belief_expected_task_value'),
         )
         plot_single_curve(

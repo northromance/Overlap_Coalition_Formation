@@ -1,0 +1,158 @@
+% 以下宏定义请粘贴至论文 preamble：
+% \usepackage{booktabs,multirow,makecell,array}
+% \newlength{\SEw}\setlength{\SEw}{2.4em}
+% \newcolumntype{C}[1]{>{\centering\arraybackslash}m{#1}}
+% \newcommand{\AllocCell}[1]{{\scriptsize #1}}
+
+\begin{table*}[t]
+\caption{Agent--task schedule with resource allocations, carrying capacities, task demands, and completion degrees (\textit{Round 1}). Tasks are ordered by priority in descending order.}
+\label{tab:agent_task_schedule_r1}
+\centering
+\scriptsize
+\setlength{\tabcolsep}{1.9pt}
+\renewcommand{\arraystretch}{1.10}
+
+\begin{tabular}{c C{\SEw} C{\SEw} C{\SEw} C{\SEw} C{\SEw} C{\SEw} C{\SEw} C{\SEw} C{\SEw} C{\SEw}}
+\toprule
+\multirow{2}{*}{Robot} & \multicolumn{2}{c}{T3 (P5, V2000)} & \multicolumn{2}{c}{T2 (P4, V2000)} & \multicolumn{2}{c}{T4 (P3, V1000)} & \multicolumn{2}{c}{T1 (P2, V500)} & \multicolumn{2}{c}{T5 (P1, V500)} \\
+\cmidrule(lr){2-3}\cmidrule(lr){4-5}\cmidrule(lr){6-7}\cmidrule(lr){8-9}\cmidrule(lr){10-11}
+& Start & End & Start & End & Start & End & Start & End & Start & End \\
+\midrule
+\multirow{2}{*}{\makecell[c]{A1\\$[4,4,4,4,3,4]$}} & \multicolumn{2}{c}{\scriptsize $[4,0,0,4,3,4]$} & \multicolumn{2}{c}{\scriptsize --} & \multicolumn{2}{c}{\scriptsize $[4,0,0,0,0,0]$} & \multicolumn{2}{c}{\scriptsize $[4,0,0,4,3,0]$} & \multicolumn{2}{c}{\scriptsize --} \\
+& 13.1 & 33.1 & -- & -- & 70.7 & 90.7 & 95.2 & 115.2 & -- & -- \\
+\midrule
+\multirow{2}{*}{\makecell[c]{A2\\$[3,4,3,3,4,3]$}} & \multicolumn{2}{c}{\scriptsize --} & \multicolumn{2}{c}{\scriptsize $[3,4,0,3,0,0]$} & \multicolumn{2}{c}{\scriptsize $[3,0,0,0,4,3]$} & \multicolumn{2}{c}{\scriptsize $[0,4,3,0,0,3]$} & \multicolumn{2}{c}{\scriptsize --} \\
+& -- & -- & 40.8 & 60.8 & 70.7 & 90.7 & 95.2 & 115.2 & -- & -- \\
+\midrule
+\multirow{2}{*}{\makecell[c]{A3\\$[3,3,4,3,4,3]$}} & \multicolumn{2}{c}{\scriptsize $[3,3,0,0,0,0]$} & \multicolumn{2}{c}{\scriptsize $[0,0,4,0,4,0]$} & \multicolumn{2}{c}{\scriptsize $[0,3,0,0,4,0]$} & \multicolumn{2}{c}{\scriptsize $[3,0,0,0,0,0]$} & \multicolumn{2}{c}{\scriptsize --} \\
+& 13.1 & 33.1 & 40.8 & 60.8 & 70.7 & 90.7 & 95.2 & 115.2 & -- & -- \\
+\midrule
+\multirow{2}{*}{\makecell[c]{A4\\$[3,4,3,3,4,4]$}} & \multicolumn{2}{c}{\scriptsize --} & \multicolumn{2}{c}{\scriptsize --} & \multicolumn{2}{c}{\scriptsize --} & \multicolumn{2}{c}{\scriptsize --} & \multicolumn{2}{c}{\scriptsize $[0,0,3,3,4,0]$} \\
+& -- & -- & -- & -- & -- & -- & -- & -- & 38.8 & 58.8 \\
+\midrule
+\multirow{2}{*}{\makecell[c]{A5\\$[4,4,3,4,3,3]$}} & \multicolumn{2}{c}{\scriptsize $[0,0,3,4,3,0]$} & \multicolumn{2}{c}{\scriptsize --} & \multicolumn{2}{c}{\scriptsize --} & \multicolumn{2}{c}{\scriptsize --} & \multicolumn{2}{c}{\scriptsize $[4,4,0,0,0,3]$} \\
+& 13.1 & 33.1 & -- & -- & -- & -- & -- & -- & 38.8 & 58.8 \\
+\midrule
+\textbf{Demand} & \multicolumn{2}{c}{\scriptsize $[7,3,0,8,6,0]$} & \multicolumn{2}{c}{\scriptsize $[7,3,0,8,6,0]$} & \multicolumn{2}{c}{\scriptsize $[3,2,2,5,2,3]$} & \multicolumn{2}{c}{\scriptsize $[1,1,0,2,1,1]$} & \multicolumn{2}{c}{\scriptsize $[1,1,0,2,1,1]$} \\
+\midrule
+\textbf{Allocated} & \multicolumn{2}{c}{\scriptsize $[7,3,3,8,6,4]$} & \multicolumn{2}{c}{\scriptsize $[3,4,4,3,4,0]$} & \multicolumn{2}{c}{\scriptsize $[7,3,0,0,8,3]$} & \multicolumn{2}{c}{\scriptsize $[7,4,3,4,3,3]$} & \multicolumn{2}{c}{\scriptsize $[4,4,3,3,4,3]$} \\
+\midrule
+\textbf{Completion} & \multicolumn{2}{c}{\scriptsize 100.0\%} & \multicolumn{2}{c}{\scriptsize 61.8\%} & \multicolumn{2}{c}{\scriptsize 66.7\%} & \multicolumn{2}{c}{\scriptsize 100.0\%} & \multicolumn{2}{c}{\scriptsize 100.0\%} \\
+\bottomrule
+\end{tabular}
+\end{table*}
+
+\begin{table*}[t]
+\caption{Agent--task schedule with resource allocations, carrying capacities, task demands, and completion degrees (\textit{Round 20}). Tasks are ordered by priority in descending order.}
+\label{tab:agent_task_schedule_r20}
+\centering
+\scriptsize
+\setlength{\tabcolsep}{1.9pt}
+\renewcommand{\arraystretch}{1.10}
+
+\begin{tabular}{c C{\SEw} C{\SEw} C{\SEw} C{\SEw} C{\SEw} C{\SEw} C{\SEw} C{\SEw} C{\SEw} C{\SEw}}
+\toprule
+\multirow{2}{*}{Robot} & \multicolumn{2}{c}{T3 (P5, V2000)} & \multicolumn{2}{c}{T2 (P4, V2000)} & \multicolumn{2}{c}{T4 (P3, V1000)} & \multicolumn{2}{c}{T1 (P2, V500)} & \multicolumn{2}{c}{T5 (P1, V500)} \\
+\cmidrule(lr){2-3}\cmidrule(lr){4-5}\cmidrule(lr){6-7}\cmidrule(lr){8-9}\cmidrule(lr){10-11}
+& Start & End & Start & End & Start & End & Start & End & Start & End \\
+\midrule
+\multirow{2}{*}{\makecell[c]{A1\\$[4,4,4,4,3,4]$}} & \multicolumn{2}{c}{\scriptsize $[4,0,0,4,3,0]$} & \multicolumn{2}{c}{\scriptsize $[4,0,0,4,3,0]$} & \multicolumn{2}{c}{\scriptsize --} & \multicolumn{2}{c}{\scriptsize $[4,0,0,4,3,4]$} & \multicolumn{2}{c}{\scriptsize --} \\
+& 13.1 & 33.1 & 40.8 & 60.8 & -- & -- & 70.0 & 90.0 & -- & -- \\
+\midrule
+\multirow{2}{*}{\makecell[c]{A2\\$[3,4,3,3,4,3]$}} & \multicolumn{2}{c}{\scriptsize --} & \multicolumn{2}{c}{\scriptsize --} & \multicolumn{2}{c}{\scriptsize $[3,4,3,3,4,3]$} & \multicolumn{2}{c}{\scriptsize --} & \multicolumn{2}{c}{\scriptsize --} \\
+& -- & -- & -- & -- & 2.9 & 22.9 & -- & -- & -- & -- \\
+\midrule
+\multirow{2}{*}{\makecell[c]{A3\\$[3,3,4,3,4,3]$}} & \multicolumn{2}{c}{\scriptsize $[0,3,0,0,4,0]$} & \multicolumn{2}{c}{\scriptsize --} & \multicolumn{2}{c}{\scriptsize --} & \multicolumn{2}{c}{\scriptsize --} & \multicolumn{2}{c}{\scriptsize --} \\
+& 13.1 & 33.1 & -- & -- & -- & -- & -- & -- & -- & -- \\
+\midrule
+\multirow{2}{*}{\makecell[c]{A4\\$[3,4,3,3,4,4]$}} & \multicolumn{2}{c}{\scriptsize --} & \multicolumn{2}{c}{\scriptsize $[3,4,0,3,4,0]$} & \multicolumn{2}{c}{\scriptsize --} & \multicolumn{2}{c}{\scriptsize --} & \multicolumn{2}{c}{\scriptsize --} \\
+& -- & -- & 40.8 & 60.8 & -- & -- & -- & -- & -- & -- \\
+\midrule
+\multirow{2}{*}{\makecell[c]{A5\\$[4,4,3,4,3,3]$}} & \multicolumn{2}{c}{\scriptsize $[4,0,0,4,0,0]$} & \multicolumn{2}{c}{\scriptsize --} & \multicolumn{2}{c}{\scriptsize --} & \multicolumn{2}{c}{\scriptsize --} & \multicolumn{2}{c}{\scriptsize $[4,4,0,4,3,3]$} \\
+& 13.1 & 33.1 & -- & -- & -- & -- & -- & -- & 38.8 & 58.8 \\
+\midrule
+\textbf{Demand} & \multicolumn{2}{c}{\scriptsize $[7,3,0,8,6,0]$} & \multicolumn{2}{c}{\scriptsize $[7,3,0,8,6,0]$} & \multicolumn{2}{c}{\scriptsize $[3,2,2,5,2,3]$} & \multicolumn{2}{c}{\scriptsize $[1,1,0,2,1,1]$} & \multicolumn{2}{c}{\scriptsize $[1,1,0,2,1,1]$} \\
+\midrule
+\textbf{Allocated} & \multicolumn{2}{c}{\scriptsize $[8,3,0,8,7,0]$} & \multicolumn{2}{c}{\scriptsize $[7,4,0,7,7,0]$} & \multicolumn{2}{c}{\scriptsize $[3,4,3,3,4,3]$} & \multicolumn{2}{c}{\scriptsize $[4,0,0,4,3,4]$} & \multicolumn{2}{c}{\scriptsize $[4,4,0,4,3,3]$} \\
+\midrule
+\textbf{Completion} & \multicolumn{2}{c}{\scriptsize 100.0\%} & \multicolumn{2}{c}{\scriptsize 96.9\%} & \multicolumn{2}{c}{\scriptsize 93.3\%} & \multicolumn{2}{c}{\scriptsize 80.0\%} & \multicolumn{2}{c}{\scriptsize 100.0\%} \\
+\bottomrule
+\end{tabular}
+\end{table*}
+
+\begin{table*}[t]
+\caption{Agent--task schedule with resource allocations, carrying capacities, task demands, and completion degrees (\textit{Round 40}). Tasks are ordered by priority in descending order.}
+\label{tab:agent_task_schedule_r40}
+\centering
+\scriptsize
+\setlength{\tabcolsep}{1.9pt}
+\renewcommand{\arraystretch}{1.10}
+
+\begin{tabular}{c C{\SEw} C{\SEw} C{\SEw} C{\SEw} C{\SEw} C{\SEw} C{\SEw} C{\SEw} C{\SEw} C{\SEw}}
+\toprule
+\multirow{2}{*}{Robot} & \multicolumn{2}{c}{T3 (P5, V2000)} & \multicolumn{2}{c}{T2 (P4, V2000)} & \multicolumn{2}{c}{T4 (P3, V1000)} & \multicolumn{2}{c}{T1 (P2, V500)} & \multicolumn{2}{c}{T5 (P1, V500)} \\
+\cmidrule(lr){2-3}\cmidrule(lr){4-5}\cmidrule(lr){6-7}\cmidrule(lr){8-9}\cmidrule(lr){10-11}
+& Start & End & Start & End & Start & End & Start & End & Start & End \\
+\midrule
+\multirow{2}{*}{\makecell[c]{A1\\$[4,4,4,4,3,4]$}} & \multicolumn{2}{c}{\scriptsize $[4,0,0,4,3,0]$} & \multicolumn{2}{c}{\scriptsize $[4,0,0,4,3,0]$} & \multicolumn{2}{c}{\scriptsize --} & \multicolumn{2}{c}{\scriptsize $[4,4,0,4,3,4]$} & \multicolumn{2}{c}{\scriptsize --} \\
+& 13.1 & 33.1 & 40.8 & 60.8 & -- & -- & 70.0 & 90.0 & -- & -- \\
+\midrule
+\multirow{2}{*}{\makecell[c]{A2\\$[3,4,3,3,4,3]$}} & \multicolumn{2}{c}{\scriptsize --} & \multicolumn{2}{c}{\scriptsize --} & \multicolumn{2}{c}{\scriptsize $[3,4,3,3,4,3]$} & \multicolumn{2}{c}{\scriptsize --} & \multicolumn{2}{c}{\scriptsize --} \\
+& -- & -- & -- & -- & 2.9 & 22.9 & -- & -- & -- & -- \\
+\midrule
+\multirow{2}{*}{\makecell[c]{A3\\$[3,3,4,3,4,3]$}} & \multicolumn{2}{c}{\scriptsize $[0,3,0,0,4,0]$} & \multicolumn{2}{c}{\scriptsize --} & \multicolumn{2}{c}{\scriptsize --} & \multicolumn{2}{c}{\scriptsize --} & \multicolumn{2}{c}{\scriptsize --} \\
+& 13.1 & 33.1 & -- & -- & -- & -- & -- & -- & -- & -- \\
+\midrule
+\multirow{2}{*}{\makecell[c]{A4\\$[3,4,3,3,4,4]$}} & \multicolumn{2}{c}{\scriptsize --} & \multicolumn{2}{c}{\scriptsize $[3,4,0,3,4,0]$} & \multicolumn{2}{c}{\scriptsize --} & \multicolumn{2}{c}{\scriptsize --} & \multicolumn{2}{c}{\scriptsize --} \\
+& -- & -- & 40.8 & 60.8 & -- & -- & -- & -- & -- & -- \\
+\midrule
+\multirow{2}{*}{\makecell[c]{A5\\$[4,4,3,4,3,3]$}} & \multicolumn{2}{c}{\scriptsize $[4,0,0,4,0,0]$} & \multicolumn{2}{c}{\scriptsize --} & \multicolumn{2}{c}{\scriptsize --} & \multicolumn{2}{c}{\scriptsize --} & \multicolumn{2}{c}{\scriptsize $[4,4,0,4,3,3]$} \\
+& 13.1 & 33.1 & -- & -- & -- & -- & -- & -- & 38.8 & 58.8 \\
+\midrule
+\textbf{Demand} & \multicolumn{2}{c}{\scriptsize $[7,3,0,8,6,0]$} & \multicolumn{2}{c}{\scriptsize $[7,3,0,8,6,0]$} & \multicolumn{2}{c}{\scriptsize $[3,2,2,5,2,3]$} & \multicolumn{2}{c}{\scriptsize $[1,1,0,2,1,1]$} & \multicolumn{2}{c}{\scriptsize $[1,1,0,2,1,1]$} \\
+\midrule
+\textbf{Allocated} & \multicolumn{2}{c}{\scriptsize $[8,3,0,8,7,0]$} & \multicolumn{2}{c}{\scriptsize $[7,4,0,7,7,0]$} & \multicolumn{2}{c}{\scriptsize $[3,4,3,3,4,3]$} & \multicolumn{2}{c}{\scriptsize $[4,4,0,4,3,4]$} & \multicolumn{2}{c}{\scriptsize $[4,4,0,4,3,3]$} \\
+\midrule
+\textbf{Completion} & \multicolumn{2}{c}{\scriptsize 100.0\%} & \multicolumn{2}{c}{\scriptsize 96.9\%} & \multicolumn{2}{c}{\scriptsize 93.3\%} & \multicolumn{2}{c}{\scriptsize 100.0\%} & \multicolumn{2}{c}{\scriptsize 100.0\%} \\
+\bottomrule
+\end{tabular}
+\end{table*}
+
+\begin{table*}[t]
+\caption{Agent--task schedule with resource allocations, carrying capacities, task demands, and completion degrees (\textit{Round 60 (Final)}). Tasks are ordered by priority in descending order.}
+\label{tab:agent_task_schedule_final}
+\centering
+\scriptsize
+\setlength{\tabcolsep}{1.9pt}
+\renewcommand{\arraystretch}{1.10}
+
+\begin{tabular}{c C{\SEw} C{\SEw} C{\SEw} C{\SEw} C{\SEw} C{\SEw} C{\SEw} C{\SEw} C{\SEw} C{\SEw}}
+\toprule
+\multirow{2}{*}{Robot} & \multicolumn{2}{c}{T3 (P5, V2000)} & \multicolumn{2}{c}{T2 (P4, V2000)} & \multicolumn{2}{c}{T4 (P3, V1000)} & \multicolumn{2}{c}{T1 (P2, V500)} & \multicolumn{2}{c}{T5 (P1, V500)} \\
+\cmidrule(lr){2-3}\cmidrule(lr){4-5}\cmidrule(lr){6-7}\cmidrule(lr){8-9}\cmidrule(lr){10-11}
+& Start & End & Start & End & Start & End & Start & End & Start & End \\
+\midrule
+\multirow{2}{*}{\makecell[c]{A1\\$[4,4,4,4,3,4]$}} & \multicolumn{2}{c}{\scriptsize $[4,0,0,4,3,0]$} & \multicolumn{2}{c}{\scriptsize $[4,0,0,4,3,0]$} & \multicolumn{2}{c}{\scriptsize --} & \multicolumn{2}{c}{\scriptsize $[4,4,0,4,3,4]$} & \multicolumn{2}{c}{\scriptsize --} \\
+& 13.1 & 33.1 & 40.8 & 60.8 & -- & -- & 70.0 & 90.0 & -- & -- \\
+\midrule
+\multirow{2}{*}{\makecell[c]{A2\\$[3,4,3,3,4,3]$}} & \multicolumn{2}{c}{\scriptsize --} & \multicolumn{2}{c}{\scriptsize --} & \multicolumn{2}{c}{\scriptsize $[3,4,3,3,4,3]$} & \multicolumn{2}{c}{\scriptsize --} & \multicolumn{2}{c}{\scriptsize --} \\
+& -- & -- & -- & -- & 2.9 & 22.9 & -- & -- & -- & -- \\
+\midrule
+\multirow{2}{*}{\makecell[c]{A3\\$[3,3,4,3,4,3]$}} & \multicolumn{2}{c}{\scriptsize $[0,3,0,0,4,0]$} & \multicolumn{2}{c}{\scriptsize --} & \multicolumn{2}{c}{\scriptsize --} & \multicolumn{2}{c}{\scriptsize --} & \multicolumn{2}{c}{\scriptsize --} \\
+& 13.1 & 33.1 & -- & -- & -- & -- & -- & -- & -- & -- \\
+\midrule
+\multirow{2}{*}{\makecell[c]{A4\\$[3,4,3,3,4,4]$}} & \multicolumn{2}{c}{\scriptsize --} & \multicolumn{2}{c}{\scriptsize $[3,4,0,3,4,0]$} & \multicolumn{2}{c}{\scriptsize --} & \multicolumn{2}{c}{\scriptsize --} & \multicolumn{2}{c}{\scriptsize --} \\
+& -- & -- & 40.8 & 60.8 & -- & -- & -- & -- & -- & -- \\
+\midrule
+\multirow{2}{*}{\makecell[c]{A5\\$[4,4,3,4,3,3]$}} & \multicolumn{2}{c}{\scriptsize $[4,0,0,4,0,0]$} & \multicolumn{2}{c}{\scriptsize --} & \multicolumn{2}{c}{\scriptsize --} & \multicolumn{2}{c}{\scriptsize --} & \multicolumn{2}{c}{\scriptsize $[4,4,0,4,3,3]$} \\
+& 13.1 & 33.1 & -- & -- & -- & -- & -- & -- & 38.8 & 58.8 \\
+\midrule
+\textbf{Demand} & \multicolumn{2}{c}{\scriptsize $[7,3,0,8,6,0]$} & \multicolumn{2}{c}{\scriptsize $[7,3,0,8,6,0]$} & \multicolumn{2}{c}{\scriptsize $[3,2,2,5,2,3]$} & \multicolumn{2}{c}{\scriptsize $[1,1,0,2,1,1]$} & \multicolumn{2}{c}{\scriptsize $[1,1,0,2,1,1]$} \\
+\midrule
+\textbf{Allocated} & \multicolumn{2}{c}{\scriptsize $[8,3,0,8,7,0]$} & \multicolumn{2}{c}{\scriptsize $[7,4,0,7,7,0]$} & \multicolumn{2}{c}{\scriptsize $[3,4,3,3,4,3]$} & \multicolumn{2}{c}{\scriptsize $[4,4,0,4,3,4]$} & \multicolumn{2}{c}{\scriptsize $[4,4,0,4,3,3]$} \\
+\midrule
+\textbf{Completion} & \multicolumn{2}{c}{\scriptsize 100.0\%} & \multicolumn{2}{c}{\scriptsize 96.9\%} & \multicolumn{2}{c}{\scriptsize 93.3\%} & \multicolumn{2}{c}{\scriptsize 100.0\%} & \multicolumn{2}{c}{\scriptsize 100.0\%} \\
+\bottomrule
+\end{tabular}
+\end{table*}
+

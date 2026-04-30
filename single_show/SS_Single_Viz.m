@@ -155,9 +155,13 @@ fprintf('完成。\n\n');
 %% ===== 计算各轮次时间同步（用于多轮次动画）=====
 fprintf('计算各轮次时间同步...\n');
 all_rounds_timing = cell(num_r, 1);
+all_rounds_SC     = cell(num_r, 1);
+all_rounds_tdeg   = zeros(num_r, M);
 for r = 1:num_r
     all_rounds_timing{r} = SS_WorldSim.calc_all_agents_with_global_sync( ...
         agents, tasks, Value_Params, history_data.rounds(r).SC);
+    all_rounds_SC{r}     = history_data.rounds(r).SC;
+    all_rounds_tdeg(r,:) = history_data.rounds(r).task_completion_degrees(:).';
 end
 fprintf('完成。\n\n');
 
@@ -270,6 +274,8 @@ viz_data.tasks  = tasks;    % struct array [1×M]
 viz_data.final_SC                = final_SC;               % cell{M×1}，SC{m}=[N×K] → 图5a
 viz_data.timing                  = all_agents_results;     % struct array [1×N]      → 图5b
 viz_data.all_rounds_timing       = all_rounds_timing;      % cell{num_r×1}，各轮次 timing
+viz_data.all_rounds_SC           = all_rounds_SC;          % cell{num_r×1}，各轮次 SC
+viz_data.all_rounds_tdeg         = all_rounds_tdeg;        % [num_r×M]，各轮次完成度
 viz_data.task_completion_degrees = task_completion_degrees; % [M×1]
 
 viz_data.init_belief_tensor = init_belief_tensor;
