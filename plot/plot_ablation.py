@@ -1283,6 +1283,7 @@ def plot_ablation_scatter(
                 ylabel=None,
                 title=None,
             )
+            STYLE_HELPER.apply_axis_controls(ax, cfg=subplot_cfg)
             if row_ylabel == "Coalition Utility":
                 _apply_scientific_utility_ticks(ax, cfg)
 
@@ -1391,6 +1392,7 @@ def plot_ablation_convergence(n_values, condition_names, convergence, save_path)
             ylabel=None,
             title=None,
         )
+        STYLE_HELPER.apply_axis_controls(ax, cfg=subplot_cfg)
         _apply_scientific_utility_ticks(ax, cfg)
 
     legend_handles = []

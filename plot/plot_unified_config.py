@@ -242,7 +242,7 @@ COMMON_CONFIG = {
         "linewidth": 1.2,
         "markersize": 3.2,
         "markeredgewidth": 0.9,
-        "capsize": 2,
+        "capsize": 1,
 
         # varyN / varyM 一类脚本会用到的误差棒和 marker 开关。
         "show_errorbar_varyN": False,
@@ -442,7 +442,7 @@ FAMILY_CONFIG = {
             "fig1a": {
                 "show_title": False,
                 "title": "Fig. 1a - Utility vs. N",
-                "xlabel": "Number of Agents",
+                "xlabel": "Number of Robots",
                 "ylabel": "Final Coalition Utility",
                 "xlim": None,
                 "ylim": None,
@@ -454,7 +454,7 @@ FAMILY_CONFIG = {
             "fig1b": {
                 "show_title": False,
                 "title": "Fig. 1b - Completion vs. N",
-                "xlabel": "Number of Agents",
+                "xlabel": "Number of Robots",
                 "ylabel": "Task Completion Degree",
                 "xlim": None,
                 "ylim": [0.15, 1.05],
@@ -467,7 +467,7 @@ FAMILY_CONFIG = {
             "fig1c": {
                 "show_title": False,
                 "title": "Fig. 1c - Total Completed Value vs. N",
-                "xlabel": "Number of Agents",
+                "xlabel": "Number of Robots",
                 "ylabel": "Total Completed Value",
                 "xlim": None,
                 "ylim": [3000, 12000],
@@ -481,7 +481,7 @@ FAMILY_CONFIG = {
             "fig1d": {
                 "show_title": False,
                 "title": "Fig. 1d - Utility and Completion vs. N",
-                "xlabel": "Number of Agents",
+                "xlabel": "Number of Robots",
                 "ylabel": "Final Coalition Utility",
                 "right_ylabel": "Completion Rate",
                 "show_completion_line": False,
@@ -497,7 +497,7 @@ FAMILY_CONFIG = {
             "fig1e": {
                 "show_title": False,
                 "title": "Fig. 1e - Total Completed Value and Completion vs. N",
-                "xlabel": "Number of Agents",
+                "xlabel": "Number of Robots",
                 "ylabel": "Total Completed Value",
                 "right_ylabel": "Completion Rate",
                 "show_completion_line": False,
@@ -681,7 +681,7 @@ FAMILY_CONFIG = {
             "#c49c94", "#f7b6d2", "#c7c7c7", "#dbdb8d", "#9edae5",
         ],
         "TRUE_VALUE_STYLE": dict(color="#000000", ls=":", lw=2.0, label="True value"),
-        "AGENT_TRACE_STYLE": dict(color="#B7B7B7", lw=0.9, alpha=0.55, label="Agent traces"),
+        "AGENT_TRACE_STYLE": dict(color="#B7B7B7", lw=0.9, alpha=0.55, label="Robot traces"),
         "FIGURE_CONFIG": {
             "fig2a": {
                 "show_title": True,
@@ -700,7 +700,7 @@ FAMILY_CONFIG = {
             "fig2c": {
                 "show_title": True,
                 "title_template": "Task {m} (true={v:.0f})",
-                "suptitle_template": "Fig. 2c - Per-agent Belief Convergence [{cond}]",
+                "suptitle_template": "Fig. 2c - Per-robot Belief Convergence [{cond}]",
                 "xlabel": "Round",
                 "ylabel": "Expected Value",
                 "bottom_zero": False,
@@ -728,7 +728,7 @@ FAMILY_CONFIG = {
             },
             "appendix_new": {
                 "show_title": True,
-                "title": "Fig. 2c - Agent-level Trajectories on Representative Tasks",
+                "title": "Fig. 2c - Robot-level Trajectories on Representative Tasks",
                 "xlabel": "Round",
                 "ylabel": "Expected task value",
                 "bottom_zero": False,
@@ -826,7 +826,7 @@ FAMILY_CONFIG = {
                 "markeredgewidth": 1.8,
                 "linewidth": 1.5,
                 "label": "",
-                "legend_label": "No Belief Update",
+                "legend_label": "Non-Belief Update",
             },
             "belief_on": {
                 "color": "#2E6DB4",
@@ -844,7 +844,7 @@ FAMILY_CONFIG = {
                 "markeredgewidth": 1.2,
                 "linewidth": 1.5,
                 "label": "belief_on_quantile",
-                "legend_label": "Quantile Belief Update",
+                "legend_label": "Belief Update",
             },
             "belief_on_expected": {
                 "color": "#1F8A5B",
@@ -868,6 +868,7 @@ FAMILY_CONFIG = {
                 "show_legend": True,
                 "title": "Ablation endpoint comparison",
                 "tight_layout": False,
+                "ylim": [0.2, 1.0],
                 "show_utility_row": False,
                 "use_shared_row_ylabels": True,
                 "shared_row_ylabels": ["Coalition Utility", "Task Completion Rate"],
@@ -892,6 +893,7 @@ FAMILY_CONFIG = {
                 "title_template": "Ablation convergence by N ({band_desc})",
                 "xlabel": "Round",
                 "ylabel": "Coalition Utility",
+                "ylim": [2000, 12000],
                 "tight_layout": False,
                 "use_shared_ylabel": True,
                 "shared_ylabel_text": "Coalition Utility",
@@ -986,7 +988,7 @@ FAMILY_CONFIG = {
                 "shared_vmax": True,
                 "show_colorbar": True,
                 "xlabel": "Resource",
-                "ylabel": "Agent",
+                "ylabel": "Robot",
                 "cell_annot": False,
                 "cell_fontsize": 7,
                 "subplot_title_color": "#000000",
@@ -1000,9 +1002,9 @@ FAMILY_CONFIG = {
             },
             "fig5b": {
                 "show_title": False,
-                "title": "Fig. 5b - Agent Task Execution Gantt",
+                "title": "Fig. 5b - Robot Task Execution Gantt",
                 "xlabel": "Time",
-                "ylabel": "Agent",
+                "ylabel": "Robot",
                 "color_mode": "task_id_light",
                 "show_legend": False,
                 "uniform_task_color": "#2F2F2F",
@@ -1103,7 +1105,7 @@ FAMILY_CONFIG = {
             },
             "fig5g": {
                 "show_title": True,
-                "title": "Fig. 5g - Initial Agent and Task Layout",
+                "title": "Fig. 5g - Initial Robot and Task Layout",
                 "xlabel": "X Coordinate",
                 "ylabel": "Y Coordinate",
                 "xlim": [-5, 110],
@@ -1117,7 +1119,7 @@ FAMILY_CONFIG = {
                 "agent_marker": "o",
                 "agent_markersize": 58,
                 "agent_scatter_linewidth": 0.9,
-                "agent_legend_label": "Agents",
+                "agent_legend_label": "Robots",
                 "task_marker": "*",
                 "task_markersize": 68,
                 "task_color": "#2F2F2F",
@@ -1284,7 +1286,7 @@ FAMILY_CONFIG = {
                 "agent_marker": "o",
                 "agent_markersize": 58,
                 "agent_scatter_linewidth": 0.9,
-                "agent_legend_label": "Agents",
+                "agent_legend_label": "Robots",
                 "task_marker": "*",
                 "task_markersize": 68,
                 "task_color": "#2F2F2F",

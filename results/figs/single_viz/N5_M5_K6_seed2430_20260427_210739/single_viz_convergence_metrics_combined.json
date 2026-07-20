@@ -14,14 +14,14 @@
     "last_iteration_value": 5400.1344833683925
   },
   "convergence_cost": {
-    "label": "Total Global Cost",
+    "label": "Global Cost",
     "first_iteration_index": 1,
     "last_iteration_index": 60,
     "first_iteration_value": 777.7256759833281,
     "last_iteration_value": 470.6988499649401
   },
   "convergence_completed_value": {
-    "label": "Total Completed Value",
+    "label": "Completed Task Value",
     "first_iteration_index": 1,
     "last_iteration_index": 60,
     "first_iteration_value": 4901.785714285715,
